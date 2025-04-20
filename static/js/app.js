@@ -9,6 +9,13 @@ document.addEventListener('DOMContentLoaded', function() {
         userId: null,
         workspace: null,
         
+        // Function to add file action buttons - temporary fix for compatibility
+        addFileActionButtons: function() {
+            if (window.fileActions && typeof window.fileActions.addFileActionButtons === 'function') {
+                window.fileActions.addFileActionButtons();
+            }
+        },
+        
         // DOM elements
         elements: {
             instructionInput: document.getElementById('instruction-input'),
@@ -242,8 +249,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 this.elements.directoryPath.textContent = this.currentDirectory;
                 this.renderFileExplorer(data.files || []);
                 
-                // Add Create File and Create Folder buttons
-                this.addFileActionButtons();
+                // Add Create File and Create Folder buttons if available
+                if (window.fileActions && typeof window.fileActions.addFileActionButtons === 'function') {
+                    window.fileActions.addFileActionButtons();
+                }
             })
             .catch(error => {
                 console.error('Error fetching files:', error);
