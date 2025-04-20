@@ -165,6 +165,11 @@ def index():
     """Render the main page."""
     return render_template('index.html')
     
+@app.route('/chat')
+def chat():
+    """Render the chat page with specialized agents."""
+    return render_template('chat.html')
+    
 @app.route('/files')
 def files():
     """File explorer view."""
@@ -463,6 +468,85 @@ def execute_command():
         return jsonify(result)
     except Exception as e:
         logging.error(f"Error executing command: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/chat', methods=['POST'])
+def handle_chat():
+    """Procesa mensajes del chat usando el agente especializado seleccionado."""
+    try:
+        data = request.json
+        message = data.get('message', '')
+        agent_prompt = data.get('agent_prompt', '')
+        model_choice = data.get('model', 'openai')  # Default to OpenAI
+        
+        if not message:
+            return jsonify({'error': 'No message provided'}), 400
+            
+        response = ""
+        
+        # Generar respuesta según el modelo seleccionado
+        if model_choice == 'openai':
+            if not openai_client:
+                return jsonify({'error': 'OpenAI API key not configured'}), 500
+                
+            try:
+                openai_response = openai_client.chat.completions.create(
+                    model="gpt-4o",  # the newest OpenAI model is "gpt-4o" which was released May 13, 2024
+                    messages=[
+                        {"role": "system", "content": agent_prompt},
+                        {"role": "user", "content": message}
+                    ],
+                    max_tokens=1500
+                )
+                response = openai_response.choices[0].message.content
+            except Exception as e:
+                logging.error(f"OpenAI API error: {str(e)}")
+                return jsonify({'error': f"Error with OpenAI API: {str(e)}"}), 500
+                
+        elif model_choice == 'anthropic':
+            if not anthropic_client:
+                return jsonify({'error': 'Anthropic API key not configured'}), 500
+                
+            try:
+                anthropic_response = anthropic_client.messages.create(
+                    model="claude-3-5-sonnet-20241022",  # the newest Anthropic model is "claude-3-5-sonnet-20241022" which was released October 22, 2024
+                    system=agent_prompt,
+                    messages=[
+                        {"role": "user", "content": message}
+                    ],
+                    max_tokens=1500
+                )
+                response = anthropic_response.content[0].text
+            except Exception as e:
+                logging.error(f"Anthropic API error: {str(e)}")
+                return jsonify({'error': f"Error with Anthropic API: {str(e)}"}), 500
+                
+        elif model_choice == 'gemini':
+            if not gemini_api_key:
+                return jsonify({'error': 'Gemini API key not configured'}), 500
+                
+            try:
+                model = genai.GenerativeModel('gemini-pro')
+                chat = model.start_chat(
+                    history=[
+                        {"role": "user", "parts": [agent_prompt]}
+                    ]
+                )
+                gemini_response = chat.send_message(message)
+                response = gemini_response.text
+            except Exception as e:
+                logging.error(f"Gemini API error: {str(e)}")
+                return jsonify({'error': f"Error with Gemini API: {str(e)}"}), 500
+        else:
+            return jsonify({'error': 'Invalid model choice'}), 400
+            
+        return jsonify({
+            'success': True,
+            'response': response
+        })
+        
+    except Exception as e:
+        logging.error(f"Error processing chat: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
 @app.route('/api/list_files', methods=['POST'])

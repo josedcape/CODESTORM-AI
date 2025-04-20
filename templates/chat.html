@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="es" data-bs-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CODESTORM - Chat con Agentes Especializados</title>
+    
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.replit.com/agent/bootstrap-agent-dark-theme.min.css" rel="stylesheet">
+    
+    <!-- Bootstrap Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+    
+    <!-- Highlight.js para resaltado de sintaxis -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+    
+    <!-- CSS Personalizado -->
+    <link href="{{ url_for('static', filename='css/styles.css') }}" rel="stylesheet">
+    <link href="{{ url_for('static', filename='css/chat.css') }}" rel="stylesheet">
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="/">
+                <i class="bi bi-terminal"></i>
+                CODESTORM Assistant
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav">
+                    <li class="nav-item">
+                        <a class="nav-link" href="/">Terminal</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link active" href="/chat">Chat Especializado</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/files">Explorador de Archivos</a>
+                    </li>
+                </ul>
+            </div>
+            <div class="d-flex align-items-center">
+                <div class="me-3">
+                    <span id="workspace-info" class="badge bg-info me-3">Workspace: default</span>
+                    <span class="status-indicator status-disconnected" id="status-indicator" title="Comprobando estado del servidor..."></span>
+                    <span class="small">Estado del Servidor</span>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container-fluid mt-3">
+        <div class="row">
+            <!-- Panel de Configuración de Agentes -->
+            <div class="col-md-3">
+                <div class="card h-100">
+                    <div class="card-header">
+                        <span>Configuración de Agentes</span>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label for="model-select" class="form-label">Seleccionar Modelo de IA:</label>
+                            <select id="model-select" class="form-select">
+                                <option value="openai" selected>OpenAI (GPT-4o)</option>
+                                <option value="anthropic">Anthropic (Claude)</option>
+                                <option value="gemini">Google (Gemini)</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="agent-selector" class="form-label">Seleccionar Agente:</label>
+                            <select id="agent-selector" class="form-select"></select>
+                        </div>
+                        <div class="agent-info mb-3">
+                            <div class="agent-avatar">
+                                <i class="bi bi-code-slash"></i>
+                            </div>
+                            <div class="agent-details">
+                                <h5 class="mb-1">Agente de Desarrollo</h5>
+                                <p id="agent-description" class="mb-1">Experto en optimización y edición de código en tiempo real</p>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <h6>Capacidades:</h6>
+                            <ul id="agent-capabilities" class="agent-capabilities">
+                                <li>Corrección y refactorización de código</li>
+                                <li>Optimización de rendimiento</li>
+                                <li>Integración de frameworks y librerías</li>
+                                <li>Automatización de tareas</li>
+                                <li>Generación de código limpio</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Panel de Chat -->
+            <div class="col-md-9">
+                <div class="card h-100">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <span>Chat con Agente Especializado</span>
+                    </div>
+                    <div class="card-body p-0 d-flex flex-column" style="height: calc(100vh - 180px);">
+                        <div id="chat-container" class="chat-container">
+                            <div id="chat-messages" class="chat-messages">
+                                <!-- Los mensajes se mostrarán aquí -->
+                                <div class="chat-message system-message">
+                                    <div class="message-content">
+                                        <p>¡Bienvenido al chat especializado de CODESTORM! Estás hablando con el <strong>Agente de Desarrollo</strong>, un experto en optimización y edición de código en tiempo real.</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <form id="chat-form" class="chat-form">
+                                <textarea id="chat-input" class="chat-input" placeholder="Escribe tu mensaje aquí..." rows="1"></textarea>
+                                <button type="submit" class="send-button">
+                                    <i class="bi bi-send"></i>
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer class="footer mt-4 py-3 bg-dark">
+        <div class="container text-center">
+            <span class="text-muted">CODESTORM-Assistant © 2025 | Herramienta de Desarrollo Impulsada por IA</span>
+        </div>
+    </footer>
+
+    <!-- Notificaciones -->
+    <div id="notifications" class="position-fixed top-0 end-0 p-3" style="z-index: 5000;"></div>
+
+    <!-- JavaScript -->
+    <script src="https://cdn.socket.io/4.6.1/socket.io.min.js"></script>
+    <script src="{{ url_for('static', filename='js/websocket.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/chat/agents.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/chat/chat.js') }}"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Inicializar chat y agentes
+            if (window.app && window.app.chat) {
+                window.app.chat.initialize();
+                window.app.chat.setActiveAgent('developer'); // Establecer agente por defecto
+            }
+        });
+    </script>
+</body>
+</html>
