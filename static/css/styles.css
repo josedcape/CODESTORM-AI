@@ -1,0 +1,105 @@
+/* Custom styles for Codestorm-Assistant */
+
+/* Terminal output styling */
+.terminal-output {
+    background-color: var(--bs-dark);
+    color: var(--bs-light);
+    font-family: monospace;
+    padding: 10px;
+    border-radius: 4px;
+    min-height: 200px;
+    max-height: 400px;
+    overflow-y: auto;
+    white-space: pre-wrap;
+}
+
+/* File explorer styling */
+.file-explorer {
+    background-color: var(--bs-dark);
+    color: var(--bs-light);
+    padding: 10px;
+    border-radius: 4px;
+    height: 400px;
+    overflow-y: auto;
+}
+
+.file-item {
+    cursor: pointer;
+    padding: 5px;
+    border-radius: 3px;
+}
+
+.file-item:hover {
+    background-color: var(--bs-secondary);
+}
+
+.file-icon {
+    margin-right: 10px;
+}
+
+.directory {
+    color: var(--bs-info);
+}
+
+.file {
+    color: var(--bs-light);
+}
+
+/* Split pane layout */
+.split-pane {
+    display: flex;
+    height: calc(100vh - 150px);
+}
+
+.left-pane {
+    flex: 1;
+    padding: 10px;
+    overflow-y: auto;
+}
+
+.right-pane {
+    flex: 2;
+    padding: 10px;
+    overflow-y: auto;
+}
+
+/* Instruction input area */
+.instruction-input {
+    resize: vertical;
+    min-height: 100px;
+}
+
+/* Status indicator */
+.status-indicator {
+    height: 10px;
+    width: 10px;
+    border-radius: 50%;
+    display: inline-block;
+    margin-right: 5px;
+}
+
+.status-connected {
+    background-color: var(--bs-success);
+}
+
+.status-disconnected {
+    background-color: var(--bs-danger);
+}
+
+/* Command history */
+.command-history {
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+/* Loading spinner */
+.spinner-border {
+    width: 1rem;
+    height: 1rem;
+    margin-left: 10px;
+    display: none;
+}
+
+.loading .spinner-border {
+    display: inline-block;
+}
