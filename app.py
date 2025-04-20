@@ -70,7 +70,8 @@ with app.app_context():
 WORKSPACE_ROOT = Path("./user_workspaces")
 WORKSPACE_ROOT.mkdir(parents=True, exist_ok=True)
 
-# Get API keys from environment
+# Get API keys from environment - force reload from .env
+load_dotenv(override=True)
 openai_api_key = os.environ.get("OPENAI_API_KEY", "")
 anthropic_api_key = os.environ.get("ANTHROPIC_API_KEY", "")
 gemini_api_key = os.environ.get("GEMINI_API_KEY", "")
@@ -79,10 +80,12 @@ gemini_api_key = os.environ.get("GEMINI_API_KEY", "")
 openai_client = None
 if openai_api_key:
     try:
+        # Usar el token directamente en vez de a través del cliente
+        openai.api_key = openai_api_key 
         openai_client = openai.OpenAI(api_key=openai_api_key)
         # Skip validation for now to avoid errors
         # Simply log that we attempted to configure
-        logging.info("OpenAI API key set - will try to use when needed.")
+        logging.info(f"OpenAI API key configurada: {openai_api_key[:5]}...{openai_api_key[-5:]}")
     except Exception as e:
         logging.error(f"Error initializing OpenAI client: {str(e)}")
         openai_client = None

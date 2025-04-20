@@ -202,8 +202,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 e.preventDefault();
                 
                 // Get file name and path
-                const fileName = item.querySelector('span').textContent;
-                const currentDirectory = document.getElementById('directory-path').textContent;
+                const fileNameElem = item.querySelector('span');
+                if (!fileNameElem) return; // Safety check
+                
+                const fileName = fileNameElem.textContent;
+                const dirPathElem = document.getElementById('directory-path');
+                const currentDirectory = dirPathElem ? dirPathElem.textContent : '/';
                 const isDirectory = item.classList.contains('directory');
                 
                 // Don't add context menu for parent directory
