@@ -37,6 +37,11 @@ app.secret_key = os.environ.get("SESSION_SECRET", os.urandom(24).hex())
 # Initialize SQLAlchemy
 db = SQLAlchemy(app)
 
+# Import models and create tables
+with app.app_context():
+    import models
+    db.create_all()
+
 # Configure OpenAI
 openai_api_key = os.environ.get("OPENAI_API_KEY", "")
 anthropic_api_key = os.environ.get("ANTHROPIC_API_KEY", "")
