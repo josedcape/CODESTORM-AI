@@ -165,29 +165,7 @@ def get_user_workspace(user_id="default"):
 def index():
     """Render the main page."""
     try:
-        # Respuesta HTML directa para pruebas
-        html = """
-        <!DOCTYPE html>
-        <html lang="es">
-        <head>
-            <meta charset="UTF-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <title>CODESTORM - Asistente de Desarrollo</title>
-            <style>
-                body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; }
-                h1 { color: #2a4b8d; }
-                .btn { display: inline-block; padding: 10px 15px; background: #3a6ea5; color: white; 
-                     text-decoration: none; border-radius: 4px; margin: 10px 0; }
-            </style>
-        </head>
-        <body>
-            <h1>CODESTORM - Asistente de Desarrollo</h1>
-            <p>Sistema de asistente inteligente para desarrollo con procesamiento de lenguaje natural</p>
-            <a href="/chat" class="btn">Ir al Chat</a>
-        </body>
-        </html>
-        """
-        return html
+        return render_template('index.html')
     except Exception as e:
         logging.error(f"Error rendering index: {str(e)}")
         return str(e), 500
