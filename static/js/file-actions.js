@@ -1,9 +1,12 @@
 // Codestorm-Assistant - File Actions JavaScript
 // These functions handle file creation, editing, and deletion
 
+// Define fileActions object in the global scope
+window.fileActions = {};
+
 document.addEventListener('DOMContentLoaded', function() {
     // Add file action buttons to the file explorer
-    function addFileActionButtons() {
+    window.fileActions.addFileActionButtons = function() {
         const fileExplorer = document.getElementById('file-explorer');
         if (!fileExplorer) return;
         
@@ -272,11 +275,15 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     // Export functions to global scope if they need to be called from other scripts
-    window.fileActions = {
-        addFileActionButtons,
-        createNewFile,
-        createNewFolder,
-        deleteFileOrFolder,
-        showNotification
-    };
+    window.fileActions.createNewFile = createNewFile;
+    window.fileActions.createNewFolder = createNewFolder;
+    window.fileActions.deleteFileOrFolder = deleteFileOrFolder;
+    window.fileActions.showNotification = showNotification;
+    
+    // Automatically add file action buttons
+    setTimeout(() => {
+        if (window.fileActions && typeof window.fileActions.addFileActionButtons === 'function') {
+            window.fileActions.addFileActionButtons();
+        }
+    }, 500);
 });

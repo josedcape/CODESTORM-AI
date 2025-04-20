@@ -262,21 +262,38 @@ def process_instructions():
             terminal_command = response.content[0].text.strip()
             
         elif model_choice == 'gemini':
-            # Implementación básica de Gemini
+            # Implementación básica de Gemini con manejo de errores mejorado
             try:
                 import google.generativeai as genai
                 
                 gemini_api_key = os.environ.get("GEMINI_API_KEY", "")
                 if not gemini_api_key:
-                    return jsonify({'error': 'Gemini API key not configured'}), 500
+                    # Fallback para cuando no hay API key configurada
+                    logging.warning("Gemini API key not configured, using fallback logic")
+                    if "crear" in user_input.lower() and "carpeta" in user_input.lower():
+                        folder_name = user_input.lower().split("carpeta")[-1].strip()
+                        terminal_command = f"mkdir -p {folder_name}"
+                    else:
+                        terminal_command = "echo 'Gemini API key not configured'"
+                    return jsonify({'command': terminal_command})
                     
-                genai.configure(api_key=gemini_api_key)
-                model = genai.GenerativeModel('gemini-pro')
-                
-                response = model.generate_content(
-                    f"Convert this instruction to a terminal command without any explanation: {user_input}"
-                )
-                terminal_command = response.text.strip()
+                try:
+                    genai.configure(api_key=gemini_api_key)
+                    # Actualizado para usar gemini-1.5-pro que está disponible
+                    model = genai.GenerativeModel('gemini-1.5-pro')
+                    
+                    response = model.generate_content(
+                        f"Convert this instruction to a terminal command without any explanation: {user_input}"
+                    )
+                    terminal_command = response.text.strip()
+                except Exception as api_error:
+                    logging.error(f"Gemini API error: {str(api_error)}")
+                    # Fallback si hay error con la API
+                    if "crear" in user_input.lower() and "carpeta" in user_input.lower():
+                        folder_name = user_input.lower().split("carpeta")[-1].strip()
+                        terminal_command = f"mkdir -p {folder_name}"
+                    else:
+                        terminal_command = "echo 'Error connecting to Gemini API'"
                 
                 # Si el modelo devuelve una respuesta vacía, intentamos con un comando simple
                 if not terminal_command:
@@ -290,7 +307,12 @@ def process_instructions():
                         terminal_command = "echo 'No se pudo generar un comando'"
             except Exception as e:
                 logging.error(f"Error using Gemini API: {str(e)}")
-                return jsonify({'error': f'Error with Gemini API: {str(e)}'}), 500
+                # En lugar de devolver error 500, usamos lógica de respaldo
+                if "crear" in user_input.lower() and "carpeta" in user_input.lower():
+                    folder_name = user_input.lower().split("carpeta")[-1].strip()
+                    terminal_command = f"mkdir -p {folder_name}"
+                else:
+                    terminal_command = "echo 'Error with Gemini API'"
         else:
             return jsonify({'error': 'Invalid model selection'}), 400
             
@@ -328,25 +350,39 @@ def execute_command():
         )
         stdout, stderr = process.communicate()
         
-        # Store command in database
+        # Store command in database - but with error handling
         try:
+            # Verificar si existe el usuario por defecto, crearlo si no existe
             from models import User, Command
             
+            # Verificar si existe el usuario por defecto
             default_user = db.session.query(User).filter_by(username="default_user").first()
-            if default_user:
-                # Create command history entry
-                cmd = Command(
-                    instruction=instruction,
-                    generated_command=command,
-                    output=stdout + ("\n" + stderr if stderr else ""),
-                    status=process.returncode,
-                    model_used=model_used,
-                    user_id=default_user.id
+            
+            # Si no existe, crear un usuario por defecto
+            if not default_user:
+                default_user = User(
+                    username="default_user", 
+                    email="default@example.com"
                 )
-                db.session.add(cmd)
+                default_user.set_password("defaultpassword")
+                db.session.add(default_user)
                 db.session.commit()
+                logging.info("Created default user")
+            
+            # Create command history entry
+            cmd = Command(
+                instruction=instruction,
+                generated_command=command,
+                output=stdout + ("\n" + stderr if stderr else ""),
+                status=process.returncode,
+                model_used=model_used,
+                user_id=default_user.id
+            )
+            db.session.add(cmd)
+            db.session.commit()
         except Exception as e:
             logging.error(f"Error storing command in database: {str(e)}")
+            # Seguimos ejecutando aunque falle el guardado en base de datos
         
         result = {
             'stdout': stdout,
