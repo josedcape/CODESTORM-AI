@@ -156,6 +156,11 @@ def index():
     """Render the main page."""
     return render_template('index.html')
     
+@app.route('/files')
+def files():
+    """File explorer view."""
+    return render_template('files.html')
+    
 @app.route('/edit/<path:file_path>')
 def edit_file(file_path):
     """Edit a file."""
@@ -569,7 +574,7 @@ def handle_join_workspace(data):
     emit('workspace_update', {
         'status': 'joined',
         'workspace_id': workspace_id
-    }, room=workspace_id)
+    })
 
 # Function to notify clients about file changes
 def notify_file_change(workspace_id, change_type, file_data):
@@ -577,12 +582,12 @@ def notify_file_change(workspace_id, change_type, file_data):
     socketio.emit('file_change', {
         'type': change_type,  # 'create', 'update', 'delete'
         'file': file_data
-    }, room=workspace_id)
+    })
 
 # Function to notify clients about command execution
 def notify_command_executed(workspace_id, command_data):
     """Send real-time notification about command execution."""
-    socketio.emit('command_executed', command_data, room=workspace_id)
+    socketio.emit('command_executed', command_data)
 
 # Monitor for file changes in workspaces
 def watch_workspace_files():
