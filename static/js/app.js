@@ -155,6 +155,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 // Mostrar un mensaje de éxito
                 if (window.fileActions && typeof window.fileActions.showNotification === 'function') {
                     window.fileActions.showNotification('Comando generado correctamente', 'success');
+                }
                 
                 // Execute the command
                 return fetch('/api/execute_command', {
@@ -199,7 +200,8 @@ document.addEventListener('DOMContentLoaded', function() {
             })
             .finally(() => {
                 // Remove loading indicator
-                this.elements.executeBtn.classList.remove('loading');
+                this.elements.executeBtn.disabled = false;
+                this.elements.executeBtn.innerHTML = 'Ejecutar';
             });
         },
         
