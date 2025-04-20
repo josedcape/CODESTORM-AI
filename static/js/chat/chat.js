@@ -42,29 +42,68 @@ function initializeChat() {
 // Cargar los agentes en el selector
 function loadAgentSelector() {
   const agentSelector = document.getElementById('agent-selector');
+  if (!agentSelector) return; // Prevenir errores si el elemento no existe
+  
+  // Limpiar el selector actual
   agentSelector.innerHTML = '';
   
+  // Verificar que SPECIALIZED_AGENTS está disponible
+  if (typeof window.SPECIALIZED_AGENTS === 'undefined') {
+    console.error("Error: SPECIALIZED_AGENTS no está definido");
+    // Usar agentes predefinidos básicos si no están disponibles
+    window.SPECIALIZED_AGENTS = {
+      developer: {
+        id: 'developer',
+        name: 'Agente de Desarrollo',
+        icon: 'bi-code-slash',
+        description: 'Experto en optimización y edición de código en tiempo real',
+        capabilities: ['Corrección de código', 'Optimización', 'Desarrollo']
+      },
+      architect: {
+        id: 'architect',
+        name: 'Agente de Arquitectura',
+        icon: 'bi-diagram-3',
+        description: 'Diseñador de arquitecturas escalables',
+        capabilities: ['Diseño de sistemas', 'Planificación', 'Estructura']
+      }
+    };
+  }
+  
+  // Crear opciones HTML directamente para mejor rendimiento
+  let optionsHTML = '';
+  
   // Opción por defecto (Developer)
-  const defaultOption = document.createElement('option');
-  defaultOption.value = 'developer';
-  defaultOption.textContent = 'Agente de Desarrollo';
-  defaultOption.selected = true;
-  agentSelector.appendChild(defaultOption);
+  optionsHTML += `<option value="developer" selected>Agente de Desarrollo</option>`;
   
   // Añadir el resto de agentes
-  Object.values(SPECIALIZED_AGENTS).forEach(agent => {
-    if (agent.id !== 'developer') {
-      const option = document.createElement('option');
-      option.value = agent.id;
-      option.textContent = agent.name;
-      agentSelector.appendChild(option);
+  for (const agentId in window.SPECIALIZED_AGENTS) {
+    if (agentId !== 'developer') {
+      const agent = window.SPECIALIZED_AGENTS[agentId];
+      optionsHTML += `<option value="${agentId}">${agent.name}</option>`;
     }
-  });
+  }
+  
+  // Insertar todas las opciones de una vez (mejor rendimiento)
+  agentSelector.innerHTML = optionsHTML;
 }
 
 // Establecer el agente activo
 function setActiveAgent(agentId) {
-  window.app.activeAgent = SPECIALIZED_AGENTS[agentId] || SPECIALIZED_AGENTS.developer;
+  // Asegurarse de que SPECIALIZED_AGENTS está definido
+  if (typeof window.SPECIALIZED_AGENTS === 'undefined') {
+    console.error("Error: SPECIALIZED_AGENTS no está definido");
+    return;
+  }
+  
+  // Obtener el agente seleccionado o usar el agente desarrollador por defecto
+  window.app = window.app || {};
+  window.app.activeAgent = window.SPECIALIZED_AGENTS[agentId] || window.SPECIALIZED_AGENTS.developer;
+  
+  // Actualizar el valor del selector
+  const agentSelector = document.getElementById('agent-selector');
+  if (agentSelector) {
+    agentSelector.value = agentId;
+  }
   
   // Actualizar la descripción del agente
   updateAgentDescription(window.app.activeAgent);
@@ -127,7 +166,7 @@ function sendMessage(message) {
   addUserMessage(message);
   
   // Obtener el agente activo
-  const activeAgent = window.app.activeAgent || SPECIALIZED_AGENTS.developer;
+  const activeAgent = window.app.activeAgent || window.SPECIALIZED_AGENTS.developer;
   
   // Mostrar indicador de carga con estilo futurista
   addLoadingMessage();
