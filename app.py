@@ -5,6 +5,7 @@ import logging
 import subprocess
 import shutil
 import time
+import re
 from pathlib import Path
 from threading import Thread
 from datetime import datetime
@@ -163,7 +164,33 @@ def get_user_workspace(user_id="default"):
 @app.route('/')
 def index():
     """Render the main page."""
-    return render_template('index.html')
+    try:
+        # Respuesta HTML directa para pruebas
+        html = """
+        <!DOCTYPE html>
+        <html lang="es">
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>CODESTORM - Asistente de Desarrollo</title>
+            <style>
+                body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; }
+                h1 { color: #2a4b8d; }
+                .btn { display: inline-block; padding: 10px 15px; background: #3a6ea5; color: white; 
+                     text-decoration: none; border-radius: 4px; margin: 10px 0; }
+            </style>
+        </head>
+        <body>
+            <h1>CODESTORM - Asistente de Desarrollo</h1>
+            <p>Sistema de asistente inteligente para desarrollo con procesamiento de lenguaje natural</p>
+            <a href="/chat" class="btn">Ir al Chat</a>
+        </body>
+        </html>
+        """
+        return html
+    except Exception as e:
+        logging.error(f"Error rendering index: {str(e)}")
+        return str(e), 500
     
 @app.route('/chat')
 def chat():
@@ -894,6 +921,232 @@ def save_file():
         logging.error(f"Error saving file: {str(e)}")
         return jsonify({'error': str(e)}), 500
         
+@app.route('/api/natural_language', methods=['POST'])
+def process_natural_language():
+    """
+    Procesa una instrucción en lenguaje natural y la convierte en acciones.
+    Este endpoint permite a los agentes manipular archivos y ejecutar comandos
+    a través de instrucciones en lenguaje natural.
+    """
+    try:
+        data = request.json
+        text = data.get('text', '')
+        
+        if not text:
+            return jsonify({
+                'success': False,
+                'message': 'No se proporcionó texto para procesar'
+            }), 400
+        
+        # Patrones para diferentes acciones
+        file_patterns = {
+            'modify_file': re.compile(r'(?:modifica|edita|cambia|actualiza|agrega|a[ñn]ade).*?(?:archivo|fichero).*?[\"\'"]?([a-zA-Z0-9_\-\.\/]+\.[a-zA-Z0-9]+)[\"\'"]?', re.IGNORECASE),
+            'create_file': re.compile(r'(?:crea|genera|nuevo).*?(?:archivo|fichero).*?[\"\'"]?([a-zA-Z0-9_\-\.\/]+\.[a-zA-Z0-9]+)[\"\'"]?', re.IGNORECASE),
+            'delete_file': re.compile(r'(?:elimina|borra|quita|remueve).*?(?:archivo|fichero).*?[\"\'"]?([a-zA-Z0-9_\-\.\/]+\.[a-zA-Z0-9]+)[\"\'"]?', re.IGNORECASE),
+            'execute_command': re.compile(r'(?:ejecuta|corre|lanza|inicia).*?(?:comando|instrucci[óo]n|terminal)[\:\s]?[\"\'"]?(.+?)[\"\'"]?(?:[\.!\?]|$)', re.IGNORECASE),
+            'view_file': re.compile(r'(?:muestra|visualiza|ver|abre).*?(?:archivo|fichero).*?[\"\'"]?([a-zA-Z0-9_\-\.\/]+\.[a-zA-Z0-9]+)[\"\'"]?', re.IGNORECASE)
+        }
+        
+        # Extraer contenido (para crear/modificar)
+        content_pattern = re.compile(r'(?:contenido|código|texto)[\:\s]?[\"\'"](.+?)[\"\'"]|```(?:\w+)?\s*(.+?)```', re.IGNORECASE | re.DOTALL)
+        content_match = content_pattern.search(text)
+        content = None
+        if content_match:
+            content = content_match.group(1) if content_match.group(1) else content_match.group(2)
+        
+        # Determinar acción y parámetros
+        action = None
+        params = {}
+        
+        for action_type, pattern in file_patterns.items():
+            match = pattern.search(text)
+            if match:
+                action = action_type
+                if action_type == 'execute_command':
+                    params['command'] = match.group(1).strip()
+                else:
+                    params['file_path'] = match.group(1).strip()
+                
+                if action_type in ['create_file', 'modify_file'] and content:
+                    params['content'] = content
+                
+                break
+        
+        # Si no se determinó ninguna acción
+        if not action:
+            return jsonify({
+                'success': False,
+                'message': 'No se pudo determinar la acción a realizar. Por favor, sé más específico.'
+            }), 400
+        
+        # Obtener el workspace del usuario
+        user_id = session.get('user_id', 'default')
+        workspace_path = get_user_workspace(user_id)
+        
+        # Procesar la acción
+        result = {}
+        
+        if action == 'execute_command':
+            # Ejecutar comando en terminal
+            command = params.get('command')
+            try:
+                process = subprocess.Popen(
+                    command,
+                    shell=True,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    cwd=str(workspace_path)
+                )
+                stdout, stderr = process.communicate(timeout=30)
+                
+                result = {
+                    'success': process.returncode == 0,
+                    'stdout': stdout.decode('utf-8', errors='replace'),
+                    'stderr': stderr.decode('utf-8', errors='replace'),
+                    'returncode': process.returncode
+                }
+            except subprocess.TimeoutExpired:
+                result = {
+                    'success': False,
+                    'message': 'El comando excedió el tiempo límite de ejecución (30s)'
+                }
+            except Exception as e:
+                result = {
+                    'success': False,
+                    'message': f'Error al ejecutar el comando: {str(e)}'
+                }
+        else:
+            # Asegurar que estamos operando dentro del workspace
+            file_path = params.get('file_path', '')
+            file_path = file_path.replace('..', '')  # Prevenir path traversal
+            target_file = (workspace_path / file_path).resolve()
+            
+            if not str(target_file).startswith(str(workspace_path.resolve())):
+                return jsonify({
+                    'success': False,
+                    'message': 'Acceso denegado: No se puede acceder a archivos fuera del workspace'
+                }), 403
+            
+            # Procesar operaciones de archivos
+            if action == 'create_file':
+                content = params.get('content', '')
+                try:
+                    # Crear directorios si no existen
+                    target_file.parent.mkdir(parents=True, exist_ok=True)
+                    
+                    # Verificar si el archivo ya existe
+                    if target_file.exists():
+                        result = {
+                            'success': False,
+                            'message': f'El archivo {file_path} ya existe'
+                        }
+                    else:
+                        with open(target_file, 'w') as f:
+                            f.write(content or '')
+                        
+                        result = {
+                            'success': True,
+                            'message': f'Archivo {file_path} creado correctamente'
+                        }
+                except Exception as e:
+                    result = {
+                        'success': False,
+                        'message': f'Error al crear el archivo: {str(e)}'
+                    }
+            
+            elif action == 'modify_file':
+                content = params.get('content', '')
+                try:
+                    if not target_file.exists():
+                        result = {
+                            'success': False,
+                            'message': f'El archivo {file_path} no existe'
+                        }
+                    else:
+                        # Leer contenido actual
+                        with open(target_file, 'r') as f:
+                            current_content = f.read()
+                        
+                        # Escribir contenido actualizado
+                        with open(target_file, 'w') as f:
+                            f.write(current_content + '\n' + content)
+                        
+                        result = {
+                            'success': True,
+                            'message': f'Archivo {file_path} modificado correctamente'
+                        }
+                except Exception as e:
+                    result = {
+                        'success': False,
+                        'message': f'Error al modificar el archivo: {str(e)}'
+                    }
+            
+            elif action == 'delete_file':
+                try:
+                    if not target_file.exists():
+                        result = {
+                            'success': False,
+                            'message': f'El archivo {file_path} no existe'
+                        }
+                    else:
+                        if target_file.is_dir():
+                            shutil.rmtree(target_file)
+                        else:
+                            target_file.unlink()
+                        
+                        result = {
+                            'success': True,
+                            'message': f'Archivo {file_path} eliminado correctamente'
+                        }
+                except Exception as e:
+                    result = {
+                        'success': False,
+                        'message': f'Error al eliminar el archivo: {str(e)}'
+                    }
+            
+            elif action == 'view_file':
+                try:
+                    if not target_file.exists():
+                        result = {
+                            'success': False,
+                            'message': f'El archivo {file_path} no existe'
+                        }
+                    else:
+                        with open(target_file, 'r') as f:
+                            content = f.read()
+                        
+                        result = {
+                            'success': True,
+                            'message': f'Contenido del archivo {file_path}:',
+                            'content': content,
+                            'file_type': get_file_type(target_file.name)
+                        }
+                except Exception as e:
+                    result = {
+                        'success': False,
+                        'message': f'Error al leer el archivo: {str(e)}'
+                    }
+        
+        # Notificar a través de WebSockets
+        if action in ['create_file', 'modify_file', 'delete_file']:
+            try:
+                socketio.emit('file_change', {
+                    'type': action.split('_')[0],  # create, modify, delete
+                    'file_path': file_path,
+                    'workspace': user_id
+                }, namespace='/ws')
+            except Exception as e:
+                logging.error(f"Error emitiendo evento WebSocket: {str(e)}")
+        
+        return jsonify(result)
+    
+    except Exception as e:
+        logging.error(f"Error procesando lenguaje natural: {str(e)}")
+        return jsonify({
+            'success': False,
+            'message': f'Error procesando instrucción: {str(e)}'
+        }), 500
+
 @app.route('/api/delete_file', methods=['POST'])
 def delete_file():
     """Delete a file or directory in the workspace."""
@@ -953,8 +1206,8 @@ def get_session():
         'workspace': str(get_user_workspace(session['user_id']).name)
     })
 
-# Initialize SocketIO with threading mode instead of eventlet
-socketio = SocketIO(app, cors_allowed_origins="*", async_mode='threading')
+# Initialize SocketIO - using threading mode for more stable connections
+socketio = SocketIO(app, cors_allowed_origins="*", async_mode='threading', ping_timeout=60, ping_interval=25, logger=True)
 
 # SocketIO event handlers
 @socketio.on('connect')

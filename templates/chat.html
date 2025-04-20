@@ -251,11 +251,23 @@
         };
     </script>
     <script src="{{ url_for('static', filename='js/websocket.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/natural-command-processor.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/multi-agent-system.js') }}"></script>
     <script src="{{ url_for('static', filename='js/chat/agents.js') }}"></script>
     <script src="{{ url_for('static', filename='js/chat/chat.js') }}"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             console.log("DOM completamente cargado");
+            
+            // Inicializar sistemas
+            if (window.naturalCommandProcessor) {
+                console.log("Procesador de comandos naturales inicializado");
+            }
+            
+            if (window.multiAgentSystem) {
+                console.log("Inicializando sistema multi-agente");
+                window.multiAgentSystem.initialize();
+            }
             
             // Inicializar chat
             if (typeof initializeChat === 'function') {

@@ -165,6 +165,79 @@ function sendMessage(message) {
   // Añadir mensaje del usuario al chat
   addUserMessage(message);
   
+  // Verificar si es un comando para modificar archivos o ejecutar comandos en lenguaje natural
+  if (window.naturalCommandProcessor) {
+    const parsedRequest = window.naturalCommandProcessor.processRequest(message);
+    if (parsedRequest.success) {
+      // Es un comando para manipular archivos o ejecutar comandos
+      // Mostrar indicador de carga
+      addLoadingMessage();
+      
+      // Procesar la solicitud mediante el API de lenguaje natural en el backend
+      fetch('/api/natural_language', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          text: message
+        }),
+      })
+      .then(response => response.json())
+      .then(data => {
+        // Remover indicador de carga
+        removeLoadingMessage();
+        
+        // Obtener el agente activo
+        const activeAgent = window.app.activeAgent || window.SPECIALIZED_AGENTS.developer;
+        
+        if (data.success) {
+          // La acción fue exitosa, mostrar el resultado
+          let resultMessage = data.message || 'Acción completada correctamente';
+          
+          // Si hay contenido de archivo o salida de comando, agregarla
+          if (data.content) {
+            resultMessage += '\n\n```' + (data.file_type || '') + '\n' + data.content + '\n```';
+          }
+          
+          if (data.stdout) {
+            resultMessage += '\n\n```bash\n# Salida del comando:\n' + data.stdout + '\n```';
+          }
+          
+          if (data.stderr && data.stderr.trim()) {
+            resultMessage += '\n\n```bash\n# Errores:\n' + data.stderr + '\n```';
+          }
+          
+          // Agregar respuesta del agente
+          addAgentMessage(resultMessage, activeAgent);
+        } else {
+          // Hubo un error en la acción
+          addAgentMessage('No pude completar esa acción: ' + data.message, activeAgent);
+        }
+      })
+      .catch(error => {
+        console.error('Error al procesar lenguaje natural:', error);
+        removeLoadingMessage();
+        addSystemMessage('Error de conexión. Por favor, inténtalo de nuevo.');
+      });
+      
+      return; // Terminamos aquí porque ya procesamos el comando
+    }
+  }
+  
+  // Si estamos usando el sistema multi-agente, delegamos el procesamiento
+  if (window.multiAgentSystem) {
+    // Mostrar indicador de carga
+    addLoadingMessage();
+    
+    // Usar el sistema multi-agente para procesar el mensaje
+    window.multiAgentSystem.sendMessage(message);
+    
+    // Nota: El sistema multi-agente se encargará de remover el indicador de carga
+    // y mostrar la respuesta a través de eventos
+    return;
+  }
+  
   // Obtener el agente activo
   const activeAgent = window.app.activeAgent || window.SPECIALIZED_AGENTS.developer;
   
