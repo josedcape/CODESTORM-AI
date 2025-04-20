@@ -20,7 +20,7 @@ import eventlet
 # eventlet.monkey_patch(os=True, select=True, socket=True, thread=False, time=True)
 
 # Load environment variables from .env file
-load_dotenv()
+load_dotenv(override=True)
 
 # Configure logging
 logging.basicConfig(level=logging.DEBUG)
@@ -48,18 +48,18 @@ with app.app_context():
     import models
     db.create_all()
 
-# Configure OpenAI
+# Get API keys from environment
 openai_api_key = os.environ.get("OPENAI_API_KEY", "")
 anthropic_api_key = os.environ.get("ANTHROPIC_API_KEY", "")
 gemini_api_key = os.environ.get("GEMINI_API_KEY", "")
 
-if not openai_api_key:
-    logging.warning("OPENAI_API_KEY not found. OpenAI features will not work.")
-else:
-    logging.info("OpenAI API key configured successfully.")
-
 # Initialize API clients
-openai_client = openai.OpenAI(api_key=openai_api_key)
+openai_client = None
+if openai_api_key:
+    openai_client = openai.OpenAI(api_key=openai_api_key)
+    logging.info("OpenAI API key configured successfully.")
+else:
+    logging.warning("OPENAI_API_KEY not found. OpenAI features will not work.")
 
 # Initialize Anthropic client if key exists
 anthropic_client = None
@@ -145,7 +145,7 @@ def process_instructions():
         
         # Use selected model to generate command
         if model_choice == 'openai':
-            if not openai_api_key:
+            if not openai_client:
                 return jsonify({'error': 'OpenAI API key not configured'}), 500
                 
             # Use OpenAI to generate terminal command
