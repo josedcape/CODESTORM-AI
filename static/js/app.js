@@ -117,6 +117,30 @@ document.addEventListener('DOMContentLoaded', function() {
             this.commandHistory.push(instruction);
             this.historyIndex = this.commandHistory.length;
             
+            // Cache para respuestas comunes (mejora velocidad)
+            const cachedCommands = {
+                'hola': "echo '¡Hola! ¿En qué puedo ayudarte hoy?'",
+                'mostrar archivos': 'ls -la',
+                'listar': 'ls -la',
+                'archivos': 'ls -la',
+                'fecha': 'date',
+                'hora': 'date +%H:%M:%S',
+                'ayuda': "echo 'Puedo convertir tus instrucciones en comandos de terminal'"
+            };
+            
+            // Intenta usar caché local primero antes de llamar al servidor
+            const lowerInstruction = instruction.toLowerCase();
+            for (const [key, cmd] of Object.entries(cachedCommands)) {
+                if (lowerInstruction.includes(key)) {
+                    // Mostrar el comando generado
+                    this.elements.commandDisplay.textContent = cmd;
+                    
+                    // Ejecutar directamente sin llamar al servidor
+                    this.executeCommandDirectly(cmd, instruction);
+                    return; // Termina la función aquí si encuentra coincidencia
+                }
+            }
+            
             // Get the selected model (default to OpenAI)
             const modelSelect = document.getElementById('model-select');
             const selectedModel = modelSelect ? modelSelect.value : 'openai';
@@ -454,6 +478,62 @@ document.addEventListener('DOMContentLoaded', function() {
             .catch(error => {
                 console.error('Error creating folder:', error);
                 this.displayFileExplorerError('Error creating folder: ' + error.message);
+            });
+        },
+        
+        // Función para ejecutar comandos directamente desde el caché
+        executeCommandDirectly: function(command, instruction) {
+            // Mostrar indicador de carga
+            this.elements.executeBtn.disabled = true;
+            this.elements.executeBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Procesando...';
+            
+            // Ejecutar el comando directamente (desde caché)
+            fetch('/api/execute_command', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ 
+                    command: command,
+                    instruction: instruction,
+                    model: 'cache' // Indicamos que usamos caché local
+                })
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`Error del servidor: ${response.status} ${response.statusText}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.error) {
+                    this.displayError(data.error);
+                    return;
+                }
+                
+                // Mostrar salida del comando
+                let output = '';
+                if (data.stdout) output += data.stdout;
+                if (data.stderr) output += '\n' + data.stderr;
+                
+                this.elements.outputDisplay.textContent = output;
+                
+                // Actualizar explorador de archivos
+                this.updateFileExplorer();
+                
+                // Notificar éxito
+                if (window.fileActions && typeof window.fileActions.showNotification === 'function') {
+                    window.fileActions.showNotification('Comando ejecutado correctamente', 'success');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                this.displayError('Error ejecutando comando: ' + error.message);
+            })
+            .finally(() => {
+                // Quitar indicador de carga
+                this.elements.executeBtn.disabled = false;
+                this.elements.executeBtn.innerHTML = 'Ejecutar';
             });
         },
         

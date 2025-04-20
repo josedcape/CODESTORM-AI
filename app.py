@@ -221,48 +221,95 @@ def process_instructions():
         
         terminal_command = ""
         
-        # Use selected model to generate command
+        # Use selected model to generate command - Versión optimizada para velocidad
         if model_choice == 'openai':
-            # Implementamos lógica simple para comando comunes primero
-            # Esto evita tener que llamar a la API para tareas simples
-            if "listar" in user_input.lower() or "mostrar archivos" in user_input.lower():
-                terminal_command = "ls -la"
-            elif "crear" in user_input.lower() and "carpeta" in user_input.lower():
-                folder_name = user_input.lower().split("carpeta")[-1].strip()
-                terminal_command = f"mkdir -p {folder_name}"
-            elif "crear" in user_input.lower() and "archivo" in user_input.lower():
-                parts = user_input.lower().split("archivo")
-                if len(parts) > 1:
-                    file_name = parts[-1].strip()
-                    terminal_command = f"touch {file_name}"
-                else:
-                    terminal_command = "touch nuevo_archivo.txt"
-            elif "mostrar" in user_input.lower() and ("contenido" in user_input.lower() or "cat" in user_input.lower()):
-                parts = user_input.lower().replace("mostrar", "").replace("contenido", "").replace("del", "").replace("de", "").strip()
-                terminal_command = f"cat {parts}"
-            elif "hola" in user_input.lower() or "saludar" in user_input.lower():
-                terminal_command = "echo '¡Hola! ¿En qué puedo ayudarte hoy?'"
-            else:
-                # Solo intentamos llamar a OpenAI si no es un comando simple
+            # Ampliamos la lista de comandos locales para evitar llamadas a la API
+            user_input_lower = user_input.lower()
+            
+            # Mapa de comandos comunes para respuesta inmediata
+            command_map = {
+                "listar": "ls -la",
+                "mostrar archivos": "ls -la", 
+                "mostrar directorio": "ls -la",
+                "ver archivos": "ls -la",
+                "archivos": "ls -la",
+                "dir": "ls -la",
+                "hola": "echo '¡Hola! ¿En qué puedo ayudarte hoy?'",
+                "saludar": "echo '¡Hola! ¿En qué puedo ayudarte hoy?'",
+                "fecha": "date",
+                "hora": "date +%H:%M:%S",
+                "calendario": "cal",
+                "ayuda": "echo 'Puedo convertir tus instrucciones en comandos de terminal. Prueba pidiendo crear archivos, listar directorios, etc.'",
+                "quien soy": "whoami",
+                "donde estoy": "pwd",
+                "limpiar": "clear",
+                "sistema": "uname -a",
+                "memoria": "free -h",
+                "espacio": "df -h",
+                "procesos": "ps aux"
+            }
+            
+            # Búsqueda exacta primero (más rápida)
+            for key, cmd in command_map.items():
+                if key in user_input_lower:
+                    terminal_command = cmd
+                    break
+            
+            # Patrones específicos si no hubo coincidencia exacta
+            if not terminal_command:
+                if "crear" in user_input_lower and "carpeta" in user_input_lower:
+                    folder_name = user_input_lower.split("carpeta")[-1].strip()
+                    terminal_command = f"mkdir -p {folder_name}"
+                elif "crear" in user_input_lower and "archivo" in user_input_lower:
+                    parts = user_input_lower.split("archivo")
+                    if len(parts) > 1:
+                        file_name = parts[-1].strip()
+                        terminal_command = f"touch {file_name}"
+                    else:
+                        terminal_command = "touch nuevo_archivo.txt"
+                elif "mostrar" in user_input_lower and ("contenido" in user_input_lower or "cat" in user_input_lower):
+                    parts = user_input_lower.replace("mostrar", "").replace("contenido", "").replace("del", "").replace("de", "").strip()
+                    terminal_command = f"cat {parts}"
+                elif "eliminar" in user_input_lower or "borrar" in user_input_lower:
+                    words = user_input_lower.split()
+                    target_idx = -1
+                    for i, word in enumerate(words):
+                        if word in ["archivo", "carpeta", "directorio", "fichero"]:
+                            target_idx = i + 1
+                            break
+                    if target_idx >= 0 and target_idx < len(words):
+                        target = words[target_idx]
+                        terminal_command = f"rm -rf {target}"
+                    else:
+                        terminal_command = "echo 'Por favor especifica qué quieres eliminar'"
+            
+            # Solo llamamos a la API si no se encontró un comando local
+            if not terminal_command:
                 try:
                     if not openai_client:
                         raise Exception("OpenAI API key not configured")
                     
-                    # Use OpenAI to generate terminal command
+                    # Optimización: Usamos gpt-4o con menos tokens para respuesta más rápida
                     response = openai_client.chat.completions.create(
                         model="gpt-4o",  # the newest OpenAI model is "gpt-4o" which was released May 13, 2024.
                         messages=[
-                            {"role": "system", "content": "You are a helpful assistant that converts natural language instructions into terminal commands. Only output the exact command without explanations."},
-                            {"role": "user", "content": f"Convert this instruction to a terminal command: {user_input}"}
+                            {"role": "system", "content": "Convierte instrucciones a comandos de terminal Linux. Responde solo con el comando exacto, sin comillas ni texto adicional."},
+                            {"role": "user", "content": user_input}
                         ],
-                        max_tokens=100
+                        max_tokens=60,
+                        temperature=0.1
                     )
                     
                     terminal_command = response.choices[0].message.content.strip()
+                    # Limpiamos los bloques de código que a veces devuelve
+                    terminal_command = terminal_command.replace("```bash", "").replace("```", "").strip()
                 except Exception as e:
                     logging.warning(f"OpenAI failed, using fallback: {str(e)}")
-                    # Si falla OpenAI, usamos un comando genérico
-                    terminal_command = "echo 'No se pudo contactar a OpenAI API'"
+                    # Fallback más inteligente basado en palabras clave
+                    if "listar" in user_input_lower or "mostrar" in user_input_lower:
+                        terminal_command = "ls -la"
+                    else:
+                        terminal_command = "echo 'No se pudo procesar la instrucción'"
             
         elif model_choice == 'anthropic':
             if not anthropic_client:
