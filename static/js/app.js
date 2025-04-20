@@ -230,8 +230,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 this.elements.directoryPath.textContent = this.currentDirectory;
                 this.renderFileExplorer(data.files);
                 
-                // Add file action buttons to the file explorer header
-                this.renderFileActionButtons();
+                // Add Create File and Create Folder buttons
+                this.addFileActionButtons();
             })
             .catch(error => {
                 console.error('Error fetching files:', error);
@@ -337,6 +337,84 @@ document.addEventListener('DOMContentLoaded', function() {
             errorDiv.textContent = errorMessage;
             
             this.elements.fileExplorer.appendChild(errorDiv);
+        },
+        
+        createNewFile: function() {
+            const fileName = prompt('Nombre del archivo:');
+            if (!fileName || fileName.trim() === '') return;
+            
+            const path = this.currentDirectory === '/' 
+                ? fileName 
+                : `${this.currentDirectory.replace(/^\//, '')}/${fileName}`;
+                
+            fetch('/api/create_file', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    file_path: path,
+                    content: ''
+                })
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`Error del servidor: ${response.status} ${response.statusText}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.error) {
+                    this.displayFileExplorerError(data.error);
+                    return;
+                }
+                
+                // Redirect to edit the new file
+                window.location.href = `/edit/${path}`;
+            })
+            .catch(error => {
+                console.error('Error creating file:', error);
+                this.displayFileExplorerError('Error creating file: ' + error.message);
+            });
+        },
+        
+        createNewFolder: function() {
+            const folderName = prompt('Nombre de la carpeta:');
+            if (!folderName || folderName.trim() === '') return;
+            
+            const path = this.currentDirectory === '/' 
+                ? folderName 
+                : `${this.currentDirectory.replace(/^\//, '')}/${folderName}`;
+                
+            fetch('/api/create_file', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    file_path: `${path}/.keep`,
+                    content: ''
+                })
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`Error del servidor: ${response.status} ${response.statusText}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.error) {
+                    this.displayFileExplorerError(data.error);
+                    return;
+                }
+                
+                // Refresh file explorer
+                this.updateFileExplorer();
+            })
+            .catch(error => {
+                console.error('Error creating folder:', error);
+                this.displayFileExplorerError('Error creating folder: ' + error.message);
+            });
         },
         
         navigateHistory: function(direction) {
