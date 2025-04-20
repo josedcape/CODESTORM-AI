@@ -380,15 +380,21 @@ def list_files():
                 f.write("# Workspace\n\nEste es tu espacio de trabajo. Usa los comandos para crear y modificar archivos aquí.")
         
         # Determine the target directory
-        if relative_directory == '.':
+        if relative_directory == '.' or relative_directory == '/':
             target_dir = workspace_path
         else:
+            # Clean up any leading slashes
+            if relative_directory.startswith('/'):
+                relative_directory = relative_directory[1:]
+                
             # Make sure we don't escape the workspace
             try:
-                requested_path = (workspace_path / relative_directory).resolve()
-                if not str(requested_path).startswith(str(workspace_path.resolve())):
-                    return jsonify({'error': 'Access denied: Cannot navigate outside workspace'}), 403
-                target_dir = requested_path
+                # Try to safely resolve the path relative to the workspace
+                target_dir = (workspace_path / relative_directory)
+                # Safety check - ensure we're still in workspace
+                if not os.path.commonpath([target_dir.resolve()]).startswith(os.path.commonpath([workspace_path.resolve()])):
+                    logging.warning(f"Access attempt outside workspace: {target_dir}")
+                    target_dir = workspace_path
             except Exception as e:
                 logging.error(f"Error resolving path: {str(e)}")
                 target_dir = workspace_path

@@ -203,12 +203,24 @@ document.addEventListener('DOMContentLoaded', function() {
         },
         
         updateFileExplorer: function() {
+            // Sanitize current directory
+            let directory = this.currentDirectory;
+            
+            // Make sure directory is not undefined and has a value
+            if (!directory || directory === undefined) {
+                directory = '/';
+                this.currentDirectory = '/';
+            }
+            
+            // Display loading indicator
+            this.elements.fileExplorer.innerHTML = '<div class="loading-spinner"></div>';
+            
             fetch('/api/list_files', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({ directory: this.currentDirectory })
+                body: JSON.stringify({ directory: directory })
             })
             .then(response => {
                 if (!response.ok) {
@@ -228,7 +240,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
                 
                 this.elements.directoryPath.textContent = this.currentDirectory;
-                this.renderFileExplorer(data.files);
+                this.renderFileExplorer(data.files || []);
                 
                 // Add Create File and Create Folder buttons
                 this.addFileActionButtons();
@@ -312,18 +324,26 @@ document.addEventListener('DOMContentLoaded', function() {
             
             if (dirName === '..') {
                 // Navigate to parent directory
-                const parts = this.currentDirectory.split('/');
+                const parts = this.currentDirectory.split('/').filter(p => p);
                 parts.pop();
-                newPath = parts.join('/') || '.';
+                newPath = parts.length ? '/' + parts.join('/') : '/';
             } else if (dirName.startsWith('/')) {
                 // Absolute path
                 newPath = dirName;
             } else {
                 // Relative path
-                newPath = this.currentDirectory === '.' 
-                    ? dirName 
+                newPath = this.currentDirectory === '/' 
+                    ? '/' + dirName 
                     : `${this.currentDirectory}/${dirName}`;
             }
+            
+            // Normalize path for consistency
+            if (!newPath.startsWith('/')) {
+                newPath = '/' + newPath;
+            }
+            
+            // Remove any double slashes
+            newPath = newPath.replace(/\/\//g, '/');
             
             this.currentDirectory = newPath;
             this.updateFileExplorer();
