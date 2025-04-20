@@ -324,12 +324,25 @@
             
             notificationsContainer.appendChild(toast);
             
-            const bsToast = new bootstrap.Toast(toast, {
-                autohide: true,
-                delay: 5000
-            });
-            
-            bsToast.show();
+            // Verificar si bootstrap está disponible
+            if (typeof bootstrap !== 'undefined') {
+                const bsToast = new bootstrap.Toast(toast, {
+                    autohide: true,
+                    delay: 5000
+                });
+                bsToast.show();
+            } else {
+                // Fallback si bootstrap no está disponible
+                setTimeout(() => {
+                    toast.classList.add('show');
+                }, 100);
+                
+                // Auto-hide after 5 seconds
+                setTimeout(() => {
+                    toast.classList.remove('show');
+                    setTimeout(() => toast.remove(), 500);
+                }, 5000);
+            }
             
             // Eliminar después de ocultarse
             toast.addEventListener('hidden.bs.toast', function() {
