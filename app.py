@@ -25,8 +25,8 @@ import google.generativeai as genai
 # Load environment variables from .env file
 load_dotenv(override=True)
 
-# Configure logging
-logging.basicConfig(level=logging.DEBUG)
+# Configure logging - reducir nivel para mejor rendimiento
+logging.basicConfig(level=logging.INFO)
 
 # Helper function to determine file type for syntax highlighting
 def get_file_type(filename):
@@ -715,6 +715,8 @@ def create_file():
         logging.error(f"Error creating file: {str(e)}")
         return jsonify({'error': str(e)}), 500
         
+
+
 @app.route('/api/save_file', methods=['POST'])
 def save_file():
     """Save changes to a file in the workspace."""

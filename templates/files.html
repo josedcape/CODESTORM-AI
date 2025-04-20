@@ -218,6 +218,9 @@
                             <button class="btn btn-sm btn-outline-secondary ms-2" id="create-folder-btn">
                                 <i class="bi bi-folder-plus"></i> Nueva carpeta
                             </button>
+                            <button class="btn btn-sm btn-outline-info ms-2" id="refresh-btn">
+                                <i class="bi bi-arrow-repeat"></i> Actualizar
+                            </button>
                         </div>
                     </div>
                     <div id="file-explorer-content">
@@ -256,6 +259,7 @@
             const pathBreadcrumb = document.getElementById('path-breadcrumb');
             const createFileBtn = document.getElementById('create-file-btn');
             const createFolderBtn = document.getElementById('create-folder-btn');
+            const refreshBtn = document.getElementById('refresh-btn');
             
             let currentDirectory = '/';
             
@@ -270,6 +274,16 @@
             // Create folder button click event
             createFolderBtn.addEventListener('click', function() {
                 window.fileActions.createNewFolder();
+            });
+            
+            // Refresh button click event
+            refreshBtn.addEventListener('click', function() {
+                if (window.fileActions && typeof window.fileActions.refreshFileExplorer === 'function') {
+                    window.fileActions.refreshFileExplorer();
+                } else {
+                    // Fallback to reload if the new function isn't available
+                    window.location.reload();
+                }
             });
             
             // Function to load directory contents
