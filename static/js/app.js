@@ -125,11 +125,16 @@ document.addEventListener('DOMContentLoaded', function() {
                     model: selectedModel
                 })
             })
-            .then(response => response.json())
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`Error del servidor: ${response.status} ${response.statusText}`);
+                }
+                return response.json();
+            })
             .then(data => {
                 if (data.error) {
                     this.displayError(data.error);
-                    return;
+                    return null;
                 }
                 
                 const command = data.command;
@@ -141,11 +146,22 @@ document.addEventListener('DOMContentLoaded', function() {
                     headers: {
                         'Content-Type': 'application/json',
                     },
-                    body: JSON.stringify({ command: command })
+                    body: JSON.stringify({ 
+                        command: command,
+                        instruction: instruction,
+                        model: selectedModel
+                    })
                 });
             })
-            .then(response => response.json())
+            .then(response => {
+                if (!response || !response.ok) {
+                    throw new Error(`Error del servidor: ${response ? response.status + ' ' + response.statusText : 'No hay respuesta'}`);
+                }
+                return response.json();
+            })
             .then(data => {
+                if (!data) return;
+                
                 if (data.error) {
                     this.displayError(data.error);
                     return;
@@ -194,7 +210,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 },
                 body: JSON.stringify({ directory: this.currentDirectory })
             })
-            .then(response => response.json())
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`Error del servidor: ${response.status} ${response.statusText}`);
+                }
+                return response.json();
+            })
             .then(data => {
                 if (data.error) {
                     this.displayFileExplorerError(data.error);
@@ -208,6 +229,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 
                 this.elements.directoryPath.textContent = this.currentDirectory;
                 this.renderFileExplorer(data.files);
+                
+                // Add file action buttons to the file explorer header
+                this.renderFileActionButtons();
             })
             .catch(error => {
                 console.error('Error fetching files:', error);
@@ -247,9 +271,11 @@ document.addEventListener('DOMContentLoaded', function() {
                     if (file.type === 'directory') {
                         this.navigateToDirectory(file.name);
                     } else {
-                        // For files, we could implement a file viewer or editor in the future
-                        this.elements.instructionInput.value = `cat "${this.currentDirectory}/${file.name}"`;
-                        this.processInstruction();
+                        // Open file in editor
+                        const filePath = this.currentDirectory === '/' 
+                            ? file.name 
+                            : `${this.currentDirectory.replace(/^\//, '')}/${file.name}`;
+                        window.location.href = `/edit/${filePath}`;
                     }
                 });
                 

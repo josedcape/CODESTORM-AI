@@ -6,8 +6,9 @@ import subprocess
 import shutil
 import time
 from pathlib import Path
+from threading import Thread
 from datetime import datetime
-from flask import Flask, request, jsonify, render_template, session
+from flask import Flask, request, jsonify, render_template, session, send_file
 from flask_cors import CORS
 from flask_sqlalchemy import SQLAlchemy
 from flask_socketio import SocketIO, emit
@@ -24,6 +25,23 @@ load_dotenv(override=True)
 
 # Configure logging
 logging.basicConfig(level=logging.DEBUG)
+
+# Helper function to determine file type for syntax highlighting
+def get_file_type(filename):
+    extension = filename.split('.')[-1].lower() if '.' in filename else ''
+    extension_map = {
+        'py': 'python',
+        'js': 'javascript',
+        'html': 'html',
+        'css': 'css',
+        'json': 'json',
+        'md': 'markdown',
+        'txt': 'text',
+        'sh': 'bash',
+        'yml': 'yaml',
+        'yaml': 'yaml',
+    }
+    return extension_map.get(extension, 'text')
 
 # Initialize Flask app
 app = Flask(__name__)
@@ -56,16 +74,24 @@ gemini_api_key = os.environ.get("GEMINI_API_KEY", "")
 # Initialize API clients
 openai_client = None
 if openai_api_key:
-    openai_client = openai.OpenAI(api_key=openai_api_key)
-    logging.info("OpenAI API key configured successfully.")
+    try:
+        openai_client = openai.OpenAI(api_key=openai_api_key)
+        logging.info("OpenAI API key configured successfully.")
+    except Exception as e:
+        logging.error(f"Error initializing OpenAI client: {str(e)}")
+        openai_client = None
 else:
     logging.warning("OPENAI_API_KEY not found. OpenAI features will not work.")
 
 # Initialize Anthropic client if key exists
 anthropic_client = None
 if anthropic_api_key:
-    anthropic_client = anthropic.Anthropic(api_key=anthropic_api_key)
-    logging.info("Anthropic API key configured successfully.")
+    try:
+        anthropic_client = anthropic.Anthropic(api_key=anthropic_api_key)
+        logging.info("Anthropic API key configured successfully.")
+    except Exception as e:
+        logging.error(f"Error initializing Anthropic client: {str(e)}")
+        anthropic_client = None
 else:
     logging.warning("ANTHROPIC_API_KEY not found. Anthropic features will not work.")
 
@@ -129,6 +155,46 @@ def get_user_workspace(user_id="default"):
 def index():
     """Render the main page."""
     return render_template('index.html')
+    
+@app.route('/edit/<path:file_path>')
+def edit_file(file_path):
+    """Edit a file."""
+    try:
+        # Get the user workspace
+        user_id = session.get('user_id', 'default')
+        workspace_path = get_user_workspace(user_id)
+        
+        # Determine the target file
+        # Make sure we don't escape the workspace
+        file_path = file_path.replace('..', '')  # Basic path traversal protection
+        target_file = (workspace_path / file_path).resolve()
+        
+        if not str(target_file).startswith(str(workspace_path.resolve())):
+            return jsonify({'error': 'Access denied: Cannot access files outside workspace'}), 403
+            
+        if not target_file.exists():
+            return jsonify({'error': 'File not found'}), 404
+            
+        if target_file.is_dir():
+            return jsonify({'error': 'Cannot edit a directory'}), 400
+            
+        # Read file content
+        with open(target_file, 'r') as f:
+            content = f.read()
+            
+        # Determine file type for syntax highlighting
+        file_type = get_file_type(target_file.name)
+        file_size = target_file.stat().st_size
+            
+        return render_template('editor.html', 
+                             file_path=file_path,
+                             file_name=target_file.name,
+                             file_content=content,
+                             file_type=file_type,
+                             file_size=file_size)
+    except Exception as e:
+        logging.error(f"Error editing file: {str(e)}")
+        return jsonify({'error': str(e)}), 500
 
 @app.route('/api/process_instructions', methods=['POST'])
 def process_instructions():
@@ -299,7 +365,7 @@ def list_files():
                         'type': file_type,
                         'permissions': permissions,
                         'size': str(stat.st_size),
-                        'modified': '' # Could format time here if needed
+                        'modified': datetime.fromtimestamp(stat.st_mtime).strftime('%Y-%m-%d %H:%M:%S')
                     })
                 except Exception as e:
                     logging.warning(f"Error accessing file {item}: {str(e)}")
@@ -323,6 +389,147 @@ def list_files():
         })
     except Exception as e:
         logging.error(f"Error listing files: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+        
+@app.route('/api/create_file', methods=['POST'])
+def create_file():
+    """Create a new file in the workspace."""
+    try:
+        data = request.json
+        file_path = data.get('file_path', '').strip()
+        content = data.get('content', '')
+        
+        if not file_path:
+            return jsonify({'error': 'No file path provided'}), 400
+            
+        # Get the user workspace
+        user_id = session.get('user_id', 'default')
+        workspace_path = get_user_workspace(user_id)
+        
+        # Make sure we don't escape the workspace with path traversal
+        file_path = file_path.replace('..', '')  # Basic protection
+        target_file = (workspace_path / file_path).resolve()
+        
+        if not str(target_file).startswith(str(workspace_path.resolve())):
+            return jsonify({'error': 'Access denied: Cannot create files outside workspace'}), 403
+            
+        # Create parent directories if they don't exist
+        target_file.parent.mkdir(parents=True, exist_ok=True)
+        
+        # Don't overwrite existing files
+        if target_file.exists():
+            return jsonify({'error': 'File already exists'}), 409
+            
+        # Write file content
+        with open(target_file, 'w') as f:
+            f.write(content)
+            
+        # Log file creation
+        logging.info(f"File created: {target_file}")
+        
+        return jsonify({
+            'success': True,
+            'message': 'File created successfully',
+            'file_path': file_path,
+            'file_size': target_file.stat().st_size
+        })
+    except Exception as e:
+        logging.error(f"Error creating file: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+        
+@app.route('/api/save_file', methods=['POST'])
+def save_file():
+    """Save changes to a file in the workspace."""
+    try:
+        data = request.json
+        file_path = data.get('file_path', '').strip()
+        content = data.get('content', '')
+        
+        if not file_path:
+            return jsonify({'error': 'No file path provided'}), 400
+            
+        # Get the user workspace
+        user_id = session.get('user_id', 'default')
+        workspace_path = get_user_workspace(user_id)
+        
+        # Make sure we don't escape the workspace
+        file_path = file_path.replace('..', '')  # Basic protection
+        target_file = (workspace_path / file_path).resolve()
+        
+        if not str(target_file).startswith(str(workspace_path.resolve())):
+            return jsonify({'error': 'Access denied: Cannot modify files outside workspace'}), 403
+            
+        # Check if file exists
+        if not target_file.exists():
+            return jsonify({'error': 'File not found'}), 404
+            
+        # Check if it's a file (not a directory)
+        if target_file.is_dir():
+            return jsonify({'error': 'Cannot save to a directory'}), 400
+            
+        # Write file content
+        with open(target_file, 'w') as f:
+            f.write(content)
+            
+        # Log file update
+        logging.info(f"File updated: {target_file}")
+        
+        return jsonify({
+            'success': True,
+            'message': 'File saved successfully',
+            'file_path': file_path,
+            'file_size': target_file.stat().st_size
+        })
+    except Exception as e:
+        logging.error(f"Error saving file: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+        
+@app.route('/api/delete_file', methods=['POST'])
+def delete_file():
+    """Delete a file or directory in the workspace."""
+    try:
+        data = request.json
+        file_path = data.get('file_path', '').strip()
+        
+        if not file_path:
+            return jsonify({'error': 'No file path provided'}), 400
+            
+        # Get the user workspace
+        user_id = session.get('user_id', 'default')
+        workspace_path = get_user_workspace(user_id)
+        
+        # Make sure we don't escape the workspace
+        file_path = file_path.replace('..', '')  # Basic protection
+        target_path = (workspace_path / file_path).resolve()
+        
+        if not str(target_path).startswith(str(workspace_path.resolve())):
+            return jsonify({'error': 'Access denied: Cannot delete files outside workspace'}), 403
+            
+        # Check if path exists
+        if not target_path.exists():
+            return jsonify({'error': 'File or directory not found'}), 404
+            
+        # Delete the file or directory
+        if target_path.is_dir():
+            # Delete directory and all contents
+            import shutil
+            shutil.rmtree(target_path)
+            message = 'Directory deleted successfully'
+        else:
+            # Delete single file
+            target_path.unlink()
+            message = 'File deleted successfully'
+            
+        # Log file deletion
+        logging.info(f"Deleted: {target_path}")
+        
+        return jsonify({
+            'success': True,
+            'message': message,
+            'file_path': file_path
+        })
+    except Exception as e:
+        logging.error(f"Error deleting file: {str(e)}")
         return jsonify({'error': str(e)}), 500
         
 @app.route('/api/session', methods=['GET'])
