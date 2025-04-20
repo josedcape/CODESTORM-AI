@@ -4,14 +4,20 @@ import json
 import logging
 import subprocess
 import shutil
+import time
 from pathlib import Path
 from datetime import datetime
 from flask import Flask, request, jsonify, render_template, session
 from flask_cors import CORS
 from flask_sqlalchemy import SQLAlchemy
+from flask_socketio import SocketIO, emit
 from dotenv import load_dotenv
 import openai
 import anthropic
+import eventlet
+
+# Patch only specific modules for better compatibility
+eventlet.monkey_patch(os=True, select=True, socket=True, thread=False, time=True)
 
 # Load environment variables from .env file
 load_dotenv()
@@ -330,5 +336,128 @@ def get_session():
         'workspace': str(get_user_workspace(session['user_id']).name)
     })
 
+# Initialize SocketIO
+socketio = SocketIO(app, cors_allowed_origins="*", async_mode='eventlet')
+
+# SocketIO event handlers
+@socketio.on('connect')
+def handle_connect():
+    """Handle client connection to WebSocket."""
+    logging.info("Client connected to WebSocket")
+    emit('status', {'status': 'connected'})
+
+@socketio.on('disconnect')
+def handle_disconnect():
+    """Handle client disconnection from WebSocket."""
+    logging.info("Client disconnected from WebSocket")
+
+@socketio.on('join_workspace')
+def handle_join_workspace(data):
+    """Join a specific workspace for real-time updates."""
+    workspace_id = data.get('workspace_id', 'default')
+    logging.info(f"Client joined workspace: {workspace_id}")
+    # Join a room named after the workspace for targeted broadcasts
+    from flask_socketio import join_room
+    join_room(workspace_id)
+    emit('workspace_update', {
+        'status': 'joined',
+        'workspace_id': workspace_id
+    }, room=workspace_id)
+
+# Function to notify clients about file changes
+def notify_file_change(workspace_id, change_type, file_data):
+    """Send real-time notification about file changes."""
+    socketio.emit('file_change', {
+        'type': change_type,  # 'create', 'update', 'delete'
+        'file': file_data
+    }, room=workspace_id)
+
+# Function to notify clients about command execution
+def notify_command_executed(workspace_id, command_data):
+    """Send real-time notification about command execution."""
+    socketio.emit('command_executed', command_data, room=workspace_id)
+
+# Monitor for file changes in workspaces
+def watch_workspace_files():
+    """Background task to monitor file changes in workspaces."""
+    import time
+    import os
+    from models import Workspace, File
+    
+    tracked_files = {}
+    
+    while True:
+        try:
+            # Check all workspaces
+            with app.app_context():
+                workspaces = db.session.query(Workspace).all()
+                
+                for workspace in workspaces:
+                    workspace_path = Path(workspace.path)
+                    workspace_id = workspace.name
+                    
+                    if not workspace_path.exists():
+                        continue
+                        
+                    # Get all files in workspace
+                    current_files = {}
+                    for item in workspace_path.glob('**/*'):
+                        if item.is_file() and not any(part.startswith('.') for part in item.parts):
+                            rel_path = item.relative_to(workspace_path)
+                            mtime = item.stat().st_mtime
+                            size = item.stat().st_size
+                            current_files[str(rel_path)] = {'mtime': mtime, 'size': size}
+                    
+                    # Check for changes
+                    if workspace_id not in tracked_files:
+                        tracked_files[workspace_id] = current_files
+                        continue
+                        
+                    old_files = tracked_files[workspace_id]
+                    
+                    # Check for new or modified files
+                    for file_path, info in current_files.items():
+                        if file_path not in old_files:
+                            # New file
+                            file_data = {
+                                'path': file_path,
+                                'workspace_id': workspace_id,
+                                'size': info['size']
+                            }
+                            notify_file_change(workspace_id, 'create', file_data)
+                        elif old_files[file_path]['mtime'] != info['mtime'] or old_files[file_path]['size'] != info['size']:
+                            # Modified file
+                            file_data = {
+                                'path': file_path,
+                                'workspace_id': workspace_id,
+                                'size': info['size']
+                            }
+                            notify_file_change(workspace_id, 'update', file_data)
+                    
+                    # Check for deleted files
+                    for file_path in old_files:
+                        if file_path not in current_files:
+                            # Deleted file
+                            file_data = {
+                                'path': file_path,
+                                'workspace_id': workspace_id
+                            }
+                            notify_file_change(workspace_id, 'delete', file_data)
+                    
+                    # Update tracked files
+                    tracked_files[workspace_id] = current_files
+        except Exception as e:
+            logging.error(f"Error monitoring workspace files: {str(e)}")
+            
+        # Sleep to avoid excessive CPU usage
+        time.sleep(1)
+
+# Start background task for file monitoring when running the app directly
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    import threading
+    # Start file watcher in a background thread
+    file_watcher_thread = threading.Thread(target=watch_workspace_files, daemon=True)
+    file_watcher_thread.start()
+    
+    # Start the SocketIO server
+    socketio.run(app, host='0.0.0.0', port=5000, debug=True)
