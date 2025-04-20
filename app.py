@@ -66,16 +66,22 @@ with app.app_context():
     import models
     db.create_all()
 
+# Create user workspaces directory if it doesn't exist
+WORKSPACE_ROOT = Path("./user_workspaces")
+WORKSPACE_ROOT.mkdir(parents=True, exist_ok=True)
+
 # Get API keys from environment
 openai_api_key = os.environ.get("OPENAI_API_KEY", "")
 anthropic_api_key = os.environ.get("ANTHROPIC_API_KEY", "")
 gemini_api_key = os.environ.get("GEMINI_API_KEY", "")
 
-# Initialize API clients
+# Initialize API clients but handle exceptions appropriately
 openai_client = None
 if openai_api_key:
     try:
         openai_client = openai.OpenAI(api_key=openai_api_key)
+        # Test the client with a simple query
+        openai_client.models.list()
         logging.info("OpenAI API key configured successfully.")
     except Exception as e:
         logging.error(f"Error initializing OpenAI client: {str(e)}")
@@ -95,10 +101,8 @@ if anthropic_api_key:
 else:
     logging.warning("ANTHROPIC_API_KEY not found. Anthropic features will not work.")
 
-# Create user workspace directories
-WORKSPACE_ROOT = Path("./user_workspaces")
-if not WORKSPACE_ROOT.exists():
-    WORKSPACE_ROOT.mkdir(parents=True)
+# This is defined above, removing duplicate definition
+# WORKSPACE_ROOT is already defined and created above
 
 def get_user_workspace(user_id="default"):
     """Get or create a workspace directory for the user."""
@@ -249,20 +253,31 @@ def process_instructions():
             
         elif model_choice == 'gemini':
             # Implementación básica de Gemini
-            import google.generativeai as genai
-            
-            gemini_api_key = os.environ.get("GEMINI_API_KEY", "")
-            if not gemini_api_key:
-                return jsonify({'error': 'Gemini API key not configured'}), 500
-                
-            genai.configure(api_key=gemini_api_key)
-            model = genai.GenerativeModel('gemini-pro')
-            
             try:
+                import google.generativeai as genai
+                
+                gemini_api_key = os.environ.get("GEMINI_API_KEY", "")
+                if not gemini_api_key:
+                    return jsonify({'error': 'Gemini API key not configured'}), 500
+                    
+                genai.configure(api_key=gemini_api_key)
+                model = genai.GenerativeModel('gemini-pro')
+                
                 response = model.generate_content(
                     f"Convert this instruction to a terminal command without any explanation: {user_input}"
                 )
                 terminal_command = response.text.strip()
+                
+                # Si el modelo devuelve una respuesta vacía, intentamos con un comando simple
+                if not terminal_command:
+                    logging.warning("Gemini returned empty response, using fallback logic")
+                    
+                    # Lógica simple para comandos básicos
+                    if "crear" in user_input.lower() and "carpeta" in user_input.lower():
+                        folder_name = user_input.lower().split("carpeta")[-1].strip()
+                        terminal_command = f"mkdir -p {folder_name}"
+                    else:
+                        terminal_command = "echo 'No se pudo generar un comando'"
             except Exception as e:
                 logging.error(f"Error using Gemini API: {str(e)}")
                 return jsonify({'error': f'Error with Gemini API: {str(e)}'}), 500
@@ -347,15 +362,26 @@ def list_files():
         user_id = session.get('user_id', 'default')
         workspace_path = get_user_workspace(user_id)
         
+        # Ensure workspace exists
+        if not workspace_path.exists():
+            workspace_path.mkdir(parents=True, exist_ok=True)
+            # Create a README file in the workspace
+            with open(workspace_path / "README.md", "w") as f:
+                f.write("# Workspace\n\nEste es tu espacio de trabajo. Usa los comandos para crear y modificar archivos aquí.")
+        
         # Determine the target directory
         if relative_directory == '.':
             target_dir = workspace_path
         else:
             # Make sure we don't escape the workspace
-            requested_path = (workspace_path / relative_directory).resolve()
-            if not str(requested_path).startswith(str(workspace_path.resolve())):
-                return jsonify({'error': 'Access denied: Cannot navigate outside workspace'}), 403
-            target_dir = requested_path
+            try:
+                requested_path = (workspace_path / relative_directory).resolve()
+                if not str(requested_path).startswith(str(workspace_path.resolve())):
+                    return jsonify({'error': 'Access denied: Cannot navigate outside workspace'}), 403
+                target_dir = requested_path
+            except Exception as e:
+                logging.error(f"Error resolving path: {str(e)}")
+                target_dir = workspace_path
         
         # List files using Path
         files = []
