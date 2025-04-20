@@ -113,11 +113,14 @@
         </div>
     </footer>
 
+    <!-- Notification container -->
+    <div id="notifications" class="position-fixed top-0 end-0 p-3" style="z-index: 5000;"></div>
+
     <!-- JavaScript -->
     <script src="https://cdn.socket.io/4.6.1/socket.io.min.js"></script>
-    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
     <script src="{{ url_for('static', filename='js/websocket.js') }}"></script>
-    
+    <script src="{{ url_for('static', filename='js/file-actions.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
     <!-- Notification styles -->
     <style>
         #notification-container {
