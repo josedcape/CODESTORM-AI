@@ -1,105 +1,104 @@
 /* Custom styles for Codestorm-Assistant */
 
-/* Terminal output styling */
-.terminal-output {
-    background-color: var(--bs-dark);
-    color: var(--bs-light);
-    font-family: monospace;
-    padding: 10px;
-    border-radius: 4px;
-    min-height: 200px;
-    max-height: 400px;
-    overflow-y: auto;
-    white-space: pre-wrap;
+/* Status indicator */
+.status-indicator {
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    margin-right: 5px;
+    transition: background-color 0.3s ease;
 }
 
-/* File explorer styling */
-.file-explorer {
-    background-color: var(--bs-dark);
-    color: var(--bs-light);
-    padding: 10px;
+.status-connected {
+    background-color: #28a745;
+    box-shadow: 0 0 5px #28a745;
+}
+
+.status-disconnected {
+    background-color: #dc3545;
+    box-shadow: 0 0 5px #dc3545;
+}
+
+/* Terminal styles */
+.terminal-output {
+    background-color: #212529;
+    color: #f8f9fa;
     border-radius: 4px;
-    height: 400px;
+    font-family: 'Fira Code', monospace;
+    min-height: 100px;
+    max-height: 300px;
     overflow-y: auto;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+/* File explorer */
+.file-explorer {
+    overflow-y: auto;
+    max-height: 400px;
+    border: 1px solid rgba(0,0,0,.125);
+    border-radius: 4px;
 }
 
 .file-item {
+    padding: 8px 12px;
+    border-bottom: 1px solid rgba(0,0,0,.125);
     cursor: pointer;
-    padding: 5px;
-    border-radius: 3px;
+    transition: background-color 0.2s;
+    display: flex;
+    align-items: center;
 }
 
 .file-item:hover {
-    background-color: var(--bs-secondary);
+    background-color: rgba(0,0,0,.03);
+}
+
+.file-item:last-child {
+    border-bottom: none;
 }
 
 .file-icon {
     margin-right: 10px;
+    width: 18px;
+    text-align: center;
 }
 
 .directory {
-    color: var(--bs-info);
+    font-weight: 500;
 }
 
-.file {
-    color: var(--bs-light);
-}
-
-/* Split pane layout */
-.split-pane {
-    display: flex;
-    height: calc(100vh - 150px);
-}
-
-.left-pane {
-    flex: 1;
-    padding: 10px;
-    overflow-y: auto;
-}
-
-.right-pane {
-    flex: 2;
-    padding: 10px;
-    overflow-y: auto;
-}
-
-/* Instruction input area */
+/* Instruction input */
 .instruction-input {
+    min-height: 120px;
     resize: vertical;
-    min-height: 100px;
 }
 
-/* Status indicator */
-.status-indicator {
-    height: 10px;
-    width: 10px;
-    border-radius: 50%;
+/* Loading indicator */
+.loading .spinner-border {
     display: inline-block;
-    margin-right: 5px;
 }
 
-.status-connected {
-    background-color: var(--bs-success);
-}
-
-.status-disconnected {
-    background-color: var(--bs-danger);
-}
-
-/* Command history */
-.command-history {
-    max-height: 200px;
-    overflow-y: auto;
-}
-
-/* Loading spinner */
 .spinner-border {
-    width: 1rem;
-    height: 1rem;
-    margin-left: 10px;
     display: none;
 }
 
-.loading .spinner-border {
-    display: inline-block;
+/* Animation for notification system */
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeOut {
+    from { opacity: 1; transform: translateY(0); }
+    to { opacity: 0; transform: translateY(-10px); }
+}
+
+.fade-in {
+    animation: fadeIn 0.3s ease-in-out;
+}
+
+.fade-out {
+    animation: fadeOut 0.3s ease-in-out;
+    opacity: 0;
 }

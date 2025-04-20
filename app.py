@@ -16,8 +16,8 @@ import openai
 import anthropic
 import eventlet
 
-# Patch only specific modules for better compatibility
-eventlet.monkey_patch(os=True, select=True, socket=True, thread=False, time=True)
+# Comentamos el monkey patch para evitar conflictos con gunicorn
+# eventlet.monkey_patch(os=True, select=True, socket=True, thread=False, time=True)
 
 # Load environment variables from .env file
 load_dotenv()
@@ -336,8 +336,8 @@ def get_session():
         'workspace': str(get_user_workspace(session['user_id']).name)
     })
 
-# Initialize SocketIO
-socketio = SocketIO(app, cors_allowed_origins="*", async_mode='eventlet')
+# Initialize SocketIO with threading mode instead of eventlet
+socketio = SocketIO(app, cors_allowed_origins="*", async_mode='threading')
 
 # SocketIO event handlers
 @socketio.on('connect')

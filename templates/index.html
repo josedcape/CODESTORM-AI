@@ -114,6 +114,65 @@
     </footer>
 
     <!-- JavaScript -->
+    <script src="https://cdn.socket.io/4.6.1/socket.io.min.js"></script>
     <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/websocket.js') }}"></script>
+    
+    <!-- Notification styles -->
+    <style>
+        #notification-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        
+        .notification {
+            padding: 12px 16px;
+            border-radius: 6px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+            color: white;
+            max-width: 300px;
+        }
+        
+        .notification-success {
+            background-color: #28a745;
+        }
+        
+        .notification-info {
+            background-color: #17a2b8;
+        }
+        
+        .notification-warning {
+            background-color: #ffc107;
+            color: #212529;
+        }
+        
+        .notification-danger {
+            background-color: #dc3545;
+        }
+        
+        .fade-in {
+            animation: fadeIn 0.3s ease-in-out;
+        }
+        
+        .fade-out {
+            animation: fadeOut 0.3s ease-in-out;
+            opacity: 0;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        @keyframes fadeOut {
+            from { opacity: 1; transform: translateY(0); }
+            to { opacity: 0; transform: translateY(-10px); }
+        }
+    </style>
 </body>
 </html>

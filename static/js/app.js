@@ -2,7 +2,7 @@
 
 document.addEventListener('DOMContentLoaded', function() {
     // Initialize app
-    const app = {
+    window.app = {
         currentDirectory: '/',
         commandHistory: [],
         historyIndex: -1,
