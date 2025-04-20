@@ -155,7 +155,7 @@ function initCreationCommandDetection() {
   };
 }
 
-// Enviar mensaje al backend
+// Enviar mensaje al backend - Versión mejorada con sistema multi-agente
 function sendMessage(message) {
   // Verificar si es un comando de creación
   if (handleCreationCommand(message)) {
@@ -230,24 +230,50 @@ function sendMessage(message) {
     // Mostrar indicador de carga
     addLoadingMessage();
     
-    // Usar el sistema multi-agente para procesar el mensaje
-    window.multiAgentSystem.sendMessage(message);
+    // Analizar el mensaje para determinar si requiere colaboración
+    const analysisResult = window.multiAgentSystem.collaborativeQuery(message);
     
-    // Nota: El sistema multi-agente se encargará de remover el indicador de carga
-    // y mostrar la respuesta a través de eventos
+    // El sistema multi-agente se encargará del resto a través de eventos
     return;
   }
   
   // Obtener el agente activo
   const activeAgent = window.app.activeAgent || window.SPECIALIZED_AGENTS.developer;
+  const agentId = activeAgent.id || 'developer';
+  const agentPrompt = activeAgent.prompt || '';
   
   // Mostrar indicador de carga con estilo futurista
   addLoadingMessage();
+  
+  // Determinar si estamos en modo colaborativo
+  const collaborativeMode = true; // Activar por defecto
   
   // Enviar al backend con el modelo seleccionado
   const modelSelect = document.getElementById('model-select');
   const selectedModel = modelSelect ? modelSelect.value : 'openai';
   
+  // Obtener el contexto de la conversación reciente (últimos 5 mensajes)
+  let conversationContext = [];
+  const chatMessages = document.querySelectorAll('.chat-message');
+  let contextCount = 0;
+  
+  // Reunir los últimos mensajes como contexto, hasta un máximo de 5
+  for (let i = chatMessages.length - 2; i >= 0 && contextCount < 5; i--) { // -2 para ignorar el mensaje actual
+    const msg = chatMessages[i];
+    const role = msg.classList.contains('user-message') ? 'user' : 
+                 msg.classList.contains('system-message') ? 'system' : 'assistant';
+    const content = msg.querySelector('.message-content').textContent;
+    
+    // Añadir al inicio para mantener el orden cronológico
+    conversationContext.unshift({
+      role: role,
+      content: content
+    });
+    
+    contextCount++;
+  }
+  
+  // Enviar al backend con información completa
   fetch('/api/chat', {
     method: 'POST',
     headers: {
@@ -255,8 +281,11 @@ function sendMessage(message) {
     },
     body: JSON.stringify({
       message: message,
-      agent_prompt: activeAgent.prompt,
-      model: selectedModel
+      agent_id: agentId,
+      agent_prompt: agentPrompt,
+      context: conversationContext,
+      model: selectedModel,
+      collaborative_mode: collaborativeMode
     }),
   })
   .then(response => response.json())
@@ -264,15 +293,67 @@ function sendMessage(message) {
     // Remover indicador de carga
     removeLoadingMessage();
     
-    // Añadir respuesta del agente
-    if (data.response) {
-      addAgentMessage(data.response, activeAgent);
-      
-      // Detectar y procesar código HTML dentro de la respuesta
-      processHtmlCodeForPreview(data.response);
-    } else {
-      addSystemMessage('Error al procesar la solicitud. Por favor, intenta de nuevo.');
+    if (data.error) {
+      addSystemMessage(`Error: ${data.error}`);
+      return;
     }
+    
+    // Mostrar la respuesta del agente
+    addAgentMessage(data.response, activeAgent);
+    
+    // Procesar recomendaciones de agentes si las hay
+    if (data.response.includes('**Nota:** Para esta consulta, también podrías consultar a:')) {
+      const recommendationSection = data.response.split('**Nota:** Para esta consulta, también podrías consultar a:')[1];
+      // Extraer recomendaciones de agentes
+      const agentRecommendations = recommendationSection.match(/- El (.*?), para obtener/g);
+      
+      if (agentRecommendations && agentRecommendations.length > 0) {
+        // Añadir opciones para cambiar de agente
+        const agentOptions = agentRecommendations.map(rec => {
+          const agentName = rec.match(/- El (.*?),/)[1];
+          let agentId = '';
+          
+          // Mapear nombres a IDs
+          if (agentName.includes('Desarrollo')) agentId = 'developer';
+          else if (agentName.includes('Arquitectura')) agentId = 'architect';
+          else if (agentName.includes('Avanzado')) agentId = 'advanced';
+          
+          return { id: agentId, name: agentName };
+        });
+        
+        // Mostrar opciones de cambio como botones
+        let agentButtonsHTML = '<div class="agent-recommendations mt-2">';
+        agentButtonsHTML += '<p class="text-muted small">¿Quieres cambiar de agente para esta consulta?</p>';
+        
+        agentOptions.forEach(agent => {
+          agentButtonsHTML += `<button class="btn btn-sm btn-outline-primary me-2 mt-1 switch-agent-btn" data-agent-id="${agent.id}">
+            Cambiar a ${agent.name}
+          </button>`;
+        });
+        
+        agentButtonsHTML += '</div>';
+        
+        // Añadir botones al último mensaje del agente
+        const lastAgentMessage = document.querySelector('.chat-message.agent-message:last-child .message-content');
+        if (lastAgentMessage) {
+          lastAgentMessage.insertAdjacentHTML('beforeend', agentButtonsHTML);
+          
+          // Añadir event listeners a los botones
+          document.querySelectorAll('.switch-agent-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+              const newAgentId = this.getAttribute('data-agent-id');
+              if (newAgentId) {
+                setActiveAgent(newAgentId);
+                addSystemMessage(`Has cambiado al ${window.SPECIALIZED_AGENTS[newAgentId].name}. Puedes repetir tu consulta para obtener su perspectiva.`);
+              }
+            });
+          });
+        }
+      }
+    }
+    
+    // Detectar y procesar código HTML dentro de la respuesta
+    processHtmlCodeForPreview(data.response);
   })
   .catch(error => {
     console.error('Error:', error);

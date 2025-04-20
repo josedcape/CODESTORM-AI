@@ -636,79 +636,448 @@ def handle_chat():
     """Procesa mensajes del chat usando el agente especializado seleccionado."""
     try:
         data = request.json
-        message = data.get('message', '')
+        user_message = data.get('message', '')
+        agent_id = data.get('agent_id', 'default')
         agent_prompt = data.get('agent_prompt', '')
-        model_choice = data.get('model', 'openai')  # Default to OpenAI
+        context = data.get('context', [])
+        model_choice = data.get('model', 'openai')
+        collaborative_mode = data.get('collaborative_mode', True)  # Modo colaborativo activado por defecto
         
-        if not message:
+        if not user_message:
             return jsonify({'error': 'No message provided'}), 400
             
-        response = ""
+        # Configurar prompts específicos según el agente seleccionado
+        agent_prompts = {
+            'developer': "Eres un Agente de Desarrollo experto en optimización y edición de código en tiempo real. Tu objetivo es ayudar a los usuarios con tareas de programación, desde la corrección de errores hasta la implementación de funcionalidades completas. Puedes modificar archivos, ejecutar comandos y resolver problemas técnicos específicos.",
+            'architect': "Eres un Agente de Arquitectura especializado en diseñar arquitecturas escalables y optimizadas. Ayudas a los usuarios a tomar decisiones sobre la estructura del código, patrones de diseño y selección de tecnologías. Puedes proporcionar diagramas conceptuales y recomendaciones sobre la organización de componentes.",
+            'advanced': "Eres un Agente Avanzado de Software con experiencia en integraciones complejas y funcionalidades avanzadas. Puedes asesorar sobre tecnologías emergentes, optimización de rendimiento y soluciones a problemas técnicos sofisticados. Tienes la capacidad de coordinar entre diferentes componentes y sistemas."
+        }
+        
+        # Si no se proporcionó un prompt específico, usar uno predefinido basado en el agente
+        if not agent_prompt:
+            agent_prompt = agent_prompts.get(agent_id, "Eres un asistente de desarrollo de software experto y útil.")
+        
+        # Añadir capacidades de manipulación de archivos al prompt para todos los agentes
+        file_capabilities = "\n\nPuedes ayudar al usuario a manipular archivos usando comandos como: 'crea un archivo index.js con este contenido...', 'modifica config.py para añadir...', 'muestra el contenido de app.js', etc. Puedes ejecutar comandos en la terminal con: 'ejecuta npm install', 'ejecuta python run.py', etc."
+        agent_prompt += file_capabilities
+        
+        # Si está en modo colaborativo, añadir información sobre otros agentes
+        if collaborative_mode:
+            agent_prompt += "\n\nEstás trabajando en modo colaborativo con otros agentes especializados. Si la consulta del usuario requiere conocimientos fuera de tu dominio, puedes sugerir consultar a otro agente especializado o solicitar su perspectiva adicional."
+        
+        # Preprocesar contexto para dar formato consistente
+        formatted_context = []
+        for msg in context:
+            role = msg.get('role', 'user') 
+            if role not in ['user', 'assistant', 'system']:
+                role = 'user'
+            formatted_context.append({
+                "role": role,
+                "content": msg.get('content', '')
+            })
+        
+        # Verificar si es una solicitud de gestión de archivos o ejecución de comandos
+        is_file_operation = re.search(r'(?:crea|modifica|elimina|muestra|crear|editar|borrar|ver).*?(?:archivo|fichero|file|documento)', user_message, re.IGNORECASE)
+        is_command_execution = re.search(r'(?:ejecuta|corre|lanza|inicia|run).*?(?:comando|terminal|consola|cli|bash|shell)', user_message, re.IGNORECASE)
+        
+        if is_file_operation or is_command_execution:
+            try:
+                # Procesar como una instrucción de manipulación de archivos
+                result = process_natural_language_internal(user_message)
+                if result.get('success'):
+                    # Construir una respuesta contextual más elaborada
+                    response_message = f"He procesado tu instrucción: {result.get('message', 'Operación completada.')}"
+                    
+                    # Añadir detalles según el tipo de operación
+                    if 'content' in result:
+                        # Para visualización de archivos
+                        response_message += f"\n\nContenido del archivo:\n```\n{result['content']}\n```"
+                        
+                        if 'file_type' in result:
+                            response_message += f"\n\nTipo de archivo detectado: {result['file_type']}"
+                    
+                    if 'stdout' in result:
+                        # Para ejecución de comandos
+                        response_message += f"\n\nSalida del comando:\n```\n{result['stdout']}\n```"
+                        
+                        if result.get('stderr'):
+                            response_message += f"\n\nErrores/Advertencias:\n```\n{result['stderr']}\n```"
+                    
+                    return jsonify({
+                        'response': response_message
+                    })
+                else:
+                    # Si hubo error, proporcionar información detallada
+                    error_message = f"No pude completar la operación: {result.get('message', 'Error desconocido.')}"
+                    
+                    # Sugerir soluciones según el error
+                    if 'no existe' in result.get('message', '').lower():
+                        error_message += "\n\n¿Quieres que cree este archivo primero? Puedes pedirme 'Crea un archivo [nombre] con [contenido]'."
+                    elif 'ya existe' in result.get('message', '').lower():
+                        error_message += "\n\n¿Quieres modificar este archivo en lugar de crearlo? Puedes pedirme 'Modifica el archivo [nombre] con [contenido]'."
+                    
+                    return jsonify({
+                        'response': error_message
+                    })
+            except Exception as e:
+                logging.error(f"Error processing file instruction: {str(e)}")
+                # Continuar con el procesamiento normal si falla
         
         # Generar respuesta según el modelo seleccionado
-        if model_choice == 'openai':
-            if not openai_client:
-                return jsonify({'error': 'OpenAI API key not configured'}), 500
-                
+        response = ""
+        
+        if model_choice == 'anthropic' and os.environ.get('ANTHROPIC_API_KEY'):
+            # Usar Anthropic Claude
             try:
-                openai_response = openai_client.chat.completions.create(
-                    model="gpt-4o",  # the newest OpenAI model is "gpt-4o" which was released May 13, 2024
-                    messages=[
-                        {"role": "system", "content": agent_prompt},
-                        {"role": "user", "content": message}
-                    ],
-                    max_tokens=1500
+                client = Anthropic(api_key=os.environ.get('ANTHROPIC_API_KEY'))
+                messages = [{"role": "system", "content": agent_prompt}]
+                
+                # Añadir mensajes de contexto
+                for msg in formatted_context:
+                    messages.append({"role": msg['role'], "content": msg['content']})
+                    
+                # Añadir el mensaje actual del usuario
+                messages.append({"role": "user", "content": user_message})
+                
+                completion = client.messages.create(
+                    model="claude-3-5-sonnet-20241022", # the newest Anthropic model is "claude-3-5-sonnet-20241022" which was released October 22, 2024
+                    messages=messages,
+                    max_tokens=2000,
+                    temperature=0.7
                 )
-                response = openai_response.choices[0].message.content
+                response = completion.content[0].text
             except Exception as e:
-                logging.error(f"OpenAI API error: {str(e)}")
-                return jsonify({'error': f"Error with OpenAI API: {str(e)}"}), 500
+                logging.error(f"Error with Anthropic API: {str(e)}")
+                response = f"Lo siento, hubo un error al procesar tu solicitud con Anthropic: {str(e)}"
                 
-        elif model_choice == 'anthropic':
-            if not anthropic_client:
-                return jsonify({'error': 'Anthropic API key not configured'}), 500
-                
+        elif model_choice == 'gemini' and os.environ.get('GEMINI_API_KEY'):
+            # Usar Google Gemini
             try:
-                anthropic_response = anthropic_client.messages.create(
-                    model="claude-3-5-sonnet-20241022",  # the newest Anthropic model is "claude-3-5-sonnet-20241022" which was released October 22, 2024
-                    system=agent_prompt,
-                    messages=[
-                        {"role": "user", "content": message}
-                    ],
-                    max_tokens=1500
-                )
-                response = anthropic_response.content[0].text
-            except Exception as e:
-                logging.error(f"Anthropic API error: {str(e)}")
-                return jsonify({'error': f"Error with Anthropic API: {str(e)}"}), 500
+                genai.configure(api_key=os.environ.get('GEMINI_API_KEY'))
+                model = genai.GenerativeModel('gemini-1.5-pro')
                 
-        elif model_choice == 'gemini':
-            if not gemini_api_key:
-                return jsonify({'error': 'Gemini API key not configured'}), 500
+                # Construir el prompt con contexto
+                full_prompt = agent_prompt + "\n\n"
                 
-            try:
-                model = genai.GenerativeModel('gemini-pro')
-                chat = model.start_chat(
-                    history=[
-                        {"role": "user", "parts": [agent_prompt]}
-                    ]
-                )
-                gemini_response = chat.send_message(message)
+                for msg in formatted_context:
+                    prefix = "Usuario: " if msg['role'] == 'user' else "Asistente: "
+                    full_prompt += prefix + msg['content'] + "\n\n"
+                    
+                full_prompt += "Usuario: " + user_message + "\n\nAsistente:"
+                
+                gemini_response = model.generate_content(full_prompt)
                 response = gemini_response.text
             except Exception as e:
-                logging.error(f"Gemini API error: {str(e)}")
-                return jsonify({'error': f"Error with Gemini API: {str(e)}"}), 500
+                logging.error(f"Error with Gemini API: {str(e)}")
+                response = f"Lo siento, hubo un error al procesar tu solicitud con Gemini: {str(e)}"
+                
         else:
-            return jsonify({'error': 'Invalid model choice'}), 400
+            # Usar OpenAI como valor predeterminado
+            try:
+                openai_client = openai.OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
+                messages = [{"role": "system", "content": agent_prompt}]
+                
+                # Añadir mensajes de contexto
+                for msg in formatted_context:
+                    messages.append({"role": msg['role'], "content": msg['content']})
+                    
+                # Añadir el mensaje actual del usuario
+                messages.append({"role": "user", "content": user_message})
+                
+                completion = openai_client.chat.completions.create(
+                    model="gpt-4o",  # the newest OpenAI model is "gpt-4o" which was released May 13, 2024.
+                    messages=messages,
+                    temperature=0.7,
+                    max_tokens=2000
+                )
+                
+                response = completion.choices[0].message.content
+            except Exception as e:
+                logging.error(f"Error with OpenAI API: {str(e)}")
+                response = f"Lo siento, hubo un error al procesar tu solicitud con OpenAI: {str(e)}"
+        
+        # En modo colaborativo, añadir perspectivas de otros agentes
+        if collaborative_mode and agent_id:
+            other_agents = {
+                'developer': {
+                    'name': 'Agente de Desarrollo',
+                    'topics': ['código', 'programación', 'implementación', 'bug', 'error', 'función', 'método']
+                },
+                'architect': {
+                    'name': 'Agente de Arquitectura',
+                    'topics': ['arquitectura', 'diseño', 'estructura', 'patrón', 'componente', 'sistema', 'servicio']
+                },
+                'advanced': {
+                    'name': 'Agente Avanzado',
+                    'topics': ['integración', 'optimización', 'rendimiento', 'escalabilidad', 'tecnología', 'avanzado']
+                }
+            }
             
-        return jsonify({
-            'success': True,
-            'response': response
-        })
+            # Detectar temas relacionados con otros agentes
+            potential_agents = []
+            for other_id, info in other_agents.items():
+                if other_id != agent_id:  # No sugerir el agente actual
+                    for topic in info['topics']:
+                        if topic.lower() in user_message.lower():
+                            potential_agents.append(other_id)
+                            break
+            
+            # Añadir sugerencias de otros agentes
+            if potential_agents:
+                response += "\n\n---\n"
+                response += "**Nota:** Para esta consulta, también podrías consultar a:\n"
+                
+                for agent_id in set(potential_agents):  # Eliminar duplicados
+                    response += f"- El {other_agents[agent_id]['name']}, para obtener más información sobre aspectos de {', '.join(other_agents[agent_id]['topics'][:3])}\n"
+        
+        return jsonify({'response': response})
         
     except Exception as e:
-        logging.error(f"Error processing chat: {str(e)}")
+        logging.error(f"Error handling chat: {str(e)}")
         return jsonify({'error': str(e)}), 500
+
+
+# Función interna para procesar lenguaje natural sin usar el endpoint HTTP
+def process_natural_language_internal(text):
+    """Versión interna de process_natural_language para uso dentro de handle_chat"""
+    try:
+        if not text:
+            return {
+                'success': False,
+                'message': 'No se proporcionó texto para procesar'
+            }
+        
+        # Patrones para diferentes acciones - Versión mejorada y más precisa
+        file_patterns = {
+            'modify_file': re.compile(r'(?:modifica|edita|cambia|actualiza|agrega|a[ñn]ade|inserta).*?(?:en|al?|el)?\s*(?:archivo|fichero|file|documento).*?[\"\'"]?([a-zA-Z0-9_\-\.\/]+\.[a-zA-Z0-9]+)[\"\'"]?', re.IGNORECASE),
+            'create_file': re.compile(r'(?:crea|genera|nuevo|añadir|hacer|crear).*?(?:un|el)?\s*(?:archivo|fichero|file|documento).*?[\"\'"]?([a-zA-Z0-9_\-\.\/]+\.[a-zA-Z0-9]+)[\"\'"]?', re.IGNORECASE),
+            'delete_file': re.compile(r'(?:elimina|borra|quita|remueve|suprime|eliminar).*?(?:el|del)?\s*(?:archivo|fichero|file|documento).*?[\"\'"]?([a-zA-Z0-9_\-\.\/]+\.[a-zA-Z0-9]+)[\"\'"]?', re.IGNORECASE),
+            'execute_command': re.compile(r'(?:ejecuta|corre|lanza|inicia|correr|ejecutar|run).*?(?:el|este)?\s*(?:comando|instrucci[óo]n|terminal|shell|bash|cli|consola)[\:\s]?[\"\'"`](.+?)[\"\'"`]?(?:[\.!\?]|$|\n)', re.IGNORECASE),
+            'view_file': re.compile(r'(?:muestra|visualiza|ver|abre|mostrar|cat|type|leer|abrir).*?(?:el|los)?\s*(?:contenidos?|archivo|fichero|file|documento).*?[\"\'"]?([a-zA-Z0-9_\-\.\/]+\.[a-zA-Z0-9]+)[\"\'"]?', re.IGNORECASE)
+        }
+        
+        # Extraer contenido (para crear/modificar) - Versión mejorada con más formatos
+        content_pattern = re.compile(r'(?:contenido|código|texto|añadir|body|contenidos|agregar|insertar|escribir)[\:\s]?[\"\'"`](.+?)[\"\'"`]|```(?:\w+)?\s*(.+?)```|<code>(.+?)</code>', re.IGNORECASE | re.DOTALL)
+        content_match = content_pattern.search(text)
+        content = None
+        if content_match:
+            # Obtener el primer grupo no nulo
+            for i in range(1, 4):  # Tenemos hasta 3 grupos de captura
+                if content_match.group(i):
+                    content = content_match.group(i)
+                    break
+        
+        # Determinar acción y parámetros
+        action = None
+        params = {}
+        
+        for action_type, pattern in file_patterns.items():
+            match = pattern.search(text)
+            if match:
+                action = action_type
+                if action_type == 'execute_command':
+                    params['command'] = match.group(1).strip()
+                else:
+                    params['file_path'] = match.group(1).strip()
+                
+                if action_type in ['create_file', 'modify_file'] and content:
+                    params['content'] = content
+                
+                break
+        
+        # Si no se determinó ninguna acción
+        if not action:
+            return {
+                'success': False,
+                'message': 'No se pudo determinar la acción a realizar. Por favor, sé más específico.'
+            }
+        
+        # Obtener el workspace del usuario
+        user_id = session.get('user_id', 'default')
+        workspace_path = get_user_workspace(user_id)
+        
+        # Procesar la acción
+        result = {}
+        
+        if action == 'execute_command':
+            # Ejecutar comando en terminal
+            command = params.get('command')
+            try:
+                process = subprocess.Popen(
+                    command,
+                    shell=True,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    cwd=str(workspace_path)
+                )
+                stdout, stderr = process.communicate(timeout=30)
+                
+                result = {
+                    'success': process.returncode == 0,
+                    'stdout': stdout.decode('utf-8', errors='replace'),
+                    'stderr': stderr.decode('utf-8', errors='replace'),
+                    'returncode': process.returncode,
+                    'message': 'Comando ejecutado correctamente' if process.returncode == 0 else 'El comando falló con errores'
+                }
+            except subprocess.TimeoutExpired:
+                result = {
+                    'success': False,
+                    'message': 'El comando excedió el tiempo límite de ejecución (30s)'
+                }
+            except Exception as e:
+                result = {
+                    'success': False,
+                    'message': f'Error al ejecutar el comando: {str(e)}'
+                }
+        else:
+            # Asegurar que estamos operando dentro del workspace
+            file_path = params.get('file_path', '')
+            file_path = file_path.replace('..', '')  # Prevenir path traversal
+            target_file = (workspace_path / file_path).resolve()
+            
+            if not str(target_file).startswith(str(workspace_path.resolve())):
+                return {
+                    'success': False,
+                    'message': 'Acceso denegado: No se puede acceder a archivos fuera del workspace'
+                }
+            
+            # Procesar operaciones de archivo según el tipo de acción
+            if action == 'create_file':
+                content = params.get('content', '')
+                try:
+                    # Crear directorios si no existen
+                    target_file.parent.mkdir(parents=True, exist_ok=True)
+                    
+                    # Verificar si el archivo ya existe
+                    if target_file.exists():
+                        result = {
+                            'success': False,
+                            'message': f'El archivo {file_path} ya existe'
+                        }
+                    else:
+                        with open(target_file, 'w') as f:
+                            f.write(content or '')
+                        
+                        result = {
+                            'success': True,
+                            'message': f'Archivo {file_path} creado correctamente'
+                        }
+                except Exception as e:
+                    result = {
+                        'success': False,
+                        'message': f'Error al crear el archivo: {str(e)}'
+                    }
+            
+            elif action == 'modify_file':
+                content = params.get('content', '')
+                try:
+                    if not target_file.exists():
+                        result = {
+                            'success': False,
+                            'message': f'El archivo {file_path} no existe'
+                        }
+                    else:
+                        # Detectar si el usuario quiere reemplazar todo el contenido o solo agregar
+                        replace_all = False
+                        
+                        # Si el texto contiene indicadores explícitos de reemplazo
+                        if any(kw in text.lower() for kw in ['reemplazar todo', 'sustituir todo', 'cambiar todo', 'sobrescribir']):
+                            replace_all = True
+                        # O si la longitud del contenido nuevo es considerable (probablemente un reemplazo)
+                        elif content and len(content) > 100:  # Heurística: contenido largo probablemente es reemplazo
+                            replace_all = True
+                            
+                        # Leer contenido actual
+                        with open(target_file, 'r') as f:
+                            current_content = f.read()
+                        
+                        # Escribir contenido actualizado
+                        with open(target_file, 'w') as f:
+                            if replace_all:
+                                # Reemplazar todo el contenido
+                                f.write(content)
+                                result = {
+                                    'success': True,
+                                    'message': f'Archivo {file_path} reemplazado completamente'
+                                }
+                            else:
+                                # Agregar el nuevo contenido
+                                f.write(current_content + ('' if current_content.endswith('\n') else '\n') + content)
+                                result = {
+                                    'success': True,
+                                    'message': f'Contenido agregado al archivo {file_path}'
+                                }
+                except Exception as e:
+                    result = {
+                        'success': False,
+                        'message': f'Error al modificar el archivo: {str(e)}'
+                    }
+            
+            elif action == 'delete_file':
+                try:
+                    if not target_file.exists():
+                        result = {
+                            'success': False,
+                            'message': f'El archivo {file_path} no existe'
+                        }
+                    else:
+                        if target_file.is_dir():
+                            shutil.rmtree(target_file)
+                        else:
+                            target_file.unlink()
+                        
+                        result = {
+                            'success': True,
+                            'message': f'Archivo {file_path} eliminado correctamente'
+                        }
+                except Exception as e:
+                    result = {
+                        'success': False,
+                        'message': f'Error al eliminar el archivo: {str(e)}'
+                    }
+            
+            elif action == 'view_file':
+                try:
+                    if not target_file.exists():
+                        result = {
+                            'success': False,
+                            'message': f'El archivo {file_path} no existe'
+                        }
+                    else:
+                        with open(target_file, 'r') as f:
+                            content = f.read()
+                        
+                        result = {
+                            'success': True,
+                            'message': f'Contenido del archivo {file_path}:',
+                            'content': content,
+                            'file_type': get_file_type(target_file.name)
+                        }
+                except Exception as e:
+                    result = {
+                        'success': False,
+                        'message': f'Error al leer el archivo: {str(e)}'
+                    }
+        
+        # Notificar a través de WebSockets
+        if action in ['create_file', 'modify_file', 'delete_file']:
+            try:
+                socketio.emit('file_change', {
+                    'type': action.split('_')[0],  # create, modify, delete
+                    'file_path': file_path,
+                    'workspace': user_id
+                }, namespace='/ws')
+            except Exception as e:
+                logging.error(f"Error emitiendo evento WebSocket: {str(e)}")
+        
+        return result
+    
+    except Exception as e:
+        logging.error(f"Error procesando lenguaje natural (interno): {str(e)}")
+        return {
+            'success': False,
+            'message': f'Error procesando instrucción: {str(e)}'
+        }
 
 @app.route('/api/list_files', methods=['POST'])
 def list_files():
@@ -916,21 +1285,25 @@ def process_natural_language():
                 'message': 'No se proporcionó texto para procesar'
             }), 400
         
-        # Patrones para diferentes acciones
+        # Patrones para diferentes acciones - Versión mejorada y más precisa
         file_patterns = {
-            'modify_file': re.compile(r'(?:modifica|edita|cambia|actualiza|agrega|a[ñn]ade).*?(?:archivo|fichero).*?[\"\'"]?([a-zA-Z0-9_\-\.\/]+\.[a-zA-Z0-9]+)[\"\'"]?', re.IGNORECASE),
-            'create_file': re.compile(r'(?:crea|genera|nuevo).*?(?:archivo|fichero).*?[\"\'"]?([a-zA-Z0-9_\-\.\/]+\.[a-zA-Z0-9]+)[\"\'"]?', re.IGNORECASE),
-            'delete_file': re.compile(r'(?:elimina|borra|quita|remueve).*?(?:archivo|fichero).*?[\"\'"]?([a-zA-Z0-9_\-\.\/]+\.[a-zA-Z0-9]+)[\"\'"]?', re.IGNORECASE),
-            'execute_command': re.compile(r'(?:ejecuta|corre|lanza|inicia).*?(?:comando|instrucci[óo]n|terminal)[\:\s]?[\"\'"]?(.+?)[\"\'"]?(?:[\.!\?]|$)', re.IGNORECASE),
-            'view_file': re.compile(r'(?:muestra|visualiza|ver|abre).*?(?:archivo|fichero).*?[\"\'"]?([a-zA-Z0-9_\-\.\/]+\.[a-zA-Z0-9]+)[\"\'"]?', re.IGNORECASE)
+            'modify_file': re.compile(r'(?:modifica|edita|cambia|actualiza|agrega|a[ñn]ade|inserta).*?(?:en|al?|el)?\s*(?:archivo|fichero|file|documento).*?[\"\'"]?([a-zA-Z0-9_\-\.\/]+\.[a-zA-Z0-9]+)[\"\'"]?', re.IGNORECASE),
+            'create_file': re.compile(r'(?:crea|genera|nuevo|añadir|hacer|crear).*?(?:un|el)?\s*(?:archivo|fichero|file|documento).*?[\"\'"]?([a-zA-Z0-9_\-\.\/]+\.[a-zA-Z0-9]+)[\"\'"]?', re.IGNORECASE),
+            'delete_file': re.compile(r'(?:elimina|borra|quita|remueve|suprime|eliminar).*?(?:el|del)?\s*(?:archivo|fichero|file|documento).*?[\"\'"]?([a-zA-Z0-9_\-\.\/]+\.[a-zA-Z0-9]+)[\"\'"]?', re.IGNORECASE),
+            'execute_command': re.compile(r'(?:ejecuta|corre|lanza|inicia|correr|ejecutar|run).*?(?:el|este)?\s*(?:comando|instrucci[óo]n|terminal|shell|bash|cli|consola)[\:\s]?[\"\'"`](.+?)[\"\'"`]?(?:[\.!\?]|$|\n)', re.IGNORECASE),
+            'view_file': re.compile(r'(?:muestra|visualiza|ver|abre|mostrar|cat|type|leer|abrir).*?(?:el|los)?\s*(?:contenidos?|archivo|fichero|file|documento).*?[\"\'"]?([a-zA-Z0-9_\-\.\/]+\.[a-zA-Z0-9]+)[\"\'"]?', re.IGNORECASE)
         }
         
-        # Extraer contenido (para crear/modificar)
-        content_pattern = re.compile(r'(?:contenido|código|texto)[\:\s]?[\"\'"](.+?)[\"\'"]|```(?:\w+)?\s*(.+?)```', re.IGNORECASE | re.DOTALL)
+        # Extraer contenido (para crear/modificar) - Versión mejorada con más formatos
+        content_pattern = re.compile(r'(?:contenido|código|texto|añadir|body|contenidos|agregar|insertar|escribir)[\:\s]?[\"\'"`](.+?)[\"\'"`]|```(?:\w+)?\s*(.+?)```|<code>(.+?)</code>', re.IGNORECASE | re.DOTALL)
         content_match = content_pattern.search(text)
         content = None
         if content_match:
-            content = content_match.group(1) if content_match.group(1) else content_match.group(2)
+            # Obtener el primer grupo no nulo
+            for i in range(1, 4):  # Tenemos hasta 3 grupos de captura
+                if content_match.group(i):
+                    content = content_match.group(i)
+                    break
         
         # Determinar acción y parámetros
         action = None
@@ -1041,18 +1414,36 @@ def process_natural_language():
                             'message': f'El archivo {file_path} no existe'
                         }
                     else:
+                        # Detectar si el usuario quiere reemplazar todo el contenido o solo agregar
+                        replace_all = False
+                        
+                        # Si el texto contiene indicadores explícitos de reemplazo
+                        if any(kw in text.lower() for kw in ['reemplazar todo', 'sustituir todo', 'cambiar todo', 'sobrescribir']):
+                            replace_all = True
+                        # O si la longitud del contenido nuevo es considerable (probablemente un reemplazo)
+                        elif content and len(content) > 100:  # Heurística: contenido largo probablemente es reemplazo
+                            replace_all = True
+                            
                         # Leer contenido actual
                         with open(target_file, 'r') as f:
                             current_content = f.read()
                         
                         # Escribir contenido actualizado
                         with open(target_file, 'w') as f:
-                            f.write(current_content + '\n' + content)
-                        
-                        result = {
-                            'success': True,
-                            'message': f'Archivo {file_path} modificado correctamente'
-                        }
+                            if replace_all:
+                                # Reemplazar todo el contenido
+                                f.write(content)
+                                result = {
+                                    'success': True,
+                                    'message': f'Archivo {file_path} reemplazado completamente'
+                                }
+                            else:
+                                # Agregar el nuevo contenido
+                                f.write(current_content + ('' if current_content.endswith('\n') else '\n') + content)
+                                result = {
+                                    'success': True,
+                                    'message': f'Contenido agregado al archivo {file_path}'
+                                }
                 except Exception as e:
                     result = {
                         'success': False,

@@ -79,47 +79,209 @@ window.multiAgentSystem = (function() {
         return agents[id];
     }
     
-    // Analizar mensaje y determinar el agente más adecuado
+    // Analizar mensaje y determinar el agente más adecuado - Versión mejorada con análisis contextual
     function analyzeMessage(message) {
-        // Palabras clave asociadas con cada tipo de agente
+        // Palabras clave asociadas con cada tipo de agente - Ampliadas y categorizadas
         const keywordMapping = {
-            developer: [
-                'código', 'programar', 'función', 'clase', 'método', 'bug', 'error',
-                'depurar', 'implementar', 'refactorizar', 'optimizar', 'compilar',
-                'desarrollo', 'api', 'biblioteca', 'framework', 'javascript', 'python',
-                'html', 'css', 'react', 'angular', 'vue', 'node', 'express', 'flask'
-            ],
-            architect: [
-                'arquitectura', 'sistema', 'diseño', 'patrón', 'estructura', 'componente',
-                'módulo', 'escalabilidad', 'mantenibilidad', 'microservicio', 'monolito',
-                'acoplamiento', 'cohesión', 'mvc', 'mvvm', 'api', 'interfaz', 'backend',
-                'frontend', 'base de datos', 'modelo', 'diagrama', 'uml'
-            ],
-            designer: [
-                'diseño', 'ui', 'ux', 'interfaz', 'usuario', 'experiencia', 'visual', 'color',
-                'layout', 'responsive', 'web', 'móvil', 'accesibilidad', 'usabilidad',
-                'wireframe', 'prototipo', 'maqueta', 'estilo', 'css', 'componente', 'tema',
-                'fuente', 'tipografía', 'icono', 'botón', 'formulario', 'animación'
-            ]
+            developer: {
+                // Lenguajes de programación y tecnologías
+                languages: [
+                    'javascript', 'typescript', 'python', 'java', 'c#', 'c++', 'php', 'ruby',
+                    'go', 'rust', 'swift', 'kotlin', 'scala', 'perl', 'bash', 'powershell'
+                ],
+                // Conceptos de programación
+                concepts: [
+                    'código', 'programar', 'función', 'clase', 'método', 'bug', 'error',
+                    'depurar', 'implementar', 'refactorizar', 'optimizar', 'compilar',
+                    'desarrollo', 'loop', 'bucle', 'variable', 'constante', 'array', 'objeto',
+                    'try-catch', 'excepción', 'manejo de errores', 'asíncrono', 'síncrono',
+                    'promesa', 'callback', 'await', 'async'
+                ],
+                // Frameworks y bibliotecas
+                frameworks: [
+                    'api', 'biblioteca', 'framework', 'react', 'angular', 'vue', 'node', 'express', 
+                    'flask', 'django', 'spring', 'laravel', 'rails', 'bootstrap', 'jquery',
+                    'webpack', 'vite', 'npm', 'yarn', 'pip', 'composer', 'maven', 'gradle',
+                    'docker', 'kubernetes', 'redux', 'vuex', 'nextjs', 'nuxtjs'
+                ],
+                // Acciones de desarrollo
+                actions: [
+                    'programar', 'codificar', 'implementar', 'desarrollar', 'escribir código',
+                    'testear', 'probar', 'depurar', 'corregir', 'fix', 'arreglar', 'resolver',
+                    'optimizar', 'mejorar', 'refactorizar', 'limpiar', 'documentar', 'comentar',
+                    'mantener', 'modificar', 'actualizar', 'agregar', 'eliminar', 'cambiar',
+                    'ejecutar', 'compilar', 'transpilar', 'deployar', 'desplegar'
+                ]
+            },
+            architect: {
+                // Conceptos arquitectónicos
+                concepts: [
+                    'arquitectura', 'sistema', 'diseño', 'patrón', 'estructura', 'componente',
+                    'módulo', 'escalabilidad', 'mantenibilidad', 'microservicio', 'monolito',
+                    'acoplamiento', 'cohesión', 'mvc', 'mvvm', 'api', 'interfaz', 'backend',
+                    'frontend', 'base de datos', 'modelo', 'diagrama', 'uml', 'flujo de datos',
+                    'cliente-servidor', 'capas', 'servicios', 'principios solid', 'serverless',
+                    'cloud', 'infraestructura', 'almacenamiento', 'procesamiento', 'distribuido'
+                ],
+                // Tecnologías y plataformas
+                technologies: [
+                    'aws', 'azure', 'gcp', 'firebase', 'docker', 'kubernetes', 'terraform',
+                    'jenkins', 'gitlab', 'github actions', 'travis', 'circleci', 'ansible',
+                    'puppet', 'chef', 'redis', 'elasticsearch', 'rabbitmq', 'kafka', 'consul',
+                    'etcd', 'prometheus', 'grafana', 'splunk', 'datadog', 'new relic'
+                ],
+                // Tipos de bases de datos
+                databases: [
+                    'sql', 'nosql', 'mysql', 'postgresql', 'oracle', 'mongodb', 'cassandra',
+                    'dynamodb', 'neo4j', 'redis', 'couchdb', 'firestore', 'bigtable', 'hbase',
+                    'inmemory', 'indexado', 'columnar', 'grafos', 'clave-valor', 'documentos'
+                ],
+                // Acciones de arquitectura
+                actions: [
+                    'diseñar', 'estructurar', 'planificar', 'modelar', 'diagramar', 'organizar',
+                    'definir', 'establecer', 'configurar', 'integrar', 'desacoplar', 'documentar',
+                    'revisar', 'auditar', 'validar', 'verificar', 'escalar', 'optimizar', 
+                    'automatizar', 'orquestar', 'securizar', 'distribuir', 'centralizar'
+                ]
+            },
+            advanced: {
+                // Tecnologías avanzadas
+                technologies: [
+                    'machine learning', 'ml', 'inteligencia artificial', 'ia', 'deep learning',
+                    'blockchain', 'iot', 'internet de las cosas', 'realidad virtual', 'vr',
+                    'realidad aumentada', 'ar', 'computer vision', 'visión artificial', 'nlp',
+                    'procesamiento de lenguaje natural', 'big data', 'data science', 'ciencia de datos',
+                    'seguridad', 'criptografía', 'computación cuántica', 'edge computing',
+                    'cloud computing', 'web3', 'nft', 'cripto', 'cryptocurrency'
+                ],
+                // Frameworks y herramientas avanzadas
+                frameworks: [
+                    'tensorflow', 'pytorch', 'keras', 'scikit-learn', 'pandas', 'numpy',
+                    'apache spark', 'hadoop', 'kubernetes', 'istio', 'openshift', 'hyperledger',
+                    'ethereum', 'jupyter', 'r', 'matlab', 'unity', 'unreal engine', 'opencv',
+                    'nltk', 'spacy', 'gpt', 'transformers', 'bert', 'llm'
+                ],
+                // Conceptos avanzados
+                concepts: [
+                    'algoritmo', 'red neuronal', 'análisis predictivo', 'clasificación',
+                    'clustering', 'regresión', 'series temporales', 'detección de anomalías',
+                    'reinforcement learning', 'aprendizaje supervisado', 'aprendizaje no supervisado',
+                    'tokenización', 'embeddings', 'contratos inteligentes', 'consenso',
+                    'hashing', 'encriptación', 'autenticación', 'autorización', 'federación'
+                ],
+                // Acciones avanzadas
+                actions: [
+                    'entrenar', 'predecir', 'clasificar', 'segmentar', 'generar', 'transformar',
+                    'analizar', 'visualizar', 'simular', 'detectar', 'reconocer', 'extraer',
+                    'automatizar', 'escalar', 'desplegar', 'monitorear', 'adaptar', 'integrar',
+                    'securizar', 'optimizar', 'personalizar', 'federar', 'distribuir'
+                ]
+            }
         };
         
-        // Calcular puntuación para cada agente
+        // Calcular puntuación para cada agente - Versión mejorada con ponderación por categoría
         const scores = {};
         const messageLower = message.toLowerCase();
         
+        // Pesos para diferentes categorías de keywords
+        const categoryWeights = {
+            languages: 2,     // Alto impacto para lenguajes específicos
+            concepts: 1.5,    // Impacto medio-alto para conceptos
+            frameworks: 1.8,  // Impacto alto para frameworks
+            technologies: 1.8,// Impacto alto para tecnologías
+            databases: 1.5,   // Impacto medio-alto para bases de datos
+            actions: 1.2      // Impacto medio para verbos/acciones
+        };
+        
+        // Pesos de frecuencia y posición
+        const frequencyMultiplier = 1.5; // Multiplicador por repeticiones
+        const positionBonus = 0.5;      // Bonus por aparición al principio del mensaje
+        
+        // Extracción de frases complejas antes de tokenización
+        let complexPatterns = [];
+        for (const agentId in keywordMapping) {
+            for (const category in keywordMapping[agentId]) {
+                const phrases = keywordMapping[agentId][category].filter(kw => kw.includes(' '));
+                complexPatterns = [...complexPatterns, ...phrases];
+            }
+        }
+        
+        // Detectar frases complejas primero
+        let complexMatches = {};
+        complexPatterns.forEach(phrase => {
+            if (messageLower.includes(phrase)) {
+                complexMatches[phrase] = (messageLower.match(new RegExp(phrase, 'g')) || []).length;
+            }
+        });
+        
+        // Inicializar puntuaciones
         for (const agentId in keywordMapping) {
             scores[agentId] = 0;
-            
-            // Contar palabras clave presentes
-            keywordMapping[agentId].forEach(keyword => {
-                if (messageLower.includes(keyword)) {
-                    scores[agentId] += 1;
+        }
+        
+        // Evaluar frases complejas encontradas
+        for (const phrase in complexMatches) {
+            for (const agentId in keywordMapping) {
+                for (const category in keywordMapping[agentId]) {
+                    if (keywordMapping[agentId][category].includes(phrase)) {
+                        // Otorgar puntos adicionales por frases complejas encontradas
+                        const weight = categoryWeights[category] || 1;
+                        const frequency = complexMatches[phrase];
+                        
+                        // Aplicar multiplicador por frecuencia
+                        let points = weight * (1 + (frequency - 1) * frequencyMultiplier);
+                        
+                        // Bonus por posición (si aparece en el primer 20% del mensaje)
+                        if (messageLower.indexOf(phrase) < messageLower.length * 0.2) {
+                            points += positionBonus;
+                        }
+                        
+                        scores[agentId] += points;
+                    }
                 }
-            });
-            
-            // Normalizar puntuación (0-100)
-            const maxPossible = keywordMapping[agentId].length * 0.3; // Factor de normalización
-            scores[agentId] = Math.min(100, Math.round((scores[agentId] / maxPossible) * 100));
+            }
+        }
+        
+        // Ahora procesar palabras individuales (evitando duplicación con frases ya contadas)
+        for (const agentId in keywordMapping) {
+            for (const category in keywordMapping[agentId]) {
+                // Filtrar solo keywords de una palabra
+                const keywords = keywordMapping[agentId][category].filter(kw => !kw.includes(' '));
+                
+                keywords.forEach(keyword => {
+                    // Buscar la palabra completa con límites de palabra
+                    const regex = new RegExp(`\\b${keyword}\\b`, 'gi');
+                    const matches = messageLower.match(regex);
+                    
+                    if (matches) {
+                        const count = matches.length;
+                        const weight = categoryWeights[category] || 1;
+                        
+                        // Aplicar multiplicador por frecuencia
+                        let points = weight * (1 + (count - 1) * 0.5);
+                        
+                        // Bonus por posición (si aparece en el primer 20% del mensaje)
+                        if (messageLower.indexOf(keyword) < messageLower.length * 0.2) {
+                            points += positionBonus;
+                        }
+                        
+                        scores[agentId] += points;
+                    }
+                });
+            }
+        }
+        
+        // Normalizar puntuación (0-100)
+        const maxScore = Math.max(...Object.values(scores), 0.1); // Evitar división por cero
+        
+        for (const agentId in scores) {
+            scores[agentId] = Math.min(100, Math.round((scores[agentId] / maxScore) * 100));
+        }
+        
+        // Contextualización adicional - check patterns related to file operations
+        if (/modifica|crea|edita|archivo|guardar|crear|fichero|file|documento/i.test(messageLower)) {
+            // Si el mensaje se refiere a operaciones de archivos, dar boost al developer
+            scores['developer'] = Math.min(100, scores['developer'] + 25);
         }
         
         // Encontrar el agente con mayor puntuación
@@ -133,12 +295,12 @@ window.multiAgentSystem = (function() {
             }
         }
         
-        // Si ningún agente alcanza un umbral mínimo, usar desarrollador como fallback
+        // Si ningún agente alcanza un umbral mínimo, usar avanzado como fallback
         if (highestScore < 20) {
             return {
-                agentId: 'developer',
-                confidence: 30, // Baja confianza
-                message: "No estoy seguro de qué agente es el más adecuado para esta tarea. Usaré el Agente de Desarrollo por defecto."
+                agentId: 'advanced',
+                confidence: 40, // Confianza media-baja
+                message: "No estoy seguro de qué agente es el más adecuado, activando el Agente Avanzado para esta tarea general."
             };
         }
         
@@ -445,7 +607,7 @@ window.multiAgentSystem = (function() {
         return recommendations.sort((a, b) => b.confidence - a.confidence);
     }
     
-    // Realizar una consulta colaborativa entre múltiples agentes
+    // Realizar una consulta colaborativa entre múltiples agentes - Versión mejorada
     function collaborativeQuery(query) {
         // Obtener recomendaciones
         const recommendations = getRecommendationsFromAgents(query);
@@ -454,15 +616,42 @@ window.multiAgentSystem = (function() {
         if (recommendations.length > 0 && recommendations[0].confidence > 80) {
             const topRecommendation = recommendations[0];
             
-            // Sugerir el cambio al usuario
+            // Cambiar automáticamente al agente más adecuado y notificar al usuario
+            activateAgent(topRecommendation.agentId, query);
+            
             if (window.app && window.app.chat && typeof window.app.chat.addSystemMessage === 'function') {
                 window.app.chat.addSystemMessage(
-                    `Sugerencia: El ${agents[topRecommendation.agentId].name} podría estar mejor equipado para ayudarte con esta consulta.`
+                    `Se ha activado el ${agents[topRecommendation.agentId].name} para ayudarte con esta consulta específica.`
                 );
+            }
+            
+            // Añadir contexto de la decisión para que el agente tenga más información
+            conversationContext.history.push({
+                role: 'system',
+                content: `Agente cambiado a ${agents[topRecommendation.agentId].name} debido a la naturaleza de la consulta. Confianza: ${topRecommendation.confidence}%`,
+                timestamp: new Date().toISOString()
+            });
+        } else if (recommendations.length > 1) {
+            // Si hay múltiples recomendaciones pero ninguna con confianza alta, consultar agentes secundarios
+            // para obtener perspectivas adicionales
+            const secondaryRecommendations = recommendations.slice(0, 2); // Tomar los 2 mejores agentes secundarios
+            
+            // Añadir una recomendación combinada de los agentes secundarios
+            let combinedPerspective = 'Perspectivas adicionales:';
+            for (const rec of secondaryRecommendations) {
+                if (rec.confidence > 30) { // Solo considerar agentes con alguna confianza
+                    combinedPerspective += `\n• ${agents[rec.agentId].name}: Este agente podría aportar conocimientos en ${agents[rec.agentId].capabilities[0]}.`;
+                }
+            }
+            
+            // Solo mostrar perspectivas si hay agentes secundarios relevantes
+            if (combinedPerspective !== 'Perspectivas adicionales:' && 
+                window.app && window.app.chat && typeof window.app.chat.addSystemMessage === 'function') {
+                window.app.chat.addSystemMessage(combinedPerspective);
             }
         }
         
-        // Proceder con el agente actual
+        // Proceder con el agente actual (o el recién activado)
         return sendMessageToAgent(query);
     }
     
