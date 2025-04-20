@@ -5,8 +5,10 @@ import logging
 import subprocess
 import shutil
 from pathlib import Path
+from datetime import datetime
 from flask import Flask, request, jsonify, render_template, session
 from flask_cors import CORS
+from flask_sqlalchemy import SQLAlchemy
 from dotenv import load_dotenv
 import openai
 import anthropic
@@ -20,6 +22,20 @@ logging.basicConfig(level=logging.DEBUG)
 # Initialize Flask app
 app = Flask(__name__)
 CORS(app)  # Enable CORS for all routes
+
+# Configure database
+app.config["SQLALCHEMY_DATABASE_URI"] = os.environ.get("DATABASE_URL")
+app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
+    "pool_recycle": 300,
+    "pool_pre_ping": True,
+}
+app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+
+# Set session secret
+app.secret_key = os.environ.get("SESSION_SECRET", os.urandom(24).hex())
+
+# Initialize SQLAlchemy
+db = SQLAlchemy(app)
 
 # Configure OpenAI
 openai_api_key = os.environ.get("OPENAI_API_KEY", "")
@@ -42,9 +58,6 @@ if anthropic_api_key:
 else:
     logging.warning("ANTHROPIC_API_KEY not found. Anthropic features will not work.")
 
-# Set session secret
-app.secret_key = os.environ.get("SESSION_SECRET", os.urandom(24).hex())
-
 # Create user workspace directories
 WORKSPACE_ROOT = Path("./user_workspaces")
 if not WORKSPACE_ROOT.exists():
@@ -58,6 +71,47 @@ def get_user_workspace(user_id="default"):
         # Create a README file in the workspace
         with open(workspace_path / "README.md", "w") as f:
             f.write("# Workspace\n\nEste es tu espacio de trabajo. Usa los comandos para crear y modificar archivos aquí.")
+    
+    # Track workspace in the database if possible
+    try:
+        from models import User, Workspace
+        
+        # Use a default user if no proper authentication is set up
+        default_user = db.session.query(User).filter_by(username="default_user").first()
+        if not default_user:
+            default_user = User(
+                username="default_user",
+                email="default@example.com",
+            )
+            default_user.set_password("default_password")
+            db.session.add(default_user)
+            db.session.commit()
+        
+        # Check if workspace exists in database
+        workspace = db.session.query(Workspace).filter_by(
+            user_id=default_user.id,
+            name=user_id
+        ).first()
+        
+        if not workspace:
+            # Create a new workspace record
+            workspace = Workspace(
+                name=user_id,
+                path=str(workspace_path),
+                user_id=default_user.id,
+                is_default=True,
+                last_accessed=datetime.utcnow()
+            )
+            db.session.add(workspace)
+            db.session.commit()
+        else:
+            # Update the last accessed time
+            workspace.last_accessed = datetime.utcnow()
+            db.session.commit()
+            
+    except Exception as e:
+        logging.error(f"Error tracking workspace in database: {str(e)}")
+    
     return workspace_path
 
 @app.route('/')
@@ -129,6 +183,8 @@ def execute_command():
     try:
         data = request.json
         command = data.get('command', '')
+        model_used = data.get('model', 'openai')
+        instruction = data.get('instruction', '')
         
         if not command:
             return jsonify({'error': 'No command provided'}), 400
@@ -147,6 +203,26 @@ def execute_command():
             text=True
         )
         stdout, stderr = process.communicate()
+        
+        # Store command in database
+        try:
+            from models import User, Command
+            
+            default_user = db.session.query(User).filter_by(username="default_user").first()
+            if default_user:
+                # Create command history entry
+                cmd = Command(
+                    instruction=instruction,
+                    generated_command=command,
+                    output=stdout + ("\n" + stderr if stderr else ""),
+                    status=process.returncode,
+                    model_used=model_used,
+                    user_id=default_user.id
+                )
+                db.session.add(cmd)
+                db.session.commit()
+        except Exception as e:
+            logging.error(f"Error storing command in database: {str(e)}")
         
         result = {
             'stdout': stdout,
