@@ -122,6 +122,11 @@ document.addEventListener('DOMContentLoaded', function() {
             const selectedModel = modelSelect ? modelSelect.value : 'openai';
             
             // Process the instruction through the Flask backend
+            // Mostrar indicador de progreso
+            this.elements.executeBtn.disabled = true;
+            this.elements.executeBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Procesando...';
+            
+            // Procesar la instrucción
             fetch('/api/process_instructions', {
                 method: 'POST',
                 headers: {
@@ -146,6 +151,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 
                 const command = data.command;
                 this.elements.commandDisplay.textContent = command;
+                
+                // Mostrar un mensaje de éxito
+                if (window.fileActions && typeof window.fileActions.showNotification === 'function') {
+                    window.fileActions.showNotification('Comando generado correctamente', 'success');
                 
                 // Execute the command
                 return fetch('/api/execute_command', {

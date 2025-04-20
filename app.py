@@ -223,29 +223,45 @@ def process_instructions():
         
         # Use selected model to generate command
         if model_choice == 'openai':
-            # Intentar usar OpenAI, pero caer en lógica de respaldo si falla
-            try:
-                if not openai_client:
-                    raise Exception("OpenAI API key not configured")
-                
-                # Use OpenAI to generate terminal command
-                response = openai_client.chat.completions.create(
-                    model="gpt-4o",  # the newest OpenAI model is "gpt-4o" which was released May 13, 2024.
-                    messages=[
-                        {"role": "system", "content": "You are a helpful assistant that converts natural language instructions into terminal commands. Only output the exact command without explanations."},
-                        {"role": "user", "content": f"Convert this instruction to a terminal command: {user_input}"}
-                    ],
-                    max_tokens=100
-                )
-                
-                terminal_command = response.choices[0].message.content.strip()
-            except Exception as e:
-                logging.warning(f"OpenAI failed, using fallback: {str(e)}")
-                # Lógica simple para comandos básicos
-                if "crear" in user_input.lower() and "carpeta" in user_input.lower():
-                    folder_name = user_input.lower().split("carpeta")[-1].strip()
-                    terminal_command = f"mkdir -p {folder_name}"
+            # Implementamos lógica simple para comando comunes primero
+            # Esto evita tener que llamar a la API para tareas simples
+            if "listar" in user_input.lower() or "mostrar archivos" in user_input.lower():
+                terminal_command = "ls -la"
+            elif "crear" in user_input.lower() and "carpeta" in user_input.lower():
+                folder_name = user_input.lower().split("carpeta")[-1].strip()
+                terminal_command = f"mkdir -p {folder_name}"
+            elif "crear" in user_input.lower() and "archivo" in user_input.lower():
+                parts = user_input.lower().split("archivo")
+                if len(parts) > 1:
+                    file_name = parts[-1].strip()
+                    terminal_command = f"touch {file_name}"
                 else:
+                    terminal_command = "touch nuevo_archivo.txt"
+            elif "mostrar" in user_input.lower() and ("contenido" in user_input.lower() or "cat" in user_input.lower()):
+                parts = user_input.lower().replace("mostrar", "").replace("contenido", "").replace("del", "").replace("de", "").strip()
+                terminal_command = f"cat {parts}"
+            elif "hola" in user_input.lower() or "saludar" in user_input.lower():
+                terminal_command = "echo '¡Hola! ¿En qué puedo ayudarte hoy?'"
+            else:
+                # Solo intentamos llamar a OpenAI si no es un comando simple
+                try:
+                    if not openai_client:
+                        raise Exception("OpenAI API key not configured")
+                    
+                    # Use OpenAI to generate terminal command
+                    response = openai_client.chat.completions.create(
+                        model="gpt-4o",  # the newest OpenAI model is "gpt-4o" which was released May 13, 2024.
+                        messages=[
+                            {"role": "system", "content": "You are a helpful assistant that converts natural language instructions into terminal commands. Only output the exact command without explanations."},
+                            {"role": "user", "content": f"Convert this instruction to a terminal command: {user_input}"}
+                        ],
+                        max_tokens=100
+                    )
+                    
+                    terminal_command = response.choices[0].message.content.strip()
+                except Exception as e:
+                    logging.warning(f"OpenAI failed, using fallback: {str(e)}")
+                    # Si falla OpenAI, usamos un comando genérico
                     terminal_command = "echo 'No se pudo contactar a OpenAI API'"
             
         elif model_choice == 'anthropic':

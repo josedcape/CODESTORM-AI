@@ -4,6 +4,13 @@
 // Define fileActions object in the global scope
 window.fileActions = {};
 
+// Definimos esta función a nivel global por compatibilidad
+function addFileActionButtons() {
+    if (window.fileActions && typeof window.fileActions.addFileActionButtons === 'function') {
+        window.fileActions.addFileActionButtons();
+    }
+}
+
 document.addEventListener('DOMContentLoaded', function() {
     // Add file action buttons to the file explorer
     window.fileActions.addFileActionButtons = function() {
