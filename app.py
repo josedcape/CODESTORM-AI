@@ -3,7 +3,9 @@ import os
 import json
 import logging
 import subprocess
-from flask import Flask, request, jsonify, render_template
+import shutil
+from pathlib import Path
+from flask import Flask, request, jsonify, render_template, session
 from flask_cors import CORS
 from dotenv import load_dotenv
 import openai
@@ -42,6 +44,21 @@ else:
 
 # Set session secret
 app.secret_key = os.environ.get("SESSION_SECRET", os.urandom(24).hex())
+
+# Create user workspace directories
+WORKSPACE_ROOT = Path("./user_workspaces")
+if not WORKSPACE_ROOT.exists():
+    WORKSPACE_ROOT.mkdir(parents=True)
+
+def get_user_workspace(user_id="default"):
+    """Get or create a workspace directory for the user."""
+    workspace_path = WORKSPACE_ROOT / user_id
+    if not workspace_path.exists():
+        workspace_path.mkdir(parents=True)
+        # Create a README file in the workspace
+        with open(workspace_path / "README.md", "w") as f:
+            f.write("# Workspace\n\nEste es tu espacio de trabajo. Usa los comandos para crear y modificar archivos aquí.")
+    return workspace_path
 
 @app.route('/')
 def index():
@@ -116,10 +133,15 @@ def execute_command():
         if not command:
             return jsonify({'error': 'No command provided'}), 400
         
-        # Execute the command
+        # Get the user workspace
+        user_id = session.get('user_id', 'default')
+        workspace_path = get_user_workspace(user_id)
+        
+        # Execute the command in the user's workspace
         process = subprocess.Popen(
             command,
             shell=True,
+            cwd=str(workspace_path),  # Set working directory to user workspace
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             text=True
@@ -129,7 +151,8 @@ def execute_command():
         result = {
             'stdout': stdout,
             'stderr': stderr,
-            'exitCode': process.returncode
+            'exitCode': process.returncode,
+            'workspace': str(workspace_path.relative_to(WORKSPACE_ROOT.parent))
         }
         
         logging.debug(f"Command execution result: {result}")
@@ -143,43 +166,88 @@ def list_files():
     """List files in the specified directory."""
     try:
         data = request.json
-        directory = data.get('directory', '.')
+        relative_directory = data.get('directory', '.')
         
-        # Execute ls command to list files
-        process = subprocess.Popen(
-            f"ls -la {directory}",
-            shell=True,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=True
-        )
-        stdout, stderr = process.communicate()
+        # Get the user workspace
+        user_id = session.get('user_id', 'default')
+        workspace_path = get_user_workspace(user_id)
         
-        if process.returncode != 0:
-            return jsonify({'error': stderr}), 400
-            
-        # Parse the output to get file list
-        lines = stdout.strip().split('\n')
+        # Determine the target directory
+        if relative_directory == '.':
+            target_dir = workspace_path
+        else:
+            # Make sure we don't escape the workspace
+            requested_path = (workspace_path / relative_directory).resolve()
+            if not str(requested_path).startswith(str(workspace_path.resolve())):
+                return jsonify({'error': 'Access denied: Cannot navigate outside workspace'}), 403
+            target_dir = requested_path
+        
+        # List files using Path
         files = []
         
-        # Skip the first line which contains the total count
-        for line in lines[1:]:
-            parts = line.split()
-            if len(parts) >= 9:
-                file_type = 'directory' if parts[0].startswith('d') else 'file'
-                file_name = ' '.join(parts[8:])
+        try:
+            # Add parent directory entry if not in root workspace
+            if target_dir != workspace_path:
                 files.append({
-                    'name': file_name,
-                    'type': file_type,
-                    'permissions': parts[0],
-                    'size': parts[4],
-                    'modified': f"{parts[5]} {parts[6]} {parts[7]}"
+                    'name': '..',
+                    'type': 'directory',
+                    'permissions': 'drwxr-xr-x',
+                    'size': '0',
+                    'modified': ''
                 })
+            
+            # List all files and directories in the target directory
+            for item in target_dir.iterdir():
+                try:
+                    stat = item.stat()
+                    file_type = 'directory' if item.is_dir() else 'file'
+                    permissions = 'drwxr-xr-x' if file_type == 'directory' else '-rw-r--r--'
+                    
+                    # Skip hidden files
+                    if item.name.startswith('.') and item.name not in ['.', '..']:
+                        continue
+                        
+                    files.append({
+                        'name': item.name,
+                        'type': file_type,
+                        'permissions': permissions,
+                        'size': str(stat.st_size),
+                        'modified': '' # Could format time here if needed
+                    })
+                except Exception as e:
+                    logging.warning(f"Error accessing file {item}: {str(e)}")
+                    
+            # Sort files - directories first, then alphabetically
+            files.sort(key=lambda x: (0 if x['type'] == 'directory' else 1, x['name']))
+            
+        except PermissionError:
+            return jsonify({'error': 'Permission denied'}), 403
+        except FileNotFoundError:
+            return jsonify({'error': 'Directory not found'}), 404
         
-        return jsonify({'files': files})
+        # Return the relative path for display in UI
+        display_path = os.path.relpath(target_dir, workspace_path)
+        if display_path == '.':
+            display_path = '/'
+        
+        return jsonify({
+            'files': files,
+            'current_dir': display_path
+        })
     except Exception as e:
         logging.error(f"Error listing files: {str(e)}")
         return jsonify({'error': str(e)}), 500
+        
+@app.route('/api/session', methods=['GET'])
+def get_session():
+    """Get the current session info or create a new one."""
+    if 'user_id' not in session:
+        session['user_id'] = 'user_' + os.urandom(4).hex()
+    
+    return jsonify({
+        'user_id': session['user_id'],
+        'workspace': str(get_user_workspace(session['user_id']).name)
+    })
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)

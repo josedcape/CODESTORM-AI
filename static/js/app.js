@@ -3,9 +3,11 @@
 document.addEventListener('DOMContentLoaded', function() {
     // Initialize app
     const app = {
-        currentDirectory: '.',
+        currentDirectory: '/',
         commandHistory: [],
         historyIndex: -1,
+        userId: null,
+        workspace: null,
         
         // DOM elements
         elements: {
@@ -19,13 +21,34 @@ document.addEventListener('DOMContentLoaded', function() {
             clearBtn: document.getElementById('clear-btn'),
             refreshBtn: document.getElementById('refresh-btn'),
             previousBtn: document.getElementById('previous-btn'),
-            nextBtn: document.getElementById('next-btn')
+            nextBtn: document.getElementById('next-btn'),
+            workspaceInfo: document.getElementById('workspace-info')
         },
         
         init: function() {
+            this.initSession();
             this.bindEvents();
-            this.updateFileExplorer();
             this.checkServerStatus();
+        },
+        
+        initSession: function() {
+            // Get session info or initialize a new one
+            fetch('/api/session')
+                .then(response => response.json())
+                .then(data => {
+                    this.userId = data.user_id;
+                    this.workspace = data.workspace;
+                    
+                    if (this.elements.workspaceInfo) {
+                        this.elements.workspaceInfo.textContent = `Workspace: ${this.workspace}`;
+                    }
+                    
+                    // Update file explorer after session initialization
+                    this.updateFileExplorer();
+                })
+                .catch(error => {
+                    console.error('Error initializing session:', error);
+                });
         },
         
         bindEvents: function() {
@@ -176,6 +199,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (data.error) {
                     this.displayFileExplorerError(data.error);
                     return;
+                }
+                
+                // Update current directory display
+                if (data.current_dir) {
+                    this.currentDirectory = data.current_dir;
                 }
                 
                 this.elements.directoryPath.textContent = this.currentDirectory;
