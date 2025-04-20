@@ -1,0 +1,521 @@
+/* Estilos futuristas para CODESTORM */
+
+:root {
+  --primary-blue: #0062cc;
+  --dark-blue: #081b29;
+  --darker-blue: #050f18;
+  --gold: #ffd700;
+  --silver: #c0c0c0;
+  --accent-color: #00a2ff;
+  --text-light: #e0e0e0;
+  --text-dark: #121212;
+  --glow-color: rgba(0, 162, 255, 0.5);
+  --glow-strong: rgba(0, 162, 255, 0.8);
+}
+
+body {
+  background-color: var(--dark-blue);
+  color: var(--text-light);
+  font-family: 'Sora', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+/* Encabezado futurista */
+.navbar-futuristic {
+  background: linear-gradient(90deg, var(--darker-blue) 0%, var(--dark-blue) 100%);
+  border-bottom: 1px solid var(--accent-color);
+  box-shadow: 0 2px 15px var(--glow-color);
+  padding: 0.5rem 1rem;
+}
+
+.navbar-brand {
+  font-weight: 700;
+  background: linear-gradient(to right, var(--gold), #fff8e0);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  text-shadow: 0 0 10px rgba(255, 215, 0, 0.3);
+  letter-spacing: 1px;
+  display: flex;
+  align-items: center;
+  transition: all 0.3s ease;
+}
+
+.navbar-brand:hover {
+  text-shadow: 0 0 15px rgba(255, 215, 0, 0.6);
+  transform: scale(1.02);
+}
+
+.navbar-brand i {
+  margin-right: 10px;
+  color: var(--gold);
+  text-shadow: 0 0 8px rgba(255, 215, 0, 0.5);
+}
+
+/* Navegación */
+.nav-link {
+  color: var(--text-light) !important;
+  font-weight: 500;
+  position: relative;
+  margin: 0 10px;
+  padding: 8px 16px !important;
+  transition: all 0.3s ease;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.nav-link::before {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 0;
+  height: 2px;
+  background-color: var(--accent-color);
+  transition: width 0.3s ease;
+}
+
+.nav-link:hover::before {
+  width: 100%;
+}
+
+.nav-link.active {
+  background-color: rgba(0, 162, 255, 0.2);
+  border: 1px solid var(--accent-color);
+  box-shadow: 0 0 10px var(--glow-color);
+}
+
+.nav-link.active::before {
+  width: 100%;
+}
+
+/* Tarjetas con bordes futuristas */
+.card-futuristic {
+  background-color: rgba(8, 27, 41, 0.7);
+  border: 1px solid var(--silver);
+  box-shadow: 0 0 15px var(--glow-color);
+  border-radius: 8px;
+  overflow: hidden;
+  transition: all 0.3s ease;
+}
+
+.card-futuristic:hover {
+  box-shadow: 0 0 25px var(--glow-strong);
+  transform: translateY(-5px);
+}
+
+.card-header-futuristic {
+  background: linear-gradient(90deg, rgba(0, 98, 204, 0.8) 0%, rgba(8, 27, 41, 0.9) 100%);
+  border-bottom: 1px solid var(--silver);
+  padding: 15px 20px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  color: var(--text-light);
+}
+
+/* Botones futuristas */
+.btn-futuristic {
+  background: linear-gradient(45deg, var(--primary-blue), var(--accent-color));
+  border: 1px solid var(--silver);
+  color: white;
+  font-weight: 600;
+  padding: 8px 20px;
+  border-radius: 4px;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+  z-index: 1;
+}
+
+.btn-futuristic::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.2), transparent);
+  transition: all 0.5s ease;
+  z-index: -1;
+}
+
+.btn-futuristic:hover::before {
+  left: 100%;
+}
+
+.btn-futuristic:hover {
+  box-shadow: 0 0 15px var(--glow-color);
+  transform: translateY(-2px);
+}
+
+/* Formularios con estilo futurista */
+.form-control-futuristic {
+  background-color: rgba(8, 27, 41, 0.5);
+  border: 1px solid var(--silver);
+  color: var(--text-light);
+  border-radius: 4px;
+  padding: 10px 15px;
+  transition: all 0.3s ease;
+}
+
+.form-control-futuristic:focus {
+  background-color: rgba(8, 27, 41, 0.7);
+  border-color: var(--accent-color);
+  box-shadow: 0 0 15px var(--glow-color);
+  outline: none;
+}
+
+/* Selector futurista */
+.select-futuristic {
+  background-color: rgba(8, 27, 41, 0.5);
+  border: 1px solid var(--silver);
+  color: var(--text-light);
+  border-radius: 4px;
+  padding: 10px 15px;
+  transition: all 0.3s ease;
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='%23c0c0c0' viewBox='0 0 16 16'%3E%3Cpath d='M7.247 11.14 2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  background-size: 12px;
+  padding-right: 40px;
+}
+
+.select-futuristic:focus {
+  background-color: rgba(8, 27, 41, 0.7);
+  border-color: var(--accent-color);
+  box-shadow: 0 0 15px var(--glow-color);
+  outline: none;
+}
+
+/* Contenedor de chat mejorado */
+.chat-container-futuristic {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  border-radius: 8px;
+  overflow: hidden;
+  background-color: rgba(8, 27, 41, 0.5);
+  border: 1px solid var(--silver);
+  box-shadow: 0 0 20px var(--glow-color);
+}
+
+.chat-header-futuristic {
+  padding: 15px 20px;
+  background: linear-gradient(90deg, rgba(0, 98, 204, 0.8) 0%, rgba(8, 27, 41, 0.9) 100%);
+  border-bottom: 1px solid var(--silver);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.chat-messages-futuristic {
+  flex-grow: 1;
+  overflow-y: auto;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  background-color: rgba(5, 15, 24, 0.7);
+}
+
+/* Mensaje del usuario con estilo futurista */
+.chat-message-user-futuristic {
+  align-self: flex-end;
+  background: linear-gradient(135deg, var(--primary-blue), var(--accent-color));
+  color: white;
+  border-radius: 18px 18px 4px 18px;
+  box-shadow: 0 3px 10px rgba(0, 162, 255, 0.3);
+  max-width: 85%;
+  padding: 12px 16px;
+  margin-bottom: 12px;
+  animation: fadeInRight 0.3s ease;
+}
+
+/* Mensaje del agente con estilo futurista */
+.chat-message-agent-futuristic {
+  align-self: flex-start;
+  background: rgba(12, 41, 62, 0.7);
+  color: var(--text-light);
+  border-radius: 18px 18px 18px 4px;
+  border-left: 3px solid var(--gold);
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.3);
+  max-width: 85%;
+  padding: 12px 16px;
+  margin-bottom: 12px;
+  animation: fadeInLeft 0.3s ease;
+}
+
+/* Formulario de chat futurista */
+.chat-form-futuristic {
+  display: flex;
+  padding: 15px;
+  background: linear-gradient(0deg, rgba(8, 27, 41, 0.9) 0%, rgba(5, 15, 24, 0.7) 100%);
+  border-top: 1px solid var(--silver);
+}
+
+.chat-input-futuristic {
+  flex-grow: 1;
+  border: 1px solid var(--silver);
+  background-color: rgba(8, 27, 41, 0.5);
+  color: var(--text-light);
+  padding: 12px 15px;
+  border-radius: 20px;
+  resize: none;
+  transition: all 0.3s ease;
+}
+
+.chat-input-futuristic:focus {
+  border-color: var(--accent-color);
+  box-shadow: 0 0 15px var(--glow-color);
+  outline: none;
+}
+
+.send-button-futuristic {
+  background: linear-gradient(45deg, var(--primary-blue), var(--accent-color));
+  color: white;
+  border: none;
+  border-radius: 50%;
+  margin-left: 10px;
+  width: 50px;
+  height: 50px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 0 10px var(--glow-color);
+}
+
+.send-button-futuristic:hover {
+  transform: scale(1.05);
+  box-shadow: 0 0 20px var(--glow-strong);
+}
+
+/* Animaciones para elementos interactivos */
+@keyframes fadeInLeft {
+  from {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes fadeInRight {
+  from {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes pulse {
+  0% {
+    box-shadow: 0 0 0 0 var(--glow-color);
+  }
+  70% {
+    box-shadow: 0 0 0 10px rgba(0, 162, 255, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(0, 162, 255, 0);
+  }
+}
+
+/* Animación de carga futurista */
+.loading-indicator-futuristic {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 15px;
+}
+
+.loading-ring {
+  display: inline-block;
+  width: 40px;
+  height: 40px;
+  position: relative;
+}
+
+.loading-ring:after {
+  content: '';
+  display: block;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 3px solid var(--accent-color);
+  border-color: var(--accent-color) transparent var(--accent-color) transparent;
+  animation: loading-ring 1.2s linear infinite;
+}
+
+@keyframes loading-ring {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+/* Estilos para previsualización */
+.preview-container {
+  position: relative;
+  border: 1px solid var(--silver);
+  border-radius: 8px;
+  overflow: hidden;
+  margin-top: 20px;
+  background-color: rgba(5, 15, 24, 0.7);
+  transition: all 0.3s ease;
+  height: 400px;
+}
+
+.preview-container:hover {
+  box-shadow: 0 0 20px var(--glow-color);
+}
+
+.preview-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 15px;
+  background: linear-gradient(90deg, rgba(0, 98, 204, 0.8) 0%, rgba(8, 27, 41, 0.9) 100%);
+  border-bottom: 1px solid var(--silver);
+}
+
+.preview-controls {
+  display: flex;
+  gap: 5px;
+}
+
+.preview-controls .control-btn {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+.control-close {
+  background-color: #ff5f56;
+}
+
+.control-minimize {
+  background-color: #ffbd2e;
+}
+
+.control-expand {
+  background-color: #27c93f;
+}
+
+.preview-iframe {
+  width: 100%;
+  height: calc(100% - 40px);
+  border: none;
+  background-color: white;
+}
+
+.device-toggle-buttons {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 15px;
+}
+
+.device-toggle-btn {
+  background-color: rgba(8, 27, 41, 0.5);
+  border: 1px solid var(--silver);
+  color: var(--text-light);
+  padding: 5px 15px;
+  margin: 0 5px;
+  border-radius: 20px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.device-toggle-btn.active {
+  background-color: var(--primary-blue);
+  color: white;
+  box-shadow: 0 0 10px var(--glow-color);
+}
+
+.device-toggle-btn:hover {
+  background-color: rgba(0, 98, 204, 0.3);
+}
+
+/* Adaptaciones para móvil */
+@media (max-width: 768px) {
+  .card-futuristic {
+    margin-bottom: 20px;
+  }
+  
+  .chat-message-user-futuristic,
+  .chat-message-agent-futuristic {
+    max-width: 90%;
+  }
+  
+  .preview-container {
+    height: 300px;
+  }
+}
+
+/* Estilos para código con resaltado de sintaxis */
+.code-block {
+  background-color: rgba(5, 15, 24, 0.9);
+  border: 1px solid var(--silver);
+  border-radius: 5px;
+  padding: 15px;
+  margin: 15px 0;
+  position: relative;
+  font-family: 'JetBrains Mono', 'Courier New', monospace;
+}
+
+.code-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 5px 10px;
+  background-color: rgba(0, 98, 204, 0.3);
+  border-bottom: 1px solid var(--silver);
+  border-radius: 5px 5px 0 0;
+  font-size: 0.85rem;
+}
+
+.code-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.code-action-btn {
+  background: none;
+  border: none;
+  color: var(--silver);
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.code-action-btn:hover {
+  color: var(--text-light);
+  transform: scale(1.1);
+}
+
+/* Barra de scroll personalizada */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(5, 15, 24, 0.7);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--primary-blue);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--accent-color);
+}

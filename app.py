@@ -396,6 +396,32 @@ def process_instructions():
         logging.error(f"Error processing instructions: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
+@app.route('/preview', methods=['GET'])
+def preview():
+    """Render the preview page."""
+    return render_template('preview.html')
+
+@app.route('/api/preview', methods=['POST'])
+def generate_preview():
+    """Generate a preview of HTML content."""
+    try:
+        data = request.json
+        html_content = data.get('html', '')
+        
+        if not html_content:
+            return jsonify({'error': 'No HTML content provided'}), 400
+            
+        # TODO: Mejorar esta función para validar y sanitizar el HTML
+        
+        # Devolver el HTML para previsualización
+        return jsonify({
+            'success': True,
+            'html': html_content
+        })
+    except Exception as e:
+        logging.error(f"Error generating preview: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
 @app.route('/api/execute_command', methods=['POST'])
 def execute_command():
     """Execute a terminal command and return the output."""

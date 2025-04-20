@@ -11,16 +11,25 @@
     <!-- Bootstrap Icons -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
     
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    
     <!-- Highlight.js para resaltado de sintaxis -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+    <!-- Lenguajes adicionales para highlight.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/python.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/javascript.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/html.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/css.min.js"></script>
     
     <!-- CSS Personalizado -->
     <link href="{{ url_for('static', filename='css/styles.css') }}" rel="stylesheet">
     <link href="{{ url_for('static', filename='css/chat.css') }}" rel="stylesheet">
+    <link href="{{ url_for('static', filename='css/futuristic.css') }}" rel="stylesheet">
 </head>
 <body>
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+    <nav class="navbar navbar-expand-lg navbar-futuristic">
         <div class="container-fluid">
             <a class="navbar-brand" href="/">
                 <i class="bi bi-terminal"></i>
@@ -52,18 +61,18 @@
         </div>
     </nav>
 
-    <div class="container-fluid mt-3">
+    <div class="container-fluid mt-4">
         <div class="row">
             <!-- Panel de Configuración de Agentes -->
-            <div class="col-md-3">
-                <div class="card h-100">
-                    <div class="card-header">
-                        <span>Configuración de Agentes</span>
+            <div class="col-lg-3 col-md-4">
+                <div class="card card-futuristic h-100 mb-4">
+                    <div class="card-header card-header-futuristic">
+                        <span><i class="bi bi-cpu me-2"></i>Configuración de Agentes</span>
                     </div>
                     <div class="card-body">
                         <div class="mb-3">
                             <label for="model-select" class="form-label">Seleccionar Modelo de IA:</label>
-                            <select id="model-select" class="form-select">
+                            <select id="model-select" class="form-select select-futuristic">
                                 <option value="openai" selected>OpenAI (GPT-4o)</option>
                                 <option value="anthropic">Anthropic (Claude)</option>
                                 <option value="gemini">Google (Gemini)</option>
@@ -71,7 +80,7 @@
                         </div>
                         <div class="mb-3">
                             <label for="agent-selector" class="form-label">Seleccionar Agente:</label>
-                            <select id="agent-selector" class="form-select"></select>
+                            <select id="agent-selector" class="form-select select-futuristic"></select>
                         </div>
                         <div class="agent-info mb-3">
                             <div class="agent-avatar">
@@ -96,28 +105,74 @@
                 </div>
             </div>
             
-            <!-- Panel de Chat -->
-            <div class="col-md-9">
-                <div class="card h-100">
-                    <div class="card-header d-flex justify-content-between align-items-center">
-                        <span>Chat con Agente Especializado</span>
-                    </div>
-                    <div class="card-body p-0 d-flex flex-column" style="height: calc(100vh - 180px);">
-                        <div id="chat-container" class="chat-container">
-                            <div id="chat-messages" class="chat-messages">
-                                <!-- Los mensajes se mostrarán aquí -->
-                                <div class="chat-message system-message">
-                                    <div class="message-content">
-                                        <p>¡Bienvenido al chat especializado de CODESTORM! Estás hablando con el <strong>Agente de Desarrollo</strong>, un experto en optimización y edición de código en tiempo real.</p>
+            <!-- Contenido principal -->
+            <div class="col-lg-9 col-md-8">
+                <div class="row">
+                    <!-- Panel de Chat -->
+                    <div class="col-12 mb-4">
+                        <div class="card card-futuristic h-100">
+                            <div class="card-header card-header-futuristic d-flex justify-content-between align-items-center">
+                                <span><i class="bi bi-chat-dots me-2"></i>Chat con Agente Especializado</span>
+                            </div>
+                            <div class="card-body p-0 d-flex flex-column" style="height: calc(100vh - 350px);">
+                                <div id="chat-container" class="chat-container-futuristic">
+                                    <div id="chat-messages" class="chat-messages-futuristic">
+                                        <!-- Los mensajes se mostrarán aquí -->
+                                        <div class="chat-message system-message">
+                                            <div class="message-content">
+                                                <p>¡Bienvenido al chat especializado de CODESTORM! Estás hablando con el <strong>Agente de Desarrollo</strong>, un experto en optimización y edición de código en tiempo real.</p>
+                                            </div>
+                                        </div>
                                     </div>
+                                    <form id="chat-form" class="chat-form-futuristic">
+                                        <textarea id="chat-input" class="chat-input-futuristic" placeholder="Escribe tu mensaje aquí... Por ejemplo: 'Crea una página de ventas para productos tecnológicos'" rows="1"></textarea>
+                                        <button type="submit" class="send-button-futuristic">
+                                            <i class="bi bi-send"></i>
+                                        </button>
+                                    </form>
                                 </div>
                             </div>
-                            <form id="chat-form" class="chat-form">
-                                <textarea id="chat-input" class="chat-input" placeholder="Escribe tu mensaje aquí..." rows="1"></textarea>
-                                <button type="submit" class="send-button">
-                                    <i class="bi bi-send"></i>
-                                </button>
-                            </form>
+                        </div>
+                    </div>
+                    
+                    <!-- Previsualización -->
+                    <div class="col-12" id="preview-section" style="display: none;">
+                        <div class="card card-futuristic">
+                            <div class="card-header card-header-futuristic d-flex justify-content-between align-items-center">
+                                <span><i class="bi bi-window me-2"></i>Previsualización</span>
+                                <div>
+                                    <button id="toggle-preview" class="btn btn-sm btn-futuristic">
+                                        <i class="bi bi-x-lg"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="card-body p-0">
+                                <div class="device-toggle-buttons py-2">
+                                    <button class="device-toggle-btn active" data-device="desktop">
+                                        <i class="bi bi-laptop"></i> Escritorio
+                                    </button>
+                                    <button class="device-toggle-btn" data-device="tablet">
+                                        <i class="bi bi-tablet"></i> Tablet
+                                    </button>
+                                    <button class="device-toggle-btn" data-device="mobile">
+                                        <i class="bi bi-phone"></i> Móvil
+                                    </button>
+                                </div>
+                                
+                                <div class="preview-container" id="preview-container">
+                                    <div class="preview-header">
+                                        <div class="preview-controls">
+                                            <div class="control-btn control-close"></div>
+                                            <div class="control-btn control-minimize"></div>
+                                            <div class="control-btn control-expand"></div>
+                                        </div>
+                                        <div class="preview-url">
+                                            <span>preview.html</span>
+                                        </div>
+                                    </div>
+                                    <iframe id="preview-iframe" class="preview-iframe" title="Previsualización"></iframe>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -125,9 +180,9 @@
         </div>
     </div>
 
-    <footer class="footer mt-4 py-3 bg-dark">
+    <footer class="footer mt-4 py-3" style="background: linear-gradient(90deg, var(--darker-blue) 0%, var(--dark-blue) 100%);">
         <div class="container text-center">
-            <span class="text-muted">CODESTORM-Assistant © 2025 | Herramienta de Desarrollo Impulsada por IA</span>
+            <span class="text-light">CODESTORM-Assistant © 2025 | Herramienta de Desarrollo Impulsada por IA</span>
         </div>
     </footer>
 
@@ -136,6 +191,8 @@
 
     <!-- JavaScript -->
     <script src="https://cdn.socket.io/4.6.1/socket.io.min.js"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
     <script src="{{ url_for('static', filename='js/websocket.js') }}"></script>
     <script src="{{ url_for('static', filename='js/chat/agents.js') }}"></script>
     <script src="{{ url_for('static', filename='js/chat/chat.js') }}"></script>
@@ -146,6 +203,95 @@
                 window.app.chat.initialize();
                 window.app.chat.setActiveAgent('developer'); // Establecer agente por defecto
             }
+            
+            // Funcionalidades para previsualización
+            const previewSection = document.getElementById('preview-section');
+            const previewContainer = document.getElementById('preview-container');
+            const previewIframe = document.getElementById('preview-iframe');
+            const togglePreviewBtn = document.getElementById('toggle-preview');
+            const deviceButtons = document.querySelectorAll('.device-toggle-btn');
+            
+            // Mostrar/ocultar previsualización
+            togglePreviewBtn.addEventListener('click', function() {
+                previewSection.style.display = 'none';
+            });
+            
+            // Cambiar tamaño según dispositivo
+            deviceButtons.forEach(button => {
+                button.addEventListener('click', function() {
+                    // Quitar clase activa de todos los botones
+                    deviceButtons.forEach(btn => btn.classList.remove('active'));
+                    // Agregar clase activa al botón seleccionado
+                    this.classList.add('active');
+                    
+                    const device = this.getAttribute('data-device');
+                    
+                    switch(device) {
+                        case 'desktop':
+                            previewContainer.style.width = '100%';
+                            break;
+                        case 'tablet':
+                            previewContainer.style.width = '768px';
+                            break;
+                        case 'mobile':
+                            previewContainer.style.width = '375px';
+                            break;
+                    }
+                });
+            });
+            
+            // Función para mostrar previsualización
+            window.showPreview = function(htmlContent) {
+                // Mostrar sección de previsualización
+                previewSection.style.display = 'block';
+                
+                // Cargar contenido en el iframe
+                const iframe = previewIframe;
+                const iframeDocument = iframe.contentDocument || iframe.contentWindow.document;
+                
+                iframeDocument.open();
+                iframeDocument.write(htmlContent);
+                iframeDocument.close();
+                
+                // Hacer scroll a la previsualización
+                previewSection.scrollIntoView({ behavior: 'smooth' });
+            };
+            
+            // Extender la función de chat para reconocer comandos de creación
+            window.app.chat.handleCreationRequest = function(message) {
+                const lowerMsg = message.toLowerCase();
+                if (lowerMsg.includes('crea una página') || lowerMsg.includes('crear página') || 
+                    lowerMsg.includes('genera una página') || lowerMsg.includes('generar página')) {
+                    
+                    // Preguntar por detalles específicos si el mensaje es general
+                    if (!lowerMsg.includes('para') || message.length < 30) {
+                        const questions = [
+                            "¿Para qué tipo de producto o servicio necesitas la página?",
+                            "¿Puedes proporcionar detalles específicos sobre el contenido que deseas incluir?",
+                            "¿Tienes preferencias de diseño o estilo específicas?",
+                            "¿Necesitas funcionalidades específicas como formularios de contacto o galerías?"
+                        ];
+                        
+                        // Seleccionar una pregunta aleatoria
+                        const randomQuestion = questions[Math.floor(Math.random() * questions.length)];
+                        
+                        // Agregar mensaje del agente pidiendo más detalles
+                        window.app.chat.addAgentMessage(`Para crear la página que necesitas, necesito más detalles. ${randomQuestion}`, window.app.activeAgent);
+                        
+                        return true; // Indica que se manejó el mensaje
+                    }
+                }
+                
+                return false; // No se manejó el mensaje
+            };
+            
+            // Extender función sendMessage para interceptar comandos de creación
+            const originalSendMessage = window.app.chat.sendMessage;
+            window.app.chat.sendMessage = function(message) {
+                if (!window.app.chat.handleCreationRequest(message)) {
+                    originalSendMessage(message);
+                }
+            };
         });
     </script>
 </body>
