@@ -248,7 +248,24 @@ def process_instructions():
             terminal_command = response.content[0].text.strip()
             
         elif model_choice == 'gemini':
-            return jsonify({'error': 'Gemini integration not implemented yet'}), 501
+            # Implementación básica de Gemini
+            import google.generativeai as genai
+            
+            gemini_api_key = os.environ.get("GEMINI_API_KEY", "")
+            if not gemini_api_key:
+                return jsonify({'error': 'Gemini API key not configured'}), 500
+                
+            genai.configure(api_key=gemini_api_key)
+            model = genai.GenerativeModel('gemini-pro')
+            
+            try:
+                response = model.generate_content(
+                    f"Convert this instruction to a terminal command without any explanation: {user_input}"
+                )
+                terminal_command = response.text.strip()
+            except Exception as e:
+                logging.error(f"Error using Gemini API: {str(e)}")
+                return jsonify({'error': f'Error with Gemini API: {str(e)}'}), 500
         else:
             return jsonify({'error': 'Invalid model selection'}), 400
             
