@@ -15,7 +15,9 @@ from flask_socketio import SocketIO, emit
 from dotenv import load_dotenv
 import openai
 import anthropic
+from anthropic import Anthropic
 import eventlet
+import google.generativeai as genai
 
 # Comentamos el monkey patch para evitar conflictos con gunicorn
 # eventlet.monkey_patch(os=True, select=True, socket=True, thread=False, time=True)
