@@ -648,15 +648,21 @@ function addSystemMessage(message) {
 // Añadir mensaje de carga al chat con estilo futurista
 function addLoadingMessage() {
   const chatMessages = document.getElementById('chat-messages');
+  if (!chatMessages) {
+    console.error("No se encontró el contenedor de mensajes");
+    return;
+  }
   
   const messageElement = document.createElement('div');
-  messageElement.className = 'chat-message agent-message';
+  messageElement.className = 'chat-message agent-message loading-message';
   messageElement.id = 'loading-message';
   
   const messageContent = document.createElement('div');
   messageContent.className = 'message-content';
   messageContent.innerHTML = `<div class="loading-indicator">
-                                <div class="loading-ring"></div>
+                                <div class="loading-dots">
+                                  <span></span><span></span><span></span>
+                                </div>
                               </div>`;
   
   messageElement.appendChild(messageContent);
@@ -670,6 +676,10 @@ function removeLoadingMessage() {
   const loadingMessage = document.getElementById('loading-message');
   if (loadingMessage) {
     loadingMessage.remove();
+  } else {
+    // Si no se encuentra por ID, buscar por clase
+    const loadingMessages = document.querySelectorAll('.chat-message.agent-message.loading-message');
+    loadingMessages.forEach(msg => msg.remove());
   }
 }
 
@@ -785,7 +795,7 @@ function convertTableToHTML(tableLines) {
 
 // Copiar mensaje al portapapeles con notificación mejorada
 function copyMessageToClipboard(button) {
-  const messageElement = button.closest('.chat-message-agent-futuristic');
+  const messageElement = button.closest('.chat-message.agent-message');
   const content = messageElement.querySelector('.message-content').textContent;
   
   navigator.clipboard.writeText(content)
