@@ -225,22 +225,9 @@ function sendMessage(message) {
     }
   }
   
-  // Si estamos usando el sistema multi-agente, delegamos el procesamiento
-  if (window.multiAgentSystem) {
-    // Mostrar indicador de carga
-    addLoadingMessage();
-    
-    // Analizar el mensaje para determinar si requiere colaboración
-    const analysisResult = window.multiAgentSystem.collaborativeQuery(message);
-    
-    // El sistema multi-agente se encargará del resto a través de eventos
-    return;
-  }
-  
   // Obtener el agente activo
   const activeAgent = window.app.activeAgent || window.SPECIALIZED_AGENTS.developer;
   const agentId = activeAgent.id || 'developer';
-  const agentPrompt = activeAgent.prompt || '';
   
   // Mostrar indicador de carga con estilo futurista
   addLoadingMessage();
@@ -273,6 +260,14 @@ function sendMessage(message) {
     contextCount++;
   }
   
+  console.log("Enviando mensaje al backend:", {
+    message: message,
+    agent_id: agentId,
+    context: conversationContext,
+    model: selectedModel,
+    collaborative_mode: collaborativeMode
+  });
+  
   // Enviar al backend con información completa
   fetch('/api/chat', {
     method: 'POST',
@@ -282,7 +277,6 @@ function sendMessage(message) {
     body: JSON.stringify({
       message: message,
       agent_id: agentId,
-      agent_prompt: agentPrompt,
       context: conversationContext,
       model: selectedModel,
       collaborative_mode: collaborativeMode
@@ -540,7 +534,7 @@ function addUserMessage(message) {
   const chatMessages = document.getElementById('chat-messages');
   
   const messageElement = document.createElement('div');
-  messageElement.className = 'chat-message-user-futuristic';
+  messageElement.className = 'chat-message user-message';
   
   const messageContent = document.createElement('div');
   messageContent.className = 'message-content';
@@ -563,7 +557,7 @@ function addAgentMessage(message, agent) {
   const chatMessages = document.getElementById('chat-messages');
   
   const messageElement = document.createElement('div');
-  messageElement.className = 'chat-message-agent-futuristic';
+  messageElement.className = 'chat-message agent-message';
   
   // Convertir Markdown a HTML con resaltado de sintaxis mejorado
   const formattedMessage = formatMarkdown(message);
@@ -656,12 +650,12 @@ function addLoadingMessage() {
   const chatMessages = document.getElementById('chat-messages');
   
   const messageElement = document.createElement('div');
-  messageElement.className = 'chat-message-agent-futuristic';
+  messageElement.className = 'chat-message agent-message';
   messageElement.id = 'loading-message';
   
   const messageContent = document.createElement('div');
   messageContent.className = 'message-content';
-  messageContent.innerHTML = `<div class="loading-indicator-futuristic">
+  messageContent.innerHTML = `<div class="loading-indicator">
                                 <div class="loading-ring"></div>
                               </div>`;
   

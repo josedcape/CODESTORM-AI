@@ -12,76 +12,102 @@
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
 {% endblock %}
 
-{% block sidebar %}
-<h5 class="sidebar-title mb-3">
-    <i class="fa-solid fa-sliders me-2"></i> Configuración de Agentes
-</h5>
-
-<div class="mb-3">
-    <label class="form-label">Seleccionar Modelo de IA:</label>
-    <select id="model-select" class="form-select form-select-sm futuristic-select">
-        <option value="openai" selected>OpenAI (GPT-4)</option>
-        <option value="anthropic">Anthropic (Claude)</option>
-        <option value="gemini">Google (Gemini)</option>
-    </select>
-</div>
-
-<div class="mb-3">
-    <label class="form-label">Seleccionar Agente:</label>
-    <select id="agent-selector" class="form-select form-select-sm futuristic-select">
-        <option value="general">Asistente General</option>
-        <option value="developer">Desarrollador de Código</option>
-        <option value="architect" selected>Agente de Arquitectura</option>
-        <option value="advanced">Experto Avanzado</option>
-    </select>
-</div>
-
-<div class="agent-card selected">
-    <div class="agent-icon">
-        <i class="fa-solid fa-building"></i>
-    </div>
-    <div class="agent-info">
-        <h6>Agente de Arquitectura</h6>
-        <p class="agent-description">Diseñador de arquitecturas escalables y optimizadas</p>
-    </div>
-</div>
-
-<h6 class="mt-4 mb-2 sidebar-subtitle">Capacidades:</h6>
-<ul class="agent-capabilities">
-    <li>Definición de estructura del proyecto</li>
-    <li>Selección de tecnologías y frameworks</li>
-    <li>Asesoría en elección de bases de datos</li>
-    <li>Implementación de microservicios</li>
-    <li>Planificación de UI/UX y patrones de diseño</li>
-</ul>
-{% endblock %}
-
 {% block content %}
-<div class="content-container">
-    <div class="chat-container">
-        <div class="chat-header mb-4">
-            <h4>
-                <i class="fa-solid fa-message me-2"></i>
-                Chat con Agente Especializado
-            </h4>
-            <div id="agent-status-banner" class="alert alert-info">
-                <span id="agent-status-message">Has cambiado al Agente de Arquitectura. Este agente se especializa en: Diseñador de arquitecturas escalables y optimizadas.</span>
+<div class="container-fluid mt-4">
+    <div class="row">
+        <!-- Panel de Configuración de Agentes -->
+        <div class="col-lg-3 col-md-4">
+            <div class="card card-futuristic h-100 mb-4">
+                <div class="card-header card-header-futuristic">
+                    <span><i class="bi bi-cpu me-2"></i>Configuración de Agentes</span>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label for="model-select" class="form-label">Seleccionar Modelo de IA:</label>
+                        <select id="model-select" class="form-select select-futuristic select-optimized">
+                            <option value="openai" selected>OpenAI (GPT-4o)</option>
+                            <option value="anthropic">Anthropic (Claude)</option>
+                            <option value="gemini">Google (Gemini)</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="agent-selector" class="form-label">Seleccionar Agente:</label>
+                        <select id="agent-selector" class="form-select select-futuristic select-optimized">
+                            <option value="developer" selected>Agente de Desarrollo</option>
+                            <option value="architect">Arquitecto de Software</option>
+                            <option value="advanced">Especialista Avanzado</option>
+                            <option value="general">Asistente General</option>
+                        </select>
+                    </div>
+                    <div class="agent-info mb-3">
+                        <div class="agent-avatar">
+                            <i class="bi bi-code-slash"></i>
+                        </div>
+                        <div class="agent-details">
+                            <h5 class="mb-1">Agente de Desarrollo</h5>
+                            <p id="agent-description" class="mb-1">Experto en optimización y edición de código en tiempo real</p>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <h6>Capacidades:</h6>
+                        <ul id="agent-capabilities" class="agent-capabilities">
+                            <li>Corrección y refactorización de código</li>
+                            <li>Optimización de rendimiento</li>
+                            <li>Integración de frameworks y librerías</li>
+                            <li>Automatización de tareas</li>
+                            <li>Generación de código limpio</li>
+                        </ul>
+                    </div>
+                </div>
             </div>
         </div>
         
-        <div class="chat-messages" id="chat-messages">
-            <!-- Mensaje de bienvenida -->
-            <div class="chat-bubble chat-assistant">
-                <p>Hola, soy el <strong>Agente de Arquitectura</strong>. Puedo ayudarte a diseñar arquitecturas escalables y optimizadas para tus proyectos. ¿Cómo puedo asistirte hoy?</p>
-            </div>
-        </div>
-        
-        <div class="chat-input-container mt-4">
-            <div class="input-group">
-                <textarea id="chat-input" class="chat-input form-control" placeholder="Escribe tu mensaje aquí..." rows="2"></textarea>
-                <button id="chat-send-button" class="chat-send-button">
-                    <i class="fa-solid fa-paper-plane"></i>
-                </button>
+        <!-- Contenido principal -->
+        <div class="col-lg-9 col-md-8">
+            <div class="row">
+                <!-- Panel de Chat -->
+                <div class="col-12 mb-4">
+                    <div class="card card-futuristic h-100">
+                        <div class="card-header card-header-futuristic d-flex justify-content-between align-items-center">
+                            <span><i class="bi bi-chat-dots me-2"></i>Chat con Agente Especializado</span>
+                        </div>
+                        <div class="card-body p-0 d-flex flex-column" style="height: calc(100vh - 350px);">
+                            <div id="chat-container" class="chat-container-futuristic">
+                                <div id="chat-messages" class="chat-messages-futuristic">
+                                    <!-- Los mensajes se mostrarán aquí -->
+                                    <div class="chat-message system-message">
+                                        <div class="message-content">
+                                            <p>¡Bienvenido al chat especializado de CODESTORM! Estás hablando con el <strong>Agente de Desarrollo</strong>, un experto en optimización y edición de código en tiempo real.</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <form id="chat-form" class="chat-form-futuristic">
+                                    <textarea id="chat-input" class="chat-input-futuristic" placeholder="Escribe tu mensaje aquí... Por ejemplo: 'Crea una página de ventas para productos tecnológicos'" rows="1"></textarea>
+                                    <button type="submit" class="send-button-futuristic">
+                                        <i class="bi bi-send"></i>
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Previsualización -->
+                <div class="col-12" id="preview-section" style="display: none;">
+                    <div class="card card-futuristic">
+                        <div class="card-header card-header-futuristic d-flex justify-content-between align-items-center">
+                            <span><i class="bi bi-window me-2"></i>Previsualización</span>
+                            <div>
+                                <button id="toggle-preview" class="btn btn-sm btn-futuristic">
+                                    <i class="bi bi-x-lg"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <iframe id="preview-frame" style="width: 100%; height: 500px; border: none;"></iframe>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -90,104 +116,67 @@
 
 {% block extra_js %}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script src="{{ url_for('static', filename='js/chat/chat.js') }}"></script>
 <script>
     document.addEventListener('DOMContentLoaded', function() {
-        // Variables para el chat
-        const chatMessages = document.getElementById('chat-messages');
-        const chatInput = document.getElementById('chat-input');
-        const sendButton = document.getElementById('chat-send-button');
-        const modelSelect = document.getElementById('model-select');
-        const agentSelector = document.getElementById('agent-selector');
-        
-        // Función para enviar mensaje
-        function sendMessage() {
-            const message = chatInput.value.trim();
-            if (!message) return;
-            
-            // Añadir mensaje del usuario
-            addUserMessage(message);
-            
-            // Limpiar entrada
-            chatInput.value = '';
-            
-            // Simular respuesta (en producción, conectar a backend)
-            setTimeout(() => {
-                const model = modelSelect.value;
-                const agent = agentSelector.value;
-                
-                // Simulación de respuesta
-                let response = `He recibido tu mensaje: "${message}". Estoy procesándolo como ${getAgentName(agent)} usando el modelo ${getModelName(model)}.`;
-                
-                addAssistantMessage(response);
-            }, 1000);
-        }
-        
-        // Función para añadir mensaje del usuario
-        function addUserMessage(text) {
-            const messageDiv = document.createElement('div');
-            messageDiv.className = 'chat-bubble chat-user';
-            messageDiv.innerHTML = `<p>${text}</p>`;
-            chatMessages.appendChild(messageDiv);
-            chatMessages.scrollTop = chatMessages.scrollHeight;
-        }
-        
-        // Función para añadir mensaje del asistente
-        function addAssistantMessage(text) {
-            const messageDiv = document.createElement('div');
-            messageDiv.className = 'chat-bubble chat-assistant';
-            messageDiv.innerHTML = `<p>${text}</p>`;
-            chatMessages.appendChild(messageDiv);
-            chatMessages.scrollTop = chatMessages.scrollHeight;
-            
-            // Aplicar resaltado de sintaxis a bloques de código
-            messageDiv.querySelectorAll('pre code').forEach((block) => {
-                hljs.highlightElement(block);
-            });
-        }
-        
-        // Obtener nombre del modelo
-        function getModelName(modelId) {
-            const models = {
-                'openai': 'OpenAI (GPT-4)',
-                'anthropic': 'Anthropic (Claude)',
-                'gemini': 'Google (Gemini)'
-            };
-            return models[modelId] || modelId;
-        }
-        
-        // Obtener nombre del agente
-        function getAgentName(agentId) {
-            const agents = {
-                'general': 'Asistente General',
-                'developer': 'Desarrollador de Código',
-                'architect': 'Agente de Arquitectura',
-                'advanced': 'Experto Avanzado'
-            };
-            return agents[agentId] || agentId;
-        }
-        
-        // Event listeners
-        sendButton.addEventListener('click', sendMessage);
-        
-        chatInput.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                sendMessage();
+        // Configuración de agentes especializados
+        window.SPECIALIZED_AGENTS = {
+            developer: {
+                id: 'developer',
+                name: 'Agente de Desarrollo',
+                icon: 'bi-code-slash',
+                description: 'Experto en optimización y edición de código en tiempo real',
+                capabilities: [
+                    'Corrección y refactorización de código',
+                    'Optimización de rendimiento',
+                    'Integración de frameworks y librerías',
+                    'Automatización de tareas',
+                    'Generación de código limpio'
+                ]
+            },
+            architect: {
+                id: 'architect',
+                name: 'Arquitecto de Software',
+                icon: 'bi-diagram-3',
+                description: 'Diseñador de arquitecturas escalables y optimizadas',
+                capabilities: [
+                    'Definición de estructura del proyecto',
+                    'Selección de tecnologías y frameworks',
+                    'Asesoría en elección de bases de datos',
+                    'Implementación de microservicios',
+                    'Planificación de UI/UX y patrones de diseño'
+                ]
+            },
+            advanced: {
+                id: 'advanced',
+                name: 'Especialista Avanzado',
+                icon: 'bi-braces',
+                description: 'Experto en soluciones complejas e integraciones',
+                capabilities: [
+                    'Desarrollo de soluciones avanzadas',
+                    'Integración con APIs externas',
+                    'Optimización de rendimiento',
+                    'Seguridad y encriptación',
+                    'Despliegue y configuración de servidores'
+                ]
+            },
+            general: {
+                id: 'general',
+                name: 'Asistente General',
+                icon: 'bi-chat-dots',
+                description: 'Asistente versátil para consultas generales',
+                capabilities: [
+                    'Respuesta a preguntas generales',
+                    'Orientación básica de desarrollo',
+                    'Ayuda con conceptos de programación',
+                    'Consejos de buenas prácticas',
+                    'Resolución de problemas comunes'
+                ]
             }
-        });
+        };
         
-        // Cambio de agente
-        agentSelector.addEventListener('change', function() {
-            const agentId = this.value;
-            const agentName = getAgentName(agentId);
-            
-            // Actualizar banner de estado del agente
-            document.getElementById('agent-status-message').textContent = 
-                `Has cambiado al ${agentName}. Este agente se especializa en funciones específicas para este rol.`;
-            
-            // Añadir mensaje de sistema sobre el cambio
-            addAssistantMessage(`Ahora estás hablando con el <strong>${agentName}</strong>. ¿En qué puedo ayudarte?`);
-        });
+        // Inicializar chat
+        initializeChat();
     });
 </script>
 {% endblock %}
