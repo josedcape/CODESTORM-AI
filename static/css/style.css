@@ -86,17 +86,18 @@ body {
 
 /* Enlaces de navegación destacados */
 .navbar-nav .nav-link {
-    color: var(--gold);
+    color: white;
     margin: 0 0.25rem;
     padding: 0.6rem 1.2rem;
     border-radius: 4px;
     transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
     position: relative;
     overflow: hidden;
-    font-weight: 500;
+    font-weight: 600;
     letter-spacing: 0.5px;
-    text-shadow: 0 0 5px rgba(255, 215, 0, 0.25);
+    text-shadow: 0 0 10px rgba(255, 255, 255, 0.8);
     border: 1px solid transparent;
+    font-size: 1.05rem;
 }
 
 /* Efecto de brillo en el borde inferior */
@@ -130,19 +131,27 @@ body {
 /* Estado activo */
 .navbar-nav .nav-link.active {
     color: #ffffff;
-    background: linear-gradient(90deg, rgba(255, 215, 0, 0.05) 0%, rgba(255, 215, 0, 0.2) 50%, rgba(255, 215, 0, 0.05) 100%);
-    border-color: rgba(255, 215, 0, 0.4);
-    box-shadow: 0 0 10px rgba(255, 215, 0, 0.3), inset 0 0 5px rgba(255, 215, 0, 0.2);
-    text-shadow: 0 0 10px var(--gold);
+    background: linear-gradient(90deg, rgba(255, 215, 0, 0.1) 0%, rgba(255, 215, 0, 0.3) 50%, rgba(255, 215, 0, 0.1) 100%);
+    border: 1px solid var(--gold);
+    box-shadow: 0 0 15px rgba(255, 215, 0, 0.5), inset 0 0 10px rgba(255, 215, 0, 0.3);
+    text-shadow: 0 0 15px white, 0 0 20px white;
+    font-weight: 700;
     animation: pulse-gold 2s infinite alternate;
+    letter-spacing: 1px;
 }
 
 @keyframes pulse-gold {
     0% {
-        box-shadow: 0 0 5px rgba(255, 215, 0, 0.3), inset 0 0 5px rgba(255, 215, 0, 0.2);
+        box-shadow: 0 0 5px rgba(255, 215, 0, 0.4), inset 0 0 5px rgba(255, 215, 0, 0.3);
+        text-shadow: 0 0 15px white, 0 0 20px white;
+    }
+    50% {
+        box-shadow: 0 0 20px rgba(255, 215, 0, 0.6), inset 0 0 15px rgba(255, 215, 0, 0.5);
+        text-shadow: 0 0 25px white, 0 0 30px white;
     }
     100% {
-        box-shadow: 0 0 15px rgba(255, 215, 0, 0.5), inset 0 0 10px rgba(255, 215, 0, 0.3);
+        box-shadow: 0 0 5px rgba(255, 215, 0, 0.4), inset 0 0 5px rgba(255, 215, 0, 0.3);
+        text-shadow: 0 0 15px white, 0 0 20px white;
     }
 }
 
