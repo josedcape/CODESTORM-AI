@@ -3,287 +3,205 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Chat con IA - Codestorm Assistant</title>
+    <title>Chat IA - Codestorm Assistant</title>
     <link href="https://cdn.replit.com/agent/bootstrap-agent-dark-theme.min.css" rel="stylesheet">
-    <style>
-        body {
-            background-color: #0f1729;
-            color: #e2e8f0;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            height: 100vh;
-            margin: 0;
-            display: flex;
-            flex-direction: column;
-        }
-        .chat-container {
-            display: flex;
-            flex: 1;
-            overflow: hidden;
-        }
-        .sidebar {
-            width: 280px;
-            background-color: #1e293b;
-            padding: 20px;
-            display: flex;
-            flex-direction: column;
-        }
-        .chat-area {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            padding: 20px;
-            overflow: hidden;
-        }
-        .header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 15px 20px;
-            background-color: #1e293b;
-            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-        }
-        .header h1 {
-            margin: 0;
-            font-size: 1.5rem;
-            background: linear-gradient(to right, #3b82f6, #10b981);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
-        .header-actions {
-            display: flex;
-            gap: 10px;
-        }
-        .agent-selector {
-            margin-bottom: 20px;
-        }
-        .agent-selector h3 {
-            margin-top: 0;
-            color: #38bdf8;
-        }
-        .agent-selector select {
-            width: 100%;
-            padding: 10px;
-            border-radius: 5px;
-            background-color: #2d3748;
-            color: white;
-            border: 1px solid #4a5568;
-        }
-        .btn {
-            padding: 8px 15px;
-            border-radius: 5px;
-            border: none;
-            cursor: pointer;
-            transition: all 0.3s;
-            font-weight: 600;
-            text-decoration: none;
-            display: inline-block;
-        }
-        .btn-primary {
-            background-color: #3b82f6;
-            color: white;
-        }
-        .btn-secondary {
-            background-color: #475569;
-            color: white;
-        }
-        .btn:hover {
-            opacity: 0.9;
-            transform: scale(1.05);
-        }
-        .message-history {
-            flex: 1;
-            overflow-y: auto;
-            padding: 10px;
-            display: flex;
-            flex-direction: column;
-            gap: 15px;
-        }
-        .message {
-            max-width: 85%;
-            padding: 12px 15px;
-            border-radius: 10px;
-            position: relative;
-        }
-        .user-message {
-            align-self: flex-end;
-            background-color: #3b82f6;
-            color: white;
-            border-top-right-radius: 0;
-        }
-        .assistant-message {
-            align-self: flex-start;
-            background-color: #2d3748;
-            color: #e2e8f0;
-            border-top-left-radius: 0;
-        }
-        .message-input {
-            display: flex;
-            padding: 15px 0;
-            gap: 10px;
-        }
-        .message-input textarea {
-            flex: 1;
-            border-radius: 5px;
-            border: 1px solid #4a5568;
-            background-color: #2d3748;
-            color: white;
-            padding: 12px;
-            resize: none;
-            min-height: 50px;
-        }
-        .message-input button {
-            height: 50px;
-            min-width: 50px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-        
-        .context-info {
-            margin-bottom: 20px;
-        }
-        .context-info h3 {
-            margin-top: 0;
-            color: #38bdf8;
-        }
-        .context-file {
-            background-color: #2d3748;
-            border-radius: 5px;
-            padding: 10px;
-            margin-bottom: 10px;
-            font-size: 0.9rem;
-        }
-        .sidebar-divider {
-            margin: 20px 0;
-            border: none;
-            border-top: 1px solid #4a5568;
-        }
-        
-        .tools {
-            flex-grow: 1;
-        }
-        .tools h3 {
-            color: #38bdf8;
-        }
-        .tool-button {
-            display: block;
-            width: 100%;
-            text-align: left;
-            padding: 10px;
-            margin-bottom: 8px;
-            background-color: #2d3748;
-            color: white;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            transition: background-color 0.3s;
-        }
-        .tool-button:hover {
-            background-color: #3b4a63;
-        }
-        
-        @media (max-width: 768px) {
-            .chat-container {
-                flex-direction: column;
-            }
-            .sidebar {
-                width: auto;
-                padding: 10px;
-            }
-            .message {
-                max-width: 95%;
-            }
-        }
-    </style>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/prism.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-python.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-javascript.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-css.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-html.min.js"></script>
 </head>
-<body>
-    <div class="header">
-        <h1>Chat con IA - {{ agent_id }}</h1>
-        <div class="header-actions">
-            <a href="/codestorm/" class="btn btn-secondary">Inicio</a>
-            <a href="/codestorm/dashboard" class="btn btn-primary">Panel de Control</a>
-        </div>
-    </div>
-    
-    <div class="chat-container">
-        <div class="sidebar">
-            <div class="agent-selector">
-                <h3>Agente IA</h3>
-                <select id="agent-selector">
-                    <option value="general" {% if agent_id == 'general' %}selected{% endif %}>Asistente General</option>
-                    <option value="developer" {% if agent_id == 'developer' %}selected{% endif %}>Desarrollador Experto</option>
-                    <option value="architect" {% if agent_id == 'architect' %}selected{% endif %}>Arquitecto de Software</option>
-                    <option value="advanced" {% if agent_id == 'advanced' %}selected{% endif %}>Especialista Avanzado</option>
-                </select>
-            </div>
-            
-            <div class="context-info">
-                <h3>Contexto Actual</h3>
-                <div class="context-file">main.py</div>
-                <div class="context-file">index.html</div>
-                <div class="context-file">style.css</div>
-            </div>
-            
-            <hr class="sidebar-divider">
-            
-            <div class="tools">
-                <h3>Herramientas</h3>
-                <button class="tool-button">📁 Crear Archivo</button>
-                <button class="tool-button">🖥️ Ejecutar Comando</button>
-                <button class="tool-button">📊 Visualizar Datos</button>
-                <button class="tool-button">📝 Depurar Código</button>
+<body data-bs-theme="dark">
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="/">
+                <span class="text-primary fw-bold">Codestorm</span> Assistant
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="/">Inicio</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/dashboard">Panel</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link active" href="/chat">Chat</a>
+                    </li>
+                </ul>
             </div>
         </div>
-        
-        <div class="chat-area">
-            <div class="message-history" id="message-history">
-                <div class="message assistant-message">
-                    Hola, soy tu asistente de {{ agent_id }}. ¿En qué puedo ayudarte hoy?
+    </nav>
+
+    <div class="container-fluid vh-100 d-flex flex-column">
+        <div class="row flex-grow-1">
+            <!-- Barra lateral - Opciones de Chat -->
+            <div class="col-md-3 p-3 bg-dark">
+                <div class="card mb-3">
+                    <div class="card-header bg-dark text-white">
+                        <h5 class="mb-0">Agente IA</h5>
+                    </div>
+                    <div class="card-body">
+                        <select id="agent-selector" class="form-select mb-3">
+                            <option value="general" {% if agent_id == 'general' %}selected{% endif %}>Asistente General</option>
+                            <option value="developer" {% if agent_id == 'developer' %}selected{% endif %}>Desarrollador Experto</option>
+                            <option value="architect" {% if agent_id == 'architect' %}selected{% endif %}>Arquitecto de Software</option>
+                            <option value="advanced" {% if agent_id == 'advanced' %}selected{% endif %}>Especialista Avanzado</option>
+                        </select>
+                        
+                        <div class="form-text mb-2">Selecciona el agente especializado para tu consulta.</div>
+                        
+                        <div class="d-grid">
+                            <button class="btn btn-sm btn-primary" id="new-chat-btn">Nueva conversación</button>
+                        </div>
+                    </div>
                 </div>
-                <div class="message user-message">
-                    Necesito ayuda para crear una API RESTful usando Flask.
+                
+                <div class="card mb-3">
+                    <div class="card-header bg-dark text-white">
+                        <h5 class="mb-0">Contexto Actual</h5>
+                    </div>
+                    <div class="card-body p-0">
+                        <ul class="list-group list-group-flush">
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                main.py
+                                <span class="badge bg-primary rounded-pill">Py</span>
+                            </li>
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                index.html
+                                <span class="badge bg-primary rounded-pill">HTML</span>
+                            </li>
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                style.css
+                                <span class="badge bg-primary rounded-pill">CSS</span>
+                            </li>
+                        </ul>
+                    </div>
                 </div>
-                <div class="message assistant-message">
-                    ¡Claro! Para crear una API RESTful con Flask, podemos comenzar con la estructura básica. Primero instalaremos Flask y Flask-RESTful. ¿Te gustaría que te muestre un ejemplo de código para empezar?
+                
+                <div class="card">
+                    <div class="card-header bg-dark text-white">
+                        <h5 class="mb-0">Herramientas</h5>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="list-group list-group-flush">
+                            <button class="list-group-item list-group-item-action d-flex align-items-center" id="create-file-btn">
+                                <span class="me-2">📁</span> Crear Archivo
+                            </button>
+                            <button class="list-group-item list-group-item-action d-flex align-items-center" id="execute-command-btn">
+                                <span class="me-2">🖥️</span> Ejecutar Comando
+                            </button>
+                            <button class="list-group-item list-group-item-action d-flex align-items-center" id="debug-code-btn">
+                                <span class="me-2">📝</span> Depurar Código
+                            </button>
+                        </div>
+                    </div>
                 </div>
             </div>
             
-            <div class="message-input">
-                <textarea id="user-input" placeholder="Escribe tu mensaje aquí..."></textarea>
-                <button class="btn btn-primary" id="send-button">
-                    Enviar
-                </button>
+            <!-- Área de Chat -->
+            <div class="col-md-9 d-flex flex-column p-0">
+                <div class="chat-header bg-dark text-white p-3 d-flex justify-content-between align-items-center">
+                    <h4>Chat con {{ agent_id|title }}</h4>
+                    <span class="badge bg-primary">Activo</span>
+                </div>
+                
+                <div class="chat-messages flex-grow-1 p-3 overflow-auto" id="message-history">
+                    <div class="message-container assistant">
+                        <div class="message-bubble">
+                            <p>Hola, soy tu asistente de {{ agent_id }}. ¿En qué puedo ayudarte hoy?</p>
+                        </div>
+                        <div class="message-info">
+                            <small class="text-muted">Asistente IA - {{ agent_id|title }}</small>
+                        </div>
+                    </div>
+                    
+                    <div class="message-container user">
+                        <div class="message-bubble">
+                            <p>Necesito ayuda para crear una API RESTful usando Flask.</p>
+                        </div>
+                        <div class="message-info text-end">
+                            <small class="text-muted">Tú - Ahora</small>
+                        </div>
+                    </div>
+                    
+                    <div class="message-container assistant">
+                        <div class="message-bubble">
+                            <p>¡Claro! Para crear una API RESTful con Flask, podemos comenzar con la estructura básica. Primero instalaremos Flask y Flask-RESTful. ¿Te gustaría que te muestre un ejemplo de código para empezar?</p>
+                        </div>
+                        <div class="message-info">
+                            <small class="text-muted">Asistente IA - {{ agent_id|title }}</small>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="chat-input p-3 bg-dark">
+                    <form id="chat-form" class="d-flex">
+                        <textarea class="form-control me-2" id="user-input" rows="2" placeholder="Escribe tu mensaje aquí..."></textarea>
+                        <button type="submit" class="btn btn-primary align-self-end">
+                            Enviar
+                        </button>
+                    </form>
+                </div>
             </div>
         </div>
     </div>
 
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         // Funcionalidad básica de la interfaz
         document.addEventListener('DOMContentLoaded', function() {
             const messageInput = document.getElementById('user-input');
-            const sendButton = document.getElementById('send-button');
+            const chatForm = document.getElementById('chat-form');
             const messageHistory = document.getElementById('message-history');
             const agentSelector = document.getElementById('agent-selector');
             
             // Función para agregar mensajes al historial
             function addMessage(content, isUser) {
-                const messageDiv = document.createElement('div');
-                messageDiv.className = `message ${isUser ? 'user-message' : 'assistant-message'}`;
-                messageDiv.textContent = content;
-                messageHistory.appendChild(messageDiv);
+                const messageContainer = document.createElement('div');
+                messageContainer.className = `message-container ${isUser ? 'user' : 'assistant'}`;
+                
+                const messageBubble = document.createElement('div');
+                messageBubble.className = 'message-bubble';
+                
+                const messageText = document.createElement('p');
+                messageText.textContent = content;
+                
+                messageBubble.appendChild(messageText);
+                
+                const messageInfo = document.createElement('div');
+                messageInfo.className = `message-info ${isUser ? 'text-end' : ''}`;
+                
+                const timeText = document.createElement('small');
+                timeText.className = 'text-muted';
+                timeText.textContent = isUser ? 'Tú - Ahora' : `Asistente IA - ${agentSelector.options[agentSelector.selectedIndex].text}`;
+                
+                messageInfo.appendChild(timeText);
+                
+                messageContainer.appendChild(messageBubble);
+                messageContainer.appendChild(messageInfo);
+                
+                messageHistory.appendChild(messageContainer);
                 messageHistory.scrollTop = messageHistory.scrollHeight;
             }
             
-            // Enviar mensaje al presionar Enter
+            // Enviar mensaje
+            chatForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                sendMessage();
+            });
+            
+            // Enviar mensaje al presionar Enter (sin Shift)
             messageInput.addEventListener('keypress', function(e) {
                 if (e.key === 'Enter' && !e.shiftKey) {
                     e.preventDefault();
                     sendMessage();
                 }
             });
-            
-            // Enviar mensaje al hacer clic en el botón
-            sendButton.addEventListener('click', sendMessage);
             
             // Función para enviar mensaje
             function sendMessage() {
@@ -307,9 +225,61 @@
             // Cambiar de agente
             agentSelector.addEventListener('change', function() {
                 const selectedAgent = this.value;
-                window.location.href = `/codestorm/chat?agent=${selectedAgent}`;
+                window.location.href = `/chat?agent=${selectedAgent}`;
             });
         });
     </script>
+    
+    <style>
+        /* Estilos específicos para la página de chat */
+        .chat-messages {
+            background-color: #1a202c;
+        }
+        
+        .message-container {
+            margin-bottom: 20px;
+        }
+        
+        .message-bubble {
+            padding: 12px 16px;
+            border-radius: 10px;
+            max-width: 80%;
+            display: inline-block;
+        }
+        
+        .message-bubble p {
+            margin: 0;
+        }
+        
+        .user .message-bubble {
+            background-color: #3b82f6;
+            color: white;
+            float: right;
+            border-top-right-radius: 0;
+        }
+        
+        .assistant .message-bubble {
+            background-color: #2d3748;
+            color: #e2e8f0;
+            float: left;
+            border-top-left-radius: 0;
+        }
+        
+        .message-info {
+            clear: both;
+            padding-top: 5px;
+        }
+        
+        .chat-input {
+            border-top: 1px solid #2d3748;
+        }
+        
+        /* Ajustes responsivos */
+        @media (max-width: 768px) {
+            .message-bubble {
+                max-width: 90%;
+            }
+        }
+    </style>
 </body>
 </html>

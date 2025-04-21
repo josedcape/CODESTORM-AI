@@ -3,249 +3,158 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Codestorm Assistant - Tu asistente de programación IA</title>
+    <title>Codestorm Assistant</title>
     <link href="https://cdn.replit.com/agent/bootstrap-agent-dark-theme.min.css" rel="stylesheet">
-    <style>
-        body {
-            background-color: #0f1729;
-            color: #e2e8f0;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        }
-        .hero {
-            height: 100vh;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            text-align: center;
-            position: relative;
-            overflow: hidden;
-        }
-        .hero-bg {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: radial-gradient(circle at 50% 50%, rgba(59, 130, 246, 0.1) 0%, rgba(15, 23, 42, 0) 50%);
-            z-index: 0;
-        }
-        .hero-content {
-            position: relative;
-            z-index: 1;
-            max-width: 800px;
-            padding: 20px;
-        }
-        .logo {
-            margin-bottom: 30px;
-        }
-        .logo h1 {
-            font-size: 3.5rem;
-            margin: 0;
-            background: linear-gradient(to right, #3b82f6, #10b981);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            font-weight: 700;
-        }
-        .logo p {
-            font-size: 1.5rem;
-            color: #94a3b8;
-            margin-top: 10px;
-        }
-        .hero-description {
-            margin-bottom: 40px;
-        }
-        .hero-description p {
-            font-size: 1.2rem;
-            line-height: 1.6;
-            margin-bottom: 20px;
-        }
-        .btn {
-            padding: 12px 24px;
-            border-radius: 8px;
-            font-size: 1.1rem;
-            font-weight: 600;
-            text-decoration: none;
-            display: inline-block;
-            margin: 0 10px;
-            transition: all 0.3s;
-            border: none;
-            cursor: pointer;
-        }
-        .btn:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
-        }
-        .btn-primary {
-            background: linear-gradient(to right, #3b82f6, #2563eb);
-            color: white;
-        }
-        .btn-secondary {
-            background-color: #334155;
-            color: white;
-        }
-        .features {
-            display: flex;
-            flex-wrap: wrap;
-            justify-content: center;
-            margin-top: 60px;
-            gap: 20px;
-        }
-        .feature {
-            background-color: rgba(30, 41, 59, 0.7);
-            border-radius: 10px;
-            padding: 20px;
-            width: 240px;
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.05);
-        }
-        .feature-icon {
-            font-size: 2rem;
-            margin-bottom: 15px;
-            color: #38bdf8;
-        }
-        .feature h3 {
-            margin-top: 0;
-            color: white;
-        }
-        .feature p {
-            color: #94a3b8;
-            font-size: 0.9rem;
-            line-height: 1.5;
-        }
-        .particles {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            overflow: hidden;
-            z-index: 0;
-        }
-        .particle {
-            position: absolute;
-            width: 4px;
-            height: 4px;
-            border-radius: 50%;
-            background-color: rgba(59, 130, 246, 0.3);
-            animation: float 15s infinite linear;
-        }
-        @keyframes float {
-            0% {
-                transform: translateY(0) translateX(0);
-                opacity: 0;
-            }
-            10% {
-                opacity: 1;
-            }
-            90% {
-                opacity: 1;
-            }
-            100% {
-                transform: translateY(-700px) translateX(200px);
-                opacity: 0;
-            }
-        }
-        @media (max-width: 768px) {
-            .logo h1 {
-                font-size: 2.5rem;
-            }
-            .logo p {
-                font-size: 1.2rem;
-            }
-            .hero-description p {
-                font-size: 1rem;
-            }
-            .features {
-                flex-direction: column;
-                align-items: center;
-            }
-            .feature {
-                width: 90%;
-            }
-            .btn {
-                display: block;
-                margin: 10px auto;
-                width: 80%;
-                text-align: center;
-            }
-        }
-    </style>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/prism.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-python.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-javascript.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-css.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-html.min.js"></script>
 </head>
-<body>
-    <div class="hero">
-        <div class="hero-bg"></div>
-        <div class="particles" id="particles">
-            <!-- Partículas generadas por JS -->
+<body data-bs-theme="dark">
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="/">
+                <span class="text-primary fw-bold">Codestorm</span> Assistant
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item">
+                        <a class="nav-link active" href="/">Inicio</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/dashboard">Panel</a>
+                    </li>
+                </ul>
+            </div>
         </div>
-        <div class="hero-content">
-            <div class="logo">
-                <h1>Codestorm Assistant</h1>
-                <p>Tu asistente de programación potenciado por IA</p>
-            </div>
-            
-            <div class="hero-description">
-                <p>Codestorm te ayuda a crear, depurar y mejorar código a través de interacciones en lenguaje natural. Conéctate con agentes especializados para resolver tareas complejas de desarrollo.</p>
-                <p>Experimenta un nuevo nivel de productividad con asistencia IA en tiempo real.</p>
-            </div>
-            
-            <div>
-                <a href="/codestorm/dashboard" class="btn btn-primary">Comenzar ahora</a>
-                <a href="/codestorm/chat" class="btn btn-secondary">Chat con IA</a>
-            </div>
-            
-            <div class="features">
-                <div class="feature">
-                    <div class="feature-icon">🧠</div>
-                    <h3>Agentes Especializados</h3>
-                    <p>Conecta con expertos en desarrollo, arquitectura y resolución de problemas complejos.</p>
+    </nav>
+
+    <div class="container mt-4">
+        <div class="row">
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header bg-primary text-white">
+                        <h4 class="mb-0">Asistente de Desarrollo</h4>
+                    </div>
+                    <div class="card-body">
+                        <p class="lead">Bienvenido a Codestorm Assistant, tu asistente inteligente para desarrollo de software.</p>
+                        <p>Utiliza lenguaje natural para:</p>
+                        <ul>
+                            <li>Crear archivos de código</li>
+                            <li>Ejecutar comandos en terminal</li>
+                            <li>Buscar y editar contenido</li>
+                            <li>Generar soluciones completas</li>
+                        </ul>
+                        <div class="d-grid gap-2 mt-4">
+                            <a href="/dashboard" class="btn btn-primary">Ir al panel de control</a>
+                        </div>
+                    </div>
                 </div>
-                <div class="feature">
-                    <div class="feature-icon">⚡</div>
-                    <h3>Generación de Código</h3>
-                    <p>Convierte instrucciones en lenguaje natural a código funcional de alta calidad.</p>
-                </div>
-                <div class="feature">
-                    <div class="feature-icon">🛠️</div>
-                    <h3>Depuración Inteligente</h3>
-                    <p>Identifica y resuelve errores en tu código con explicaciones detalladas.</p>
-                </div>
-                <div class="feature">
-                    <div class="feature-icon">📊</div>
-                    <h3>Análisis de Proyectos</h3>
-                    <p>Obtén insights y recomendaciones para mejorar la estructura de tus proyectos.</p>
+            </div>
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header bg-secondary text-white">
+                        <h4 class="mb-0">Consulta Rápida</h4>
+                    </div>
+                    <div class="card-body">
+                        <form id="quick-query-form">
+                            <div class="mb-3">
+                                <label for="queryType" class="form-label">Tipo de consulta</label>
+                                <select class="form-select" id="queryType">
+                                    <option value="command">Ejecutar comando</option>
+                                    <option value="file">Crear archivo</option>
+                                    <option value="question">Hacer pregunta</option>
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label for="queryContent" class="form-label">Consulta</label>
+                                <textarea class="form-control" id="queryContent" rows="3" placeholder="Escribe tu consulta aquí..."></textarea>
+                            </div>
+                            <div class="d-grid">
+                                <button type="submit" class="btn btn-secondary">Enviar consulta</button>
+                            </div>
+                        </form>
+                        
+                        <div class="mt-4">
+                            <p class="text-muted">Ejemplos de consultas:</p>
+                            <div class="accordion" id="examplesAccordion">
+                                <div class="accordion-item">
+                                    <h2 class="accordion-header">
+                                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#example1">
+                                            Ejemplo 1: Ejecutar comando
+                                        </button>
+                                    </h2>
+                                    <div id="example1" class="accordion-collapse collapse" data-bs-parent="#examplesAccordion">
+                                        <div class="accordion-body">
+                                            <p>Para listar archivos en el directorio actual:</p>
+                                            <pre><code class="language-bash">ls -la</code></pre>
+                                            <button class="btn btn-sm btn-outline-primary copy-example">Copiar</button>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="accordion-item">
+                                    <h2 class="accordion-header">
+                                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#example2">
+                                            Ejemplo 2: Crear archivo
+                                        </button>
+                                    </h2>
+                                    <div id="example2" class="accordion-collapse collapse" data-bs-parent="#examplesAccordion">
+                                        <div class="accordion-body">
+                                            <p>Para crear un archivo Python de saludo:</p>
+                                            <pre><code class="language-python">saludo.py
+
+def saludar(nombre):
+    return f"¡Hola, {nombre}!"
+
+if __name__ == "__main__":
+    nombre = input("¿Cómo te llamas? ")
+    print(saludar(nombre))
+</code></pre>
+                                            <button class="btn btn-sm btn-outline-primary copy-example">Copiar</button>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="accordion-item">
+                                    <h2 class="accordion-header">
+                                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#example3">
+                                            Ejemplo 3: Preguntar algo
+                                        </button>
+                                    </h2>
+                                    <div id="example3" class="accordion-collapse collapse" data-bs-parent="#examplesAccordion">
+                                        <div class="accordion-body">
+                                            <p>Para hacer una pregunta al asistente, escribe:</p>
+                                            <pre><code class="language-plaintext">¿Cuáles son los mejores patrones de diseño para una aplicación web en Python?</code></pre>
+                                            <button class="btn btn-sm btn-outline-primary copy-example">Copiar</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <script>
-        // Generar partículas dinámicas para el fondo
-        document.addEventListener('DOMContentLoaded', function() {
-            const particlesContainer = document.getElementById('particles');
-            const numParticles = 50;
-            
-            for (let i = 0; i < numParticles; i++) {
-                const particle = document.createElement('div');
-                particle.className = 'particle';
-                
-                // Posiciones aleatorias
-                const posX = Math.random() * 100;
-                const posY = Math.random() * 100;
-                const size = Math.random() * 4 + 1;
-                const opacity = Math.random() * 0.5 + 0.1;
-                const animationDelay = Math.random() * 15;
-                
-                particle.style.left = `${posX}%`;
-                particle.style.top = `${posY}%`;
-                particle.style.width = `${size}px`;
-                particle.style.height = `${size}px`;
-                particle.style.opacity = opacity;
-                particle.style.animationDelay = `${animationDelay}s`;
-                
-                particlesContainer.appendChild(particle);
-            }
-        });
-    </script>
+    <footer class="bg-dark text-light mt-5 py-3">
+        <div class="container">
+            <div class="row">
+                <div class="col-md-6">
+                    <p>&copy; 2025 Codestorm Assistant</p>
+                </div>
+                <div class="col-md-6 text-md-end">
+                    <p>Versión 1.0.0</p>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
 </body>
 </html>
