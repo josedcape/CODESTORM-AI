@@ -6,10 +6,12 @@ import subprocess
 import shutil
 import time
 import re
+import zipfile
+import io
 from pathlib import Path
 from threading import Thread
 from datetime import datetime
-from flask import Flask, request, jsonify, render_template, session, send_file
+from flask import Flask, request, jsonify, render_template, session, send_file, url_for
 from flask_cors import CORS
 from flask_sqlalchemy import SQLAlchemy
 from flask_socketio import SocketIO, emit
@@ -18,16 +20,44 @@ import openai
 import anthropic
 from anthropic import Anthropic
 import eventlet
+import git
+from github import Github
+import requests
 import google.generativeai as genai
 
-# Comentamos el monkey patch para evitar conflictos con gunicorn
-# eventlet.monkey_patch(os=True, select=True, socket=True, thread=False, time=True)
+# Comentamos el monkey patch para evitar conflictos con OpenAI y otras bibliotecas
+# eventlet.monkey_patch(os=True, select=True, socket=True, thread=True, time=True)
 
 # Load environment variables from .env file
 load_dotenv(override=True)
 
-# Configure logging - reducir nivel para mejor rendimiento
+# Configure logging
 logging.basicConfig(level=logging.INFO)
+
+# Configurar APIs de IA
+try:
+    openai_api_key = os.environ.get('OPENAI_API_KEY')
+    if openai_api_key:
+        # Solo mostrar los primeros caracteres por seguridad
+        masked_key = openai_api_key[:5] + "..." + openai_api_key[-5:]
+        logging.info(f"OpenAI API key configurada: {masked_key}")
+except Exception as e:
+    logging.error(f"Error al configurar OpenAI API: {str(e)}")
+
+try:
+    anthropic_api_key = os.environ.get('ANTHROPIC_API_KEY')
+    if anthropic_api_key:
+        logging.info("Anthropic API key configured successfully.")
+except Exception as e:
+    logging.error(f"Error al configurar Anthropic API: {str(e)}")
+
+try:
+    gemini_api_key = os.environ.get('GEMINI_API_KEY')
+    if gemini_api_key:
+        genai.configure(api_key=gemini_api_key)
+        logging.info("Gemini API key configured successfully.")
+except Exception as e:
+    logging.error(f"Error al configurar Gemini API: {str(e)}")
 
 # Helper function to determine file type for syntax highlighting
 def get_file_type(filename):
@@ -1575,8 +1605,12 @@ def get_session():
         'workspace': str(get_user_workspace(session['user_id']).name)
     })
 
-# Initialize SocketIO - using threading mode for more stable connections
-socketio = SocketIO(app, cors_allowed_origins="*", async_mode='threading', ping_timeout=60, ping_interval=25, logger=True)
+# Initialize SocketIO - usando modo eventlet (sin monkey patching)
+socketio = SocketIO(app, cors_allowed_origins="*", async_mode='eventlet', ping_timeout=60, ping_interval=25, logger=True)
+
+# Import the download routes and register them
+from download_routes import register_download_routes
+register_download_routes(app, get_user_workspace, socketio)
 
 # SocketIO event handlers
 @socketio.on('connect')
