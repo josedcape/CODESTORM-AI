@@ -414,6 +414,23 @@
                         <div class="card card-futuristic h-100">
                             <div class="card-header card-header-futuristic d-flex justify-content-between align-items-center">
                                 <span><i class="bi bi-chat-dots me-2"></i>Chat con Agente Especializado</span>
+                                <div class="d-flex align-items-center">
+                                    <div class="form-group me-3">
+                                        <select id="model-select" class="form-select form-select-sm">
+                                            <option value="openai" selected>OpenAI (GPT-4o)</option>
+                                            <option value="anthropic">Anthropic (Claude)</option>
+                                            <option value="gemini">Google (Gemini)</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <select id="agent-select" class="form-select form-select-sm">
+                                            <option value="general">Asistente General</option>
+                                            <option value="developer" selected>Desarrollador de Código</option>
+                                            <option value="architect">Arquitecto de Sistemas</option>
+                                            <option value="advanced">Experto Avanzado</option>
+                                        </select>
+                                    </div>
+                                </div>
                             </div>
                             <div class="card-body p-0 d-flex flex-column" style="height: calc(100vh - 350px);">
                                 <div id="chat-container" class="chat-container-futuristic">
@@ -556,17 +573,43 @@
             const chatInput = document.getElementById('chat-input');
             const agentSelector = document.getElementById('agent-selector');
             const modelSelect = document.getElementById('model-select');
+            const agentSelect = document.getElementById('agent-select');
             const agentDescription = document.getElementById('agent-description');
             const agentCapabilities = document.getElementById('agent-capabilities');
             
             let currentAgent = 'developer';
 
             // Inicializar el selector de agentes
-            agentSelector.addEventListener('change', function() {
-                const agentId = this.value;
-                updateAgentInfo(agentId);
-                currentAgent = agentId;
-            });
+            if (agentSelector) {
+                agentSelector.addEventListener('change', function() {
+                    const agentId = this.value;
+                    updateAgentInfo(agentId);
+                    currentAgent = agentId;
+                    
+                    // Sincronizar con el nuevo selector en el header
+                    if (agentSelect) {
+                        agentSelect.value = agentId;
+                    }
+                });
+            }
+            
+            // Inicializar el nuevo selector de agentes en el header
+            if (agentSelect) {
+                agentSelect.addEventListener('change', function() {
+                    const agentId = this.value;
+                    currentAgent = agentId;
+                    
+                    // Actualizar el mensaje de bienvenida
+                    document.querySelector('.system-message .message-content p').innerHTML = 
+                        `¡Bienvenido al chat especializado de CODESTORM! Estás hablando con el <strong>${SPECIALIZED_AGENTS[agentId].name}</strong>, ${SPECIALIZED_AGENTS[agentId].description}.`;
+                    
+                    // Sincronizar con el selector del sidebar si existe
+                    if (agentSelector) {
+                        agentSelector.value = agentId;
+                        updateAgentInfo(agentId);
+                    }
+                });
+            }
 
             // Actualizar información del agente
             function updateAgentInfo(agentId) {
@@ -623,8 +666,8 @@
                     },
                     body: JSON.stringify({
                         message: message,
-                        agent_id: currentAgent,
-                        model: modelSelect.value
+                        agent_id: agentSelect ? agentSelect.value : currentAgent,
+                        model: modelSelect ? modelSelect.value : 'openai'
                     })
                 })
                 .then(response => response.json())
@@ -668,7 +711,9 @@
                         </div>
                     `;
                 } else if (type === 'agent') {
-                    const agent = SPECIALIZED_AGENTS[currentAgent];
+                    // Usar el agente actualmente seleccionado en el selector
+                    const agentId = agentSelect ? agentSelect.value : currentAgent;
+                    const agent = SPECIALIZED_AGENTS[agentId];
                     messageDiv.innerHTML = `
                         <div class="message-header">
                             <div class="agent-avatar" style="width: 30px; height: 30px; font-size: 1rem;">
