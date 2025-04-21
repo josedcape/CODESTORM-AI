@@ -11,12 +11,12 @@
     <!-- Bootstrap Icons -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
     
+    <!-- Estilos compartidos de base -->
+    <link href="{{ url_for('static', filename='css/style.css') }}" rel="stylesheet">
+    
     <style>
-        .navbar-futuristic {
-            background: linear-gradient(90deg, #091428 0%, #0A2149 100%);
-            box-shadow: 0 2px 15px rgba(0, 100, 255, 0.2);
-            border-bottom: 1px solid #1E88E5;
-        }
+        /* Los estilos propios del index se mantienen, pero quitamos los de navbar
+           que ahora vienen de style.css */
         
         .logo-container {
             display: flex;
@@ -111,11 +111,13 @@
                         <a class="nav-link" href="/code_corrector"><i class="bi bi-bug"></i> Corrector de Código</a>
                     </li>
                 </ul>
-                <div class="ms-auto d-flex align-items-center">
-                    <span id="workspace-info" class="badge bg-primary me-3">Workspace: default</span>
-                    <div class="d-flex align-items-center">
-                        <span class="status-indicator status-disconnected" id="status-indicator" title="Comprobando estado del servidor..."></span>
-                        <span class="small ms-2">Estado del Servidor</span>
+                <div class="ms-auto workspace-status">
+                    <span id="workspace-info" class="workspace-badge">
+                        <i class="bi bi-folder2"></i> Workspace: default
+                    </span>
+                    <div class="status-container">
+                        <span class="status-indicator status-disconnected" id="status-indicator"></span>
+                        <span>Estado del Servidor</span>
                     </div>
                 </div>
             </div>
@@ -153,7 +155,7 @@
                     <div class="card-body">
                         <div class="mb-3">
                             <label for="model-select" class="form-label">Selecciona Modelo de IA:</label>
-                            <select id="model-select" class="form-select">
+                            <select id="model-select" class="form-select form-select-sm futuristic-select">
                                 <option value="openai" selected>OpenAI (GPT-4o)</option>
                                 <option value="anthropic">Anthropic (Claude)</option>
                                 <option value="gemini">Google (Gemini)</option>
@@ -162,7 +164,7 @@
                         
                         <div class="mb-3">
                             <label for="agent-select" class="form-label">Agente Especializado:</label>
-                            <select id="agent-select" class="form-select">
+                            <select id="agent-select" class="form-select form-select-sm futuristic-select">
                                 <option value="general" selected>Asistente General</option>
                                 <option value="developer">Desarrollador de Código</option>
                                 <option value="architect">Arquitecto de Sistemas</option>
@@ -170,12 +172,12 @@
                             </select>
                             <div class="form-text">Selecciona el tipo de asistente según la tarea que necesites realizar.</div>
                         </div>
-                        <textarea id="instruction-input" class="form-control instruction-input" placeholder="Escribe tus instrucciones en lenguaje natural (por ejemplo, 'Crea un nuevo archivo llamado ejemplo.txt con Hola Mundo como contenido')"></textarea>
+                        <textarea id="instruction-input" class="form-control instruction-input chat-input" placeholder="Escribe tus instrucciones en lenguaje natural (por ejemplo, 'Crea un nuevo archivo llamado ejemplo.txt con Hola Mundo como contenido')"></textarea>
                         <div class="d-flex justify-content-end mt-2">
-                            <button id="clear-btn" class="btn btn-secondary me-2">
+                            <button id="clear-btn" class="btn btn-secondary me-3">
                                 <i class="bi bi-x"></i> Limpiar
                             </button>
-                            <button id="execute-btn" class="btn btn-primary">
+                            <button id="execute-btn" class="btn btn-gold">
                                 <i class="bi bi-play"></i> Ejecutar
                                 <span class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
                             </button>
@@ -207,7 +209,7 @@
                         <button id="new-file-btn" class="btn btn-sm btn-primary">
                             <i class="bi bi-file-earmark-plus"></i> Nuevo Archivo
                         </button>
-                        <button id="new-folder-btn" class="btn btn-sm btn-secondary">
+                        <button id="new-folder-btn" class="btn btn-sm btn-gold">
                             <i class="bi bi-folder-plus"></i> Nueva Carpeta
                         </button>
                     </div>
