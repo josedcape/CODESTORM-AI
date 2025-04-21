@@ -90,49 +90,35 @@ def crear_archivo(ruta, contenido):
     """Crea un archivo con el contenido especificado."""
     print(f"Creando archivo: {ruta}")
     
+    # Verificar si el contenido es demasiado grande
+    contenido_large = len(contenido) > 10000
+    temp_file = None
+    
+    if contenido_large:
+        print("Contenido extenso detectado, usando archivo temporal...")
+        import tempfile
+        temp_fd, temp_path = tempfile.mkstemp(text=True)
+        with os.fdopen(temp_fd, 'w') as tmp:
+            tmp.write(contenido)
+        temp_file = temp_path
+    
     try:
-        response = requests.post(
-            f"{BASE_URL}/api/create_file",
-            json={"file_path": ruta, "content": contenido},
-            headers={"Content-Type": "application/json"},
-            timeout=5  # Timeout reducido para evitar bloqueos
-        )
-        
-        if response.status_code == 200:
-            return {
-                'success': True,
-                'archivo': ruta,
-                'mensaje': f"Archivo {ruta} creado correctamente"
-            }
-        else:
-            # Si la API falla pero podemos crear el archivo localmente
-            if not USER_WORKSPACE.exists():
-                USER_WORKSPACE.mkdir(parents=True, exist_ok=True)
-                
-            target_file = (USER_WORKSPACE / ruta).resolve()
+        if not contenido_large:
+            response = requests.post(
+                f"{BASE_URL}/api/create_file",
+                json={"file_path": ruta, "content": contenido},
+                headers={"Content-Type": "application/json"},
+                timeout=10
+            )
             
-            # Verificar path traversal
-            if not str(target_file).startswith(str(USER_WORKSPACE.resolve())):
+            if response.status_code == 200:
                 return {
-                    'success': False,
+                    'success': True,
                     'archivo': ruta,
-                    'error': 'Acceso denegado: No se puede acceder a archivos fuera del workspace'
+                    'mensaje': f"Archivo {ruta} creado correctamente"
                 }
-                
-            # Crear directorios si no existen
-            target_file.parent.mkdir(parents=True, exist_ok=True)
-            
-            # Escribir el archivo
-            with open(target_file, 'w') as f:
-                f.write(contenido)
-                
-            return {
-                'success': True,
-                'archivo': ruta,
-                'mensaje': f"Archivo {ruta} creado correctamente (método local)"
-            }
-    except requests.exceptions.RequestException as e:
-        # Si la API falla pero podemos crear el archivo localmente
+        
+        # Método local (ya sea porque la API falló o el contenido es muy grande)
         if not USER_WORKSPACE.exists():
             USER_WORKSPACE.mkdir(parents=True, exist_ok=True)
             
@@ -150,12 +136,19 @@ def crear_archivo(ruta, contenido):
         target_file.parent.mkdir(parents=True, exist_ok=True)
         
         # Escribir el archivo
-        with open(target_file, 'w') as f:
-            f.write(contenido)
-            
+        if contenido_large and temp_file:
+            # Copiar desde archivo temporal
+            import shutil
+            shutil.copy2(temp_file, target_file)
+        else:
+            # Escribir directamente
+            with open(target_file, 'w', encoding='utf-8') as f:
+                f.write(contenido)
+                
         return {
             'success': True,
             'archivo': ruta,
+            'tamaño': target_file.stat().st_size,
             'mensaje': f"Archivo {ruta} creado correctamente (método local)"
         }
     except Exception as e:
@@ -164,6 +157,10 @@ def crear_archivo(ruta, contenido):
             'archivo': ruta,
             'error': str(e)
         }
+    finally:
+        # Limpiar archivo temporal si existe
+        if temp_file and os.path.exists(temp_file):
+            os.unlink(temp_file)
 
 def leer_archivo(ruta):
     """Lee el contenido de un archivo."""
