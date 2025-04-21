@@ -82,6 +82,11 @@ def files():
     """Ruta al explorador de archivos."""
     return render_template('files.html')
 
+@app.route('/code_corrector')
+def code_corrector():
+    """Ruta al corrector de código."""
+    return render_template('code_corrector.html')
+
 @app.route('/edit_file')
 def edit_file():
     """Editar un archivo."""
@@ -320,6 +325,90 @@ def api_delete_file():
             'error': str(e)
         }), 500
 
+# API para análisis de código
+@app.route('/api/analyze_code', methods=['POST'])
+def process_code():
+    """API para analizar código con instrucciones específicas."""
+    try:
+        data = request.json
+        user_id = data.get('user_id', 'default')
+        code = data.get('code')
+        language = data.get('language', 'python')
+        instructions = data.get('instructions', '')
+        
+        if not code:
+            return jsonify({
+                'success': False,
+                'error': 'Se requiere código para analizar'
+            }), 400
+        
+        # En una implementación real, aquí se conectaría con un servicio de IA
+        # para analizar el código. Para esta versión simplificada, simulamos una respuesta.
+        
+        # Análisis básico de código
+        improved_code = code
+        explanations = ["El código se ve bien estructurado."]
+        suggestions = ["Considera añadir comentarios para mejorar la legibilidad."]
+        
+        # Respuestas según el lenguaje
+        if language == 'python':
+            if 'def ' in code and not code.strip().startswith('def '):
+                explanations.append("Has definido funciones correctamente.")
+            if 'import ' in code:
+                suggestions.append("Verifica que todas las importaciones sean necesarias para tu código.")
+            if 'while ' in code and 'break' not in code:
+                suggestions.append("Considera añadir una condición de salida en tu bucle while para evitar bucles infinitos.")
+                
+        elif language == 'javascript':
+            if 'function ' in code:
+                explanations.append("Has definido funciones correctamente.")
+            if 'var ' in code:
+                suggestions.append("Considera usar 'let' o 'const' en lugar de 'var' para una mejor gestión de ámbito.")
+            if 'console.log' in code:
+                suggestions.append("Recuerda eliminar las declaraciones console.log en código de producción.")
+                
+        # Mejoras simuladas basadas en instrucciones
+        if instructions:
+            if 'optimizar' in instructions.lower() or 'rendimiento' in instructions.lower():
+                suggestions.append("Para optimizar el rendimiento, considera utilizar estructuras de datos más eficientes.")
+                explanations.append("El rendimiento podría mejorarse reduciendo las operaciones redundantes.")
+            
+            if 'seguridad' in instructions.lower():
+                suggestions.append("Para mejorar la seguridad, valida todas las entradas del usuario.")
+                explanations.append("Es importante proteger tu código contra entradas maliciosas.")
+        
+        # Simulamos mejoras en el código para casos específicos
+        if language == 'python' and 'fibonacci' in code.lower() and 'def fibonacci' in code.lower():
+            if 'fibonacci(n-1) + fibonacci(n-2)' in code:
+                improved_code = code.replace('def fibonacci(n):', 'def fibonacci(n):  # Versión optimizada')
+                improved_code = improved_code.replace('    if n <= 0:', '    # Verificación de entrada\n    if n <= 0:')
+                improved_code = improved_code.replace('    elif n == 1:', '    elif n == 1:')
+                improved_code = improved_code.replace('    else:\n        return fibonacci(n-1) + fibonacci(n-2)', 
+                                                   '    else:\n        # Usamos enfoque iterativo para mejor rendimiento\n'
+                                                   '        a, b = 0, 1\n        for _ in range(2, n + 1):\n'
+                                                   '            a, b = b, a + b\n        return b')
+                
+                explanations = ["Tu implementación usa recursión, lo que puede llevar a desbordamiento de pila para valores grandes.",
+                               "La función recursiva tiene complejidad de tiempo O(2^n), que es exponencial.",
+                               "La implementación iterativa propuesta tiene complejidad O(n), mucho más eficiente."]
+                
+                suggestions = ["Utiliza el enfoque iterativo para mejorar el rendimiento.",
+                              "Añade validación de entrada para manejar valores negativos.",
+                              "Considera implementar memoización si necesitas mantener el enfoque recursivo."]
+        
+        return jsonify({
+            'success': True,
+            'improved_code': improved_code,
+            'explanations': explanations,
+            'suggestions': suggestions
+        })
+    except Exception as e:
+        logger.error(f"Error al analizar código: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
 # API para chat y generación de contenido
 @app.route('/api/chat', methods=['POST'])
 def api_chat():
@@ -503,8 +592,8 @@ def process_instruction():
             # Respuesta genérica para instrucciones no reconocidas
             return jsonify({
                 'success': True,
-                'result': f"He recibido tu instrucción: '{instruction}'. " +
-                          "Para ejecutar un comando, comienza con 'ejecuta'. " +
+                'result': f"He recibido tu instrucción: '{instruction}'. "
+                          "Para ejecutar un comando, comienza con 'ejecuta'. "
                           "Para crear un archivo, incluye 'crea archivo' en tu instrucción."
             })
             

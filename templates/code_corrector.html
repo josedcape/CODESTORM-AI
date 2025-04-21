@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Corrector de Código - Codestorm Assistant</title>
+    <title>Codestorm - Corrector de Código</title>
     
     <!-- Bootstrap CSS -->
     <link href="https://cdn.replit.com/agent/bootstrap-agent-dark-theme.min.css" rel="stylesheet">
@@ -11,114 +11,176 @@
     <!-- Bootstrap Icons -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
     
-    <!-- Prism CSS for code highlighting -->
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet">
-    
-    <!-- Custom CSS -->
-    <link href="{{ url_for('static', filename='css/futuristic.css') }}" rel="stylesheet">
-    <link href="{{ url_for('static', filename='css/styles.css') }}" rel="stylesheet">
+    <!-- Prism.js CSS para resaltado de sintaxis -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/line-numbers/prism-line-numbers.min.css">
     
     <style>
-        .split-pane {
+        :root {
+            --darker-blue: #091428;
+            --dark-blue: #0A2149;
+            --medium-blue: #1E88E5;
+            --light-blue: #4CB9FF;
+            --highlight-color: #ffc107;
+            --dark-background: #121212;
+            --card-background: #1a1a1a;
+            --card-header: #212529;
+            --text-primary: #e9ecef;
+            --text-secondary: #adb5bd;
+        }
+        
+        body {
+            background-color: var(--dark-background);
+            color: var(--text-primary);
+            font-family: 'Arial', sans-serif;
+            min-height: 100vh;
             display: flex;
-            height: calc(100vh - 200px);
-            min-height: 500px;
+            flex-direction: column;
         }
         
-        .code-panel {
-            flex: 1;
-            overflow: auto;
-            padding: 15px;
-            background-color: var(--card-bg);
-            border: 1px solid var(--card-border);
-            border-radius: 8px;
+        .navbar-futuristic {
+            background: linear-gradient(90deg, var(--darker-blue) 0%, var(--dark-blue) 100%);
+            box-shadow: 0 2px 15px rgba(0, 100, 255, 0.2);
+            border-bottom: 1px solid var(--medium-blue);
         }
         
-        .code-panel + .code-panel {
-            margin-left: 15px;
-        }
-        
-        .code-editor {
-            width: 100%;
+        .card-futuristic {
+            background-color: var(--card-background);
+            border-radius: 0.5rem;
+            border: 1px solid rgba(78, 115, 223, 0.2);
+            box-shadow: 0 0.25rem 0.75rem rgba(0, 0, 0, 0.2);
+            transition: all 0.3s ease;
             height: 100%;
-            background-color: #1a2130;
-            color: #e0f7fa;
-            border: none;
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 0.9rem;
+        }
+        
+        .card-header-futuristic {
+            background-color: var(--card-header);
+            border-bottom: 1px solid rgba(78, 115, 223, 0.2);
+            padding: 0.75rem 1.25rem;
+            font-weight: 500;
+            color: var(--text-primary);
+        }
+        
+        #code-input {
             resize: none;
-            padding: 10px;
-            outline: none;
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+            background-color: var(--card-background);
+            color: var(--text-primary);
+            border: 1px solid rgba(78, 115, 223, 0.2);
+            min-height: 300px;
         }
         
-        .explanation-panel {
-            margin-top: 15px;
-            background-color: var(--card-bg);
-            border: 1px solid var(--card-border);
-            border-radius: 8px;
-            padding: 15px;
+        #code-output {
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+            background-color: #212529;
+            color: var(--text-primary);
+            border-radius: 0.5rem;
+            padding: 1rem;
+            min-height: 300px;
+            border: 1px solid rgba(78, 115, 223, 0.2);
+            overflow: auto;
         }
         
-        .explanation-content {
-            max-height: 300px;
-            overflow-y: auto;
+        .explanation-card {
+            background-color: rgba(30, 136, 229, 0.1);
+            border-left: 3px solid var(--medium-blue);
+            padding: 1rem;
+            margin-bottom: 1rem;
+            border-radius: 0.25rem;
         }
         
-        .file-info {
-            margin-bottom: 15px;
-            padding: 10px;
-            background-color: rgba(13, 36, 60, 0.7);
-            border-radius: 6px;
-            display: flex;
-            align-items: center;
+        .improvement-card {
+            background-color: rgba(40, 167, 69, 0.1);
+            border-left: 3px solid #28a745;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            border-radius: 0.25rem;
         }
         
-        .file-icon {
-            margin-right: 10px;
-            font-size: 1.5rem;
-            color: var(--primary-blue);
+        .warning-card {
+            background-color: rgba(255, 193, 7, 0.1);
+            border-left: 3px solid var(--highlight-color);
+            padding: 1rem;
+            margin-bottom: 1rem;
+            border-radius: 0.25rem;
         }
         
-        .correction-progress {
-            height: 4px;
-            margin-top: 10px;
+        .error-card {
+            background-color: rgba(220, 53, 69, 0.1);
+            border-left: 3px solid #dc3545;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            border-radius: 0.25rem;
         }
         
-        .changes-badge {
-            margin-left: 5px;
-            font-size: 0.7rem;
-            padding: 3px 6px;
-        }
-        
-        .navigation-bar {
-            background: var(--card-header-bg);
-            border-radius: 8px;
-            padding: 10px 15px;
-            margin-bottom: 15px;
-        }
-        
-        .nav-pills .nav-link {
-            color: var(--text-light);
-            border-radius: 20px;
-            padding: 8px 16px;
-            margin-right: 5px;
+        .btn-futuristic {
+            background: linear-gradient(135deg, var(--medium-blue) 0%, var(--light-blue) 100%);
+            border: none;
+            color: white;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
             transition: all 0.3s ease;
         }
         
-        .nav-pills .nav-link.active {
-            background-color: var(--primary-blue);
-            color: white;
-            box-shadow: 0 0 10px rgba(30, 136, 229, 0.5);
+        .btn-futuristic:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 8px rgba(0, 100, 255, 0.3);
         }
         
-        .nav-pills .nav-link:hover:not(.active) {
-            background-color: rgba(13, 71, 161, 0.2);
+        .language-selector {
+            background-color: rgba(30, 136, 229, 0.1);
+            border: 1px solid rgba(30, 136, 229, 0.3);
+            color: var(--text-primary);
+        }
+        
+        .language-selector:focus {
+            border-color: var(--medium-blue);
+            box-shadow: 0 0 0 0.25rem rgba(30, 136, 229, 0.25);
+        }
+
+        .custom-tooltip {
+            position: absolute;
+            background-color: #212529;
+            color: var(--text-primary);
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            z-index: 1000;
+            max-width: 250px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        
+        .status-indicator {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+        
+        .status-connected {
+            background-color: #20c997;
+        }
+        
+        .status-disconnected {
+            background-color: #dc3545;
+        }
+        
+        .status-connecting {
+            background-color: #ffc107;
+            animation: pulse 1.5s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { opacity: 0.5; }
+            50% { opacity: 1; }
+            100% { opacity: 0.5; }
         }
     </style>
 </head>
 <body>
-    <!-- Navbar -->
-    <nav class="navbar navbar-expand-lg navbar-futuristic">
+    <nav class="navbar navbar-expand-lg navbar-futuristic sticky-top">
         <div class="container-fluid">
             <a class="navbar-brand" href="/">
                 <i class="bi bi-braces"></i>
@@ -145,1079 +207,508 @@
                 <div class="ms-auto d-flex align-items-center">
                     <span id="workspace-info" class="badge bg-primary me-3">Workspace: default</span>
                     <div class="d-flex align-items-center">
-                        <span class="status-indicator status-disconnected" id="status-indicator" title="Checking server status..."></span>
-                        <span class="small ms-2">Server Status</span>
+                        <span class="status-indicator status-disconnected" id="status-indicator" title="Comprobando estado del servidor..."></span>
+                        <span class="small ms-2">Estado del Servidor</span>
                     </div>
                 </div>
             </div>
         </div>
     </nav>
 
-    <div class="container-fluid mt-4">
+    <div class="container my-4">
+        <h1 class="mb-4">
+            <i class="bi bi-bug text-info"></i> Corrector de Código Inteligente
+        </h1>
+        
         <div class="row">
-            <div class="col-12">
-                <div class="card-futuristic">
-                    <div class="card-header-futuristic">
-                        <i class="bi bi-tools"></i> Corrector Inteligente de Código
+            <div class="col-lg-6 mb-4">
+                <div class="card card-futuristic">
+                    <div class="card-header card-header-futuristic">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span><i class="bi bi-code-slash me-2"></i>Código Original</span>
+                            <div>
+                                <select id="language-selector" class="form-select form-select-sm language-selector">
+                                    <option value="javascript">JavaScript</option>
+                                    <option value="python" selected>Python</option>
+                                    <option value="html">HTML</option>
+                                    <option value="css">CSS</option>
+                                    <option value="java">Java</option>
+                                    <option value="csharp">C#</option>
+                                    <option value="cpp">C++</option>
+                                    <option value="php">PHP</option>
+                                    <option value="ruby">Ruby</option>
+                                    <option value="go">Go</option>
+                                    <option value="sql">SQL</option>
+                                </select>
+                            </div>
+                        </div>
                     </div>
                     <div class="card-body">
-                        <div class="navigation-bar">
-                            <ul class="nav nav-pills">
-                                <li class="nav-item">
-                                    <a class="nav-link active" href="#select-tab" data-bs-toggle="tab">
-                                        <i class="bi bi-file-earmark-code"></i> Seleccionar Archivo
-                                    </a>
-                                </li>
-                                <li class="nav-item">
-                                    <a class="nav-link" href="#edit-tab" data-bs-toggle="tab">
-                                        <i class="bi bi-pencil-square"></i> Editar y Corregir
-                                    </a>
-                                </li>
-                                <li class="nav-item">
-                                    <a class="nav-link" href="#explain-tab" data-bs-toggle="tab">
-                                        <i class="bi bi-info-circle"></i> Ver Explicación
-                                    </a>
-                                </li>
-                            </ul>
+                        <textarea
+                            id="code-input"
+                            class="form-control"
+                            placeholder="Pega tu código aquí para analizarlo..."
+                            spellcheck="false"
+                        ></textarea>
+                    </div>
+                    <div class="card-footer">
+                        <div class="input-group">
+                            <input
+                                type="text"
+                                id="instruction-input"
+                                class="form-control"
+                                placeholder="Instrucciones específicas (opcional): ej. 'Optimizar rendimiento'"
+                            >
+                            <button id="analyze-btn" type="button" class="btn btn-futuristic px-4">
+                                <i class="bi bi-lightning-charge"></i> Analizar
+                            </button>
                         </div>
-                        
-                        <div class="tab-content">
-                            <!-- Select File Tab -->
-                            <div class="tab-pane fade show active" id="select-tab">
-                                <div class="mb-4">
-                                    <h5>Selecciona un archivo para corregir</h5>
-                                    <p>Elige un archivo de tu workspace para analizarlo y sugerir correcciones.</p>
-                                </div>
-                                <div class="row">
-                                    <div class="col-md-6">
-                                        <div class="card-futuristic">
-                                            <div class="card-header-futuristic">
-                                                <i class="bi bi-folder2"></i> Archivos Disponibles
-                                            </div>
-                                            <div class="card-body p-0">
-                                                <div id="file-browser" class="list-group list-group-flush">
-                                                    <div class="p-4 text-center text-muted">
-                                                        <div class="spinner-border text-primary" role="status">
-                                                            <span class="visually-hidden">Cargando...</span>
-                                                        </div>
-                                                        <p class="mt-2">Cargando archivos...</p>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div class="col-md-6">
-                                        <div class="card-futuristic">
-                                            <div class="card-header-futuristic">
-                                                <i class="bi bi-clock-history"></i> Archivos Recientes
-                                            </div>
-                                            <div class="card-body">
-                                                <div id="recent-files" class="list-group">
-                                                    <a href="#" class="list-group-item list-group-item-action d-flex align-items-center">
-                                                        <i class="bi bi-filetype-py me-3 text-primary"></i>
-                                                        <div>
-                                                            <div class="fw-bold">main.py</div>
-                                                            <small class="text-muted">Modificado hace 2 horas</small>
-                                                        </div>
-                                                    </a>
-                                                    <a href="#" class="list-group-item list-group-item-action d-flex align-items-center">
-                                                        <i class="bi bi-filetype-js me-3 text-warning"></i>
-                                                        <div>
-                                                            <div class="fw-bold">app.js</div>
-                                                            <small class="text-muted">Modificado hace 3 horas</small>
-                                                        </div>
-                                                    </a>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div class="mt-3">
-                                            <div class="d-grid">
-                                                <button id="upload-file-btn" class="btn btn-futuristic">
-                                                    <i class="bi bi-upload"></i> Subir Archivo
-                                                </button>
-                                                <input type="file" id="file-upload" class="d-none">
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <!-- Edit Tab -->
-                            <div class="tab-pane fade" id="edit-tab">
-                                <div class="file-info">
-                                    <i class="bi bi-file-earmark-code file-icon"></i>
-                                    <div>
-                                        <h5 id="current-file-name" class="mb-1">app.js</h5>
-                                        <small id="current-file-path" class="text-muted">/workspace/app.js</small>
-                                    </div>
-                                    <div class="ms-auto">
-                                        <span class="badge bg-info changes-badge">
-                                            <i class="bi bi-pencil"></i> 5 correcciones
-                                        </span>
-                                    </div>
-                                </div>
-                                
-                                <div class="mb-3">
-                                    <label for="correction-instructions" class="form-label">Instrucciones para la corrección:</label>
-                                    <textarea id="correction-instructions" class="form-control input-futuristic" rows="2" placeholder="Ej: Corrige errores de sintaxis y mejora la legibilidad"></textarea>
-                                </div>
-                                
-                                <div class="mb-3">
-                                    <label class="form-label">Selecciona un Agente Especializado:</label>
-                                    <div class="d-flex flex-wrap agent-selector">
-                                        <div class="form-check form-check-inline me-3">
-                                            <input class="form-check-input" type="radio" name="agent-select" id="agent-general" value="general" checked>
-                                            <label class="form-check-label" for="agent-general">
-                                                <i class="bi bi-robot"></i> Asistente General
-                                            </label>
-                                        </div>
-                                        <div class="form-check form-check-inline me-3">
-                                            <input class="form-check-input" type="radio" name="agent-select" id="agent-developer" value="developer">
-                                            <label class="form-check-label" for="agent-developer">
-                                                <i class="bi bi-code-slash"></i> Agente Desarrollador
-                                            </label>
-                                        </div>
-                                        <div class="form-check form-check-inline me-3">
-                                            <input class="form-check-input" type="radio" name="agent-select" id="agent-architect" value="architect">
-                                            <label class="form-check-label" for="agent-architect">
-                                                <i class="bi bi-diagram-3"></i> Agente Arquitecto
-                                            </label>
-                                        </div>
-                                        <div class="form-check form-check-inline">
-                                            <input class="form-check-input" type="radio" name="agent-select" id="agent-advanced" value="advanced">
-                                            <label class="form-check-label" for="agent-advanced">
-                                                <i class="bi bi-cpu"></i> Agente Avanzado
-                                            </label>
-                                        </div>
-                                    </div>
-                                </div>
-                                
-                                <div class="split-pane">
-                                    <div class="code-panel">
-                                        <h6>Código Original</h6>
-                                        <textarea id="original-code" class="code-editor" spellcheck="false"></textarea>
-                                    </div>
-                                    <div class="code-panel">
-                                        <h6>Código Corregido</h6>
-                                        <textarea id="corrected-code" class="code-editor" spellcheck="false"></textarea>
-                                    </div>
-                                </div>
-                                
-                                <!-- Contenedor oculto para resaltado de sintaxis -->
-                                <div id="syntax-highlight-container" style="display: none;">
-                                    <pre><code id="highlighted-code" class="language-javascript"></code></pre>
-                                </div>
-                                
-                                <div class="d-flex justify-content-between mt-3">
-                                    <div>
-                                        <button id="analyze-btn" class="btn btn-futuristic">
-                                            <i class="bi bi-search"></i> Analizar Código
-                                        </button>
-                                        <button id="process-btn" class="btn btn-primary ms-2">
-                                            <i class="bi bi-robot"></i> Enviar al Asistente
-                                        </button>
-                                        <button id="create-new-btn" class="btn btn-success ms-2">
-                                            <i class="bi bi-file-earmark-plus"></i> Crear Nuevo
-                                        </button>
-                                    </div>
-                                    <div>
-                                        <button id="discard-btn" class="btn btn-outline-danger me-2">
-                                            <i class="bi bi-x-circle"></i> Descartar
-                                        </button>
-                                        <button id="save-btn" class="btn btn-futuristic">
-                                            <i class="bi bi-save"></i> Guardar Cambios
-                                        </button>
-                                    </div>
-                                </div>
-                                
-                                <div class="progress correction-progress mt-3">
-                                    <div class="progress-bar bg-primary" role="progressbar" style="width: 0%"></div>
-                                </div>
-                            </div>
-                            
-                            <!-- Explain Tab -->
-                            <div class="tab-pane fade" id="explain-tab">
-                                <div class="file-info">
-                                    <i class="bi bi-file-earmark-code file-icon"></i>
-                                    <div>
-                                        <h5 id="explain-file-name" class="mb-1">app.js</h5>
-                                        <small id="explain-file-path" class="text-muted">/workspace/app.js</small>
-                                    </div>
-                                </div>
-                                
-                                <div class="explanation-panel">
-                                    <h5><i class="bi bi-lightning"></i> Resumen de Cambios</h5>
-                                    <div class="explanation-content">
-                                        <div id="changes-summary">
-                                            <ul>
-                                                <li>Se corrigieron errores de sintaxis en líneas 15-20</li>
-                                                <li>Se optimizó el bucle for para mejor rendimiento</li>
-                                                <li>Se añadieron comentarios descriptivos para mejorar la legibilidad</li>
-                                                <li>Se reorganizaron las funciones para mejor estructura de código</li>
-                                                <li>Se actualizaron las llamadas a métodos obsoletos</li>
-                                            </ul>
-                                        </div>
-                                    </div>
-                                </div>
-                                
-                                <div class="explanation-panel mt-3">
-                                    <h5><i class="bi bi-book"></i> Explicación Detallada</h5>
-                                    <div class="explanation-content">
-                                        <div id="detailed-explanation">
-                                            <h6>1. Corrección de errores de sintaxis</h6>
-                                            <p>Se encontraron varios errores de sintaxis en el código original:</p>
-                                            <ul>
-                                                <li>Faltaban puntos y comas al final de algunas líneas</li>
-                                                <li>Había un paréntesis desbalanceado en la línea 18</li>
-                                                <li>La declaración de variables utilizaba 'var' en lugar de 'const' o 'let'</li>
-                                            </ul>
-                                            
-                                            <h6>2. Optimización de rendimiento</h6>
-                                            <p>El bucle for se ha optimizado utilizando métodos modernos de JavaScript:</p>
-                                            <pre><code class="language-javascript">// Antes
-for (var i = 0; i < array.length; i++) {
-  // código...
-}
-
-// Después
-array.forEach(item => {
-  // código...
-});</code></pre>
-                                            
-                                            <h6>3. Mejoras de legibilidad</h6>
-                                            <p>Se han añadido comentarios descriptivos y se ha mejorado el formato del código para hacerlo más legible y mantenible.</p>
-                                        </div>
-                                    </div>
-                                </div>
-                                
-                                <div class="d-flex justify-content-end mt-3">
-                                    <button id="copy-explanation-btn" class="btn btn-outline-primary me-2">
-                                        <i class="bi bi-clipboard"></i> Copiar Explicación
-                                    </button>
-                                    <button id="save-explanation-btn" class="btn btn-futuristic">
-                                        <i class="bi bi-file-earmark-text"></i> Guardar como Documento
-                                    </button>
-                                </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-lg-6">
+                <div class="card card-futuristic">
+                    <div class="card-header card-header-futuristic">
+                        <span><i class="bi bi-check-circle me-2"></i>Resultado del Análisis</span>
+                    </div>
+                    <div class="card-body">
+                        <div id="analysis-container">
+                            <div class="text-center py-5 text-muted">
+                                <i class="bi bi-code-square" style="font-size: 3rem;"></i>
+                                <p class="mt-3">Ingresa tu código y presiona "Analizar" para comenzar</p>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
+        
+        <div class="row mt-4">
+            <div class="col-12">
+                <div class="card card-futuristic">
+                    <div class="card-header card-header-futuristic">
+                        <span><i class="bi bi-chat-left-text me-2"></i>Conversación con el Asistente</span>
+                    </div>
+                    <div class="card-body">
+                        <div id="chat-container" class="mb-3">
+                            <div class="system-message mb-3">
+                                <div class="explanation-card">
+                                    <p>¡Bienvenido al Corrector de Código! Ingresa tu código en el panel izquierdo, selecciona el lenguaje y presiona "Analizar" para recibir sugerencias de mejora. También puedes hacer preguntas específicas sobre tu código.</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="d-flex mt-3">
+                            <input
+                                type="text"
+                                id="chat-input"
+                                class="form-control me-2"
+                                placeholder="Haz una pregunta sobre el código analizado..."
+                            >
+                            <button id="chat-send-btn" type="button" class="btn btn-futuristic">
+                                <i class="bi bi-send"></i> Enviar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
-    
-    <!-- Notification container -->
+
+    <footer class="footer mt-auto py-3" style="background: linear-gradient(90deg, var(--darker-blue) 0%, var(--dark-blue) 100%);">
+        <div class="container text-center">
+            <span class="text-light">CODESTORM-Assistant © 2025 | Herramienta de Desarrollo Impulsada por IA</span>
+        </div>
+    </footer>
+
+    <!-- Notificaciones -->
     <div id="notifications" class="position-fixed top-0 end-0 p-3" style="z-index: 5000;"></div>
     
-    <!-- JavaScript Libraries -->
+    <!-- Custom tooltip container -->
+    <div id="custom-tooltip" class="custom-tooltip"></div>
+
+    <!-- Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="https://cdn.socket.io/4.6.1/socket.io.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-javascript.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/line-numbers/prism-line-numbers.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-python.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-javascript.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-css.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-java.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-csharp.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-cpp.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-ruby.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-go.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-sql.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-markup.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-json.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-bash.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-markdown.min.js"></script>
-    <script src="{{ url_for('static', filename='js/websocket.js') }}"></script>
-    <script src="{{ url_for('static', filename='js/file-actions.js') }}"></script>
     
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            // Inicializar elementos de la interfaz
-            const originalCode = document.getElementById('original-code');
-            const correctedCode = document.getElementById('corrected-code');
+            const codeInput = document.getElementById('code-input');
+            const languageSelector = document.getElementById('language-selector');
             const analyzeBtn = document.getElementById('analyze-btn');
-            const processBtn = document.getElementById('process-btn');
-            const saveBtn = document.getElementById('save-btn');
-            const discardBtn = document.getElementById('discard-btn');
-            const uploadBtn = document.getElementById('upload-file-btn');
-            const fileUpload = document.getElementById('file-upload');
-            const progressBar = document.querySelector('.progress-bar');
-            const instructions = document.getElementById('correction-instructions');
-            const highlightedCode = document.getElementById('highlighted-code');
+            const instructionInput = document.getElementById('instruction-input');
+            const analysisContainer = document.getElementById('analysis-container');
+            const chatInput = document.getElementById('chat-input');
+            const chatSendBtn = document.getElementById('chat-send-btn');
+            const chatContainer = document.getElementById('chat-container');
             
-            // Variables para controlar el estado
-            let currentFilePath = '';
-            let isAnalyzing = false;
-            let currentLanguage = '';
-            
-            // Agregar estilos de Prism para una mejor visualización
-            const prismStyles = document.createElement('link');
-            prismStyles.rel = 'stylesheet';
-            prismStyles.href = 'https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css';
-            document.head.appendChild(prismStyles);
-            
-            // Función para aplicar resaltado de sintaxis a un textarea
-            function applyHighlighting(textArea, language = 'javascript') {
-                // Actualizar el contenido del elemento pre>code
-                highlightedCode.textContent = textArea.value;
-                highlightedCode.className = `language-${language}`;
-                
-                // Aplicar resaltado
-                Prism.highlightElement(highlightedCode);
-            }
-            
-            // Aplicar resaltado de sintaxis cuando cambie el contenido
-            originalCode.addEventListener('input', function() {
-                const extension = currentFilePath ? currentFilePath.split('.').pop()?.toLowerCase() : 'js';
-                
-                // Detectar lenguaje
-                let language = 'javascript';
-                if (extension === 'py') language = 'python';
-                else if (extension === 'html') language = 'markup';
-                else if (extension === 'css') language = 'css';
-                else if (extension === 'json') language = 'json';
-                
-                applyHighlighting(this, language);
-            });
-            
-            // Cargar archivos disponibles
-            loadAvailableFiles();
-            
-            // Event Listeners
-            uploadBtn.addEventListener('click', function() {
-                fileUpload.click();
-            });
-            
-            fileUpload.addEventListener('change', function(e) {
-                if (e.target.files.length > 0) {
-                    const file = e.target.files[0];
-                    // Procesar el archivo seleccionado
-                    readFileContent(file);
-                }
-            });
-            
-            analyzeBtn.addEventListener('click', function() {
-                if (!originalCode.value.trim()) {
-                    showNotification('Por favor carga un archivo o ingresa código para analizar', 'warning');
-                    return;
-                }
-                
-                analyzeCode();
-            });
-            
-            // Botón para enviar al asistente IA
-            processBtn.addEventListener('click', function() {
-                if (!originalCode.value.trim()) {
-                    showNotification('Por favor carga un archivo o ingresa código para procesar', 'warning');
-                    return;
-                }
-                
-                sendToAssistant();
-            });
-            
-            saveBtn.addEventListener('click', function() {
-                if (!correctedCode.value.trim() || !currentFilePath) {
-                    showNotification('No hay código corregido para guardar', 'warning');
-                    return;
-                }
-                
-                saveCodeChanges();
-            });
-            
-            discardBtn.addEventListener('click', function() {
-                if (confirm('¿Estás seguro de descartar los cambios? Esta acción no se puede deshacer.')) {
-                    correctedCode.value = originalCode.value;
-                    showNotification('Cambios descartados', 'info');
-                }
-            });
-            
-            // Botón para crear nuevo archivo
-            document.getElementById('create-new-btn').addEventListener('click', function() {
-                // Mostrar diálogo para crear archivo
-                const fileName = prompt('Ingrese el nombre del archivo a crear (incluyendo extensión):');
-                if (!fileName) return;
-                
-                // Validar extensión de archivo
-                const ext = fileName.split('.').pop()?.toLowerCase();
-                if (!['html', 'js', 'css', 'py', 'json', 'txt', 'md'].includes(ext)) {
-                    showNotification('Extensión de archivo no soportada. Use: html, js, css, py, json, txt, md', 'warning');
-                    return;
-                }
-                
-                // Establecer contenido inicial basado en la extensión
-                let initialContent = '';
-                if (ext === 'html') {
-                    initialContent = `<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Página Nueva</title>
-</head>
-<body>
-    <h1 style="color: green;">Título en color verde</h1>
-    <p>Contenido de la página.</p>
-</body>
-</html>`;
-                } else if (ext === 'js') {
-                    initialContent = `// Archivo JavaScript
-console.log('Hola mundo desde JavaScript');
+            // Ejemplo de código Python por defecto
+            const exampleCode = `def fibonacci(n):
+    """Retorna el número n de la secuencia de Fibonacci."""
+    if n <= 0:
+        return 0
+    elif n == 1:
+        return 1
+    else:
+        return fibonacci(n-1) + fibonacci(n-2)
 
-// Función de ejemplo
-function saludar(nombre) {
-    return 'Hola, ' + nombre + '!';
-}`;
-                } else if (ext === 'css') {
-                    initialContent = `/* Estilos CSS */
-body {
-    font-family: Arial, sans-serif;
-    margin: 0;
-    padding: 20px;
-    background-color: #f5f5f5;
-}
-
-h1 {
-    color: #333;
-}`;
-                } else if (ext === 'py') {
-                    initialContent = `# Archivo Python
-def saludar(nombre):
-    """Función que retorna un saludo personalizado."""
-    return f"Hola, {nombre}!"
+def main():
+    # Pedir al usuario un número
+    num = int(input("Ingrese un número: "))
+    result = fibonacci(num)
+    print(f"Fibonacci({num}) = {result}")
 
 if __name__ == "__main__":
-    print(saludar("Mundo"))`;
+    main()`;
+            
+            codeInput.value = exampleCode;
+            
+            // Manejar el cambio de lenguaje
+            languageSelector.addEventListener('change', function() {
+                if (codeInput.value.trim() === '') {
+                    // Proporcionar ejemplos según el lenguaje seleccionado
+                    switch (this.value) {
+                        case 'javascript':
+                            codeInput.value = `function fibonacci(n) {
+    if (n <= 0) return 0;
+    if (n === 1) return 1;
+    return fibonacci(n-1) + fibonacci(n-2);
+}
+
+function main() {
+    // Ejemplo de uso
+    const num = 10;
+    const result = fibonacci(num);
+    console.log(\`Fibonacci(\${num}) = \${result}\`);
+}
+
+main();`;
+                            break;
+                        case 'python':
+                            codeInput.value = exampleCode;
+                            break;
+                        case 'html':
+                            codeInput.value = `<!DOCTYPE html>
+<html>
+<head>
+    <title>Mi Página</title>
+    <style>
+        body { font-family: Arial, sans-serif; }
+        .container { width: 80%; margin: 0 auto; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Bienvenido a mi página</h1>
+        <p>Este es un ejemplo de HTML.</p>
+    </div>
+    <script>
+        console.log("Página cargada");
+    </script>
+</body>
+</html>`;
+                            break;
+                        default:
+                            codeInput.value = '';
+                    }
                 }
-                
-                // Actualizar información del archivo
-                currentFilePath = '/' + fileName;
-                document.getElementById('current-file-name').textContent = fileName;
-                document.getElementById('current-file-path').textContent = currentFilePath;
-                document.getElementById('explain-file-name').textContent = fileName;
-                document.getElementById('explain-file-path').textContent = currentFilePath;
-                
-                // Cargar contenido en el editor
-                originalCode.value = initialContent;
-                correctedCode.value = initialContent;
-                
-                // Cambiar a la pestaña de edición
-                document.querySelector('a[href="#edit-tab"]').click();
-                
-                showNotification('Archivo creado con éxito (no olvide guardarlo)', 'success');
             });
             
-            // Funciones
-            function loadAvailableFiles() {
-                const fileBrowser = document.getElementById('file-browser');
-                
-                fetch('/api/list_files', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({ directory: '/' })
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.error) {
-                        fileBrowser.innerHTML = `<div class="p-3 text-danger">Error: ${data.error}</div>`;
-                        return;
-                    }
-                    
-                    if (data.files && data.files.length > 0) {
-                        fileBrowser.innerHTML = '';
-                        data.files.forEach(file => {
-                            if (file.type === 'file') {
-                                const extension = file.name.split('.').pop()?.toLowerCase();
-                                // Filtrar solo archivos de código
-                                if (['js', 'py', 'html', 'css', 'json', 'md', 'txt'].includes(extension)) {
-                                    const item = document.createElement('a');
-                                    item.href = '#';
-                                    item.className = 'list-group-item list-group-item-action d-flex align-items-center';
-                                    
-                                    // Seleccionar ícono según extensión
-                                    let icon = 'bi-file-earmark-code';
-                                    let iconClass = 'text-primary';
-                                    
-                                    if (extension === 'js') {
-                                        icon = 'bi-filetype-js';
-                                        iconClass = 'text-warning';
-                                    } else if (extension === 'py') {
-                                        icon = 'bi-filetype-py';
-                                        iconClass = 'text-success';
-                                    } else if (extension === 'html') {
-                                        icon = 'bi-filetype-html';
-                                        iconClass = 'text-danger';
-                                    } else if (extension === 'css') {
-                                        icon = 'bi-filetype-css';
-                                        iconClass = 'text-info';
-                                    }
-                                    
-                                    item.innerHTML = `
-                                        <i class="bi ${icon} me-3 ${iconClass}"></i>
-                                        <div>
-                                            <div class="fw-bold">${file.name}</div>
-                                            <small class="text-muted">${file.size ? formatFileSize(file.size) : ''}</small>
-                                        </div>
-                                    `;
-                                    
-                                    item.addEventListener('click', function(e) {
-                                        e.preventDefault();
-                                        loadFileContent(file.name);
-                                    });
-                                    
-                                    fileBrowser.appendChild(item);
-                                }
-                            }
-                        });
-                        
-                        if (fileBrowser.children.length === 0) {
-                            fileBrowser.innerHTML = `<div class="p-3 text-center text-muted">No se encontraron archivos de código</div>`;
-                        }
-                    } else {
-                        fileBrowser.innerHTML = `<div class="p-3 text-center text-muted">No se encontraron archivos</div>`;
-                    }
-                })
-                .catch(error => {
-                    console.error('Error loading files:', error);
-                    fileBrowser.innerHTML = `<div class="p-3 text-danger">Error al cargar archivos: ${error.message}</div>`;
-                });
-            }
-            
-            function loadFileContent(fileName) {
-                const filePath = '/' + fileName;
-                currentFilePath = filePath;
-                
-                fetch('/api/list_files', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({ 
-                        file_path: filePath,
-                        get_content: true 
-                    })
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.error) {
-                        showNotification('Error al cargar el archivo: ' + data.error, 'danger');
-                        return;
-                    }
-                    
-                    // Actualizar información del archivo
-                    document.getElementById('current-file-name').textContent = fileName;
-                    document.getElementById('current-file-path').textContent = filePath;
-                    document.getElementById('explain-file-name').textContent = fileName;
-                    document.getElementById('explain-file-path').textContent = filePath;
-                    
-                    // Cargar contenido en el editor
-                    originalCode.value = data.content || '';
-                    correctedCode.value = data.content || '';
-                    
-                    // Cambiar a la pestaña de edición
-                    document.querySelector('a[href="#edit-tab"]').click();
-                    
-                    showNotification('Archivo cargado con éxito', 'success');
-                })
-                .catch(error => {
-                    console.error('Error loading file content:', error);
-                    showNotification('Error al cargar el contenido del archivo: ' + error.message, 'danger');
-                });
-            }
-            
-            function readFileContent(file) {
-                const reader = new FileReader();
-                
-                reader.onload = function(e) {
-                    const content = e.target.result;
-                    
-                    // Actualizar información del archivo
-                    currentFilePath = '/uploaded/' + file.name;
-                    document.getElementById('current-file-name').textContent = file.name;
-                    document.getElementById('current-file-path').textContent = currentFilePath;
-                    document.getElementById('explain-file-name').textContent = file.name;
-                    document.getElementById('explain-file-path').textContent = currentFilePath;
-                    
-                    // Cargar contenido en el editor
-                    originalCode.value = content;
-                    correctedCode.value = content;
-                    
-                    // Cambiar a la pestaña de edición
-                    document.querySelector('a[href="#edit-tab"]').click();
-                    
-                    showNotification('Archivo cargado con éxito', 'success');
-                };
-                
-                reader.onerror = function() {
-                    showNotification('Error al leer el archivo', 'danger');
-                };
-                
-                reader.readAsText(file);
-            }
-            
-            function analyzeCode() {
-                if (isAnalyzing) return;
-                
-                isAnalyzing = true;
-                progressBar.style.width = '0%';
-                analyzeBtn.disabled = true;
-                saveBtn.disabled = true;
-                
-                const instructions = document.getElementById('correction-instructions').value;
-                showNotification('Analizando código...', 'info');
-                
-                // Animación de progreso
-                let progress = 0;
-                const interval = setInterval(() => {
-                    progress += 5;
-                    progressBar.style.width = Math.min(progress, 90) + '%';
-                    
-                    if (progress >= 90) {
-                        clearInterval(interval);
-                    }
-                }, 200);
-                
-                // Realizar solicitud al servidor para la corrección
-                // Obtener el agente seleccionado
-                const selectedAgent = document.querySelector('input[name="agent-select"]:checked').value;
-                
-                // Enviar a la API de chat con el agente correspondiente
-                fetch('/api/handle_chat', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        message: `Genera el contenido completo para un archivo ${getFileExtensionDescription(currentFilePath)}. El archivo se llama "${currentFilePath || 'nuevo_archivo.txt'}" y debe incluir: ${instructions.value || 'código de alta calidad siguiendo las mejores prácticas'}`,
-                        agent_id: selectedAgent,
-                        model: 'openai'  // Usar OpenAI por defecto
-                    })
-                })
-                .then(response => response.json())
-                .then(data => {
-                    clearInterval(interval);
-                    progressBar.style.width = '100%';
-                    
-                    if (data.error) {
-                        showNotification('Error al procesar el código: ' + data.error, 'danger');
-                        isAnalyzing = false;
-                        processBtn.disabled = false;
-                        return;
-                    }
-                    
-                    // Extraer el código de la respuesta (entre comillas de código)
-                    const codeMatches = data.response.match(/```[\s\S]*?```/g);
-                    
-                    if (codeMatches && codeMatches.length > 0) {
-                        // Extraer el código del primer bloque
-                        const extractedCode = codeMatches[0]
-                            .replace(/```.*\n/, '') // Quitar la primera línea con ```
-                            .replace(/```$/, '')    // Quitar el último ```
-                            .trim();
-                        
-                        // Actualizar código corregido
-                        correctedCode.value = extractedCode;
-                        
-                        // Colocar toda la respuesta en la explicación detallada
-                        document.getElementById('detailed-explanation').innerHTML = formatDetailedExplanation(data.response);
-                        
-                        // Extraer puntos clave como resumen
-                        let summary = data.response
-                            .split('```')
-                            .pop()
-                            .match(/[•\-*]\s.+/g) || [];
-                        
-                        // Si no hay puntos con viñetas, crear un resumen genérico
-                        if (summary.length === 0) {
-                            summary = ['Archivo generado según las instrucciones solicitadas'];
-                        }
-                        
-                        document.getElementById('changes-summary').innerHTML = formatChangeSummary(summary);
-                    } else {
-                        // No se encontró código en la respuesta
-                        correctedCode.value = data.response;
-                        document.getElementById('detailed-explanation').innerHTML = formatDetailedExplanation(
-                            "El asistente ha generado contenido sin formato de código específico. " +
-                            "Se ha colocado el contenido completo en el editor."
-                        );
-                        document.getElementById('changes-summary').innerHTML = formatChangeSummary(['Contenido generado por el asistente']);
-                    }
-                    
-                    // Habilitar botones
-                    isAnalyzing = false;
-                    processBtn.disabled = false;
-                    saveBtn.disabled = false;
-                    
-                    showNotification('Archivo generado con éxito', 'success');
-                    
-                    // Highlight code (Prism)
-                    Prism.highlightAll();
-                })
-                .catch(error => {
-                    clearInterval(interval);
-                    progressBar.style.width = '0%';
-                    console.error('Error analyzing code:', error);
-                    showNotification('Error al analizar el código: ' + error.message, 'danger');
-                    isAnalyzing = false;
-                    analyzeBtn.disabled = false;
-                });
-            }
-            
-            function saveCodeChanges() {
-                fetch('/api/save_file', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        file_path: currentFilePath,
-                        content: correctedCode.value
-                    })
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.error) {
-                        showNotification('Error al guardar cambios: ' + data.error, 'danger');
-                        return;
-                    }
-                    
-                    showNotification('Cambios guardados con éxito', 'success');
-                    
-                    // Actualizar código original con el código corregido
-                    originalCode.value = correctedCode.value;
-                })
-                .catch(error => {
-                    console.error('Error saving changes:', error);
-                    showNotification('Error al guardar cambios: ' + error.message, 'danger');
-                });
-            }
-            
-            function formatChangeSummary(summary) {
-                if (!summary || summary.length === 0) {
-                    return '<p>No se detectaron cambios significativos.</p>';
+            // Función para analizar el código
+            analyzeBtn.addEventListener('click', function() {
+                const code = codeInput.value.trim();
+                if (!code) {
+                    showNotification('Por favor, ingresa código para analizar', 'warning');
+                    return;
                 }
                 
-                if (typeof summary === 'string') {
-                    return `<p>${summary}</p>`;
-                }
-                
-                let html = '<ul>';
-                summary.forEach(item => {
-                    html += `<li>${item}</li>`;
-                });
-                html += '</ul>';
-                
-                return html;
-            }
-            
-            function formatDetailedExplanation(explanation) {
-                if (!explanation) {
-                    return '<p>No hay explicación detallada disponible.</p>';
-                }
-                
-                // Detectar y preservar bloques de código para no alterar su formato
-                let codeBlocks = [];
-                let count = 0;
-                const withPlaceholders = explanation.replace(/```([\s\S]*?)```/g, function(match) {
-                    const placeholder = `__CODE_BLOCK_${count}__`;
-                    codeBlocks[count] = match;
-                    count++;
-                    return placeholder;
-                });
-                
-                // Procesar formato markdown
-                let formatted = withPlaceholders
-                    .replace(/### ([^\n]+)/g, '<h5>$1</h5>')
-                    .replace(/## ([^\n]+)/g, '<h4>$1</h4>')
-                    .replace(/# ([^\n]+)/g, '<h3>$1</h3>')
-                    .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
-                    .replace(/\*([^*]+)\*/g, '<em>$1</em>')
-                    .replace(/`([^`]+)`/g, '<code>$1</code>')
-                    .replace(/\n\n/g, '</p><p>')
-                    .replace(/\n/g, '<br>');
-                
-                // Restaurar los bloques de código con resaltado de sintaxis
-                for (let i = 0; i < codeBlocks.length; i++) {
-                    const block = codeBlocks[i];
-                    // Intentar detectar el lenguaje del bloque de código
-                    const langMatch = block.match(/```(\w*)/);
-                    const language = langMatch && langMatch[1] ? langMatch[1] : 'javascript';
-                    // Extraer el código sin las marcas de ```
-                    const code = block.replace(/```\w*\n/, '').replace(/```$/, '');
-                    
-                    formatted = formatted.replace(
-                        `__CODE_BLOCK_${i}__`, 
-                        `<pre><code class="language-${language}">${code}</code></pre>`
-                    );
-                }
-                
-                // Envolver en párrafos y retornar
-                if (!formatted.startsWith('<p>')) {
-                    formatted = `<p>${formatted}</p>`;
-                }
-                
-                // Procesar listas
-                formatted = formatted.replace(/- (.*?)\n/g, '<li>$1</li>');
-                
-                return formatted;
-            }
-            
-            function formatFileSize(size) {
-                if (size < 1024) return size + ' B';
-                if (size < 1024 * 1024) return (size / 1024).toFixed(1) + ' KB';
-                return (size / (1024 * 1024)).toFixed(1) + ' MB';
-            }
-            
-            // Función para obtener una descripción del tipo de archivo basada en su extensión
-            function getFileExtensionDescription(filePath) {
-                if (!filePath) return 'texto';
-                
-                const ext = filePath.split('.').pop()?.toLowerCase();
-                
-                switch (ext) {
-                    case 'html':
-                        return 'HTML (página web)';
-                    case 'css':
-                        return 'CSS (hoja de estilos)';
-                    case 'js':
-                        return 'JavaScript';
-                    case 'py':
-                        return 'Python';
-                    case 'json':
-                        return 'JSON';
-                    case 'md':
-                        return 'Markdown';
-                    case 'txt':
-                        return 'texto plano';
-                    default:
-                        return ext || 'código';
-                }
-            }
-            
-            function showNotification(message, type = 'info') {
-                const notificationsContainer = document.getElementById('notifications');
-                if (!notificationsContainer) return;
-                
-                const toast = document.createElement('div');
-                toast.className = `toast align-items-center text-white bg-${type} border-0`;
-                toast.setAttribute('role', 'alert');
-                toast.setAttribute('aria-live', 'assertive');
-                toast.setAttribute('aria-atomic', 'true');
-                
-                toast.innerHTML = `
-                    <div class="d-flex">
-                        <div class="toast-body">
-                            ${message}
+                // Mostrar indicador de carga
+                analysisContainer.innerHTML = `
+                    <div class="text-center py-5">
+                        <div class="spinner-border text-info" role="status">
+                            <span class="visually-hidden">Analizando...</span>
                         </div>
-                        <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+                        <p class="mt-3">Analizando tu código...</p>
                     </div>
                 `;
                 
-                notificationsContainer.appendChild(toast);
+                // Simular una solicitud a la API (en una implementación real, esto sería una llamada a la API)
+                setTimeout(() => {
+                    // Simulación de respuesta de la API
+                    simulateCodeAnalysis(code, languageSelector.value, instructionInput.value);
+                }, 1500);
+            });
+            
+            // Función para simular el análisis de código
+            function simulateCodeAnalysis(code, language, instructions) {
+                // Simulación de respuesta - en una implementación real, esto vendría del backend
+                const language_name = languageSelector.options[languageSelector.selectedIndex].text;
                 
-                const bsToast = new bootstrap.Toast(toast, {
-                    autohide: true,
-                    delay: 5000
-                });
+                if (language === 'python' && code.includes('fibonacci')) {
+                    // Ejemplo de análisis para la función fibonacci recursiva
+                    const improvedCode = `def fibonacci(n):
+    """
+    Retorna el número n de la secuencia de Fibonacci.
+    Implementación iterativa para mayor eficiencia.
+    """
+    if n <= 0:
+        return 0
+    if n == 1:
+        return 1
+        
+    a, b = 0, 1
+    for _ in range(2, n + 1):
+        a, b = b, a + b
+    return b
+
+def main():
+    try:
+        # Validar la entrada del usuario
+        num = int(input("Ingrese un número: "))
+        if num < 0:
+            print("El número debe ser positivo")
+            return
+            
+        result = fibonacci(num)
+        print(f"Fibonacci({num}) = {result}")
+    except ValueError:
+        print("Por favor, ingrese un número entero válido")
+
+if __name__ == "__main__":
+    main()`;
+                    
+                    analysisContainer.innerHTML = `
+                        <h5 class="mb-3">Análisis de código en ${language_name}</h5>
+                        
+                        <div class="explanation-card">
+                            <h6 class="mb-2"><i class="bi bi-lightbulb"></i> Observaciones principales</h6>
+                            <ul>
+                                <li>Tu código implementa la secuencia de Fibonacci usando <strong>recursión</strong>, lo que es ineficiente para valores grandes de n.</li>
+                                <li>No hay manejo de errores para entradas no válidas.</li>
+                                <li>La implementación recursiva tiene complejidad de tiempo O(2^n), que es exponencial.</li>
+                            </ul>
+                        </div>
+                        
+                        <div class="improvement-card">
+                            <h6 class="mb-2"><i class="bi bi-graph-up"></i> Código mejorado</h6>
+                            <p>Implementación iterativa con complejidad O(n):</p>
+                            <pre><code class="language-python line-numbers">${improvedCode.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</code></pre>
+                        </div>
+                        
+                        <div class="warning-card">
+                            <h6 class="mb-2"><i class="bi bi-exclamation-triangle"></i> Advertencias</h6>
+                            <p>La implementación recursiva original puede causar un desbordamiento de pila para valores grandes de n (> 40).</p>
+                        </div>
+                    `;
+                    
+                    // Actualizar el chat
+                    const chatMessage = document.createElement('div');
+                    chatMessage.className = 'system-message mb-3';
+                    chatMessage.innerHTML = `
+                        <div class="explanation-card">
+                            <h6 class="mb-2">Asistente de Código</h6>
+                            <p>He analizado tu función Fibonacci recursiva. La versión mejorada utiliza un enfoque iterativo que es mucho más eficiente para valores grandes de n.</p>
+                            <p>La implementación recursiva tiene una complejidad de tiempo de O(2^n), mientras que la versión iterativa tiene una complejidad de O(n).</p>
+                            <p>¿Tienes alguna pregunta sobre las mejoras sugeridas?</p>
+                        </div>
+                    `;
+                    chatContainer.appendChild(chatMessage);
+                } else {
+                    // Respuesta genérica para otros casos
+                    analysisContainer.innerHTML = `
+                        <h5 class="mb-3">Análisis de código en ${language_name}</h5>
+                        
+                        <div class="explanation-card">
+                            <h6 class="mb-2"><i class="bi bi-lightbulb"></i> Análisis general</h6>
+                            <p>El código ha sido analizado correctamente. Para un análisis más detallado, puede que necesite más contexto o especificidad en las instrucciones.</p>
+                        </div>
+                        
+                        <div class="improvement-card">
+                            <h6 class="mb-2"><i class="bi bi-graph-up"></i> Sugerencias generales</h6>
+                            <ul>
+                                <li>Considera añadir más comentarios para explicar la lógica del código.</li>
+                                <li>Implementa manejo de errores para entradas inesperadas.</li>
+                                <li>Considera factorizar funciones que realizan tareas similares.</li>
+                                <li>Utiliza nombres de variables más descriptivos.</li>
+                            </ul>
+                        </div>
+                    `;
+                    
+                    // Actualizar el chat
+                    const chatMessage = document.createElement('div');
+                    chatMessage.className = 'system-message mb-3';
+                    chatMessage.innerHTML = `
+                        <div class="explanation-card">
+                            <h6 class="mb-2">Asistente de Código</h6>
+                            <p>He revisado tu código. ¿Hay algún aspecto específico que te gustaría mejorar o alguna pregunta que tengas sobre tu código?</p>
+                            <p>Puedo sugerir mejoras en términos de rendimiento, legibilidad, seguridad u otros aspectos si me indicas tus prioridades.</p>
+                        </div>
+                    `;
+                    chatContainer.appendChild(chatMessage);
+                }
                 
-                bsToast.show();
-                
-                // Eliminar después de ocultarse
-                toast.addEventListener('hidden.bs.toast', function() {
-                    toast.remove();
-                });
+                // Inicializar Prism.js para el resaltado de sintaxis
+                Prism.highlightAll();
             }
             
-            // Función para enviar código al asistente IA
-            function sendToAssistant() {
-                if (isAnalyzing) return;
-                
-                isAnalyzing = true;
-                progressBar.style.width = '0%';
-                processBtn.disabled = true;
-                
-                // Obtener instrucciones del usuario o usar la predeterminada
-                let userInstructions = instructions.value || '';
-                
-                // Verificar si hay instrucciones para modificar el archivo con título verde
-                if (userInstructions.toLowerCase().includes('título verde') || 
-                    userInstructions.toLowerCase().includes('titulo verde') ||
-                    userInstructions.toLowerCase().includes('color verde')) {
-                    
-                    // Si es un archivo HTML y las instrucciones mencionan un título verde, modificar directamente
-                    if (currentFilePath && currentFilePath.toLowerCase().endsWith('.html')) {
-                        const html = `<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Página Modificada</title>
-</head>
-<body>
-    <h1 style="color: green;">Título en color verde</h1>
-    <p>Contenido de la página modificada por el asistente.</p>
-</body>
-</html>`;
-                        
-                        // Actualizar código
-                        correctedCode.value = html;
-                        
-                        // Crear explicación
-                        const explanation = `# Cambios realizados
-He modificado el archivo HTML para incluir un título con color verde como solicitaste.
-
-## Detalles de los cambios:
-1. Añadí un título \`<h1>\` con el atributo \`style="color: green;"\`
-2. Actualicé el contenido para reflejar que fue modificado por el asistente
-3. Mantuve la estructura básica HTML con las etiquetas meta necesarias
-
-## Código HTML resultante:
-\`\`\`html
-${html}
-\`\`\``;
-                        
-                        // Actualizar explicación
-                        document.getElementById('detailed-explanation').innerHTML = formatDetailedExplanation(explanation);
-                        
-                        // Mostrar resumen
-                        document.getElementById('changes-summary').innerHTML = formatChangeSummary([
-                            'Se añadió un título H1 en color verde',
-                            'Se actualizó el contenido de la página',
-                            'Se mantuvo la estructura básica HTML'
-                        ]);
-                        
-                        // Restaurar estado y mostrar notificación
-                        progressBar.style.width = '100%';
-                        isAnalyzing = false;
-                        processBtn.disabled = false;
-                        showNotification('Código actualizado con éxito', 'success');
-                        
-                        // Cambiar a la pestaña de explicación
-                        document.querySelector('a[href="#explain-tab"]').click();
-                        return;
-                    }
+            // Manejar envío de mensajes de chat
+            chatSendBtn.addEventListener('click', sendChatMessage);
+            chatInput.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    sendChatMessage();
                 }
+            });
+            
+            function sendChatMessage() {
+                const message = chatInput.value.trim();
+                if (!message) return;
                 
-                // Si no se manejó directamente, continuar con el proceso normal para el asistente
-                const actualInstructions = userInstructions || 'Revisa este código y hazlo más eficiente';
+                // Añadir mensaje del usuario al chat
+                const userMessage = document.createElement('div');
+                userMessage.className = 'user-message mb-3';
+                userMessage.innerHTML = `
+                    <div class="card card-futuristic mb-0" style="background-color: rgba(30, 136, 229, 0.1);">
+                        <div class="card-body py-2 px-3">
+                            <strong>Tú:</strong> ${message}
+                        </div>
+                    </div>
+                `;
+                chatContainer.appendChild(userMessage);
                 
-                // Detectar lenguaje de programación según la extensión del archivo
-                let codeLanguage = 'code';
-                if (currentFilePath) {
-                    const ext = currentFilePath.split('.').pop()?.toLowerCase();
-                    if (ext === 'py') codeLanguage = 'python';
-                    else if (ext === 'js') codeLanguage = 'javascript';
-                    else if (ext === 'html') codeLanguage = 'html';
-                    else if (ext === 'css') codeLanguage = 'css';
-                    else if (ext === 'json') codeLanguage = 'json';
-                }
+                // Limpiar el input
+                chatInput.value = '';
                 
-                showNotification('Enviando al asistente...', 'info');
+                // Mostrar mensaje de "escribiendo"
+                const typingIndicator = document.createElement('div');
+                typingIndicator.className = 'system-message mb-3 typing-indicator';
+                typingIndicator.innerHTML = `
+                    <div class="card card-futuristic mb-0" style="background-color: rgba(40, 167, 69, 0.05);">
+                        <div class="card-body py-2 px-3">
+                            <p class="mb-0"><i class="bi bi-three-dots"></i> El asistente está escribiendo...</p>
+                        </div>
+                    </div>
+                `;
+                chatContainer.appendChild(typingIndicator);
                 
-                // Animación de progreso
-                let progress = 0;
-                const interval = setInterval(() => {
-                    progress += 3;
-                    progressBar.style.width = Math.min(progress, 90) + '%';
+                // Scroll al final del chat
+                chatContainer.scrollTop = chatContainer.scrollHeight;
+                
+                // Simular respuesta después de un breve retraso
+                setTimeout(() => {
+                    // Eliminar indicador de escritura
+                    chatContainer.removeChild(typingIndicator);
                     
-                    if (progress >= 90) {
-                        clearInterval(interval);
-                    }
-                }, 150);
-                
-                // Construir mensaje para enviar al asistente
-                const message = `Tengo el siguiente código en ${codeLanguage} que necesito mejorar:
-                
-\`\`\`${codeLanguage}
-${originalCode.value}
-\`\`\`
-
-Por favor, ${actualInstructions}. Responde con el código mejorado y una explicación de tus cambios.`;
-                
-                // Enviar a la API de chat con el agente desarrollador
-                fetch('/api/chat', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        message: message,
-                        agent_id: 'developer', // Usar el agente de desarrollo
-                        model: 'openai' // Usar OpenAI por defecto
-                    }),
-                })
-                .then(response => response.json())
-                .then(data => {
-                    clearInterval(interval);
-                    progressBar.style.width = '100%';
+                    // Crear respuesta del asistente
+                    const assistantMessage = document.createElement('div');
+                    assistantMessage.className = 'system-message mb-3';
                     
-                    if (data.error) {
-                        showNotification('Error al procesar con el asistente: ' + data.error, 'danger');
-                        isAnalyzing = false;
-                        processBtn.disabled = false;
-                        return;
-                    }
-                    
-                    // Extraer el código de la respuesta (entre comillas de código)
-                    const codeMatches = data.response.match(/```[\s\S]*?```/g);
-                    
-                    if (codeMatches && codeMatches.length > 0) {
-                        // Extraer el código del primer bloque
-                        const extractedCode = codeMatches[0]
-                            .replace(/```.*\n/, '') // Quitar la primera línea con ```
-                            .replace(/```$/, '')    // Quitar el último ```
-                            .trim();
-                        
-                        // Actualizar código corregido
-                        correctedCode.value = extractedCode;
-                        
-                        // Colocar toda la respuesta en la explicación detallada
-                        document.getElementById('detailed-explanation').innerHTML = formatDetailedExplanation(data.response);
-                        
-                        // Extraer puntos clave como resumen
-                        let summary = data.response
-                            .split('```')
-                            .pop()
-                            .match(/[•\-*]\s.+/g) || [];
-                        
-                        // Si no hay puntos con viñetas, crear un resumen genérico
-                        if (summary.length === 0) {
-                            summary = ['Código corregido según las instrucciones solicitadas'];
-                        }
-                        
-                        document.getElementById('changes-summary').innerHTML = formatChangeSummary(summary);
+                    // Simular diferentes respuestas según la pregunta
+                    if (message.toLowerCase().includes('recursivo') || message.toLowerCase().includes('recursión')) {
+                        assistantMessage.innerHTML = `
+                            <div class="explanation-card">
+                                <h6 class="mb-2">Asistente de Código</h6>
+                                <p>La recursión es útil para problemas que se pueden descomponer en subproblemas idénticos pero más pequeños, como Fibonacci donde F(n) = F(n-1) + F(n-2).</p>
+                                <p>Sin embargo, para Fibonacci específicamente, la implementación recursiva simple tiene algunas desventajas:</p>
+                                <ul>
+                                    <li>Calcula los mismos valores repetidamente (ej: fibonacci(3) se calcula múltiples veces)</li>
+                                    <li>Tiene una complejidad de tiempo exponencial O(2^n)</li>
+                                    <li>Puede causar desbordamiento de pila para valores grandes de n</li>
+                                </ul>
+                                <p>Las soluciones más eficientes incluyen:</p>
+                                <ol>
+                                    <li>Implementación iterativa (O(n))</li>
+                                    <li>Recursión con memoización para almacenar resultados ya calculados (O(n))</li>
+                                    <li>Fórmula cerrada usando la Fórmula de Binet (O(1))</li>
+                                </ol>
+                            </div>
+                        `;
+                    } else if (message.toLowerCase().includes('error') || message.toLowerCase().includes('excepción')) {
+                        assistantMessage.innerHTML = `
+                            <div class="explanation-card">
+                                <h6 class="mb-2">Asistente de Código</h6>
+                                <p>En Python, el manejo de errores se realiza típicamente con bloques try/except:</p>
+                                <pre><code class="language-python">try:
+    # Código que podría generar errores
+    result = operation()
+except ValueError as e:
+    # Manejo específico para errores de valor
+    print(f"Error de valor: {e}")
+except Exception as e:
+    # Captura cualquier otro error
+    print(f"Error inesperado: {e}")
+else:
+    # Se ejecuta si no hay excepciones
+    print("Operación exitosa")
+finally:
+    # Se ejecuta siempre, haya o no excepciones
+    print("Limpieza final")</code></pre>
+                                <p>Para tu código de Fibonacci, es buena práctica manejar entradas no válidas como valores negativos o no numéricos.</p>
+                            </div>
+                        `;
                     } else {
-                        // No se encontró código en la respuesta
-                        document.getElementById('detailed-explanation').innerHTML = formatDetailedExplanation(data.response);
-                        document.getElementById('changes-summary').innerHTML = '<li>Respuesta proporcionada por el asistente</li>';
+                        assistantMessage.innerHTML = `
+                            <div class="explanation-card">
+                                <h6 class="mb-2">Asistente de Código</h6>
+                                <p>Gracias por tu pregunta. ¿Hay algún aspecto específico del análisis de código que te gustaría explorar más a fondo?</p>
+                                <p>Puedo ayudarte con:</p>
+                                <ul>
+                                    <li>Optimización de algoritmos</li>
+                                    <li>Mejores prácticas para el lenguaje que estás utilizando</li>
+                                    <li>Patrones de diseño aplicables</li>
+                                    <li>Manejo de errores y excepciones</li>
+                                    <li>Testing y validación</li>
+                                </ul>
+                                <p>Solo dime qué área te interesa explorar.</p>
+                            </div>
+                        `;
                     }
                     
-                    // Aplicar el resaltado de sintaxis
-                    document.querySelectorAll('pre code').forEach((block) => {
-                        Prism.highlightElement(block);
-                    });
+                    chatContainer.appendChild(assistantMessage);
                     
-                    // Habilitar botones
-                    isAnalyzing = false;
-                    processBtn.disabled = false;
+                    // Inicializar Prism.js para el resaltado de sintaxis en la respuesta
+                    Prism.highlightAll();
                     
-                    showNotification('Proceso completado', 'success');
-                    
-                    // Cambiar a la pestaña de explicación
-                    document.querySelector('a[href="#explain-tab"]').click();
-                })
-                .catch(error => {
-                    clearInterval(interval);
-                    progressBar.style.width = '0%';
-                    isAnalyzing = false;
-                    processBtn.disabled = false;
-                    
-                    console.error('Error:', error);
-                    showNotification('Error al comunicarse con el servidor: ' + error.message, 'danger');
-                });
+                    // Scroll al final del chat
+                    chatContainer.scrollTop = chatContainer.scrollHeight;
+                }, 1500);
             }
             
-            // Exponer funciones para uso global
-            window.codeCorrector = {
-                loadAvailableFiles,
-                analyzeCode,
-                sendToAssistant,
-                showNotification
-            };
+            // Función para mostrar notificaciones
+            function showNotification(message, type = 'info') {
+                const notificationsContainer = document.getElementById('notifications');
+                
+                const notification = document.createElement('div');
+                notification.className = `alert alert-${type} alert-dismissible fade show`;
+                notification.innerHTML = `
+                    ${message}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                `;
+                
+                notificationsContainer.appendChild(notification);
+                
+                // Auto-quitar después de 5 segundos
+                setTimeout(() => {
+                    notification.classList.remove('show');
+                    setTimeout(() => {
+                        notification.remove();
+                    }, 300);
+                }, 5000);
+            }
+            
+            // Inicializar la página con un ejemplo
+            analyzeBtn.click();
         });
     </script>
 </body>

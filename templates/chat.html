@@ -1,535 +1,736 @@
-{% extends 'base.html' %}
-
-{% block title %}Codestorm Assistant - Chat{% endblock %}
-
-{% block extra_css %}
-<style>
-    .chat-container {
-        height: calc(100vh - 120px);
-        display: flex;
-        flex-direction: column;
-    }
+<!DOCTYPE html>
+<html lang="es" data-bs-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CODESTORM - Chat con Agentes Especializados</title>
     
-    .chat-header {
-        padding: 15px;
-        border-bottom: 1px solid #30363d;
-    }
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.replit.com/agent/bootstrap-agent-dark-theme.min.css" rel="stylesheet">
     
-    .chat-messages {
-        flex: 1;
-        overflow-y: auto;
-        padding: 15px;
-    }
+    <!-- Bootstrap Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
     
-    .chat-input {
-        padding: 15px;
-        border-top: 1px solid #30363d;
-    }
+    <!-- Google Fonts - Carga optimizada -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet">
     
-    .message {
-        max-width: 80%;
-        margin-bottom: 15px;
-        border-radius: 10px;
-        padding: 10px 15px;
-        position: relative;
-    }
+    <!-- Highlight.js para resaltado de sintaxis -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js" defer></script>
     
-    .message-user {
-        background-color: #1f6feb;
-        color: white;
-        margin-left: auto;
-        border-bottom-right-radius: 0;
-    }
-    
-    .message-assistant {
-        background-color: #161b22;
-        color: #e6edf3;
-        margin-right: auto;
-        border-bottom-left-radius: 0;
-    }
-    
-    .message-time {
-        font-size: 0.7em;
-        opacity: 0.7;
-        margin-top: 5px;
-        text-align: right;
-    }
-    
-    .agent-selection {
-        display: flex;
-        gap: 10px;
-        overflow-x: auto;
-        padding-bottom: 10px;
-    }
-    
-    .agent-card {
-        min-width: 200px;
-        cursor: pointer;
-        transition: all 0.2s;
-    }
-    
-    .agent-card:hover {
-        transform: translateY(-5px);
-    }
-    
-    .agent-card.active {
-        border-color: #1f6feb !important;
-        box-shadow: 0 0 0 0.2rem rgba(31, 111, 235, 0.25);
-    }
-
-    .agent-icon {
-        font-size: 1.5rem;
-        margin-bottom: 0.5rem;
-    }
-    
-    .typing-indicator {
-        display: inline-block;
-        margin-left: 5px;
-    }
-    
-    .typing-indicator span {
-        height: 8px;
-        width: 8px;
-        float: left;
-        margin: 0 1px;
-        background-color: #9E9EA1;
-        display: block;
-        border-radius: 50%;
-        opacity: 0.4;
-    }
-    
-    .typing-indicator span:nth-of-type(1) {
-        animation: 1s blink infinite 0.3333s;
-    }
-    
-    .typing-indicator span:nth-of-type(2) {
-        animation: 1s blink infinite 0.6666s;
-    }
-    
-    .typing-indicator span:nth-of-type(3) {
-        animation: 1s blink infinite 0.9999s;
-    }
-    
-    @keyframes blink {
-        50% {
-            opacity: 1;
+    <style>
+        :root {
+            --darker-blue: #091428;
+            --dark-blue: #0A2149;
+            --medium-blue: #1E88E5;
+            --light-blue: #4CB9FF;
+            --highlight-color: #ffc107;
+            --dark-background: #121212;
+            --card-background: #1a1a1a;
+            --card-header: #212529;
+            --text-primary: #e9ecef;
+            --text-secondary: #adb5bd;
         }
-    }
-    
-    .code-block {
-        background-color: #0d1117;
-        border-radius: 6px;
-        padding: 10px;
-        margin: 10px 0;
-        position: relative;
-    }
-    
-    .code-block pre {
-        margin-bottom: 0;
-        white-space: pre-wrap;
-        word-wrap: break-word;
-    }
-    
-    .code-copy-btn {
-        position: absolute;
-        top: 5px;
-        right: 5px;
-        padding: 2px 5px;
-        font-size: 0.7em;
-        background-color: #30363d;
-        color: #e6edf3;
-        border: none;
-        border-radius: 3px;
-        cursor: pointer;
-    }
-    
-    .code-copy-btn:hover {
-        background-color: #484f58;
-    }
-    
-    .markdown-content img {
-        max-width: 100%;
-        border-radius: 6px;
-        margin: 10px 0;
-    }
-    
-    .markdown-content h1, .markdown-content h2, .markdown-content h3,
-    .markdown-content h4, .markdown-content h5, .markdown-content h6 {
-        margin-top: 1rem;
-        margin-bottom: 0.5rem;
-    }
-    
-    .markdown-content ul, .markdown-content ol {
-        padding-left: 1.5rem;
-    }
-    
-    .markdown-content blockquote {
-        border-left: 3px solid #30363d;
-        padding-left: 10px;
-        margin-left: 0;
-        color: #8b949e;
-    }
-    
-    .markdown-content table {
-        border-collapse: collapse;
-        width: 100%;
-        margin: 10px 0;
-    }
-    
-    .markdown-content th, .markdown-content td {
-        border: 1px solid #30363d;
-        padding: 8px;
-    }
-    
-    .markdown-content th {
-        background-color: #161b22;
-        text-align: left;
-    }
-    
-    .loader {
-        display: inline-block;
-        width: 12px;
-        height: 12px;
-        border: 2px solid rgba(255,255,255,.3);
-        border-radius: 50%;
-        border-top-color: #fff;
-        animation: spin 1s ease-in-out infinite;
-    }
-    
-    @keyframes spin {
-        to { transform: rotate(360deg); }
-    }
-</style>
-{% endblock %}
-
-{% block content %}
-<div class="chat-container">
-    <div class="chat-header">
-        <div class="row align-items-center">
-            <div class="col-md-6">
-                <h2 class="mb-0">
-                    <span class="text-info">Asistente</span>
-                    <span class="text-light">Codestorm</span>
-                </h2>
-            </div>
-            <div class="col-md-6 text-end">
-                <button class="btn btn-outline-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#agentSelection" aria-expanded="false">
-                    <i class="bi bi-people-fill me-2"></i> Cambiar Agente
-                </button>
-            </div>
-        </div>
         
-        <div class="collapse mt-3" id="agentSelection">
-            <div class="agent-selection">
-                <div class="card agent-card bg-dark text-white" data-agent="general">
-                    <div class="card-body text-center">
-                        <div class="agent-icon">
-                            <i class="bi bi-robot"></i>
-                        </div>
-                        <h5 class="card-title">Asistente General</h5>
-                        <p class="card-text small">Asistente versátil para cualquier tarea</p>
-                    </div>
-                </div>
-                <div class="card agent-card bg-dark text-white" data-agent="developer">
-                    <div class="card-body text-center">
-                        <div class="agent-icon">
-                            <i class="bi bi-code-slash"></i>
-                        </div>
-                        <h5 class="card-title">Desarrollador</h5>
-                        <p class="card-text small">Especialista en programación y codificación</p>
-                    </div>
-                </div>
-                <div class="card agent-card bg-dark text-white" data-agent="architect">
-                    <div class="card-body text-center">
-                        <div class="agent-icon">
-                            <i class="bi bi-diagram-3"></i>
-                        </div>
-                        <h5 class="card-title">Arquitecto</h5>
-                        <p class="card-text small">Experto en diseño y arquitectura de sistemas</p>
-                    </div>
-                </div>
-                <div class="card agent-card bg-dark text-white" data-agent="advanced">
-                    <div class="card-body text-center">
-                        <div class="agent-icon">
-                            <i class="bi bi-gear-wide-connected"></i>
-                        </div>
-                        <h5 class="card-title">Especialista</h5>
-                        <p class="card-text small">Para problemas complejos y avanzados</p>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-    
-    <div class="chat-messages" id="chat-messages">
-        <div class="message message-assistant">
-            <p>¡Hola! Soy el Asistente Codestorm, listo para ayudarte con tus proyectos. ¿En qué puedo ayudarte hoy?</p>
-            <div class="message-time">Ahora</div>
-        </div>
-    </div>
-    
-    <div class="chat-input">
-        <div class="input-group">
-            <textarea class="form-control" id="user-input" rows="2" placeholder="Escribe tu mensaje..."></textarea>
-            <button class="btn btn-primary" type="button" id="send-button">
-                <i class="bi bi-send"></i> Enviar
-            </button>
-        </div>
-    </div>
-</div>
-{% endblock %}
-
-{% block extra_js %}
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Variables globales
-    let currentAgent = '{{ agent_id }}';
-    let chatMessages = document.getElementById('chat-messages');
-    let userInput = document.getElementById('user-input');
-    let sendButton = document.getElementById('send-button');
-    let isWaitingForResponse = false;
-    
-    // Marcar el agente actual como activo
-    document.querySelector(`.agent-card[data-agent="${currentAgent}"]`)?.classList.add('active');
-    
-    // Event listeners
-    sendButton.addEventListener('click', sendMessage);
-    
-    userInput.addEventListener('keydown', function(e) {
-        if (e.key === 'Enter' && !e.shiftKey) {
-            e.preventDefault();
-            sendMessage();
+        body {
+            background-color: var(--dark-background);
+            color: var(--text-primary);
+            font-family: 'Sora', sans-serif;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
         }
-    });
-    
-    // Selección de agente
-    document.querySelectorAll('.agent-card').forEach(card => {
-        card.addEventListener('click', function() {
-            // Remover la clase active de todos los agentes
-            document.querySelectorAll('.agent-card').forEach(c => c.classList.remove('active'));
-            // Agregar la clase active al agente seleccionado
-            this.classList.add('active');
-            // Actualizar el agente actual
-            currentAgent = this.dataset.agent;
-            
-            // Agregar mensaje de sistema
-            addSystemMessage(`Ahora estás hablando con el agente: ${getAgentName(currentAgent)}`);
-        });
-    });
-    
-    // Funciones
-    function sendMessage() {
-        const message = userInput.value.trim();
-        if (!message || isWaitingForResponse) return;
         
-        // Agregar mensaje del usuario a la interfaz
-        addUserMessage(message);
+        .navbar-futuristic {
+            background: linear-gradient(90deg, var(--darker-blue) 0%, var(--dark-blue) 100%);
+            box-shadow: 0 2px 15px rgba(0, 100, 255, 0.2);
+            border-bottom: 1px solid var(--medium-blue);
+        }
         
-        // Limpiar el campo de entrada
-        userInput.value = '';
+        .card-futuristic {
+            background-color: var(--card-background);
+            border-radius: 0.5rem;
+            border: 1px solid rgba(78, 115, 223, 0.2);
+            box-shadow: 0 0.25rem 0.75rem rgba(0, 0, 0, 0.2);
+            transition: all 0.3s ease;
+            height: 100%;
+        }
         
-        // Mostrar indicador de escritura
-        addTypingIndicator();
+        .card-header-futuristic {
+            background-color: var(--card-header);
+            border-bottom: 1px solid rgba(78, 115, 223, 0.2);
+            padding: 0.75rem 1.25rem;
+            font-weight: 500;
+            color: var(--text-primary);
+        }
         
-        // Marcar que estamos esperando respuesta
-        isWaitingForResponse = true;
+        .agent-avatar {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--dark-blue) 0%, var(--medium-blue) 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            color: white;
+            margin-right: 1rem;
+        }
         
-        // Enviar mensaje al servidor
-        fetch('/api/chat', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                message: message,
-                agent_id: currentAgent
-            })
-        })
-        .then(response => response.json())
-        .then(data => {
-            // Remover indicador de escritura
-            removeTypingIndicator();
-            
-            // Agregar respuesta del asistente
-            if (data.success) {
-                addAssistantMessage(data.response);
-            } else {
-                addAssistantMessage(`Lo siento, ha ocurrido un error: ${data.error}`);
+        .agent-capabilities {
+            padding-left: 1.5rem;
+            margin-bottom: 0;
+            color: var(--text-secondary);
+        }
+        
+        .agent-capabilities li {
+            margin-bottom: 0.25rem;
+            position: relative;
+        }
+        
+        .agent-capabilities li::before {
+            content: '';
+            position: absolute;
+            left: -1rem;
+            top: 0.5rem;
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background-color: var(--medium-blue);
+        }
+        
+        .select-futuristic {
+            background-color: rgba(30, 136, 229, 0.1);
+            border: 1px solid rgba(30, 136, 229, 0.3);
+            color: var(--text-primary);
+        }
+        
+        .select-futuristic:focus {
+            border-color: var(--medium-blue);
+            box-shadow: 0 0 0 0.25rem rgba(30, 136, 229, 0.25);
+        }
+        
+        .chat-container-futuristic {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+        }
+        
+        .chat-messages-futuristic {
+            flex-grow: 1;
+            overflow-y: auto;
+            padding: 1rem;
+        }
+        
+        .chat-form-futuristic {
+            display: flex;
+            padding: 1rem;
+            border-top: 1px solid rgba(78, 115, 223, 0.2);
+            background-color: rgba(30, 136, 229, 0.05);
+        }
+        
+        .chat-input-futuristic {
+            flex-grow: 1;
+            border-radius: 0.5rem;
+            padding: 0.75rem;
+            background-color: var(--card-background);
+            border: 1px solid rgba(30, 136, 229, 0.3);
+            color: var(--text-primary);
+            resize: none;
+            transition: all 0.3s ease;
+            box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.1);
+        }
+        
+        .chat-input-futuristic:focus {
+            outline: none;
+            border-color: var(--medium-blue);
+            box-shadow: 0 0 0 0.25rem rgba(30, 136, 229, 0.25);
+        }
+        
+        .send-button-futuristic {
+            margin-left: 0.5rem;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--medium-blue) 0%, var(--light-blue) 100%);
+            border: none;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+        }
+        
+        .send-button-futuristic:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0, 100, 255, 0.3);
+        }
+        
+        .chat-message {
+            margin-bottom: 1rem;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .message-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 0.5rem;
+        }
+        
+        .message-content {
+            background-color: rgba(30, 136, 229, 0.1);
+            border-radius: 0.5rem;
+            padding: 1rem;
+            position: relative;
+        }
+        
+        .message-content pre {
+            background-color: var(--dark-background);
+            border-radius: 0.25rem;
+            padding: 0.75rem;
+            margin-top: 0.5rem;
+            margin-bottom: 0.5rem;
+            overflow-x: auto;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.85rem;
+            color: var(--text-primary);
+        }
+        
+        .message-content code {
+            font-family: 'JetBrains Mono', monospace;
+            background-color: rgba(78, 115, 223, 0.15);
+            padding: 0.1rem 0.2rem;
+            border-radius: 0.25rem;
+        }
+        
+        .user-message .message-content {
+            background-color: rgba(30, 136, 229, 0.2);
+            align-self: flex-end;
+        }
+        
+        .system-message .message-content {
+            background-color: rgba(255, 193, 7, 0.1);
+            border-left: 3px solid var(--highlight-color);
+        }
+        
+        .status-indicator {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+        
+        .status-connected {
+            background-color: #20c997;
+        }
+        
+        .status-disconnected {
+            background-color: #dc3545;
+        }
+        
+        .status-connecting {
+            background-color: #ffc107;
+            animation: pulse 1.5s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { opacity: 0.5; }
+            50% { opacity: 1; }
+            100% { opacity: 0.5; }
+        }
+        
+        /* Estilos para la previsualización */
+        .preview-container {
+            width: 100%;
+            height: 600px;
+            border: 1px solid rgba(78, 115, 223, 0.2);
+            border-radius: 0.25rem;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .preview-header {
+            background: #333;
+            display: flex;
+            padding: 8px;
+            border-bottom: 1px solid #444;
+        }
+        
+        .preview-controls {
+            display: flex;
+            gap: 5px;
+            margin-right: 10px;
+        }
+        
+        .control-btn {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+        }
+        
+        .control-close { background-color: #ff5f57; }
+        .control-minimize { background-color: #ffbd2e; }
+        .control-expand { background-color: #28c941; }
+        
+        .preview-url {
+            flex-grow: 1;
+            text-align: center;
+            font-size: 12px;
+            color: #aaa;
+        }
+        
+        .preview-iframe {
+            flex-grow: 1;
+            border: none;
+            background: white;
+        }
+        
+        .device-toggle-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            border-bottom: 1px solid #333;
+        }
+        
+        .device-toggle-btn {
+            background: none;
+            border: none;
+            color: #aaa;
+            padding: 5px 10px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .device-toggle-btn.active {
+            color: var(--medium-blue);
+            border-bottom: 2px solid var(--medium-blue);
+        }
+        
+        /* Responsividad para dispositivos */
+        @media (max-width: 768px) {
+            .agent-avatar {
+                width: 40px;
+                height: 40px;
+                font-size: 1.2rem;
             }
-            
-            // Ya no estamos esperando respuesta
-            isWaitingForResponse = false;
-        })
-        .catch(error => {
-            // Remover indicador de escritura
-            removeTypingIndicator();
-            
-            // Mostrar error
-            addAssistantMessage(`Lo siento, ha ocurrido un error en la comunicación: ${error}`);
-            
-            // Ya no estamos esperando respuesta
-            isWaitingForResponse = false;
-        });
-    }
-    
-    function addUserMessage(text) {
-        const messageDiv = document.createElement('div');
-        messageDiv.className = 'message message-user';
-        
-        const messageText = document.createElement('p');
-        messageText.textContent = text;
-        
-        const messageTime = document.createElement('div');
-        messageTime.className = 'message-time';
-        messageTime.textContent = formatTime(new Date());
-        
-        messageDiv.appendChild(messageText);
-        messageDiv.appendChild(messageTime);
-        
-        chatMessages.appendChild(messageDiv);
-        
-        // Scroll al final
-        scrollToBottom();
-    }
-    
-    function addAssistantMessage(text) {
-        const messageDiv = document.createElement('div');
-        messageDiv.className = 'message message-assistant';
-        
-        // Procesar markdown y código
-        const processedText = processMarkdown(text);
-        
-        const messageText = document.createElement('div');
-        messageText.className = 'markdown-content';
-        messageText.innerHTML = processedText;
-        
-        const messageTime = document.createElement('div');
-        messageTime.className = 'message-time';
-        messageTime.textContent = formatTime(new Date());
-        
-        messageDiv.appendChild(messageText);
-        messageDiv.appendChild(messageTime);
-        
-        chatMessages.appendChild(messageDiv);
-        
-        // Scroll al final
-        scrollToBottom();
-        
-        // Configurar los botones de copiar código
-        setupCodeCopyButtons();
-    }
-    
-    function addSystemMessage(text) {
-        const messageDiv = document.createElement('div');
-        messageDiv.className = 'alert alert-info small text-center mx-auto my-2';
-        messageDiv.style.maxWidth = '80%';
-        messageDiv.textContent = text;
-        
-        chatMessages.appendChild(messageDiv);
-        
-        // Scroll al final
-        scrollToBottom();
-    }
-    
-    function addTypingIndicator() {
-        const indicatorDiv = document.createElement('div');
-        indicatorDiv.className = 'message message-assistant typing-container';
-        indicatorDiv.id = 'typing-indicator';
-        
-        const indicator = document.createElement('div');
-        indicator.className = 'typing-indicator';
-        indicator.innerHTML = '<span></span><span></span><span></span>';
-        
-        indicatorDiv.appendChild(indicator);
-        chatMessages.appendChild(indicatorDiv);
-        
-        // Scroll al final
-        scrollToBottom();
-    }
-    
-    function removeTypingIndicator() {
-        const indicator = document.getElementById('typing-indicator');
-        if (indicator) {
-            indicator.remove();
         }
-    }
-    
-    function processMarkdown(text) {
-        // Esta es una implementación simple de procesamiento de Markdown
-        // En una aplicación real, usaríamos una librería como marked.js
-        
-        // Procesar bloques de código
-        text = text.replace(/```(\w+)?\n([\s\S]*?)\n```/g, function(match, language, code) {
-            const lang = language || '';
-            return `<div class="code-block"><button class="code-copy-btn">Copiar</button><pre><code class="language-${lang}">${escapeHtml(code)}</code></pre></div>`;
-        });
-        
-        // Procesar negrita
-        text = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-        
-        // Procesar cursiva
-        text = text.replace(/\*(.*?)\*/g, '<em>$1</em>');
-        
-        // Procesar enlaces
-        text = text.replace(/\[(.*?)\]\((.*?)\)/g, '<a href="$2" target="_blank">$1</a>');
-        
-        // Procesar listas
-        text = text.replace(/^- (.*?)$/gm, '<li>$1</li>');
-        text = text.replace(/<li>.*?<\/li>/gs, function(match) {
-            return '<ul>' + match + '</ul>';
-        });
-        
-        // Procesar párrafos
-        text = text.replace(/^([^<].*?)$/gm, '<p>$1</p>');
-        text = text.replace(/<p>\s*<\/p>/g, '');
-        
-        return text;
-    }
-    
-    function escapeHtml(html) {
-        const div = document.createElement('div');
-        div.textContent = html;
-        return div.innerHTML;
-    }
-    
-    function setupCodeCopyButtons() {
-        document.querySelectorAll('.code-copy-btn').forEach(button => {
-            button.addEventListener('click', function() {
-                const codeBlock = this.nextElementSibling.textContent;
-                navigator.clipboard.writeText(codeBlock)
-                    .then(() => {
-                        const originalText = this.textContent;
-                        this.textContent = 'Copiado!';
-                        setTimeout(() => {
-                            this.textContent = originalText;
-                        }, 2000);
-                    })
-                    .catch(err => {
-                        console.error('Error al copiar: ', err);
-                    });
-            });
-        });
-    }
-    
-    function formatTime(date) {
-        const hours = date.getHours().toString().padStart(2, '0');
-        const minutes = date.getMinutes().toString().padStart(2, '0');
-        return `${hours}:${minutes}`;
-    }
-    
-    function scrollToBottom() {
-        chatMessages.scrollTop = chatMessages.scrollHeight;
-    }
-    
-    function getAgentName(agentId) {
-        const agents = {
-            'developer': 'Desarrollador Experto',
-            'architect': 'Arquitecto de Software',
-            'advanced': 'Especialista Avanzado',
-            'general': 'Asistente General'
+    </style>
+</head>
+<body>
+    <div class="main-container">
+    <nav class="navbar navbar-expand-lg navbar-futuristic sticky-optimized">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="/">
+                <i class="bi bi-braces"></i>
+                Codestorm Assistant
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav">
+                    <li class="nav-item">
+                        <a class="nav-link" href="/"><i class="bi bi-house"></i> Inicio</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link active" href="/chat"><i class="bi bi-chat-dots"></i> Asistente IA</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/files"><i class="bi bi-folder2-open"></i> Explorador</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/code_corrector"><i class="bi bi-bug"></i> Corrector de Código</a>
+                    </li>
+                </ul>
+                <div class="ms-auto d-flex align-items-center">
+                    <span id="workspace-info" class="badge bg-primary me-3">Workspace: default</span>
+                    <div class="d-flex align-items-center">
+                        <span class="status-indicator status-disconnected" id="status-indicator" title="Comprobando estado del servidor..."></span>
+                        <span class="small ms-2">Estado del Servidor</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container-fluid mt-4">
+        <div class="row">
+            <!-- Panel de Configuración de Agentes -->
+            <div class="col-lg-3 col-md-4">
+                <div class="card card-futuristic h-100 mb-4">
+                    <div class="card-header card-header-futuristic">
+                        <span><i class="bi bi-cpu me-2"></i>Configuración de Agentes</span>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label for="model-select" class="form-label">Seleccionar Modelo de IA:</label>
+                            <select id="model-select" class="form-select select-futuristic select-optimized">
+                                <option value="openai" selected>OpenAI (GPT-4o)</option>
+                                <option value="anthropic">Anthropic (Claude)</option>
+                                <option value="gemini">Google (Gemini)</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="agent-selector" class="form-label">Seleccionar Agente:</label>
+                            <select id="agent-selector" class="form-select select-futuristic select-optimized">
+                                <option value="developer" selected>Agente de Desarrollo</option>
+                                <option value="architect">Arquitecto de Software</option>
+                                <option value="advanced">Especialista Avanzado</option>
+                                <option value="general">Asistente General</option>
+                            </select>
+                        </div>
+                        <div class="agent-info mb-3">
+                            <div class="agent-avatar">
+                                <i class="bi bi-code-slash"></i>
+                            </div>
+                            <div class="agent-details">
+                                <h5 class="mb-1">Agente de Desarrollo</h5>
+                                <p id="agent-description" class="mb-1">Experto en optimización y edición de código en tiempo real</p>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <h6>Capacidades:</h6>
+                            <ul id="agent-capabilities" class="agent-capabilities">
+                                <li>Corrección y refactorización de código</li>
+                                <li>Optimización de rendimiento</li>
+                                <li>Integración de frameworks y librerías</li>
+                                <li>Automatización de tareas</li>
+                                <li>Generación de código limpio</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Contenido principal -->
+            <div class="col-lg-9 col-md-8">
+                <div class="row">
+                    <!-- Panel de Chat -->
+                    <div class="col-12 mb-4">
+                        <div class="card card-futuristic h-100">
+                            <div class="card-header card-header-futuristic d-flex justify-content-between align-items-center">
+                                <span><i class="bi bi-chat-dots me-2"></i>Chat con Agente Especializado</span>
+                            </div>
+                            <div class="card-body p-0 d-flex flex-column" style="height: calc(100vh - 350px);">
+                                <div id="chat-container" class="chat-container-futuristic">
+                                    <div id="chat-messages" class="chat-messages-futuristic">
+                                        <!-- Los mensajes se mostrarán aquí -->
+                                        <div class="chat-message system-message">
+                                            <div class="message-content">
+                                                <p>¡Bienvenido al chat especializado de CODESTORM! Estás hablando con el <strong>Agente de Desarrollo</strong>, un experto en optimización y edición de código en tiempo real.</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <form id="chat-form" class="chat-form-futuristic">
+                                        <textarea id="chat-input" class="chat-input-futuristic" placeholder="Escribe tu mensaje aquí... Por ejemplo: 'Crea una página de ventas para productos tecnológicos'" rows="1"></textarea>
+                                        <button type="submit" class="send-button-futuristic">
+                                            <i class="bi bi-send"></i>
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Previsualización -->
+                    <div class="col-12" id="preview-section" style="display: none;">
+                        <div class="card card-futuristic">
+                            <div class="card-header card-header-futuristic d-flex justify-content-between align-items-center">
+                                <span><i class="bi bi-window me-2"></i>Previsualización</span>
+                                <div>
+                                    <button id="toggle-preview" class="btn btn-sm btn-futuristic">
+                                        <i class="bi bi-x-lg"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="card-body p-0">
+                                <div class="device-toggle-buttons py-2">
+                                    <button class="device-toggle-btn active" data-device="desktop">
+                                        <i class="bi bi-laptop"></i> Escritorio
+                                    </button>
+                                    <button class="device-toggle-btn" data-device="tablet">
+                                        <i class="bi bi-tablet"></i> Tablet
+                                    </button>
+                                    <button class="device-toggle-btn" data-device="mobile">
+                                        <i class="bi bi-phone"></i> Móvil
+                                    </button>
+                                </div>
+                                
+                                <div class="preview-container" id="preview-container">
+                                    <div class="preview-header">
+                                        <div class="preview-controls">
+                                            <div class="control-btn control-close"></div>
+                                            <div class="control-btn control-minimize"></div>
+                                            <div class="control-btn control-expand"></div>
+                                        </div>
+                                        <div class="preview-url">
+                                            <span>preview.html</span>
+                                        </div>
+                                    </div>
+                                    <iframe id="preview-iframe" class="preview-iframe" title="Previsualización"></iframe>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer class="footer mt-4 py-3" style="background: linear-gradient(90deg, var(--darker-blue) 0%, var(--dark-blue) 100%);">
+        <div class="container text-center">
+            <span class="text-light">CODESTORM-Assistant © 2025 | Herramienta de Desarrollo Impulsada por IA</span>
+        </div>
+    </footer>
+
+    <!-- Notificaciones -->
+    <div id="notifications" class="position-fixed top-0 end-0 p-3" style="z-index: 5000;"></div>
+
+    <!-- JavaScript -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Definir agentes especializados
+        const SPECIALIZED_AGENTS = {
+            developer: {
+                id: 'developer',
+                name: 'Agente de Desarrollo',
+                icon: 'bi-code-slash',
+                description: 'Experto en optimización y edición de código en tiempo real',
+                capabilities: [
+                    'Corrección y refactorización de código',
+                    'Optimización de rendimiento',
+                    'Integración de frameworks y librerías',
+                    'Automatización de tareas',
+                    'Generación de código limpio'
+                ]
+            },
+            architect: {
+                id: 'architect',
+                name: 'Arquitecto de Software',
+                icon: 'bi-building',
+                description: 'Especialista en diseño y planificación de arquitecturas de software',
+                capabilities: [
+                    'Diseño de arquitecturas escalables',
+                    'Patrones de diseño',
+                    'Modelado de datos',
+                    'Documentación técnica',
+                    'Análisis de requerimientos'
+                ]
+            },
+            advanced: {
+                id: 'advanced',
+                name: 'Especialista Avanzado',
+                icon: 'bi-stars',
+                description: 'Experto multidisciplinar para casos complejos y tecnologías avanzadas',
+                capabilities: [
+                    'Inteligencia Artificial',
+                    'Computación en la nube',
+                    'DevOps y CI/CD',
+                    'Seguridad informática',
+                    'Sistemas distribuidos'
+                ]
+            },
+            general: {
+                id: 'general',
+                name: 'Asistente General',
+                icon: 'bi-robot',
+                description: 'Asistente general para consultas variadas sobre programación',
+                capabilities: [
+                    'Respuesta a preguntas generales',
+                    'Explicación de conceptos',
+                    'Guía para principiantes',
+                    'Ayuda con problemas comunes',
+                    'Consejos de desarrollo'
+                ]
+            }
         };
-        return agents[agentId] || 'Asistente General';
-    }
-});
-</script>
-{% endblock %}
+
+        document.addEventListener('DOMContentLoaded', function() {
+            const chatMessages = document.getElementById('chat-messages');
+            const chatForm = document.getElementById('chat-form');
+            const chatInput = document.getElementById('chat-input');
+            const agentSelector = document.getElementById('agent-selector');
+            const modelSelect = document.getElementById('model-select');
+            const agentDescription = document.getElementById('agent-description');
+            const agentCapabilities = document.getElementById('agent-capabilities');
+            
+            let currentAgent = 'developer';
+
+            // Inicializar el selector de agentes
+            agentSelector.addEventListener('change', function() {
+                const agentId = this.value;
+                updateAgentInfo(agentId);
+                currentAgent = agentId;
+            });
+
+            // Actualizar información del agente
+            function updateAgentInfo(agentId) {
+                const agent = SPECIALIZED_AGENTS[agentId];
+                document.querySelector('.agent-details h5').textContent = agent.name;
+                document.querySelector('.agent-avatar i').className = `bi ${agent.icon}`;
+                agentDescription.textContent = agent.description;
+                
+                // Actualizar capacidades
+                agentCapabilities.innerHTML = '';
+                agent.capabilities.forEach(capability => {
+                    const li = document.createElement('li');
+                    li.textContent = capability;
+                    agentCapabilities.appendChild(li);
+                });
+            }
+
+            // Ajustar altura del textarea al escribir
+            chatInput.addEventListener('input', function() {
+                this.style.height = 'auto';
+                this.style.height = (this.scrollHeight) + 'px';
+            });
+
+            // Manejar envío de mensajes
+            chatForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                
+                const message = chatInput.value.trim();
+                if (!message) return;
+                
+                // Mostrar mensaje del usuario
+                addMessage(message, 'user');
+                
+                // Limpiar y resetear input
+                chatInput.value = '';
+                chatInput.style.height = 'auto';
+                
+                // Mostrar indicador de carga
+                const typingIndicator = document.createElement('div');
+                typingIndicator.className = 'chat-message system-message typing-indicator';
+                typingIndicator.innerHTML = `
+                    <div class="message-content">
+                        <p><i class="bi bi-three-dots"></i> El agente está escribiendo...</p>
+                    </div>
+                `;
+                chatMessages.appendChild(typingIndicator);
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+                
+                // Enviar mensaje al servidor
+                fetch('/api/chat', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        message: message,
+                        agent_id: currentAgent,
+                        model: modelSelect.value
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    // Eliminar indicador de escritura
+                    typingIndicator.remove();
+                    
+                    if (data.success) {
+                        // Mostrar respuesta del agente
+                        addMessage(data.response, 'agent');
+                    } else {
+                        // Mostrar error
+                        addMessage('Error: ' + data.error, 'system');
+                    }
+                })
+                .catch(error => {
+                    // Eliminar indicador de escritura
+                    typingIndicator.remove();
+                    
+                    // Mostrar error
+                    addMessage('Error de conexión: ' + error.message, 'system');
+                    console.error('Error:', error);
+                });
+            });
+
+            // Función para añadir mensaje al chat
+            function addMessage(message, type) {
+                const messageDiv = document.createElement('div');
+                messageDiv.className = `chat-message ${type}-message`;
+                
+                // Formatear el mensaje para mostrar código adecuadamente
+                let formattedMessage = formatMessage(message);
+                
+                if (type === 'user') {
+                    messageDiv.innerHTML = `
+                        <div class="message-header">
+                            <strong class="me-auto">Tú</strong>
+                        </div>
+                        <div class="message-content">
+                            <p>${formattedMessage}</p>
+                        </div>
+                    `;
+                } else if (type === 'agent') {
+                    const agent = SPECIALIZED_AGENTS[currentAgent];
+                    messageDiv.innerHTML = `
+                        <div class="message-header">
+                            <div class="agent-avatar" style="width: 30px; height: 30px; font-size: 1rem;">
+                                <i class="bi ${agent.icon}"></i>
+                            </div>
+                            <strong class="me-auto">${agent.name}</strong>
+                        </div>
+                        <div class="message-content">
+                            ${formattedMessage}
+                        </div>
+                    `;
+                } else {
+                    messageDiv.innerHTML = `
+                        <div class="message-content">
+                            <p>${formattedMessage}</p>
+                        </div>
+                    `;
+                }
+                
+                chatMessages.appendChild(messageDiv);
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+                
+                // Aplicar resaltado de sintaxis a los bloques de código
+                if (formattedMessage.includes('<pre><code')) {
+                    document.querySelectorAll('pre code').forEach((block) => {
+                        hljs.highlightElement(block);
+                    });
+                }
+            }
+
+            // Función para dar formato al mensaje
+            function formatMessage(message) {
+                // Detectar bloques de código con ```
+                let formattedMessage = message.replace(/```([\s\S]*?)```/g, function(match, code) {
+                    // Detectar el lenguaje si está especificado
+                    const languageMatch = code.match(/^([a-zA-Z0-9]+)\n/);
+                    let language = '';
+                    
+                    if (languageMatch) {
+                        language = languageMatch[1];
+                        code = code.substring(languageMatch[0].length);
+                    }
+                    
+                    // Escapar HTML en el código
+                    code = code.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                    
+                    return `<pre><code class="language-${language}">${code}</code></pre>`;
+                });
+                
+                // Convertir saltos de línea a <br>
+                formattedMessage = formattedMessage.replace(/\n/g, '<br>');
+                
+                // Formatear código en línea con `código`
+                formattedMessage = formattedMessage.replace(/`([^`]+)`/g, '<code>$1</code>');
+                
+                return formattedMessage;
+            }
+
+            // Inicialización
+            updateAgentInfo(currentAgent);
+            chatInput.focus();
+        });
+    </script>
+</body>
+</html>

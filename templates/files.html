@@ -1,305 +1,400 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="es" data-bs-theme="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Explorador de Archivos - Codestorm Assistant</title>
+    <title>CODESTORM - Explorador de Archivos</title>
+    
     <!-- Bootstrap CSS -->
     <link href="https://cdn.replit.com/agent/bootstrap-agent-dark-theme.min.css" rel="stylesheet">
+    
     <!-- Bootstrap Icons -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
-    <!-- Custom CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+    
     <style>
+        :root {
+            --darker-blue: #091428;
+            --dark-blue: #0A2149;
+            --medium-blue: #1E88E5;
+            --light-blue: #4CB9FF;
+            --highlight-color: #ffc107;
+            --dark-background: #121212;
+            --card-background: #1a1a1a;
+            --card-header: #212529;
+            --text-primary: #e9ecef;
+            --text-secondary: #adb5bd;
+        }
+        
         body {
+            background-color: var(--dark-background);
+            color: var(--text-primary);
+            font-family: 'Arial', sans-serif;
+            min-height: 100vh;
             display: flex;
             flex-direction: column;
-            min-height: 100vh;
-            background-color: #121212;
-            color: #e9ecef;
         }
-
-        .main-content {
-            flex: 1;
+        
+        .navbar-futuristic {
+            background: linear-gradient(90deg, var(--darker-blue) 0%, var(--dark-blue) 100%);
+            box-shadow: 0 2px 15px rgba(0, 100, 255, 0.2);
+            border-bottom: 1px solid var(--medium-blue);
         }
-
-        .file-explorer {
-            border: 1px solid #2c3034;
-            border-radius: 6px;
-            overflow: hidden;
-            background-color: #1a1a1a;
+        
+        .card-futuristic {
+            background-color: var(--card-background);
+            border-radius: 0.5rem;
+            border: 1px solid rgba(78, 115, 223, 0.2);
+            box-shadow: 0 0.25rem 0.75rem rgba(0, 0, 0, 0.2);
+            transition: all 0.3s ease;
+            height: 100%;
         }
-
-        .file-explorer-header {
-            background-color: #212529;
-            border-bottom: 1px solid #2c3034;
-            padding: 10px 15px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .file-path {
+        
+        .card-header-futuristic {
+            background-color: var(--card-header);
+            border-bottom: 1px solid rgba(78, 115, 223, 0.2);
+            padding: 0.75rem 1.25rem;
             font-weight: 500;
-            color: #adb5bd;
+            color: var(--text-primary);
         }
-
-        .file-list {
-            padding: 0;
-            margin: 0;
-            list-style: none;
-        }
-
-        .file-item {
-            padding: 8px 15px;
-            border-bottom: 1px solid #2c3034;
+        
+        .file-explorer-item {
             display: flex;
             align-items: center;
+            padding: 0.75rem 1rem;
+            border-bottom: 1px solid rgba(78, 115, 223, 0.1);
             transition: background-color 0.2s;
             cursor: pointer;
         }
-
-        .file-item:hover {
-            background-color: #2c3034;
+        
+        .file-explorer-item:hover {
+            background-color: rgba(30, 136, 229, 0.1);
         }
-
-        .file-item:last-child {
-            border-bottom: none;
-        }
-
-        .file-item-icon {
-            margin-right: 10px;
-            font-size: 1.2rem;
-        }
-
-        .directory .file-item-icon {
-            color: #ffc107;
-        }
-
-        .file .file-item-icon {
-            color: #6c757d;
-        }
-
-        .file-item-details {
-            display: flex;
-            margin-left: auto;
-            color: #6c757d;
-            font-size: 0.85rem;
-        }
-
-        .file-size {
-            margin-right: 15px;
-            min-width: 70px;
-            text-align: right;
-        }
-
-        .file-date {
-            min-width: 150px;
-        }
-
-        .file-actions {
-            gap: 8px;
-            display: flex;
-        }
-
-        .file-explorer-toolbar {
-            padding: 10px 15px;
-            background-color: #1e1e1e;
-            border-bottom: 1px solid #2c3034;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .btn-action {
-            padding: 5px 10px;
-            font-size: 0.9em;
-        }
-
-        .file-context-menu {
-            background-color: #2c3034;
-            border-radius: 4px;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
-            padding: 5px 0;
-            min-width: 150px;
-            z-index: 100;
-        }
-
-        .context-menu-item {
-            padding: 8px 15px;
-            cursor: pointer;
-        }
-
-        .context-menu-item:hover {
-            background-color: #3c4044;
-        }
-
-        .context-menu-item.danger {
-            color: #dc3545;
-        }
-
-        .context-menu-item.danger:hover {
-            background-color: rgba(220, 53, 69, 0.2);
-        }
-
-        .context-menu-item i {
-            margin-right: 8px;
-        }
-
-        .file-create-form {
-            padding: 15px;
-            background-color: #212529;
-            border-radius: 6px;
-            border: 1px solid #2c3034;
-            margin-bottom: 15px;
-        }
-
-        .file-empty-message {
-            padding: 20px;
+        
+        .file-explorer-item .icon {
+            margin-right: 0.75rem;
+            font-size: 1.25rem;
+            width: 1.5rem;
             text-align: center;
-            color: #6c757d;
-        }
-
-        .navbar-brand {
-            font-weight: bold;
-            color: #ffffff !important;
-        }
-
-        .navbar-brand span {
-            color: #ffc107;
         }
         
-        .nav-link {
+        .file-explorer-item .file-name {
+            flex-grow: 1;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        
+        .file-explorer-item .file-meta {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            white-space: nowrap;
+        }
+        
+        .file-explorer-item .actions {
+            display: flex;
+            gap: 0.5rem;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+        
+        .file-explorer-item:hover .actions {
+            opacity: 1;
+        }
+        
+        .breadcrumb-futuristic {
+            background-color: rgba(30, 136, 229, 0.05);
             border-radius: 0.25rem;
-            transition: background-color 0.2s;
+            padding: 0.5rem 1rem;
+            margin-bottom: 1rem;
         }
         
-        .nav-link:hover {
-            background-color: rgba(255, 255, 255, 0.1);
+        .breadcrumb-futuristic .breadcrumb-item a {
+            color: var(--light-blue);
+            text-decoration: none;
         }
         
-        .nav-link.active {
-            background-color: rgba(255, 255, 255, 0.2);
-            font-weight: 500;
+        .breadcrumb-futuristic .breadcrumb-item.active {
+            color: var(--text-primary);
         }
         
-        /* Estilos adicionales para la animación de carga */
-        .spin {
-            animation: spin 1s linear infinite;
+        .btn-futuristic {
+            background: linear-gradient(135deg, var(--medium-blue) 0%, var(--light-blue) 100%);
+            border: none;
+            color: white;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease;
+        }
+        
+        .btn-futuristic:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 8px rgba(0, 100, 255, 0.3);
+        }
+        
+        .folder-icon {
+            color: var(--highlight-color);
+        }
+        
+        .status-indicator {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
             display: inline-block;
         }
         
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
+        .status-connected {
+            background-color: #20c997;
         }
         
-        /* Estilo para los botones de descarga */
-        .download-btn {
+        .status-disconnected {
+            background-color: #dc3545;
+        }
+        
+        .status-connecting {
+            background-color: #ffc107;
+            animation: pulse 1.5s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { opacity: 0.5; }
+            50% { opacity: 1; }
+            100% { opacity: 0.5; }
+        }
+
+        .directory-tree {
+            border-right: 1px solid rgba(78, 115, 223, 0.2);
+            height: 100%;
+            overflow-y: auto;
+        }
+
+        .tree-item {
+            padding: 0.5rem 0.75rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            transition: background-color 0.2s;
+        }
+
+        .tree-item:hover {
+            background-color: rgba(30, 136, 229, 0.1);
+        }
+
+        .tree-item .icon {
+            margin-right: 0.5rem;
+            width: 1.25rem;
+            text-align: center;
+        }
+
+        .tree-item .tree-toggle {
+            width: 1rem;
+            text-align: center;
+            margin-right: 0.5rem;
+        }
+
+        .tree-children {
+            margin-left: 1.5rem;
+        }
+
+        .btn-action {
+            width: 32px;
+            height: 32px;
+            padding: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+        }
+
+        .file-preview {
+            background-color: var(--card-background);
+            border-radius: 0.25rem;
+            height: 100%;
+            overflow: auto;
+        }
+
+        .file-preview-placeholder {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            color: var(--text-secondary);
+        }
+
+        .file-preview-placeholder i {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+        }
+
+        .file-preview-code {
+            font-family: 'Consolas', 'Monaco', monospace;
+            padding: 1rem;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+
+        .file-preview-image {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            max-height: 500px;
+            overflow: auto;
+        }
+
+        .file-preview-image img {
+            max-width: 100%;
+            max-height: 100%;
+        }
+
+        .modal-futuristic .modal-content {
+            background-color: var(--card-background);
+            border: 1px solid rgba(78, 115, 223, 0.2);
+            box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.3);
+        }
+
+        .modal-futuristic .modal-header {
+            border-bottom: 1px solid rgba(78, 115, 223, 0.2);
+            background-color: var(--card-header);
+        }
+
+        .modal-futuristic .modal-footer {
+            border-top: 1px solid rgba(78, 115, 223, 0.2);
+        }
+
+        .file-type-badge {
+            text-transform: uppercase;
+            font-size: 0.65rem;
             padding: 0.2rem 0.4rem;
-            font-size: 0.75rem;
+            border-radius: 0.25rem;
+            background-color: rgba(78, 115, 223, 0.2);
+            color: var(--light-blue);
+            margin-left: 0.5rem;
         }
     </style>
 </head>
 <body>
-    <!-- Barra de navegación -->
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
-        <div class="container">
+    <nav class="navbar navbar-expand-lg navbar-futuristic sticky-top">
+        <div class="container-fluid">
             <a class="navbar-brand" href="/">
-                <i class="bi bi-code-square"></i> Code<span>Storm</span>
+                <i class="bi bi-braces"></i>
+                Codestorm Assistant
             </a>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
                 <span class="navbar-toggler-icon"></span>
             </button>
             <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav ms-auto">
+                <ul class="navbar-nav">
                     <li class="nav-item">
-                        <a class="nav-link" href="/">Inicio</a>
+                        <a class="nav-link" href="/"><i class="bi bi-house"></i> Inicio</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="/chat">Asistente</a>
+                        <a class="nav-link" href="/chat"><i class="bi bi-chat-dots"></i> Asistente IA</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link active" href="/files">Archivos</a>
+                        <a class="nav-link active" href="/files"><i class="bi bi-folder2-open"></i> Explorador</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="/code_corrector">Corrector</a>
+                        <a class="nav-link" href="/code_corrector"><i class="bi bi-bug"></i> Corrector de Código</a>
                     </li>
                 </ul>
+                <div class="ms-auto d-flex align-items-center">
+                    <span id="workspace-info" class="badge bg-primary me-3">Workspace: default</span>
+                    <div class="d-flex align-items-center">
+                        <span class="status-indicator status-disconnected" id="status-indicator" title="Comprobando estado del servidor..."></span>
+                        <span class="small ms-2">Estado del Servidor</span>
+                    </div>
+                </div>
             </div>
         </div>
     </nav>
 
-    <div class="container my-4 main-content">
-        <div class="row mb-4">
-            <div class="col-12">
-                <h1 class="fs-2 fw-bold mb-4">Explorador de Archivos</h1>
-                <p class="text-muted">Gestiona tus archivos y directorios de trabajo.</p>
-                
-                <!-- Formulario para crear archivos/carpetas -->
-                <div id="create-file-form" class="file-create-form d-none mb-4">
-                    <div class="mb-3">
-                        <label for="file-name" class="form-label">Nombre del archivo/carpeta</label>
-                        <input type="text" class="form-control" id="file-name" placeholder="ejemplo.js">
+    <div class="container-fluid mt-4 mb-5">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h1 class="h3 mb-0">
+                <i class="bi bi-folder2-open text-info"></i> Explorador de Archivos
+            </h1>
+            <div class="d-flex">
+                <button id="refresh-btn" class="btn btn-outline-secondary me-2" title="Refrescar archivos">
+                    <i class="bi bi-arrow-clockwise"></i>
+                </button>
+                <div class="dropdown">
+                    <button class="btn btn-futuristic dropdown-toggle" type="button" id="createDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="bi bi-plus"></i> Crear
+                    </button>
+                    <ul class="dropdown-menu" aria-labelledby="createDropdown">
+                        <li><a class="dropdown-item" href="#" id="create-file-btn"><i class="bi bi-file-earmark-plus me-2"></i>Archivo</a></li>
+                        <li><a class="dropdown-item" href="#" id="create-folder-btn"><i class="bi bi-folder-plus me-2"></i>Carpeta</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item" href="#" id="upload-file-btn"><i class="bi bi-upload me-2"></i>Subir archivos</a></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <nav aria-label="breadcrumb" class="breadcrumb-futuristic">
+            <ol class="breadcrumb mb-0" id="path-breadcrumb">
+                <li class="breadcrumb-item"><a href="#" data-path="."><i class="bi bi-house-door"></i> /</a></li>
+                <li class="breadcrumb-item active">workspace</li>
+            </ol>
+        </nav>
+
+        <div class="row">
+            <!-- Directory Tree -->
+            <div class="col-md-3 d-none d-md-block">
+                <div class="card card-futuristic h-100">
+                    <div class="card-header card-header-futuristic">
+                        <i class="bi bi-folder-symlink me-2"></i>Estructura de Directorios
                     </div>
-                    <div class="mb-3" id="file-content-container">
-                        <label for="file-content" class="form-label">Contenido (opcional)</label>
-                        <textarea class="form-control" id="file-content" rows="5" placeholder="// Tu código aquí"></textarea>
-                    </div>
-                    <div class="d-flex gap-2">
-                        <button id="save-file-btn" class="btn btn-primary">Guardar</button>
-                        <button id="cancel-file-btn" class="btn btn-outline-secondary">Cancelar</button>
+                    <div class="card-body p-0">
+                        <div class="directory-tree" id="directory-tree">
+                            <!-- Tree will be populated by JavaScript -->
+                            <div class="tree-item" data-path=".">
+                                <span class="tree-toggle"><i class="bi bi-caret-right-fill"></i></span>
+                                <span class="icon"><i class="bi bi-folder-fill folder-icon"></i></span>
+                                <span class="name">workspace</span>
+                            </div>
+                        </div>
                     </div>
                 </div>
-                
-                <!-- Explorador de archivos -->
-                <div class="file-explorer">
-                    <!-- Barra de herramientas -->
-                    <div class="file-explorer-toolbar">
-                        <div class="breadcrumb mb-0">
-                            <ol class="breadcrumb mb-0" id="path-breadcrumb">
-                                <li class="breadcrumb-item active">/</li>
-                            </ol>
-                        </div>
-                        <div class="file-actions">
-                            <button id="new-file-btn" class="btn btn-sm btn-primary">
-                                <i class="bi bi-file-earmark-plus"></i> Nuevo Archivo
+            </div>
+
+            <!-- File List -->
+            <div class="col-md-9 col-lg-5">
+                <div class="card card-futuristic h-100">
+                    <div class="card-header card-header-futuristic d-flex justify-content-between align-items-center">
+                        <span><i class="bi bi-files me-2"></i>Archivos</span>
+                        <div class="input-group" style="max-width: 250px;">
+                            <input type="text" class="form-control form-control-sm" placeholder="Buscar archivos..." id="search-input">
+                            <button class="btn btn-outline-secondary btn-sm" type="button" id="search-btn">
+                                <i class="bi bi-search"></i>
                             </button>
-                            <button id="new-folder-btn" class="btn btn-sm btn-secondary">
-                                <i class="bi bi-folder-plus"></i> Nueva Carpeta
-                            </button>
-                            <label for="upload-file" class="btn btn-sm btn-info mb-0">
-                                <i class="bi bi-upload"></i> Subir Archivo
-                            </label>
-                            <input type="file" id="upload-file" class="d-none" multiple>
-                            <button id="clone-repo-btn" class="btn btn-sm btn-success">
-                                <i class="bi bi-git"></i> Clonar Repositorio
-                            </button>
-                            <div class="dropdown d-inline-block">
-                                <button class="btn btn-sm btn-info dropdown-toggle" type="button" id="downloadOptionsBtn" data-bs-toggle="dropdown" aria-expanded="false">
-                                    <i class="bi bi-download"></i> Descargar
-                                </button>
-                                <ul class="dropdown-menu dropdown-menu-dark" aria-labelledby="downloadOptionsBtn">
-                                    <li><a class="dropdown-item" href="#" id="download-current-dir-btn"><i class="bi bi-file-earmark-zip"></i> Descargar este directorio</a></li>
-                                    <li><a class="dropdown-item" href="#" id="download-all-btn"><i class="bi bi-file-earmark-zip"></i> Descargar todo el workspace</a></li>
-                                </ul>
-                            </div>
                         </div>
                     </div>
-                    <!-- Encabezado del explorador -->
-                    <div class="file-explorer-header">
-                        <span class="fw-bold">Nombre</span>
-                        <div class="d-flex">
-                            <span class="file-size fw-bold">Tamaño</span>
-                            <span class="file-date fw-bold">Modificado</span>
+                    <div class="card-body p-0">
+                        <div id="files-container" class="file-explorer">
+                            <!-- File list will be populated by JavaScript -->
                         </div>
                     </div>
-                    <!-- Contenido del explorador (lista de archivos) -->
-                    <div id="file-explorer-content" class="file-explorer-content">
-                        <div class="text-center py-5">
-                            <div class="spinner-border text-light" role="status">
-                                <span class="visually-hidden">Cargando...</span>
+                </div>
+            </div>
+
+            <!-- File Preview -->
+            <div class="col-lg-4 d-none d-lg-block mt-3 mt-lg-0">
+                <div class="card card-futuristic h-100">
+                    <div class="card-header card-header-futuristic d-flex justify-content-between align-items-center">
+                        <span id="preview-title"><i class="bi bi-eye me-2"></i>Vista Previa</span>
+                        <div>
+                            <button id="open-editor-btn" class="btn btn-sm btn-outline-light" style="display: none;">
+                                <i class="bi bi-pencil"></i> Editar
+                            </button>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div id="file-preview" class="file-preview">
+                            <div class="file-preview-placeholder">
+                                <i class="bi bi-file-earmark"></i>
+                                <p>Selecciona un archivo para ver su contenido</p>
                             </div>
-                            <p class="mt-3">Cargando archivos...</p>
                         </div>
                     </div>
                 </div>
@@ -307,68 +402,197 @@
         </div>
     </div>
 
-    <!-- Footer -->
-    <footer class="bg-dark text-light py-3 mt-auto">
-        <div class="container">
-            <div class="row align-items-center">
-                <div class="col-md-6">
-                    <p class="mb-0">CodeStorm Assistant &copy; 2025</p>
+    <!-- Modales -->
+    
+    <!-- Modal Crear Archivo -->
+    <div class="modal fade modal-futuristic" id="createFileModal" tabindex="-1" aria-labelledby="createFileModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="createFileModalLabel"><i class="bi bi-file-earmark-plus me-2"></i>Crear Nuevo Archivo</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
-                <div class="col-md-6 text-md-end">
-                    <a href="#" class="text-light me-3"><i class="bi bi-github"></i></a>
-                    <a href="#" class="text-light me-3"><i class="bi bi-discord"></i></a>
-                    <a href="#" class="text-light"><i class="bi bi-twitter"></i></a>
+                <div class="modal-body">
+                    <form id="create-file-form">
+                        <div class="mb-3">
+                            <label for="file-name" class="form-label">Nombre del archivo:</label>
+                            <input type="text" class="form-control" id="file-name" placeholder="ejemplo.txt">
+                        </div>
+                        <div class="mb-3">
+                            <label for="file-content" class="form-label">Contenido inicial:</label>
+                            <textarea class="form-control" id="file-content" rows="8"></textarea>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-futuristic" id="save-file-btn">Crear Archivo</button>
                 </div>
             </div>
         </div>
+    </div>
+    
+    <!-- Modal Crear Carpeta -->
+    <div class="modal fade modal-futuristic" id="createFolderModal" tabindex="-1" aria-labelledby="createFolderModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="createFolderModalLabel"><i class="bi bi-folder-plus me-2"></i>Crear Nueva Carpeta</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="create-folder-form">
+                        <div class="mb-3">
+                            <label for="folder-name" class="form-label">Nombre de la carpeta:</label>
+                            <input type="text" class="form-control" id="folder-name" placeholder="mi_carpeta">
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-futuristic" id="save-folder-btn">Crear Carpeta</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Modal Eliminar -->
+    <div class="modal fade modal-futuristic" id="deleteModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="deleteModalLabel"><i class="bi bi-exclamation-triangle me-2 text-danger"></i>Confirmar Eliminación</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body" id="delete-modal-body">
+                    ¿Estás seguro de que deseas eliminar este elemento?
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-danger" id="confirm-delete-btn">Eliminar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Notificaciones -->
+    <div id="notifications" class="position-fixed top-0 end-0 p-3" style="z-index: 5000;"></div>
+
+    <footer class="footer mt-auto py-3" style="background: linear-gradient(90deg, var(--darker-blue) 0%, var(--dark-blue) 100%);">
+        <div class="container text-center">
+            <span class="text-light">CODESTORM-Assistant © 2025 | Herramienta de Desarrollo Impulsada por IA</span>
+        </div>
     </footer>
 
-    <!-- Bootstrap JS -->
+    <!-- JavaScript -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-    
-    <!-- Scripts simplificados -->
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            // Referencias a elementos del DOM
-            const fileExplorerContent = document.getElementById('file-explorer-content');
+            // Variables globales
+            let currentPath = '.';
+            let currentFileSelected = null;
+            
+            // Referencias a elementos DOM
+            const filesContainer = document.getElementById('files-container');
             const pathBreadcrumb = document.getElementById('path-breadcrumb');
-            const newFileBtn = document.getElementById('new-file-btn');
-            const newFolderBtn = document.getElementById('new-folder-btn');
-            const createFileForm = document.getElementById('create-file-form');
-            const fileNameInput = document.getElementById('file-name');
-            const fileContentContainer = document.getElementById('file-content-container');
-            const fileContentInput = document.getElementById('file-content');
+            const directoryTree = document.getElementById('directory-tree');
+            const filePreview = document.getElementById('file-preview');
+            const previewTitle = document.getElementById('preview-title');
+            const openEditorBtn = document.getElementById('open-editor-btn');
+            const refreshBtn = document.getElementById('refresh-btn');
+            const createFileBtn = document.getElementById('create-file-btn');
+            const createFolderBtn = document.getElementById('create-folder-btn');
             const saveFileBtn = document.getElementById('save-file-btn');
-            const cancelFileBtn = document.getElementById('cancel-file-btn');
-            const uploadFileInput = document.getElementById('upload-file');
-            const cloneRepoBtn = document.getElementById('clone-repo-btn');
+            const saveFolderBtn = document.getElementById('save-folder-btn');
+            const confirmDeleteBtn = document.getElementById('confirm-delete-btn');
+            const searchInput = document.getElementById('search-input');
+            const searchBtn = document.getElementById('search-btn');
             
-            // Variables de estado
-            let currentDirectory = '.';
-            let isCreatingFolder = false;
+            // Modales
+            const createFileModal = new bootstrap.Modal(document.getElementById('createFileModal'));
+            const createFolderModal = new bootstrap.Modal(document.getElementById('createFolderModal'));
+            const deleteModal = new bootstrap.Modal(document.getElementById('deleteModal'));
             
-            // Cargar archivos al inicio
-            loadFiles(currentDirectory);
+            // Cargar archivos iniciales
+            loadFiles(currentPath);
             
-            // Event listeners
-            newFileBtn.addEventListener('click', () => showCreateFileForm(false));
-            newFolderBtn.addEventListener('click', () => showCreateFileForm(true));
-            saveFileBtn.addEventListener('click', createFileOrFolder);
-            cancelFileBtn.addEventListener('click', hideCreateFileForm);
-            uploadFileInput.addEventListener('change', handleFileUpload);
-            cloneRepoBtn.addEventListener('click', showCloneRepoModal);
+            // Event Listeners
+            refreshBtn.addEventListener('click', () => loadFiles(currentPath));
             
-            // Cargar archivos
-            function loadFiles(directory) {
-                fetch(`/api/files?directory=${encodeURIComponent(directory)}`)
+            createFileBtn.addEventListener('click', () => {
+                document.getElementById('file-name').value = '';
+                document.getElementById('file-content').value = '';
+                createFileModal.show();
+            });
+            
+            createFolderBtn.addEventListener('click', () => {
+                document.getElementById('folder-name').value = '';
+                createFolderModal.show();
+            });
+            
+            saveFileBtn.addEventListener('click', () => {
+                const fileName = document.getElementById('file-name').value.trim();
+                const fileContent = document.getElementById('file-content').value;
+                
+                if (!fileName) {
+                    showNotification('Por favor, ingresa un nombre para el archivo', 'warning');
+                    return;
+                }
+                
+                const filePath = currentPath === '.' ? fileName : `${currentPath}/${fileName}`;
+                createFile(filePath, fileContent);
+                createFileModal.hide();
+            });
+            
+            saveFolderBtn.addEventListener('click', () => {
+                const folderName = document.getElementById('folder-name').value.trim();
+                
+                if (!folderName) {
+                    showNotification('Por favor, ingresa un nombre para la carpeta', 'warning');
+                    return;
+                }
+                
+                const folderPath = currentPath === '.' ? folderName : `${currentPath}/${folderName}`;
+                createFolder(folderPath);
+                createFolderModal.hide();
+            });
+            
+            confirmDeleteBtn.addEventListener('click', () => {
+                if (currentFileSelected) {
+                    deleteItem(currentFileSelected);
+                    deleteModal.hide();
+                }
+            });
+            
+            searchBtn.addEventListener('click', performSearch);
+            searchInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    performSearch();
+                }
+            });
+            
+            openEditorBtn.addEventListener('click', () => {
+                if (currentFileSelected) {
+                    window.location.href = `/edit_file?path=${encodeURIComponent(currentFileSelected)}`;
+                }
+            });
+            
+            // Funciones de manipulación de archivos
+            function loadFiles(path) {
+                currentPath = path;
+                
+                // Actualizar la ruta en la miga de pan
+                updateBreadcrumb(path);
+                
+                fetch(`/api/files?directory=${encodeURIComponent(path)}`)
                     .then(response => response.json())
                     .then(data => {
                         if (data.success) {
-                            displayFiles(data.files, directory);
-                            updateBreadcrumb(directory);
-                            currentDirectory = directory;
+                            displayFiles(data.files);
+                            // También actualizar el árbol de directorios
+                            // loadDirectoryTree(path);
                         } else {
-                            showNotification(data.error || 'Error al cargar archivos', 'danger');
+                            showNotification('Error al cargar archivos: ' + data.error, 'danger');
                         }
                     })
                     .catch(error => {
@@ -377,43 +601,73 @@
                     });
             }
             
-            // Mostrar archivos en el explorador
-            function displayFiles(files, directory) {
-                fileExplorerContent.innerHTML = '';
+            function displayFiles(files) {
+                filesContainer.innerHTML = '';
                 
-                // Si no estamos en el directorio raíz, añadir opción para subir
-                if (directory !== '.') {
-                    const parentDir = directory.split('/').slice(0, -1).join('/') || '.';
-                    const upDirectory = document.createElement('div');
-                    upDirectory.className = 'file-item directory';
-                    upDirectory.innerHTML = `
-                        <i class="bi bi-arrow-up-circle file-item-icon"></i>
-                        <span>..</span>
+                // Si no estamos en la raíz, mostrar opción para subir un nivel
+                if (currentPath !== '.') {
+                    const upDir = document.createElement('div');
+                    upDir.className = 'file-explorer-item';
+                    
+                    // Obtener directorio padre
+                    const parentPath = currentPath.split('/').slice(0, -1).join('/') || '.';
+                    
+                    upDir.innerHTML = `
+                        <div class="icon">
+                            <i class="bi bi-arrow-up-circle"></i>
+                        </div>
+                        <div class="file-name">
+                            ..
+                        </div>
                     `;
-                    upDirectory.addEventListener('click', () => loadFiles(parentDir));
-                    fileExplorerContent.appendChild(upDirectory);
+                    
+                    upDir.addEventListener('click', () => loadFiles(parentPath));
+                    filesContainer.appendChild(upDir);
                 }
                 
-                // Ordenar: primero directorios, luego archivos
+                // Ordenar archivos: primero carpetas, luego archivos
                 const directories = files.filter(f => f.type === 'directory');
                 const regularFiles = files.filter(f => f.type === 'file');
                 
-                // Añadir directorios
+                // Mostrar directorios
                 directories.forEach(dir => {
                     const dirElement = document.createElement('div');
-                    dirElement.className = 'file-item directory';
+                    dirElement.className = 'file-explorer-item';
                     dirElement.innerHTML = `
-                        <i class="bi bi-folder-fill file-item-icon"></i>
-                        <span>${dir.name}</span>
+                        <div class="icon">
+                            <i class="bi bi-folder-fill folder-icon"></i>
+                        </div>
+                        <div class="file-name">
+                            ${dir.name}
+                        </div>
+                        <div class="actions">
+                            <button class="btn btn-sm btn-action btn-outline-danger delete-btn" title="Eliminar carpeta">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </div>
                     `;
-                    dirElement.addEventListener('click', () => loadFiles(dir.path));
-                    fileExplorerContent.appendChild(dirElement);
+                    
+                    // Evento para abrir carpeta
+                    dirElement.addEventListener('click', function(e) {
+                        if (!e.target.closest('.delete-btn')) {
+                            loadFiles(dir.path);
+                        }
+                    });
+                    
+                    // Evento para eliminar carpeta
+                    const deleteBtn = dirElement.querySelector('.delete-btn');
+                    deleteBtn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        showDeleteConfirmation(dir.path, 'carpeta', dir.name);
+                    });
+                    
+                    filesContainer.appendChild(dirElement);
                 });
                 
-                // Añadir archivos
+                // Mostrar archivos
                 regularFiles.forEach(file => {
                     const fileElement = document.createElement('div');
-                    fileElement.className = 'file-item file';
+                    fileElement.className = 'file-explorer-item';
                     
                     // Determinar icono según extensión
                     let icon = 'bi-file-earmark';
@@ -423,265 +677,303 @@
                     else if (['js', 'ts'].includes(ext)) icon = 'bi-filetype-js';
                     else if (['css', 'scss'].includes(ext)) icon = 'bi-filetype-css';
                     else if (['py'].includes(ext)) icon = 'bi-filetype-py';
-                    else if (['jpg', 'jpeg', 'png', 'gif'].includes(ext)) icon = 'bi-file-earmark-image';
-                    else if (['md'].includes(ext)) icon = 'bi-file-earmark-text';
-                    
-                    // Formatear tamaño
-                    const sizeStr = formatFileSize(file.size);
+                    else if (['jpg', 'jpeg', 'png', 'gif', 'svg'].includes(ext)) icon = 'bi-file-earmark-image';
+                    else if (['md', 'txt'].includes(ext)) icon = 'bi-file-earmark-text';
+                    else if (['json'].includes(ext)) icon = 'bi-file-earmark-code';
                     
                     fileElement.innerHTML = `
-                        <i class="bi ${icon} file-item-icon"></i>
-                        <span>${file.name}</span>
-                        <div class="file-item-details">
-                            <span class="file-size">${sizeStr}</span>
+                        <div class="icon">
+                            <i class="bi ${icon}"></i>
+                        </div>
+                        <div class="file-name">
+                            ${file.name}
+                            ${ext ? `<span class="file-type-badge">${ext}</span>` : ''}
+                        </div>
+                        <div class="file-meta">
+                            ${formatFileSize(file.size)}
+                        </div>
+                        <div class="actions">
+                            <button class="btn btn-sm btn-action btn-outline-info" title="Editar archivo">
+                                <i class="bi bi-pencil"></i>
+                            </button>
+                            <button class="btn btn-sm btn-action btn-outline-danger delete-btn" title="Eliminar archivo">
+                                <i class="bi bi-trash"></i>
+                            </button>
                         </div>
                     `;
                     
-                    // Abrir archivo al hacer clic
-                    fileElement.addEventListener('click', () => {
+                    // Evento para previsualizar archivo
+                    fileElement.addEventListener('click', function(e) {
+                        if (!e.target.closest('.actions')) {
+                            previewFile(file.path, file.name, ext);
+                        }
+                    });
+                    
+                    // Evento para editar archivo
+                    const editBtn = fileElement.querySelector('.btn-outline-info');
+                    editBtn.addEventListener('click', (e) => {
+                        e.stopPropagation();
                         window.location.href = `/edit_file?path=${encodeURIComponent(file.path)}`;
                     });
                     
-                    fileExplorerContent.appendChild(fileElement);
-                });
-                
-                // Mostrar mensaje si no hay archivos
-                if (files.length === 0) {
-                    fileExplorerContent.innerHTML = '<div class="file-empty-message">No hay archivos en este directorio</div>';
-                }
-            }
-            
-            // Actualizar la navegación de migas de pan
-            function updateBreadcrumb(directory) {
-                const parts = directory === '.' ? [] : directory.split('/');
-                pathBreadcrumb.innerHTML = '';
-                
-                // Añadir root
-                const rootItem = document.createElement('li');
-                rootItem.className = 'breadcrumb-item';
-                rootItem.innerHTML = '<a href="#" data-path=".">Workspace</a>';
-                rootItem.querySelector('a').addEventListener('click', (e) => {
-                    e.preventDefault();
-                    loadFiles('.');
-                });
-                pathBreadcrumb.appendChild(rootItem);
-                
-                // Añadir cada parte del path
-                let currentPath = '';
-                parts.forEach((part, index) => {
-                    currentPath += (index === 0 ? '' : '/') + part;
-                    const item = document.createElement('li');
-                    
-                    if (index === parts.length - 1) {
-                        item.className = 'breadcrumb-item active';
-                        item.textContent = part;
-                    } else {
-                        item.className = 'breadcrumb-item';
-                        item.innerHTML = `<a href="#" data-path="${currentPath}">${part}</a>`;
-                        item.querySelector('a').addEventListener('click', (e) => {
-                            e.preventDefault();
-                            loadFiles(currentPath);
-                        });
-                    }
-                    
-                    pathBreadcrumb.appendChild(item);
-                });
-            }
-            
-            // Mostrar formulario para crear archivo/carpeta
-            function showCreateFileForm(isFolder) {
-                isCreatingFolder = isFolder;
-                createFileForm.classList.remove('d-none');
-                fileNameInput.value = '';
-                fileContentInput.value = '';
-                
-                if (isFolder) {
-                    fileContentContainer.style.display = 'none';
-                } else {
-                    fileContentContainer.style.display = 'block';
-                }
-                
-                fileNameInput.focus();
-            }
-            
-            // Ocultar formulario
-            function hideCreateFileForm() {
-                createFileForm.classList.add('d-none');
-            }
-            
-            // Crear archivo o carpeta
-            function createFileOrFolder() {
-                const name = fileNameInput.value.trim();
-                
-                if (!name) {
-                    showNotification('Por favor, introduce un nombre válido', 'warning');
-                    return;
-                }
-                
-                if (isCreatingFolder) {
-                    // Crear carpeta
-                    const folderPath = currentDirectory === '.' ? name : `${currentDirectory}/${name}`;
-                    
-                    fetch('/api/files/create', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify({
-                            file_path: `${folderPath}/.gitkeep`,
-                            content: ''
-                        })
-                    })
-                    .then(response => response.json())
-                    .then(data => {
-                        if (data.success) {
-                            showNotification(`Carpeta ${name} creada correctamente`, 'success');
-                            loadFiles(currentDirectory);
-                            hideCreateFileForm();
-                        } else {
-                            showNotification(data.error || 'Error al crear carpeta', 'danger');
-                        }
-                    })
-                    .catch(error => {
-                        console.error('Error:', error);
-                        showNotification('Error al crear carpeta', 'danger');
+                    // Evento para eliminar archivo
+                    const deleteBtn = fileElement.querySelector('.delete-btn');
+                    deleteBtn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        showDeleteConfirmation(file.path, 'archivo', file.name);
                     });
-                } else {
-                    // Crear archivo
-                    const content = fileContentInput.value;
-                    const filePath = currentDirectory === '.' ? name : `${currentDirectory}/${name}`;
                     
-                    fetch('/api/files/create', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify({
-                            file_path: filePath,
-                            content: content
-                        })
-                    })
-                    .then(response => response.json())
-                    .then(data => {
-                        if (data.success) {
-                            showNotification(`Archivo ${name} creado correctamente`, 'success');
-                            loadFiles(currentDirectory);
-                            hideCreateFileForm();
-                        } else {
-                            showNotification(data.error || 'Error al crear archivo', 'danger');
-                        }
-                    })
-                    .catch(error => {
-                        console.error('Error:', error);
-                        showNotification('Error al crear archivo', 'danger');
-                    });
+                    filesContainer.appendChild(fileElement);
+                });
+                
+                // Si no hay archivos, mostrar mensaje
+                if (directories.length === 0 && regularFiles.length === 0) {
+                    const emptyDir = document.createElement('div');
+                    emptyDir.className = 'text-center p-4 text-muted';
+                    emptyDir.innerHTML = '<i class="bi bi-inbox" style="font-size: 2rem;"></i><p class="mt-2">Esta carpeta está vacía</p>';
+                    filesContainer.appendChild(emptyDir);
                 }
             }
             
-            // Manejar subida de archivos
-            function handleFileUpload(e) {
-                const files = e.target.files;
+            function previewFile(path, name, extension) {
+                currentFileSelected = path;
+                previewTitle.innerHTML = `<i class="bi bi-eye me-2"></i>${name}`;
+                openEditorBtn.style.display = 'inline-block';
                 
-                if (files.length === 0) return;
+                // Tipos de archivo para previsualización
+                const textExtensions = ['txt', 'md', 'js', 'css', 'html', 'htm', 'py', 'json', 'csv', 'xml', 'yml', 'yaml'];
+                const imageExtensions = ['jpg', 'jpeg', 'png', 'gif', 'svg', 'webp', 'bmp'];
                 
-                // Convertir FileList a Array para usar promesas
-                Array.from(files).forEach(file => {
-                    const reader = new FileReader();
-                    
-                    reader.onload = function(event) {
-                        const content = event.target.result;
-                        const filePath = currentDirectory === '.' ? file.name : `${currentDirectory}/${file.name}`;
-                        
-                        fetch('/api/files/create', {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json'
-                            },
-                            body: JSON.stringify({
-                                file_path: filePath,
-                                content: content
-                            })
-                        })
+                if (textExtensions.includes(extension)) {
+                    // Previsualizar archivos de texto
+                    fetch(`/api/files/read?file_path=${encodeURIComponent(path)}`)
                         .then(response => response.json())
                         .then(data => {
                             if (data.success) {
-                                showNotification(`Archivo ${file.name} subido correctamente`, 'success');
-                                loadFiles(currentDirectory);
+                                // Escapar HTML para mostrar el texto sin formato
+                                const escapedContent = data.content
+                                    .replace(/&/g, '&amp;')
+                                    .replace(/</g, '&lt;')
+                                    .replace(/>/g, '&gt;');
+                                
+                                filePreview.innerHTML = `<pre class="file-preview-code">${escapedContent}</pre>`;
                             } else {
-                                showNotification(data.error || 'Error al subir archivo', 'danger');
+                                filePreview.innerHTML = `
+                                    <div class="file-preview-placeholder text-danger">
+                                        <i class="bi bi-exclamation-circle"></i>
+                                        <p>Error al cargar el archivo: ${data.error}</p>
+                                    </div>
+                                `;
                             }
                         })
                         .catch(error => {
                             console.error('Error:', error);
-                            showNotification('Error al subir archivo', 'danger');
+                            filePreview.innerHTML = `
+                                <div class="file-preview-placeholder text-danger">
+                                    <i class="bi bi-exclamation-circle"></i>
+                                    <p>Error al cargar el archivo</p>
+                                </div>
+                            `;
                         });
-                    };
-                    
-                    reader.readAsText(file);
-                });
-                
-                // Reset input para permitir subir el mismo archivo de nuevo
-                uploadFileInput.value = '';
+                } else if (imageExtensions.includes(extension)) {
+                    // Previsualizar imágenes
+                    filePreview.innerHTML = `
+                        <div class="file-preview-image">
+                            <img src="/static/${path}" alt="${name}">
+                        </div>
+                    `;
+                } else {
+                    // Tipo de archivo no soportado para previsualización
+                    filePreview.innerHTML = `
+                        <div class="file-preview-placeholder">
+                            <i class="bi bi-file-earmark"></i>
+                            <p>Tipo de archivo no soportado para previsualización</p>
+                            <button class="btn btn-sm btn-futuristic mt-2" onclick="window.location.href='/edit_file?path=${encodeURIComponent(path)}'">
+                                Abrir en Editor
+                            </button>
+                        </div>
+                    `;
+                }
             }
             
-            // Mostrar modal para clonar repositorio
-            function showCloneRepoModal() {
-                const repoUrl = prompt('Introduce la URL del repositorio Git:');
-                
-                if (!repoUrl) return;
-                
-                // Ejecutar comando de clonación
-                fetch('/api/execute', {
+            function createFile(path, content) {
+                fetch('/api/files/create', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
+                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        command: `git clone ${repoUrl} ${currentDirectory === '.' ? '.' : currentDirectory}`
+                        file_path: path,
+                        content: content
                     })
                 })
                 .then(response => response.json())
                 .then(data => {
-                    if (data.success && data.status === 0) {
-                        showNotification('Repositorio clonado correctamente', 'success');
-                        loadFiles(currentDirectory);
+                    if (data.success) {
+                        showNotification('Archivo creado correctamente', 'success');
+                        loadFiles(currentPath);
                     } else {
-                        showNotification(data.stderr || 'Error al clonar repositorio', 'danger');
+                        showNotification('Error al crear archivo: ' + data.error, 'danger');
                     }
                 })
                 .catch(error => {
                     console.error('Error:', error);
-                    showNotification('Error al clonar repositorio', 'danger');
+                    showNotification('Error al crear archivo', 'danger');
                 });
             }
             
-            // Mostrar notificación
-            function showNotification(message, type = 'info') {
-                const notificationContainer = document.createElement('div');
-                notificationContainer.className = `alert alert-${type} alert-dismissible fade show`;
-                notificationContainer.innerHTML = `
-                    ${message}
-                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                `;
-                
-                document.body.appendChild(notificationContainer);
-                
-                // Auto-cerrar después de 5 segundos
-                setTimeout(() => {
-                    notificationContainer.classList.remove('show');
-                    setTimeout(() => notificationContainer.remove(), 300);
-                }, 5000);
+            function createFolder(path) {
+                // En los sistemas de archivos, crear una carpeta vacía a menudo se hace
+                // creando un archivo especial dentro de ella, como .gitkeep
+                fetch('/api/files/create', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        file_path: path + '/.gitkeep',
+                        content: ''
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        showNotification('Carpeta creada correctamente', 'success');
+                        loadFiles(currentPath);
+                    } else {
+                        showNotification('Error al crear carpeta: ' + data.error, 'danger');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    showNotification('Error al crear carpeta', 'danger');
+                });
             }
             
-            // Formatear tamaño de archivo
+            function deleteItem(path) {
+                fetch('/api/files/delete', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        file_path: path
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        showNotification('Elemento eliminado correctamente', 'success');
+                        loadFiles(currentPath);
+                        
+                        // Si el archivo eliminado era el que se estaba previsualizando, limpiar la previsualización
+                        if (currentFileSelected === path) {
+                            filePreview.innerHTML = `
+                                <div class="file-preview-placeholder">
+                                    <i class="bi bi-file-earmark"></i>
+                                    <p>Selecciona un archivo para ver su contenido</p>
+                                </div>
+                            `;
+                            previewTitle.innerHTML = '<i class="bi bi-eye me-2"></i>Vista Previa';
+                            openEditorBtn.style.display = 'none';
+                            currentFileSelected = null;
+                        }
+                    } else {
+                        showNotification('Error al eliminar: ' + data.error, 'danger');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    showNotification('Error al eliminar', 'danger');
+                });
+            }
+            
+            function showDeleteConfirmation(path, type, name) {
+                currentFileSelected = path;
+                document.getElementById('delete-modal-body').innerHTML = `
+                    <p>¿Estás seguro de que deseas eliminar ${type === 'carpeta' ? 'la' : 'el'} ${type} <strong>${name}</strong>?</p>
+                    <p class="text-danger">Esta acción no se puede deshacer.</p>
+                `;
+                deleteModal.show();
+            }
+            
+            function updateBreadcrumb(path) {
+                const parts = path === '.' ? [] : path.split('/');
+                let html = '<li class="breadcrumb-item"><a href="#" data-path="."><i class="bi bi-house-door"></i> /</a></li>';
+                
+                let currentPath = '';
+                for (let i = 0; i < parts.length; i++) {
+                    currentPath += (i === 0 ? '' : '/') + parts[i];
+                    if (i === parts.length - 1) {
+                        html += `<li class="breadcrumb-item active">${parts[i]}</li>`;
+                    } else {
+                        html += `<li class="breadcrumb-item"><a href="#" data-path="${currentPath}">${parts[i]}</a></li>`;
+                    }
+                }
+                
+                pathBreadcrumb.innerHTML = html;
+                
+                // Añadir event listeners a los links del breadcrumb
+                document.querySelectorAll('#path-breadcrumb a').forEach(link => {
+                    link.addEventListener('click', function(e) {
+                        e.preventDefault();
+                        const path = this.getAttribute('data-path');
+                        loadFiles(path);
+                    });
+                });
+            }
+            
+            function performSearch() {
+                const query = searchInput.value.trim();
+                if (!query) return;
+                
+                // Implementar búsqueda simple en el cliente
+                // En una aplicación real, esto debería ser una búsqueda en el servidor
+                const fileItems = document.querySelectorAll('.file-explorer-item');
+                
+                let found = false;
+                fileItems.forEach(item => {
+                    const fileName = item.querySelector('.file-name').textContent.trim();
+                    if (fileName.toLowerCase().includes(query.toLowerCase())) {
+                        item.style.backgroundColor = 'rgba(30, 136, 229, 0.2)';
+                        found = true;
+                        
+                        // Scroll to the found item
+                        setTimeout(() => {
+                            item.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        }, 100);
+                    } else {
+                        item.style.backgroundColor = '';
+                    }
+                });
+                
+                if (!found) {
+                    showNotification(`No se encontraron archivos que coincidan con "${query}"`, 'info');
+                }
+            }
+            
+            // Funciones de utilidad
             function formatFileSize(bytes) {
                 if (bytes === 0) return '0 Bytes';
                 
                 const k = 1024;
-                const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
+                const sizes = ['Bytes', 'KB', 'MB', 'GB'];
                 const i = Math.floor(Math.log(bytes) / Math.log(k));
                 
                 return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+            }
+            
+            function showNotification(message, type = 'info') {
+                const container = document.getElementById('notifications');
+                
+                const notification = document.createElement('div');
+                notification.className = `alert alert-${type} alert-dismissible fade show`;
+                notification.innerHTML = `
+                    ${message}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                `;
+                
+                container.appendChild(notification);
+                
+                // Auto-quitar después de 5 segundos
+                setTimeout(() => {
+                    notification.classList.remove('show');
+                    setTimeout(() => notification.remove(), 300);
+                }, 5000);
             }
         });
     </script>
