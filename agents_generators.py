@@ -62,6 +62,12 @@ def create_file_with_agent(description, file_type, filename, agent_id, workspace
         dict: Resultado de la operación con claves success, file_path y content
     """
     try:
+        # Debug logs
+        logging.debug(f"Generando archivo con agente: {agent_id}")
+        logging.debug(f"Tipo de archivo: {file_type}")
+        logging.debug(f"Nombre de archivo: {filename}")
+        logging.debug(f"Descripción: {description}")
+        
         openai_client = openai.OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
         
         # Obtener el prompt de sistema y nombre según el agente
@@ -74,36 +80,48 @@ def create_file_with_agent(description, file_type, filename, agent_id, workspace
             file_type_prompt = """Genera un archivo HTML moderno y atractivo. 
             Usa las mejores prácticas de HTML5, CSS responsivo y, si es necesario, JavaScript moderno.
             Asegúrate de que el código sea válido, accesible y optimizado para móviles.
-            El archivo debe usar Bootstrap para estilos y ser visualmente atractivo."""
+            El archivo debe usar Bootstrap para estilos y ser visualmente atractivo.
+            Asegúrate de que el código esté completo y sea funcional, sin fragmentos o explicaciones adicionales."""
         elif file_type == 'css' or '.css' in filename:
             file_type_prompt = """Genera un archivo CSS moderno y eficiente.
             Utiliza las mejores prácticas, variables CSS, y enfoques responsivos.
             El código debe ser compatible con navegadores modernos, estar bien comentado,
-            y seguir una estructura clara y mantenible."""
+            y seguir una estructura clara y mantenible.
+            Asegúrate de que el código esté completo y sea funcional, sin fragmentos o explicaciones adicionales."""
         elif file_type == 'js' or '.js' in filename:
             file_type_prompt = """Genera un archivo JavaScript moderno y eficiente.
             Utiliza ES6+ con las mejores prácticas actuales. El código debe ser bien estructurado,
             comentado apropiadamente, y seguir patrones de diseño adecuados.
-            Proporciona manejo de errores adecuado y optimización de rendimiento."""
+            Proporciona manejo de errores adecuado y optimización de rendimiento.
+            Asegúrate de que el código esté completo y sea funcional, sin fragmentos o explicaciones adicionales."""
         elif file_type == 'py' or '.py' in filename:
             file_type_prompt = """Genera un archivo Python moderno y bien estructurado.
             Sigue PEP 8 y las mejores prácticas de Python. El código debe incluir docstrings,
             manejo de errores apropiado, y una estructura clara de funciones/clases.
-            Utiliza enfoques Pythonic y aprovecha las características modernas del lenguaje."""
+            Utiliza enfoques Pythonic y aprovecha las características modernas del lenguaje.
+            Asegúrate de que el código esté completo y sea funcional, sin fragmentos o explicaciones adicionales."""
         else:
             file_type_prompt = """Genera un archivo de texto plano con el contenido solicitado,
-            bien estructurado y formateado de manera clara y legible."""
+            bien estructurado y formateado de manera clara y legible.
+            Asegúrate de que el contenido esté completo, sin fragmentos o explicaciones adicionales."""
             
         # Construir el prompt completo según el agente
-        prompt = f"""Como {agent_name}, crea un archivo {file_type} con el siguiente requerimiento:
+        prompt = f"""Como {agent_name}, crea un archivo {file_type} completo y funcional que cumpla con el siguiente requerimiento:
         
         "{description}"
         
         {file_type_prompt}
         
-        Genera el código completo y detallado sin explicaciones o comentarios adicionales.
-        Incluye todas las funcionalidades solicitadas y crea un diseño profesional si corresponde.
+        IMPORTANTE: 
+        - Genera SOLO el código completo sin explicaciones, comentarios introductorios o conclusiones.
+        - NO uses bloques de código markdown (```), solo genera el contenido directo del archivo.
+        - Incluye todas las funcionalidades solicitadas y crea un diseño profesional si corresponde.
+        - Si es un archivo HTML, asegúrate de incluir todos los elementos necesarios (DOCTYPE, html, head, body, etc.)
+        - El código debe estar completo, compilar y funcionar correctamente.
         """
+        
+        # Log del prompt para depuración
+        logging.debug(f"Prompt enviado al modelo: {prompt}")
         
         completion = openai_client.chat.completions.create(
             model="gpt-4o", # the newest OpenAI model is "gpt-4o" which was released May 13, 2024.
@@ -117,12 +135,23 @@ def create_file_with_agent(description, file_type, filename, agent_id, workspace
         
         file_content = completion.choices[0].message.content.strip()
         
+        # Verificar que se haya generado contenido
+        if not file_content:
+            return {
+                'success': False,
+                'message': 'El modelo no generó contenido para el archivo'
+            }
+            
+        # Log del contenido generado para depuración
+        logging.debug(f"Contenido generado (primeros 200 caracteres): {file_content[:200]}")
+        
         # Extraer código del contenido si el modelo aún incluye markdown u otros elementos
         code_pattern = r"```(?:\w+)?\s*([\s\S]*?)\s*```"
         code_match = re.search(code_pattern, file_content)
         
         if code_match:
             file_content = code_match.group(1).strip()
+            logging.debug("Se limpió el contenido usando el patrón de código")
             
         # Crear el archivo en el workspace del usuario
         file_path = os.path.join(workspace_path, filename)

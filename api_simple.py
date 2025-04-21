@@ -1,17 +1,20 @@
-# Main entry point for the Flask application
 import os
 import logging
 import subprocess
+from flask import Flask, request, jsonify
 from pathlib import Path
-from flask import request, jsonify
-from app import app, socketio
 
-# Configurar un manejador para verificar la salud de la aplicación
+# Configuración de logging
+logging.basicConfig(level=logging.INFO)
+
+# Crear aplicación Flask
+app = Flask(__name__)
+
 @app.route('/health')
 def health():
-    return "OK", 200
+    """Health check route for deployment."""
+    return "OK"
 
-# APIs simplificadas para ejecutar comandos y gestionar archivos
 @app.route('/api/execute_command', methods=['POST'])
 def execute_command_api():
     """API simple para ejecutar comandos directamente."""
@@ -132,6 +135,7 @@ def list_files_api():
             'success': False,
             'message': f'Error: {str(e)}'
         }), 500
-
-if __name__ == "__main__":
-    socketio.run(app, host="0.0.0.0", port=5000, debug=True)
+            
+if __name__ == '__main__':
+    # Para desarrollo local, se puede ejecutar directamente
+    app.run(host='0.0.0.0', port=5001, debug=True)

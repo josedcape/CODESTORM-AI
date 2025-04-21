@@ -708,11 +708,59 @@ def handle_chat():
         
         # Verificar si es una solicitud de gestión de archivos o ejecución de comandos
         is_file_operation = re.search(r'(?:crea|modifica|elimina|muestra|crear|editar|borrar|ver).*?(?:archivo|fichero|file|documento)', user_message, re.IGNORECASE)
-        is_command_execution = re.search(r'(?:ejecuta|corre|lanza|inicia|run).*?(?:comando|terminal|consola|cli|bash|shell)', user_message, re.IGNORECASE)
+        
+        # Detectar comandos para ejecutar directamente en la terminal
+        # Ejemplos: "ejecuta ls -la", "corre npm install", "ejecuta comando git status", etc.
+        is_command_execution = re.search(r'(?:ejecuta|corre|lanza|inicia|run).*?(?:comando|terminal|consola|cli|bash|shell|\$|>|comando:)', user_message, re.IGNORECASE)
+        
+        # Detección directa de comandos de terminal usando un patrón de reconocimiento mejorado
+        direct_command_match = re.search(r'(?:ejecuta|corre|terminal|consola|comando)(?:\s+en\s+terminal)?:?\s*[`\'"]?([\w\s\.\-\$\{\}\/\\\|\&\>\<\;\:\*\?\[\]\(\)\=\+\,\_\!]+)[`\'"]?', user_message, re.IGNORECASE)
         
         # Detectar solicitudes para generar archivos complejos (sin especificar ruta)
         # Por ejemplo: "crea una página de ventas atractiva y moderna"
         is_complex_file_request = re.search(r'(?:crea|genera|hacer|crear|implementa|programa|desarrolla|diseña|haz)\s+(?:una?|el)?\s*(?:página|pagina|sitio|web|componente|interfaz|archivo|aplicación|app)', user_message, re.IGNORECASE)
+        
+        logging.debug(f"Mensaje recibido: '{user_message}'")
+        logging.debug(f"¿Es una solicitud de generación de archivo complejo? {bool(is_complex_file_request)}")
+        logging.debug(f"¿Es una operación de archivo específica? {bool(is_file_operation)}")
+        
+        # Procesar comando directo de terminal si se detecta uno
+        if direct_command_match:
+            try:
+                # Extraer el comando a ejecutar
+                terminal_command = direct_command_match.group(1).strip()
+                logging.debug(f"Ejecutando comando directo: {terminal_command}")
+                
+                # Ejecutar el comando
+                result = execute_command_internal(terminal_command)
+                
+                if result.get('success'):
+                    # Construir una respuesta detallada
+                    response_message = f"He ejecutado el comando: `{terminal_command}`\n\n"
+                    
+                    # Mostrar la salida del comando
+                    if result.get('stdout'):
+                        response_message += f"**Salida del comando:**\n```\n{result['stdout']}\n```\n\n"
+                    
+                    # Mostrar errores si existen
+                    if result.get('stderr'):
+                        response_message += f"**Errores/Advertencias:**\n```\n{result['stderr']}\n```\n\n"
+                        
+                    # Añadir información sobre el estado de salida
+                    if 'status' in result:
+                        status_emoji = "✅" if result['status'] == 0 else "⚠️"
+                        response_message += f"{status_emoji} Comando finalizado con código de salida: {result['status']}"
+                        
+                    return jsonify({
+                        'response': response_message
+                    })
+                else:
+                    return jsonify({
+                        'response': f"No pude ejecutar el comando: {result.get('message', 'Error desconocido')}"
+                    })
+            except Exception as e:
+                logging.error(f"Error al ejecutar comando directo: {str(e)}")
+                # Continuar con el procesamiento normal si falla
         
         # Si es una solicitud de generación de archivo complejo
         if is_complex_file_request and not is_file_operation:
@@ -931,6 +979,66 @@ def generate_complex_file_internal(description, file_type="html", filename="", a
     
     # Utilizar la nueva implementación con soporte para agentes
     return agents_generators.generate_complex_file_with_agent(description, file_type, filename, agent_id)
+
+# Función interna para ejecutar comandos en la terminal
+def execute_command_internal(command):
+    """
+    Función interna para ejecutar comandos directamente en la terminal desde el chat.
+    
+    Args:
+        command: Comando a ejecutar en la terminal
+        
+    Returns:
+        dict: Resultado de la operación con stdout, stderr y estado
+    """
+    try:
+        # Asegurar que el comando sea seguro (podría implementarse una lista blanca)
+        # Aquí podrías implementar restricciones adicionales
+        
+        # Log del comando para depuración
+        logging.debug(f"Ejecutando comando: {command}")
+        
+        # Ejecutar el comando y capturar la salida
+        process = subprocess.Popen(
+            command,
+            shell=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True
+        )
+        
+        # Obtener stdout y stderr
+        stdout, stderr = process.communicate(timeout=30)  # Timeout de 30 segundos
+        status = process.returncode
+        
+        # Notificar a los clientes del WebSocket sobre la ejecución del comando
+        # Comentado temporalmente para evitar problemas de WebSocket
+        # user_id = session.get('user_id', 'default')
+        # socketio.emit('command_executed', {
+        #     'command': command,
+        #     'output': stdout,
+        #     'errors': stderr,
+        #     'status': status
+        # })
+        
+        return {
+            'success': True,
+            'stdout': stdout,
+            'stderr': stderr,
+            'status': status
+        }
+    except subprocess.TimeoutExpired:
+        # Manejo de timeout
+        return {
+            'success': False,
+            'message': 'El comando excedió el tiempo límite de ejecución (30 segundos)'
+        }
+    except Exception as e:
+        logging.error(f"Error ejecutando comando: {str(e)}")
+        return {
+            'success': False,
+            'message': f'Error al ejecutar el comando: {str(e)}'
+        }
 
 # Función interna para procesar lenguaje natural sin usar el endpoint HTTP
 def process_natural_language_internal(text):
