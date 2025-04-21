@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Codestorm - Corrector de Código</title>
+    <title>CODESTORM - Corrector de Código</title>
     
     <!-- Bootstrap CSS -->
     <link href="https://cdn.replit.com/agent/bootstrap-agent-dark-theme.min.css" rel="stylesheet">
@@ -11,9 +11,8 @@
     <!-- Bootstrap Icons -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
     
-    <!-- Prism.js CSS para resaltado de sintaxis -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/line-numbers/prism-line-numbers.min.css">
+    <!-- Prism.js for syntax highlighting -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet" />
     
     <style>
         :root {
@@ -44,6 +43,37 @@
             border-bottom: 1px solid var(--medium-blue);
         }
         
+        .content-area {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .code-editor {
+            resize: none;
+            width: 100%;
+            min-height: 400px;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 14px;
+            padding: 15px;
+            background-color: var(--card-background);
+            color: var(--text-primary);
+            border: 1px solid rgba(78, 115, 223, 0.2);
+            border-radius: 4px;
+        }
+        
+        .code-viewer {
+            width: 100%;
+            height: 100%;
+            min-height: 400px;
+            background-color: var(--card-background);
+            border: 1px solid rgba(78, 115, 223, 0.2);
+            border-radius: 4px;
+            padding: 15px;
+            position: relative;
+            overflow: auto;
+        }
+        
         .card-futuristic {
             background-color: var(--card-background);
             border-radius: 0.5rem;
@@ -61,58 +91,6 @@
             color: var(--text-primary);
         }
         
-        #code-input {
-            resize: none;
-            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
-            background-color: var(--card-background);
-            color: var(--text-primary);
-            border: 1px solid rgba(78, 115, 223, 0.2);
-            min-height: 300px;
-        }
-        
-        #code-output {
-            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
-            background-color: #212529;
-            color: var(--text-primary);
-            border-radius: 0.5rem;
-            padding: 1rem;
-            min-height: 300px;
-            border: 1px solid rgba(78, 115, 223, 0.2);
-            overflow: auto;
-        }
-        
-        .explanation-card {
-            background-color: rgba(30, 136, 229, 0.1);
-            border-left: 3px solid var(--medium-blue);
-            padding: 1rem;
-            margin-bottom: 1rem;
-            border-radius: 0.25rem;
-        }
-        
-        .improvement-card {
-            background-color: rgba(40, 167, 69, 0.1);
-            border-left: 3px solid #28a745;
-            padding: 1rem;
-            margin-bottom: 1rem;
-            border-radius: 0.25rem;
-        }
-        
-        .warning-card {
-            background-color: rgba(255, 193, 7, 0.1);
-            border-left: 3px solid var(--highlight-color);
-            padding: 1rem;
-            margin-bottom: 1rem;
-            border-radius: 0.25rem;
-        }
-        
-        .error-card {
-            background-color: rgba(220, 53, 69, 0.1);
-            border-left: 3px solid #dc3545;
-            padding: 1rem;
-            margin-bottom: 1rem;
-            border-radius: 0.25rem;
-        }
-        
         .btn-futuristic {
             background: linear-gradient(135deg, var(--medium-blue) 0%, var(--light-blue) 100%);
             border: none;
@@ -126,29 +104,25 @@
             box-shadow: 0 6px 8px rgba(0, 100, 255, 0.3);
         }
         
-        .language-selector {
-            background-color: rgba(30, 136, 229, 0.1);
-            border: 1px solid rgba(30, 136, 229, 0.3);
-            color: var(--text-primary);
+        .loading-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(18, 18, 18, 0.8);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            visibility: hidden;
+            opacity: 0;
+            transition: opacity 0.3s, visibility 0s 0.3s;
         }
         
-        .language-selector:focus {
-            border-color: var(--medium-blue);
-            box-shadow: 0 0 0 0.25rem rgba(30, 136, 229, 0.25);
-        }
-
-        .custom-tooltip {
-            position: absolute;
-            background-color: #212529;
-            color: var(--text-primary);
-            padding: 5px 10px;
-            border-radius: 4px;
-            font-size: 0.8rem;
-            z-index: 1000;
-            max-width: 250px;
-            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
-            pointer-events: none;
-            opacity: 0;
+        .loading-overlay.active {
+            visibility: visible;
+            opacity: 1;
             transition: opacity 0.3s;
         }
         
@@ -176,6 +150,129 @@
             0% { opacity: 0.5; }
             50% { opacity: 1; }
             100% { opacity: 0.5; }
+        }
+        
+        .suggestions-list {
+            padding-left: 0;
+            list-style-type: none;
+        }
+        
+        .suggestions-list li {
+            position: relative;
+            padding-left: 25px;
+            margin-bottom: 10px;
+        }
+        
+        .suggestions-list li::before {
+            content: '\F4A6';
+            font-family: 'Bootstrap-icons';
+            position: absolute;
+            left: 0;
+            top: 0;
+            color: var(--highlight-color);
+        }
+        
+        .explanations-list {
+            padding-left: 0;
+            list-style-type: none;
+        }
+        
+        .explanations-list li {
+            position: relative;
+            padding-left: 25px;
+            margin-bottom: 10px;
+        }
+        
+        .explanations-list li::before {
+            content: '\F4A9';
+            font-family: 'Bootstrap-icons';
+            position: absolute;
+            left: 0;
+            top: 0;
+            color: var(--medium-blue);
+        }
+        
+        .diff-highlight {
+            background-color: rgba(255, 255, 0, 0.1);
+            padding: 2px 0;
+        }
+        
+        .diff-add {
+            background-color: rgba(40, 167, 69, 0.2);
+            padding: 2px 0;
+        }
+        
+        .diff-remove {
+            background-color: rgba(220, 53, 69, 0.2);
+            padding: 2px 0;
+            text-decoration: line-through;
+        }
+        
+        .instructions-area {
+            height: 100px;
+            resize: none;
+        }
+        
+        #language-select {
+            max-width: 200px;
+        }
+        
+        .diff-viewer {
+            display: none;
+            max-height: 400px;
+            overflow: auto;
+            padding: 15px;
+            background-color: var(--card-background);
+            border: 1px solid rgba(78, 115, 223, 0.2);
+            border-radius: 4px;
+            font-family: 'Consolas', 'Monaco', monospace;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+        
+        .diff-line {
+            display: block;
+            margin: 0;
+            padding: 0 5px;
+        }
+        
+        .diff-line-add {
+            background-color: rgba(40, 167, 69, 0.2);
+        }
+        
+        .diff-line-remove {
+            background-color: rgba(220, 53, 69, 0.2);
+        }
+        
+        .diff-line-context {
+            color: var(--text-secondary);
+        }
+        
+        .nav-tabs .nav-link {
+            color: var(--text-secondary);
+            border: none;
+            padding: 0.5rem 1rem;
+            position: relative;
+        }
+        
+        .nav-tabs .nav-link.active {
+            color: var(--light-blue);
+            background-color: transparent;
+            border: none;
+        }
+        
+        .nav-tabs .nav-link.active::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 2px;
+            background-color: var(--light-blue);
+        }
+        
+        .tab-content {
+            padding: 1rem 0;
         }
     </style>
 </head>
@@ -215,21 +312,41 @@
         </div>
     </nav>
 
-    <div class="container my-4">
-        <h1 class="mb-4">
-            <i class="bi bi-bug text-info"></i> Corrector de Código Inteligente
-        </h1>
+    <div class="container-fluid mt-3 pb-4 content-area">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h1 class="h3 mb-0">
+                <i class="bi bi-bug text-info"></i> Corrector de Código
+            </h1>
+            <div class="d-flex align-items-center">
+                <div class="form-group me-3">
+                    <select id="model-select" class="form-select">
+                        <option value="openai" selected>OpenAI (GPT-4o)</option>
+                        <option value="anthropic">Anthropic (Claude)</option>
+                        <option value="gemini">Google (Gemini)</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <select id="agent-select" class="form-select">
+                        <option value="general">Asistente General</option>
+                        <option value="developer" selected>Desarrollador de Código</option>
+                        <option value="architect">Arquitecto de Sistemas</option>
+                        <option value="advanced">Experto Avanzado</option>
+                    </select>
+                </div>
+            </div>
+        </div>
         
         <div class="row">
-            <div class="col-lg-6 mb-4">
-                <div class="card card-futuristic">
+            <!-- Left Panel - Code Editor and Controls -->
+            <div class="col-md-6 mb-4">
+                <div class="card card-futuristic h-100">
                     <div class="card-header card-header-futuristic">
                         <div class="d-flex justify-content-between align-items-center">
-                            <span><i class="bi bi-code-slash me-2"></i>Código Original</span>
-                            <div>
-                                <select id="language-selector" class="form-select form-select-sm language-selector">
+                            <span><i class="bi bi-code-square me-2"></i>Código a Analizar</span>
+                            <div class="d-flex">
+                                <select class="form-select form-select-sm me-2" id="language-select">
+                                    <option value="python">Python</option>
                                     <option value="javascript">JavaScript</option>
-                                    <option value="python" selected>Python</option>
                                     <option value="html">HTML</option>
                                     <option value="css">CSS</option>
                                     <option value="java">Java</option>
@@ -240,43 +357,111 @@
                                     <option value="go">Go</option>
                                     <option value="sql">SQL</option>
                                 </select>
+                                <button class="btn btn-sm btn-outline-secondary" id="clear-btn">
+                                    <i class="bi bi-trash"></i>
+                                </button>
                             </div>
                         </div>
                     </div>
                     <div class="card-body">
-                        <textarea
-                            id="code-input"
-                            class="form-control"
-                            placeholder="Pega tu código aquí para analizarlo..."
-                            spellcheck="false"
-                        ></textarea>
-                    </div>
-                    <div class="card-footer">
-                        <div class="input-group">
-                            <input
-                                type="text"
-                                id="instruction-input"
-                                class="form-control"
-                                placeholder="Instrucciones específicas (opcional): ej. 'Optimizar rendimiento'"
-                            >
-                            <button id="analyze-btn" type="button" class="btn btn-futuristic px-4">
-                                <i class="bi bi-lightning-charge"></i> Analizar
-                            </button>
+                        <textarea id="code-input" class="code-editor" placeholder="Pega aquí tu código para analizar..."></textarea>
+                        
+                        <div class="mt-3">
+                            <div class="form-group">
+                                <label for="instructions-input">Instrucciones específicas para el análisis:</label>
+                                <textarea id="instructions-input" class="form-control instructions-area" placeholder="Por ejemplo: 'Optimiza este código para rendimiento' o 'Mejora la seguridad de esta función'..."></textarea>
+                            </div>
                         </div>
+                    </div>
+                    <div class="card-footer d-flex justify-content-end">
+                        <button id="analyze-btn" class="btn btn-futuristic">
+                            <i class="bi bi-lightning"></i> Analizar Código
+                            <span class="spinner-border spinner-border-sm d-none ms-2" role="status" aria-hidden="true"></span>
+                        </button>
                     </div>
                 </div>
             </div>
             
-            <div class="col-lg-6">
-                <div class="card card-futuristic">
+            <!-- Right Panel - Results and Improvements -->
+            <div class="col-md-6 mb-4">
+                <div class="card card-futuristic h-100">
                     <div class="card-header card-header-futuristic">
-                        <span><i class="bi bi-check-circle me-2"></i>Resultado del Análisis</span>
+                        <ul class="nav nav-tabs border-0" id="resultTabs" role="tablist">
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link active" id="improvements-tab" data-bs-toggle="tab" data-bs-target="#improvements" type="button" role="tab" aria-controls="improvements" aria-selected="true">
+                                    <i class="bi bi-graph-up-arrow me-1"></i> Mejoras
+                                </button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="diff-tab" data-bs-toggle="tab" data-bs-target="#diff" type="button" role="tab" aria-controls="diff" aria-selected="false">
+                                    <i class="bi bi-file-diff me-1"></i> Diferencias
+                                </button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="improved-code-tab" data-bs-toggle="tab" data-bs-target="#improved-code" type="button" role="tab" aria-controls="improved-code" aria-selected="false">
+                                    <i class="bi bi-code me-1"></i> Código Mejorado
+                                </button>
+                            </li>
+                        </ul>
                     </div>
                     <div class="card-body">
-                        <div id="analysis-container">
-                            <div class="text-center py-5 text-muted">
-                                <i class="bi bi-code-square" style="font-size: 3rem;"></i>
-                                <p class="mt-3">Ingresa tu código y presiona "Analizar" para comenzar</p>
+                        <div class="tab-content" id="resultTabContent">
+                            <!-- Improvements Tab -->
+                            <div class="tab-pane fade show active" id="improvements" role="tabpanel" aria-labelledby="improvements-tab">
+                                <div class="d-flex flex-column h-100">
+                                    <div class="mb-3">
+                                        <h5 class="text-info"><i class="bi bi-lightbulb me-2"></i>Sugerencias</h5>
+                                        <ul class="suggestions-list" id="suggestions-list">
+                                            <li class="text-muted">Aún no se ha analizado ningún código.</li>
+                                        </ul>
+                                    </div>
+                                    <div>
+                                        <h5 class="text-info"><i class="bi bi-info-circle me-2"></i>Explicaciones</h5>
+                                        <ul class="explanations-list" id="explanations-list">
+                                            <li class="text-muted">Aún no se ha analizado ningún código.</li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Diff Tab -->
+                            <div class="tab-pane fade" id="diff" role="tabpanel" aria-labelledby="diff-tab">
+                                <div id="diff-viewer" class="diff-viewer">
+                                    <p class="text-muted text-center">
+                                        <i class="bi bi-file-diff fs-3 d-block mb-2"></i>
+                                        Aquí se mostrarán las diferencias entre tu código original y el mejorado.
+                                    </p>
+                                </div>
+                            </div>
+                            
+                            <!-- Improved Code Tab -->
+                            <div class="tab-pane fade" id="improved-code" role="tabpanel" aria-labelledby="improved-code-tab">
+                                <div class="d-flex flex-column h-100">
+                                    <div class="code-viewer" id="improved-code-viewer">
+                                        <p class="text-muted text-center">
+                                            <i class="bi bi-code-square fs-3 d-block mb-2"></i>
+                                            Aún no hay código mejorado disponible.
+                                        </p>
+                                    </div>
+                                    <div class="d-flex justify-content-end mt-3">
+                                        <button id="copy-btn" class="btn btn-outline-info" disabled>
+                                            <i class="bi bi-clipboard"></i> Copiar Código
+                                        </button>
+                                        <button id="use-btn" class="btn btn-futuristic ms-2" disabled>
+                                            <i class="bi bi-check2"></i> Usar Este Código
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Loading Overlay -->
+                        <div id="loading-overlay" class="loading-overlay">
+                            <div class="text-center">
+                                <div class="spinner-border text-info mb-3" role="status">
+                                    <span class="visually-hidden">Analizando código...</span>
+                                </div>
+                                <p class="text-light">Analizando código...</p>
                             </div>
                         </div>
                     </div>
@@ -284,36 +469,39 @@
             </div>
         </div>
         
-        <div class="row mt-4">
+        <!-- History Section -->
+        <div class="row">
             <div class="col-12">
                 <div class="card card-futuristic">
                     <div class="card-header card-header-futuristic">
-                        <span><i class="bi bi-chat-left-text me-2"></i>Conversación con el Asistente</span>
+                        <span><i class="bi bi-clock-history me-2"></i>Historial de Análisis</span>
                     </div>
                     <div class="card-body">
-                        <div id="chat-container" class="mb-3">
-                            <div class="system-message mb-3">
-                                <div class="explanation-card">
-                                    <p>¡Bienvenido al Corrector de Código! Ingresa tu código en el panel izquierdo, selecciona el lenguaje y presiona "Analizar" para recibir sugerencias de mejora. También puedes hacer preguntas específicas sobre tu código.</p>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="d-flex mt-3">
-                            <input
-                                type="text"
-                                id="chat-input"
-                                class="form-control me-2"
-                                placeholder="Haz una pregunta sobre el código analizado..."
-                            >
-                            <button id="chat-send-btn" type="button" class="btn btn-futuristic">
-                                <i class="bi bi-send"></i> Enviar
-                            </button>
+                        <div class="table-responsive">
+                            <table class="table table-hover table-dark">
+                                <thead>
+                                    <tr>
+                                        <th scope="col">Fecha</th>
+                                        <th scope="col">Lenguaje</th>
+                                        <th scope="col">Instrucciones</th>
+                                        <th scope="col">Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="history-table-body">
+                                    <tr class="text-muted">
+                                        <td colspan="4" class="text-center">No hay análisis previos.</td>
+                                    </tr>
+                                </tbody>
+                            </table>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
     </div>
+
+    <!-- Notificaciones -->
+    <div id="notifications" class="position-fixed top-0 end-0 p-3" style="z-index: 5000;"></div>
 
     <footer class="footer mt-auto py-3" style="background: linear-gradient(90deg, var(--darker-blue) 0%, var(--dark-blue) 100%);">
         <div class="container text-center">
@@ -321,373 +509,470 @@
         </div>
     </footer>
 
-    <!-- Notificaciones -->
-    <div id="notifications" class="position-fixed top-0 end-0 p-3" style="z-index: 5000;"></div>
-    
-    <!-- Custom tooltip container -->
-    <div id="custom-tooltip" class="custom-tooltip"></div>
-
-    <!-- Scripts -->
+    <!-- JavaScript -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/line-numbers/prism-line-numbers.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-python.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-javascript.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-css.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-java.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-csharp.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-cpp.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-ruby.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-go.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-sql.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-markup.min.js"></script>
-    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-java.min.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function() {
+            // DOM Elements
             const codeInput = document.getElementById('code-input');
-            const languageSelector = document.getElementById('language-selector');
+            const instructionsInput = document.getElementById('instructions-input');
+            const languageSelect = document.getElementById('language-select');
+            const modelSelect = document.getElementById('model-select');
+            const agentSelect = document.getElementById('agent-select');
             const analyzeBtn = document.getElementById('analyze-btn');
-            const instructionInput = document.getElementById('instruction-input');
-            const analysisContainer = document.getElementById('analysis-container');
-            const chatInput = document.getElementById('chat-input');
-            const chatSendBtn = document.getElementById('chat-send-btn');
-            const chatContainer = document.getElementById('chat-container');
+            const clearBtn = document.getElementById('clear-btn');
+            const loadingOverlay = document.getElementById('loading-overlay');
+            const suggestionsList = document.getElementById('suggestions-list');
+            const explanationsList = document.getElementById('explanations-list');
+            const improvedCodeViewer = document.getElementById('improved-code-viewer');
+            const diffViewer = document.getElementById('diff-viewer');
+            const copyBtn = document.getElementById('copy-btn');
+            const useBtn = document.getElementById('use-btn');
+            const historyTableBody = document.getElementById('history-table-body');
+            const spinner = analyzeBtn.querySelector('.spinner-border');
             
-            // Ejemplo de código Python por defecto
-            const exampleCode = `def fibonacci(n):
-    """Retorna el número n de la secuencia de Fibonacci."""
-    if n <= 0:
-        return 0
-    elif n == 1:
-        return 1
-    else:
-        return fibonacci(n-1) + fibonacci(n-2)
-
-def main():
-    # Pedir al usuario un número
-    num = int(input("Ingrese un número: "))
-    result = fibonacci(num)
-    print(f"Fibonacci({num}) = {result}")
-
-if __name__ == "__main__":
-    main()`;
+            // State
+            let currentOriginalCode = '';
+            let currentImprovedCode = '';
+            let analysisHistory = [];
             
-            codeInput.value = exampleCode;
+            // Event Listeners
+            analyzeBtn.addEventListener('click', analyzeCode);
+            clearBtn.addEventListener('click', clearCode);
+            copyBtn.addEventListener('click', copyImprovedCode);
+            useBtn.addEventListener('click', useImprovedCode);
             
-            // Manejar el cambio de lenguaje
-            languageSelector.addEventListener('change', function() {
-                if (codeInput.value.trim() === '') {
-                    // Proporcionar ejemplos según el lenguaje seleccionado
-                    switch (this.value) {
-                        case 'javascript':
-                            codeInput.value = `function fibonacci(n) {
-    if (n <= 0) return 0;
-    if (n === 1) return 1;
-    return fibonacci(n-1) + fibonacci(n-2);
-}
-
-function main() {
-    // Ejemplo de uso
-    const num = 10;
-    const result = fibonacci(num);
-    console.log(\`Fibonacci(\${num}) = \${result}\`);
-}
-
-main();`;
-                            break;
-                        case 'python':
-                            codeInput.value = exampleCode;
-                            break;
-                        case 'html':
-                            codeInput.value = `<!DOCTYPE html>
-<html>
-<head>
-    <title>Mi Página</title>
-    <style>
-        body { font-family: Arial, sans-serif; }
-        .container { width: 80%; margin: 0 auto; }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <h1>Bienvenido a mi página</h1>
-        <p>Este es un ejemplo de HTML.</p>
-    </div>
-    <script>
-        console.log("Página cargada");
-    </script>
-</body>
-</html>`;
-                            break;
-                        default:
-                            codeInput.value = '';
-                    }
-                }
-            });
-            
-            // Función para analizar el código
-            analyzeBtn.addEventListener('click', function() {
+            // Analyze Code Function
+            function analyzeCode() {
                 const code = codeInput.value.trim();
+                const instructions = instructionsInput.value.trim();
+                const language = languageSelect.value;
+                const model = modelSelect.value;
+                const agent = agentSelect.value;
+                
                 if (!code) {
                     showNotification('Por favor, ingresa código para analizar', 'warning');
                     return;
                 }
                 
-                // Mostrar indicador de carga
-                analysisContainer.innerHTML = `
-                    <div class="text-center py-5">
-                        <div class="spinner-border text-info" role="status">
-                            <span class="visually-hidden">Analizando...</span>
-                        </div>
-                        <p class="mt-3">Analizando tu código...</p>
-                    </div>
-                `;
+                // Store original code
+                currentOriginalCode = code;
                 
-                // Simular una solicitud a la API (en una implementación real, esto sería una llamada a la API)
-                setTimeout(() => {
-                    // Simulación de respuesta de la API
-                    simulateCodeAnalysis(code, languageSelector.value, instructionInput.value);
-                }, 1500);
-            });
-            
-            // Función para simular el análisis de código
-            function simulateCodeAnalysis(code, language, instructions) {
-                // Simulación de respuesta - en una implementación real, esto vendría del backend
-                const language_name = languageSelector.options[languageSelector.selectedIndex].text;
+                // Show loading
+                loadingOverlay.classList.add('active');
+                spinner.classList.remove('d-none');
+                analyzeBtn.disabled = true;
                 
-                if (language === 'python' && code.includes('fibonacci')) {
-                    // Ejemplo de análisis para la función fibonacci recursiva
-                    const improvedCode = `def fibonacci(n):
-    """
-    Retorna el número n de la secuencia de Fibonacci.
-    Implementación iterativa para mayor eficiencia.
-    """
-    if n <= 0:
-        return 0
-    if n == 1:
-        return 1
-        
-    a, b = 0, 1
-    for _ in range(2, n + 1):
-        a, b = b, a + b
-    return b
-
-def main():
-    try:
-        # Validar la entrada del usuario
-        num = int(input("Ingrese un número: "))
-        if num < 0:
-            print("El número debe ser positivo")
-            return
-            
-        result = fibonacci(num)
-        print(f"Fibonacci({num}) = {result}")
-    except ValueError:
-        print("Por favor, ingrese un número entero válido")
-
-if __name__ == "__main__":
-    main()`;
-                    
-                    analysisContainer.innerHTML = `
-                        <h5 class="mb-3">Análisis de código en ${language_name}</h5>
+                // Call API
+                fetch('/api/analyze_code', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        code: code,
+                        language: language,
+                        instructions: instructions,
+                        model: model,
+                        agent_id: agent
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        displayResults(data, language);
                         
-                        <div class="explanation-card">
-                            <h6 class="mb-2"><i class="bi bi-lightbulb"></i> Observaciones principales</h6>
-                            <ul>
-                                <li>Tu código implementa la secuencia de Fibonacci usando <strong>recursión</strong>, lo que es ineficiente para valores grandes de n.</li>
-                                <li>No hay manejo de errores para entradas no válidas.</li>
-                                <li>La implementación recursiva tiene complejidad de tiempo O(2^n), que es exponencial.</li>
-                            </ul>
-                        </div>
+                        // Add to history
+                        const historyItem = {
+                            date: new Date(),
+                            language: language,
+                            instructions: instructions || 'Sin instrucciones',
+                            originalCode: code,
+                            improvedCode: data.improved_code,
+                            explanations: data.explanations,
+                            suggestions: data.suggestions
+                        };
                         
-                        <div class="improvement-card">
-                            <h6 class="mb-2"><i class="bi bi-graph-up"></i> Código mejorado</h6>
-                            <p>Implementación iterativa con complejidad O(n):</p>
-                            <pre><code class="language-python line-numbers">${improvedCode.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</code></pre>
-                        </div>
-                        
-                        <div class="warning-card">
-                            <h6 class="mb-2"><i class="bi bi-exclamation-triangle"></i> Advertencias</h6>
-                            <p>La implementación recursiva original puede causar un desbordamiento de pila para valores grandes de n (> 40).</p>
-                        </div>
-                    `;
-                    
-                    // Actualizar el chat
-                    const chatMessage = document.createElement('div');
-                    chatMessage.className = 'system-message mb-3';
-                    chatMessage.innerHTML = `
-                        <div class="explanation-card">
-                            <h6 class="mb-2">Asistente de Código</h6>
-                            <p>He analizado tu función Fibonacci recursiva. La versión mejorada utiliza un enfoque iterativo que es mucho más eficiente para valores grandes de n.</p>
-                            <p>La implementación recursiva tiene una complejidad de tiempo de O(2^n), mientras que la versión iterativa tiene una complejidad de O(n).</p>
-                            <p>¿Tienes alguna pregunta sobre las mejoras sugeridas?</p>
-                        </div>
-                    `;
-                    chatContainer.appendChild(chatMessage);
-                } else {
-                    // Respuesta genérica para otros casos
-                    analysisContainer.innerHTML = `
-                        <h5 class="mb-3">Análisis de código en ${language_name}</h5>
-                        
-                        <div class="explanation-card">
-                            <h6 class="mb-2"><i class="bi bi-lightbulb"></i> Análisis general</h6>
-                            <p>El código ha sido analizado correctamente. Para un análisis más detallado, puede que necesite más contexto o especificidad en las instrucciones.</p>
-                        </div>
-                        
-                        <div class="improvement-card">
-                            <h6 class="mb-2"><i class="bi bi-graph-up"></i> Sugerencias generales</h6>
-                            <ul>
-                                <li>Considera añadir más comentarios para explicar la lógica del código.</li>
-                                <li>Implementa manejo de errores para entradas inesperadas.</li>
-                                <li>Considera factorizar funciones que realizan tareas similares.</li>
-                                <li>Utiliza nombres de variables más descriptivos.</li>
-                            </ul>
-                        </div>
-                    `;
-                    
-                    // Actualizar el chat
-                    const chatMessage = document.createElement('div');
-                    chatMessage.className = 'system-message mb-3';
-                    chatMessage.innerHTML = `
-                        <div class="explanation-card">
-                            <h6 class="mb-2">Asistente de Código</h6>
-                            <p>He revisado tu código. ¿Hay algún aspecto específico que te gustaría mejorar o alguna pregunta que tengas sobre tu código?</p>
-                            <p>Puedo sugerir mejoras en términos de rendimiento, legibilidad, seguridad u otros aspectos si me indicas tus prioridades.</p>
-                        </div>
-                    `;
-                    chatContainer.appendChild(chatMessage);
-                }
-                
-                // Inicializar Prism.js para el resaltado de sintaxis
-                Prism.highlightAll();
-            }
-            
-            // Manejar envío de mensajes de chat
-            chatSendBtn.addEventListener('click', sendChatMessage);
-            chatInput.addEventListener('keydown', function(e) {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault();
-                    sendChatMessage();
-                }
-            });
-            
-            function sendChatMessage() {
-                const message = chatInput.value.trim();
-                if (!message) return;
-                
-                // Añadir mensaje del usuario al chat
-                const userMessage = document.createElement('div');
-                userMessage.className = 'user-message mb-3';
-                userMessage.innerHTML = `
-                    <div class="card card-futuristic mb-0" style="background-color: rgba(30, 136, 229, 0.1);">
-                        <div class="card-body py-2 px-3">
-                            <strong>Tú:</strong> ${message}
-                        </div>
-                    </div>
-                `;
-                chatContainer.appendChild(userMessage);
-                
-                // Limpiar el input
-                chatInput.value = '';
-                
-                // Mostrar mensaje de "escribiendo"
-                const typingIndicator = document.createElement('div');
-                typingIndicator.className = 'system-message mb-3 typing-indicator';
-                typingIndicator.innerHTML = `
-                    <div class="card card-futuristic mb-0" style="background-color: rgba(40, 167, 69, 0.05);">
-                        <div class="card-body py-2 px-3">
-                            <p class="mb-0"><i class="bi bi-three-dots"></i> El asistente está escribiendo...</p>
-                        </div>
-                    </div>
-                `;
-                chatContainer.appendChild(typingIndicator);
-                
-                // Scroll al final del chat
-                chatContainer.scrollTop = chatContainer.scrollHeight;
-                
-                // Simular respuesta después de un breve retraso
-                setTimeout(() => {
-                    // Eliminar indicador de escritura
-                    chatContainer.removeChild(typingIndicator);
-                    
-                    // Crear respuesta del asistente
-                    const assistantMessage = document.createElement('div');
-                    assistantMessage.className = 'system-message mb-3';
-                    
-                    // Simular diferentes respuestas según la pregunta
-                    if (message.toLowerCase().includes('recursivo') || message.toLowerCase().includes('recursión')) {
-                        assistantMessage.innerHTML = `
-                            <div class="explanation-card">
-                                <h6 class="mb-2">Asistente de Código</h6>
-                                <p>La recursión es útil para problemas que se pueden descomponer en subproblemas idénticos pero más pequeños, como Fibonacci donde F(n) = F(n-1) + F(n-2).</p>
-                                <p>Sin embargo, para Fibonacci específicamente, la implementación recursiva simple tiene algunas desventajas:</p>
-                                <ul>
-                                    <li>Calcula los mismos valores repetidamente (ej: fibonacci(3) se calcula múltiples veces)</li>
-                                    <li>Tiene una complejidad de tiempo exponencial O(2^n)</li>
-                                    <li>Puede causar desbordamiento de pila para valores grandes de n</li>
-                                </ul>
-                                <p>Las soluciones más eficientes incluyen:</p>
-                                <ol>
-                                    <li>Implementación iterativa (O(n))</li>
-                                    <li>Recursión con memoización para almacenar resultados ya calculados (O(n))</li>
-                                    <li>Fórmula cerrada usando la Fórmula de Binet (O(1))</li>
-                                </ol>
-                            </div>
-                        `;
-                    } else if (message.toLowerCase().includes('error') || message.toLowerCase().includes('excepción')) {
-                        assistantMessage.innerHTML = `
-                            <div class="explanation-card">
-                                <h6 class="mb-2">Asistente de Código</h6>
-                                <p>En Python, el manejo de errores se realiza típicamente con bloques try/except:</p>
-                                <pre><code class="language-python">try:
-    # Código que podría generar errores
-    result = operation()
-except ValueError as e:
-    # Manejo específico para errores de valor
-    print(f"Error de valor: {e}")
-except Exception as e:
-    # Captura cualquier otro error
-    print(f"Error inesperado: {e}")
-else:
-    # Se ejecuta si no hay excepciones
-    print("Operación exitosa")
-finally:
-    # Se ejecuta siempre, haya o no excepciones
-    print("Limpieza final")</code></pre>
-                                <p>Para tu código de Fibonacci, es buena práctica manejar entradas no válidas como valores negativos o no numéricos.</p>
-                            </div>
-                        `;
+                        analysisHistory.unshift(historyItem);
+                        updateHistoryTable();
                     } else {
-                        assistantMessage.innerHTML = `
-                            <div class="explanation-card">
-                                <h6 class="mb-2">Asistente de Código</h6>
-                                <p>Gracias por tu pregunta. ¿Hay algún aspecto específico del análisis de código que te gustaría explorar más a fondo?</p>
-                                <p>Puedo ayudarte con:</p>
-                                <ul>
-                                    <li>Optimización de algoritmos</li>
-                                    <li>Mejores prácticas para el lenguaje que estás utilizando</li>
-                                    <li>Patrones de diseño aplicables</li>
-                                    <li>Manejo de errores y excepciones</li>
-                                    <li>Testing y validación</li>
-                                </ul>
-                                <p>Solo dime qué área te interesa explorar.</p>
-                            </div>
-                        `;
+                        showNotification('Error al analizar código: ' + data.error, 'danger');
                     }
-                    
-                    chatContainer.appendChild(assistantMessage);
-                    
-                    // Inicializar Prism.js para el resaltado de sintaxis en la respuesta
-                    Prism.highlightAll();
-                    
-                    // Scroll al final del chat
-                    chatContainer.scrollTop = chatContainer.scrollHeight;
-                }, 1500);
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    showNotification('Error al analizar código', 'danger');
+                })
+                .finally(() => {
+                    loadingOverlay.classList.remove('active');
+                    spinner.classList.add('d-none');
+                    analyzeBtn.disabled = false;
+                });
             }
             
-            // Función para mostrar notificaciones
+            // Display Results Function
+            function displayResults(data, language) {
+                // Suggestions
+                suggestionsList.innerHTML = '';
+                if (data.suggestions && data.suggestions.length > 0) {
+                    data.suggestions.forEach(suggestion => {
+                        const li = document.createElement('li');
+                        li.textContent = suggestion;
+                        suggestionsList.appendChild(li);
+                    });
+                } else {
+                    const li = document.createElement('li');
+                    li.textContent = 'No se encontraron sugerencias.';
+                    li.classList.add('text-muted');
+                    suggestionsList.appendChild(li);
+                }
+                
+                // Explanations
+                explanationsList.innerHTML = '';
+                if (data.explanations && data.explanations.length > 0) {
+                    data.explanations.forEach(explanation => {
+                        const li = document.createElement('li');
+                        li.textContent = explanation;
+                        explanationsList.appendChild(li);
+                    });
+                } else {
+                    const li = document.createElement('li');
+                    li.textContent = 'No se encontraron explicaciones.';
+                    li.classList.add('text-muted');
+                    explanationsList.appendChild(li);
+                }
+                
+                // Improved Code
+                currentImprovedCode = data.improved_code || '';
+                
+                if (currentImprovedCode) {
+                    // Enable buttons
+                    copyBtn.disabled = false;
+                    useBtn.disabled = false;
+                    
+                    // Highlight improved code
+                    improvedCodeViewer.innerHTML = '<pre class="language-' + language + '"><code>' + 
+                                                  escapeHTML(currentImprovedCode) + 
+                                                  '</code></pre>';
+                    
+                    // Generate diff
+                    displayDiff(currentOriginalCode, currentImprovedCode);
+                    diffViewer.style.display = 'block';
+                    
+                    // Highlight code with Prism
+                    Prism.highlightAll();
+                } else {
+                    improvedCodeViewer.innerHTML = `
+                        <p class="text-muted text-center">
+                            <i class="bi bi-code-square fs-3 d-block mb-2"></i>
+                            No se generaron mejoras para el código.
+                        </p>
+                    `;
+                    
+                    diffViewer.innerHTML = `
+                        <p class="text-muted text-center">
+                            <i class="bi bi-file-diff fs-3 d-block mb-2"></i>
+                            No hay diferencias para mostrar.
+                        </p>
+                    `;
+                    
+                    // Disable buttons
+                    copyBtn.disabled = true;
+                    useBtn.disabled = true;
+                }
+            }
+            
+            // Generate simple diff
+            function displayDiff(originalCode, improvedCode) {
+                if (!originalCode || !improvedCode) {
+                    diffViewer.innerHTML = `
+                        <p class="text-muted text-center">
+                            <i class="bi bi-file-diff fs-3 d-block mb-2"></i>
+                            No hay diferencias para mostrar.
+                        </p>
+                    `;
+                    return;
+                }
+                
+                // Split into lines
+                const originalLines = originalCode.split('\n');
+                const improvedLines = improvedCode.split('\n');
+                
+                // Simple line-by-line diff
+                diffViewer.innerHTML = '';
+                
+                const maxLines = Math.max(originalLines.length, improvedLines.length);
+                let changesFound = false;
+                
+                for (let i = 0; i < maxLines; i++) {
+                    const originalLine = i < originalLines.length ? originalLines[i] : '';
+                    const improvedLine = i < improvedLines.length ? improvedLines[i] : '';
+                    
+                    let lineElement = document.createElement('div');
+                    lineElement.className = 'diff-line';
+                    
+                    if (originalLine !== improvedLine) {
+                        changesFound = true;
+                        
+                        if (originalLine) {
+                            let removeLine = document.createElement('div');
+                            removeLine.className = 'diff-line diff-line-remove';
+                            removeLine.textContent = '- ' + originalLine;
+                            diffViewer.appendChild(removeLine);
+                        }
+                        
+                        if (improvedLine) {
+                            let addLine = document.createElement('div');
+                            addLine.className = 'diff-line diff-line-add';
+                            addLine.textContent = '+ ' + improvedLine;
+                            diffViewer.appendChild(addLine);
+                        }
+                    } else {
+                        // Context line (unchanged)
+                        lineElement.className = 'diff-line diff-line-context';
+                        lineElement.textContent = '  ' + originalLine;
+                        diffViewer.appendChild(lineElement);
+                    }
+                }
+                
+                if (!changesFound) {
+                    diffViewer.innerHTML = `
+                        <p class="text-info text-center">
+                            <i class="bi bi-check-circle fs-3 d-block mb-2"></i>
+                            No se encontraron diferencias. El código ya está optimizado.
+                        </p>
+                    `;
+                }
+            }
+            
+            // Clear Code
+            function clearCode() {
+                codeInput.value = '';
+                instructionsInput.value = '';
+                currentOriginalCode = '';
+                currentImprovedCode = '';
+                
+                // Reset displays
+                suggestionsList.innerHTML = '<li class="text-muted">Aún no se ha analizado ningún código.</li>';
+                explanationsList.innerHTML = '<li class="text-muted">Aún no se ha analizado ningún código.</li>';
+                improvedCodeViewer.innerHTML = `
+                    <p class="text-muted text-center">
+                        <i class="bi bi-code-square fs-3 d-block mb-2"></i>
+                        Aún no hay código mejorado disponible.
+                    </p>
+                `;
+                diffViewer.innerHTML = `
+                    <p class="text-muted text-center">
+                        <i class="bi bi-file-diff fs-3 d-block mb-2"></i>
+                        Aquí se mostrarán las diferencias entre tu código original y el mejorado.
+                    </p>
+                `;
+                
+                // Disable buttons
+                copyBtn.disabled = true;
+                useBtn.disabled = true;
+            }
+            
+            // Copy Improved Code
+            function copyImprovedCode() {
+                if (!currentImprovedCode) return;
+                
+                navigator.clipboard.writeText(currentImprovedCode)
+                    .then(() => {
+                        showNotification('Código copiado al portapapeles', 'success');
+                    })
+                    .catch(err => {
+                        console.error('Error al copiar: ', err);
+                        showNotification('Error al copiar código', 'danger');
+                    });
+            }
+            
+            // Use Improved Code
+            function useImprovedCode() {
+                if (!currentImprovedCode) return;
+                
+                codeInput.value = currentImprovedCode;
+                currentOriginalCode = currentImprovedCode;
+                
+                // Show notification
+                showNotification('Código actualizado', 'success');
+                
+                // Reset displays
+                suggestionsList.innerHTML = '<li class="text-muted">Utiliza el código mejorado como base para un nuevo análisis.</li>';
+                explanationsList.innerHTML = '<li class="text-muted">Utiliza el código mejorado como base para un nuevo análisis.</li>';
+                
+                // Disable buttons
+                copyBtn.disabled = true;
+                useBtn.disabled = true;
+            }
+            
+            // Update History Table
+            function updateHistoryTable() {
+                historyTableBody.innerHTML = '';
+                
+                if (analysisHistory.length === 0) {
+                    const row = document.createElement('tr');
+                    row.classList.add('text-muted');
+                    row.innerHTML = '<td colspan="4" class="text-center">No hay análisis previos.</td>';
+                    historyTableBody.appendChild(row);
+                    return;
+                }
+                
+                analysisHistory.forEach((item, index) => {
+                    const row = document.createElement('tr');
+                    
+                    // Format date
+                    const date = new Date(item.date);
+                    const formattedDate = date.toLocaleDateString() + ' ' + date.toLocaleTimeString();
+                    
+                    // Create row
+                    row.innerHTML = `
+                        <td>${formattedDate}</td>
+                        <td>${item.language}</td>
+                        <td>${item.instructions.length > 50 ? item.instructions.substring(0, 50) + '...' : item.instructions}</td>
+                        <td>
+                            <button class="btn btn-sm btn-outline-info me-1 load-history-btn" data-index="${index}">
+                                <i class="bi bi-arrow-clockwise"></i>
+                            </button>
+                            <button class="btn btn-sm btn-outline-danger delete-history-btn" data-index="${index}">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </td>
+                    `;
+                    
+                    historyTableBody.appendChild(row);
+                });
+                
+                // Add event listeners to history buttons
+                document.querySelectorAll('.load-history-btn').forEach(btn => {
+                    btn.addEventListener('click', function() {
+                        const index = parseInt(this.getAttribute('data-index'));
+                        loadHistoryItem(index);
+                    });
+                });
+                
+                document.querySelectorAll('.delete-history-btn').forEach(btn => {
+                    btn.addEventListener('click', function() {
+                        const index = parseInt(this.getAttribute('data-index'));
+                        deleteHistoryItem(index);
+                    });
+                });
+            }
+            
+            // Load History Item
+            function loadHistoryItem(index) {
+                if (index < 0 || index >= analysisHistory.length) return;
+                
+                const item = analysisHistory[index];
+                
+                // Set form values
+                codeInput.value = item.originalCode;
+                instructionsInput.value = item.instructions === 'Sin instrucciones' ? '' : item.instructions;
+                
+                // Set language
+                if (item.language) {
+                    languageSelect.value = item.language;
+                }
+                
+                // Update variables
+                currentOriginalCode = item.originalCode;
+                currentImprovedCode = item.improvedCode;
+                
+                // Update displays
+                suggestionsList.innerHTML = '';
+                if (item.suggestions && item.suggestions.length > 0) {
+                    item.suggestions.forEach(suggestion => {
+                        const li = document.createElement('li');
+                        li.textContent = suggestion;
+                        suggestionsList.appendChild(li);
+                    });
+                } else {
+                    const li = document.createElement('li');
+                    li.textContent = 'No se encontraron sugerencias.';
+                    li.classList.add('text-muted');
+                    suggestionsList.appendChild(li);
+                }
+                
+                explanationsList.innerHTML = '';
+                if (item.explanations && item.explanations.length > 0) {
+                    item.explanations.forEach(explanation => {
+                        const li = document.createElement('li');
+                        li.textContent = explanation;
+                        explanationsList.appendChild(li);
+                    });
+                } else {
+                    const li = document.createElement('li');
+                    li.textContent = 'No se encontraron explicaciones.';
+                    li.classList.add('text-muted');
+                    explanationsList.appendChild(li);
+                }
+                
+                // Display improved code
+                if (item.improvedCode) {
+                    improvedCodeViewer.innerHTML = '<pre class="language-' + item.language + '"><code>' + 
+                                                  escapeHTML(item.improvedCode) + 
+                                                  '</code></pre>';
+                    
+                    // Generate diff
+                    displayDiff(item.originalCode, item.improvedCode);
+                    diffViewer.style.display = 'block';
+                    
+                    // Enable buttons
+                    copyBtn.disabled = false;
+                    useBtn.disabled = false;
+                    
+                    // Highlight code with Prism
+                    Prism.highlightAll();
+                } else {
+                    improvedCodeViewer.innerHTML = `
+                        <p class="text-muted text-center">
+                            <i class="bi bi-code-square fs-3 d-block mb-2"></i>
+                            No se generaron mejoras para el código.
+                        </p>
+                    `;
+                    
+                    diffViewer.innerHTML = `
+                        <p class="text-muted text-center">
+                            <i class="bi bi-file-diff fs-3 d-block mb-2"></i>
+                            No hay diferencias para mostrar.
+                        </p>
+                    `;
+                    
+                    // Disable buttons
+                    copyBtn.disabled = true;
+                    useBtn.disabled = true;
+                }
+                
+                showNotification('Análisis cargado del historial', 'info');
+            }
+            
+            // Delete History Item
+            function deleteHistoryItem(index) {
+                if (index < 0 || index >= analysisHistory.length) return;
+                
+                analysisHistory.splice(index, 1);
+                updateHistoryTable();
+                showNotification('Elemento eliminado del historial', 'success');
+            }
+            
+            // Helper Functions
+            function escapeHTML(text) {
+                return text
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;')
+                    .replace(/"/g, '&quot;')
+                    .replace(/'/g, '&#039;');
+            }
+            
             function showNotification(message, type = 'info') {
-                const notificationsContainer = document.getElementById('notifications');
+                const container = document.getElementById('notifications');
                 
                 const notification = document.createElement('div');
                 notification.className = `alert alert-${type} alert-dismissible fade show`;
@@ -696,19 +981,14 @@ finally:
                     <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
                 `;
                 
-                notificationsContainer.appendChild(notification);
+                container.appendChild(notification);
                 
-                // Auto-quitar después de 5 segundos
+                // Auto-remove after 5 seconds
                 setTimeout(() => {
                     notification.classList.remove('show');
-                    setTimeout(() => {
-                        notification.remove();
-                    }, 300);
+                    setTimeout(() => notification.remove(), 300);
                 }, 5000);
             }
-            
-            // Inicializar la página con un ejemplo
-            analyzeBtn.click();
         });
     </script>
 </body>

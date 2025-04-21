@@ -532,6 +532,8 @@ def process_instruction():
         data = request.json
         user_id = data.get('user_id', 'default')
         instruction = data.get('instruction')
+        model = data.get('model', 'openai')
+        agent_id = data.get('agent_id', 'general')
         
         if not instruction:
             return jsonify({
@@ -539,6 +541,7 @@ def process_instruction():
                 'error': 'Se requiere una instrucción'
             }), 400
         
+        logger.info(f"Procesando instrucción con modelo: {model}, agente: {agent_id}")
         workspace = get_user_workspace(user_id)
         
         # Simulación de procesamiento de lenguaje natural:

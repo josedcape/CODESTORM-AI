@@ -159,6 +159,17 @@
                                 <option value="gemini">Google (Gemini)</option>
                             </select>
                         </div>
+                        
+                        <div class="mb-3">
+                            <label for="agent-select" class="form-label">Agente Especializado:</label>
+                            <select id="agent-select" class="form-select">
+                                <option value="general" selected>Asistente General</option>
+                                <option value="developer">Desarrollador de Código</option>
+                                <option value="architect">Arquitecto de Sistemas</option>
+                                <option value="advanced">Experto Avanzado</option>
+                            </select>
+                            <div class="form-text">Selecciona el tipo de asistente según la tarea que necesites realizar.</div>
+                        </div>
                         <textarea id="instruction-input" class="form-control instruction-input" placeholder="Escribe tus instrucciones en lenguaje natural (por ejemplo, 'Crea un nuevo archivo llamado ejemplo.txt con Hola Mundo como contenido')"></textarea>
                         <div class="d-flex justify-content-end mt-2">
                             <button id="clear-btn" class="btn btn-secondary me-2">
@@ -312,13 +323,16 @@
                 executeBtn.disabled = true;
                 
                 // Process instruction
+                const agent = document.getElementById('agent-select').value;
                 fetch('/api/process', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
                     },
                     body: JSON.stringify({
-                        instruction: instruction
+                        instruction: instruction,
+                        model: model,
+                        agent_id: agent
                     })
                 })
                 .then(response => response.json())
