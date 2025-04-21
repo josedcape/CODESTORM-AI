@@ -21,26 +21,11 @@ def get_user_workspace(user_id='default'):
     """Obtiene o crea un espacio de trabajo para el usuario."""
     workspace_dir = os.path.join(os.getcwd(), 'user_workspaces', user_id)
     
-    # Asegurarnos de que el directorio exista
+    # Asegurarnos de que el directorio exista pero completamente vacío
     os.makedirs(workspace_dir, exist_ok=True)
     
-    # Crear un archivo README.md si el workspace está vacío
-    readme_path = os.path.join(workspace_dir, 'README.md')
-    if not os.path.exists(readme_path) and len(os.listdir(workspace_dir)) == 0:
-        with open(readme_path, 'w', encoding='utf-8') as f:
-            f.write("""# Workspace de Usuario
-
-Este es tu espacio de trabajo personal en CODESTORM Assistant.
-
-## ¿Qué puedes hacer aquí?
-
-- Crear nuevos archivos y carpetas
-- Editar código con el asistente
-- Ejecutar comandos y aplicaciones
-- Gestionar tus proyectos
-
-¡Comienza creando un nuevo archivo o preguntando al asistente cómo ayudarte!
-""")
+    # El explorador comienza completamente vacío sin README.md
+    # El usuario debe crear sus propios archivos mediante la interfaz
             
     return workspace_dir
 
@@ -592,11 +577,15 @@ def api_chat():
 # API para ejecución de comandos
 @app.route('/api/execute', methods=['POST'])
 def api_execute_command():
-    """API para ejecutar comandos directamente."""
+    """API para ejecutar comandos directamente en el workspace del usuario."""
+    # Definir command fuera del bloque try para que esté disponible en los bloques except
+    command = None
+    
     try:
         data = request.json
         user_id = data.get('user_id', 'default')
         command = data.get('command')
+        agent_id = data.get('agent_id', 'general')
         
         if not command:
             return jsonify({
@@ -604,8 +593,13 @@ def api_execute_command():
                 'error': 'Se requiere un comando'
             }), 400
         
+        # Obtener el workspace del usuario (ahora inicia vacío)
         workspace = get_user_workspace(user_id)
         
+        # Agregar información de registro sobre el comando ejecutado
+        logger.info(f"Ejecutando comando: '{command}' en workspace '{user_id}', agente: {agent_id}")
+        
+        # Ejecutar el comando en un subproceso
         process = subprocess.Popen(
             command,
             shell=True,
@@ -614,25 +608,44 @@ def api_execute_command():
             cwd=workspace
         )
         
+        # Esperar la respuesta con un tiempo límite de 30 segundos
         stdout, stderr = process.communicate(timeout=30)
         status = process.returncode
+        
+        # Preparar la respuesta con los resultados de la ejecución
+        stdout_text = stdout.decode('utf-8', errors='replace')
+        stderr_text = stderr.decode('utf-8', errors='replace')
+        
+        # Registrar el resultado del comando si hubo un error
+        if status != 0:
+            logger.warning(f"Comando '{command}' terminó con código {status}. Stderr: {stderr_text}")
         
         result = {
             'success': True,
             'command': command,
-            'stdout': stdout.decode('utf-8', errors='replace'),
-            'stderr': stderr.decode('utf-8', errors='replace'),
-            'status': status
+            'stdout': stdout_text,
+            'stderr': stderr_text,
+            'status': status,
+            'agent_id': agent_id
         }
         
         return jsonify(result)
-    except subprocess.TimeoutExpired:
+    except subprocess.TimeoutExpired as e:
+        # Ahora command está disponible aquí
+        error_msg = f'Tiempo de ejecución agotado (30s)'
+        if command:
+            error_msg += f' para el comando: {command}'
+            logger.error(f"Timeout al ejecutar comando: '{command}'")
+        else:
+            logger.error("Timeout al ejecutar un comando desconocido")
+        
         return jsonify({
             'success': False,
-            'error': 'Tiempo de ejecución agotado (30s)'
+            'error': error_msg
         }), 504
     except Exception as e:
-        logger.error(f"Error al ejecutar comando: {str(e)}")
+        error_cmd = f" ejecutando '{command}'" if command else ""
+        logger.error(f"Error al ejecutar comando{error_cmd}: {str(e)}")
         return jsonify({
             'success': False,
             'error': str(e)
@@ -671,6 +684,9 @@ def process_instruction():
         if instruction.startswith('ejecuta ') or instruction.startswith('corre ') or instruction.startswith('run '):
             command = instruction.split(' ', 1)[1]
             
+            # Registrar la acción
+            logger.info(f"Procesando instrucción como comando: '{command}' con agente {agent_id}, modelo {model}")
+            
             # Ejecutar el comando
             process = subprocess.Popen(
                 command,
@@ -683,12 +699,21 @@ def process_instruction():
             stdout, stderr = process.communicate(timeout=30)
             status = process.returncode
             
+            stdout_text = stdout.decode('utf-8', errors='replace')
+            stderr_text = stderr.decode('utf-8', errors='replace')
+            
+            # Registrar el resultado si hubo error
+            if status != 0:
+                logger.warning(f"Instrucción comando '{command}' terminó con código {status}. Stderr: {stderr_text}")
+            
             return jsonify({
                 'success': True,
                 'command': command,
-                'result': stdout.decode('utf-8', errors='replace'),
-                'error': stderr.decode('utf-8', errors='replace'),
-                'status': status
+                'result': stdout_text,
+                'error': stderr_text,
+                'status': status,
+                'agent_id': agent_id,
+                'model': model
             })
             
         # Detectar si la instrucción parece ser para crear un archivo
