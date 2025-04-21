@@ -1,0 +1,155 @@
+:root {
+    --brand-primary: #0078d7;
+    --brand-secondary: #0096cc;
+    --brand-highlight: #ff9e43;
+    --dark-bg: #121212;
+    --dark-bg-lighter: #1e1e1e;
+    --dark-text: #e0e0e0;
+}
+
+body {
+    min-height: 100vh;
+    overflow-x: hidden;
+    background-color: var(--dark-bg);
+    color: var(--dark-text);
+}
+
+/* Barra lateral */
+.sidebar {
+    height: 100vh;
+    position: fixed;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+    z-index: 100;
+}
+
+/* Contenido principal */
+.main-content {
+    min-height: 100vh;
+    padding-top: 20px;
+    padding-bottom: 20px;
+}
+
+/* Estilo para código y terminal */
+.code-editor, .terminal-output {
+    font-family: 'JetBrains Mono', 'Fira Code', monospace;
+    background-color: var(--dark-bg-lighter);
+    border-radius: 4px;
+    padding: 10px;
+}
+
+/* Animaciones y efectos */
+.fade-in {
+    animation: fadeIn 0.5s ease-in-out;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+/* Estilos para pantallas pequeñas */
+@media (max-width: 768px) {
+    .sidebar {
+        width: 100%;
+        height: auto;
+        position: relative;
+    }
+    
+    .main-content {
+        margin-left: 0;
+    }
+}
+
+/* Tarjetas y componentes */
+.card {
+    background-color: var(--dark-bg-lighter);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    transition: transform 0.3s;
+}
+
+.card:hover {
+    transform: translateY(-5px);
+}
+
+/* Botones con efecto futurista */
+.btn-futuristic {
+    background: linear-gradient(45deg, var(--brand-primary), var(--brand-secondary));
+    border: none;
+    color: white;
+    text-shadow: 0 0 5px rgba(255, 255, 255, 0.5);
+    box-shadow: 0 0 15px rgba(0, 150, 255, 0.5);
+    transition: all 0.3s;
+}
+
+.btn-futuristic:hover {
+    box-shadow: 0 0 20px rgba(0, 150, 255, 0.8);
+    transform: translateY(-2px);
+}
+
+/* Estilos para el chat */
+.chat-bubble {
+    max-width: 80%;
+    padding: 12px;
+    margin-bottom: 15px;
+    border-radius: 15px;
+}
+
+.chat-user {
+    background-color: var(--brand-primary);
+    color: white;
+    margin-left: auto;
+    border-bottom-right-radius: 0;
+}
+
+.chat-assistant {
+    background-color: var(--dark-bg-lighter);
+    color: var(--dark-text);
+    margin-right: auto;
+    border-bottom-left-radius: 0;
+}
+
+/* Efectos de brillo para áreas destacadas */
+.glow-effect {
+    box-shadow: 0 0 10px var(--brand-primary);
+    animation: glow 2s infinite alternate;
+}
+
+@keyframes glow {
+    from {
+        box-shadow: 0 0 5px var(--brand-primary);
+    }
+    to {
+        box-shadow: 0 0 20px var(--brand-primary), 0 0 30px var(--brand-highlight);
+    }
+}
+
+/* Estilo para notificaciones */
+.notification-badge {
+    position: absolute;
+    top: -5px;
+    right: -5px;
+    background-color: var(--brand-highlight);
+    color: black;
+    border-radius: 50%;
+    width: 20px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.7rem;
+    font-weight: bold;
+}
+
+/* Utilidades adicionales */
+.text-highlight {
+    color: var(--brand-highlight);
+}
+
+.text-primary {
+    color: var(--brand-primary) !important;
+}
+
+.bg-gradient-primary {
+    background: linear-gradient(45deg, var(--brand-primary), var(--brand-secondary));
+}

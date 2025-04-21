@@ -1,4 +1,5 @@
 import os
+import re
 import json
 import logging
 import subprocess
@@ -187,6 +188,56 @@ def api_create_file():
             'error': str(e)
         }), 500
 
+@app.route('/api/files/delete', methods=['POST'])
+def api_delete_file():
+    """API para eliminar un archivo o directorio."""
+    try:
+        data = request.json
+        user_id = data.get('user_id', 'default')
+        file_path = data.get('file_path')
+        
+        if not file_path:
+            return jsonify({
+                'success': False,
+                'error': 'Se requiere ruta de archivo'
+            }), 400
+        
+        workspace = get_user_workspace(user_id)
+        full_path = os.path.join(workspace, file_path)
+        
+        # Verificar path traversal
+        if not os.path.normpath(full_path).startswith(os.path.normpath(workspace)):
+            return jsonify({
+                'success': False,
+                'error': 'Ruta de archivo inválida'
+            }), 400
+        
+        # Verificar que el archivo o directorio existe
+        if not os.path.exists(full_path):
+            return jsonify({
+                'success': False,
+                'error': 'El archivo o directorio no existe'
+            }), 404
+        
+        # Eliminar archivo o directorio
+        if os.path.isfile(full_path):
+            os.remove(full_path)
+        elif os.path.isdir(full_path):
+            import shutil
+            shutil.rmtree(full_path)
+        
+        return jsonify({
+            'success': True,
+            'file_path': file_path,
+            'message': f"Se ha eliminado {file_path}"
+        })
+    except Exception as e:
+        logger.error(f"Error al eliminar archivo: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
 # API para chat y generación de contenido
 @app.route('/api/chat', methods=['POST'])
 def api_chat():
@@ -270,6 +321,113 @@ def api_execute_command():
         }), 504
     except Exception as e:
         logger.error(f"Error al ejecutar comando: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@app.route('/api/process', methods=['POST'])
+def process_instruction():
+    """
+    Procesa una instrucción en lenguaje natural para realizar acciones.
+    
+    La instrucción puede ser:
+    - Crear un archivo
+    - Ejecutar un comando
+    - Modificar un archivo existente
+    """
+    try:
+        data = request.json
+        user_id = data.get('user_id', 'default')
+        instruction = data.get('instruction')
+        
+        if not instruction:
+            return jsonify({
+                'success': False,
+                'error': 'Se requiere una instrucción'
+            }), 400
+        
+        workspace = get_user_workspace(user_id)
+        
+        # Simulación de procesamiento de lenguaje natural:
+        # En una implementación real, aquí se conectaría con un modelo de IA
+        
+        # Detectar si la instrucción parece ser un comando
+        if instruction.startswith('ejecuta ') or instruction.startswith('corre ') or instruction.startswith('run '):
+            command = instruction.split(' ', 1)[1]
+            
+            # Ejecutar el comando
+            process = subprocess.Popen(
+                command,
+                shell=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                cwd=workspace
+            )
+            
+            stdout, stderr = process.communicate(timeout=30)
+            status = process.returncode
+            
+            return jsonify({
+                'success': True,
+                'command': command,
+                'result': stdout.decode('utf-8', errors='replace'),
+                'error': stderr.decode('utf-8', errors='replace'),
+                'status': status
+            })
+            
+        # Detectar si la instrucción parece ser para crear un archivo
+        elif 'crea' in instruction.lower() and ('archivo' in instruction.lower() or 'fichero' in instruction.lower()):
+            # Extraer un nombre de archivo básico de la instrucción
+            filename_match = re.search(r'(?:llamado|nombrado|nombre)\s+["\']?([^"\']+)["\']?', instruction)
+            if filename_match:
+                filename = filename_match.group(1)
+            else:
+                # Si no se encuentra un nombre específico, crear uno genérico
+                extension = '.txt'
+                if 'html' in instruction.lower(): extension = '.html'
+                elif 'css' in instruction.lower(): extension = '.css'
+                elif 'javascript' in instruction.lower() or 'js' in instruction.lower(): extension = '.js'
+                elif 'python' in instruction.lower() or 'py' in instruction.lower(): extension = '.py'
+                
+                filename = f"nuevo_archivo{extension}"
+            
+            # Contenido básico según el tipo de archivo
+            content = ""
+            if filename.endswith('.html'):
+                content = "<!DOCTYPE html>\n<html>\n<head>\n    <title>Nuevo documento</title>\n</head>\n<body>\n    <h1>Nuevo documento</h1>\n    <p>Contenido del documento.</p>\n</body>\n</html>"
+            elif filename.endswith('.css'):
+                content = "body {\n    margin: 0;\n    padding: 0;\n    font-family: Arial, sans-serif;\n}"
+            elif filename.endswith('.js'):
+                content = "// Archivo JavaScript\nconsole.log('Nuevo archivo JavaScript');"
+            elif filename.endswith('.py'):
+                content = "# Archivo Python\n\ndef main():\n    print('Hola mundo')\n\nif __name__ == '__main__':\n    main()"
+            
+            # Crear el archivo
+            file_path = os.path.join(workspace, filename)
+            os.makedirs(os.path.dirname(file_path), exist_ok=True)
+            
+            with open(file_path, 'w', encoding='utf-8') as f:
+                f.write(content)
+            
+            return jsonify({
+                'success': True,
+                'file_path': filename,
+                'content': content,
+                'result': f"Se ha creado el archivo '{filename}' con contenido básico."
+            })
+            
+        else:
+            # Respuesta genérica para instrucciones no reconocidas
+            return jsonify({
+                'success': True,
+                'result': f"He recibido tu instrucción: '{instruction}'. " +
+                          "Para ejecutar un comando, comienza con 'ejecuta'. " +
+                          "Para crear un archivo, incluye 'crea archivo' en tu instrucción."
+            })
+            
+    except Exception as e:
+        logger.error(f"Error al procesar instrucción: {str(e)}")
         return jsonify({
             'success': False,
             'error': str(e)
