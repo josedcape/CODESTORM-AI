@@ -12,12 +12,14 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     function initializeSocket() {
-        // Connect to Socket.IO server
+        // Connect to Socket.IO server with more resilient configuration
         const socket = io({
-            transports: ['websocket'],
+            transports: ['websocket', 'polling'], // Fallback to polling if websocket fails
             reconnection: true,
-            reconnectionAttempts: 5,
-            timeout: 10000
+            reconnectionAttempts: 10,
+            reconnectionDelay: 1000,
+            reconnectionDelayMax: 5000,
+            timeout: 20000
         });
         
         // Store socket globally for other scripts to use
@@ -45,6 +47,18 @@ document.addEventListener('DOMContentLoaded', function() {
         socket.on('connect_error', function(error) {
             console.error('WebSocket connection error:', error);
             updateConnectionStatus(false);
+            
+            // Implementar reintentos manuales con backoff exponencial
+            setTimeout(() => {
+                console.log('Intentando reconectar al WebSocket...');
+                socket.connect();
+            }, 2000); // Reintento después de 2 segundos
+        });
+        
+        // Manejador de error adicional
+        socket.on('error', function(error) {
+            console.error('Socket error:', error);
+            // No desconectar inmediatamente, dejar que la reconexión automática funcione
         });
         
         // File change notifications

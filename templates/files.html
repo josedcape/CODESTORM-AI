@@ -274,6 +274,15 @@
                             <button id="clone-repo-btn" class="btn btn-sm btn-success">
                                 <i class="bi bi-git"></i> Clonar Repositorio
                             </button>
+                            <div class="dropdown d-inline-block">
+                                <button class="btn btn-sm btn-info dropdown-toggle" type="button" id="downloadOptionsBtn" data-bs-toggle="dropdown" aria-expanded="false">
+                                    <i class="bi bi-download"></i> Descargar
+                                </button>
+                                <ul class="dropdown-menu dropdown-menu-dark" aria-labelledby="downloadOptionsBtn">
+                                    <li><a class="dropdown-item" href="#" id="download-current-dir-btn"><i class="bi bi-file-earmark-zip"></i> Descargar este directorio</a></li>
+                                    <li><a class="dropdown-item" href="#" id="download-all-btn"><i class="bi bi-file-earmark-zip"></i> Descargar todo el workspace</a></li>
+                                </ul>
+                            </div>
                         </div>
                     </div>
                     <!-- Encabezado del explorador -->
@@ -341,6 +350,26 @@
             
             // Inicializar WebSocket
             initializeWebSocket();
+            
+            // Configurar botones de descarga
+            const downloadCurrentDirBtn = document.getElementById('download-current-dir-btn');
+            const downloadAllBtn = document.getElementById('download-all-btn');
+            
+            // Evento para descargar el directorio actual
+            if (downloadCurrentDirBtn) {
+                downloadCurrentDirBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    window.location.href = `/api/download_directory/${currentDirectory}`;
+                });
+            }
+            
+            // Evento para descargar todo el workspace
+            if (downloadAllBtn) {
+                downloadAllBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    window.location.href = '/api/download_directory/';
+                });
+            }
             
             // Escuchar eventos de cambio en archivos
             document.addEventListener('file_change', function(e) {

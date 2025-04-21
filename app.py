@@ -1605,8 +1605,8 @@ def get_session():
         'workspace': str(get_user_workspace(session['user_id']).name)
     })
 
-# Initialize SocketIO - usando modo eventlet (sin monkey patching)
-socketio = SocketIO(app, cors_allowed_origins="*", async_mode='eventlet', ping_timeout=60, ping_interval=25, logger=True)
+# Initialize SocketIO - usando modo threading (más compatible con gunicorn)
+socketio = SocketIO(app, cors_allowed_origins="*", async_mode='threading', ping_timeout=60, ping_interval=25, logger=True)
 
 # Import the download routes and register them
 from download_routes import register_download_routes
