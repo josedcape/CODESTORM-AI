@@ -262,6 +262,36 @@
                                     <textarea id="correction-instructions" class="form-control input-futuristic" rows="2" placeholder="Ej: Corrige errores de sintaxis y mejora la legibilidad"></textarea>
                                 </div>
                                 
+                                <div class="mb-3">
+                                    <label class="form-label">Selecciona un Agente Especializado:</label>
+                                    <div class="d-flex flex-wrap agent-selector">
+                                        <div class="form-check form-check-inline me-3">
+                                            <input class="form-check-input" type="radio" name="agent-select" id="agent-general" value="general" checked>
+                                            <label class="form-check-label" for="agent-general">
+                                                <i class="bi bi-robot"></i> Asistente General
+                                            </label>
+                                        </div>
+                                        <div class="form-check form-check-inline me-3">
+                                            <input class="form-check-input" type="radio" name="agent-select" id="agent-developer" value="developer">
+                                            <label class="form-check-label" for="agent-developer">
+                                                <i class="bi bi-code-slash"></i> Agente Desarrollador
+                                            </label>
+                                        </div>
+                                        <div class="form-check form-check-inline me-3">
+                                            <input class="form-check-input" type="radio" name="agent-select" id="agent-architect" value="architect">
+                                            <label class="form-check-label" for="agent-architect">
+                                                <i class="bi bi-diagram-3"></i> Agente Arquitecto
+                                            </label>
+                                        </div>
+                                        <div class="form-check form-check-inline">
+                                            <input class="form-check-input" type="radio" name="agent-select" id="agent-advanced" value="advanced">
+                                            <label class="form-check-label" for="agent-advanced">
+                                                <i class="bi bi-cpu"></i> Agente Avanzado
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+                                
                                 <div class="split-pane">
                                     <div class="code-panel">
                                         <h6>Código Original</h6>
@@ -742,15 +772,19 @@ if __name__ == "__main__":
                 }, 200);
                 
                 // Realizar solicitud al servidor para la corrección
-                fetch('/api/process_code', {
+                // Obtener el agente seleccionado
+                const selectedAgent = document.querySelector('input[name="agent-select"]:checked').value;
+                
+                // Enviar a la API de chat con el agente correspondiente
+                fetch('/api/handle_chat', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                     },
                     body: JSON.stringify({
-                        code: originalCode.value,
-                        file_path: currentFilePath,
-                        instructions: instructions || 'Corrige errores y mejora la calidad del código'
+                        message: `Genera el contenido completo para un archivo ${getFileExtensionDescription(currentFilePath)}. El archivo se llama "${currentFilePath || 'nuevo_archivo.txt'}" y debe incluir: ${instructions.value || 'código de alta calidad siguiendo las mejores prácticas'}`,
+                        agent_id: selectedAgent,
+                        model: 'openai'  // Usar OpenAI por defecto
                     })
                 })
                 .then(response => response.json())
@@ -761,23 +795,54 @@ if __name__ == "__main__":
                     if (data.error) {
                         showNotification('Error al procesar el código: ' + data.error, 'danger');
                         isAnalyzing = false;
-                        analyzeBtn.disabled = false;
+                        processBtn.disabled = false;
                         return;
                     }
                     
-                    // Actualizar código corregido
-                    correctedCode.value = data.corrected_code || originalCode.value;
+                    // Extraer el código de la respuesta (entre comillas de código)
+                    const codeMatches = data.response.match(/```[\s\S]*?```/g);
                     
-                    // Actualizar explicación
-                    document.getElementById('changes-summary').innerHTML = formatChangeSummary(data.summary || []);
-                    document.getElementById('detailed-explanation').innerHTML = formatDetailedExplanation(data.explanation || '');
+                    if (codeMatches && codeMatches.length > 0) {
+                        // Extraer el código del primer bloque
+                        const extractedCode = codeMatches[0]
+                            .replace(/```.*\n/, '') // Quitar la primera línea con ```
+                            .replace(/```$/, '')    // Quitar el último ```
+                            .trim();
+                        
+                        // Actualizar código corregido
+                        correctedCode.value = extractedCode;
+                        
+                        // Colocar toda la respuesta en la explicación detallada
+                        document.getElementById('detailed-explanation').innerHTML = formatDetailedExplanation(data.response);
+                        
+                        // Extraer puntos clave como resumen
+                        let summary = data.response
+                            .split('```')
+                            .pop()
+                            .match(/[•\-*]\s.+/g) || [];
+                        
+                        // Si no hay puntos con viñetas, crear un resumen genérico
+                        if (summary.length === 0) {
+                            summary = ['Archivo generado según las instrucciones solicitadas'];
+                        }
+                        
+                        document.getElementById('changes-summary').innerHTML = formatChangeSummary(summary);
+                    } else {
+                        // No se encontró código en la respuesta
+                        correctedCode.value = data.response;
+                        document.getElementById('detailed-explanation').innerHTML = formatDetailedExplanation(
+                            "El asistente ha generado contenido sin formato de código específico. " +
+                            "Se ha colocado el contenido completo en el editor."
+                        );
+                        document.getElementById('changes-summary').innerHTML = formatChangeSummary(['Contenido generado por el asistente']);
+                    }
                     
                     // Habilitar botones
                     isAnalyzing = false;
-                    analyzeBtn.disabled = false;
+                    processBtn.disabled = false;
                     saveBtn.disabled = false;
                     
-                    showNotification('Análisis completado', 'success');
+                    showNotification('Archivo generado con éxito', 'success');
                     
                     // Highlight code (Prism)
                     Prism.highlightAll();
@@ -895,6 +960,32 @@ if __name__ == "__main__":
                 if (size < 1024) return size + ' B';
                 if (size < 1024 * 1024) return (size / 1024).toFixed(1) + ' KB';
                 return (size / (1024 * 1024)).toFixed(1) + ' MB';
+            }
+            
+            // Función para obtener una descripción del tipo de archivo basada en su extensión
+            function getFileExtensionDescription(filePath) {
+                if (!filePath) return 'texto';
+                
+                const ext = filePath.split('.').pop()?.toLowerCase();
+                
+                switch (ext) {
+                    case 'html':
+                        return 'HTML (página web)';
+                    case 'css':
+                        return 'CSS (hoja de estilos)';
+                    case 'js':
+                        return 'JavaScript';
+                    case 'py':
+                        return 'Python';
+                    case 'json':
+                        return 'JSON';
+                    case 'md':
+                        return 'Markdown';
+                    case 'txt':
+                        return 'texto plano';
+                    default:
+                        return ext || 'código';
+                }
             }
             
             function showNotification(message, type = 'info') {

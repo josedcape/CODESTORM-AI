@@ -914,7 +914,9 @@ def handle_chat():
         return jsonify({'error': str(e)}), 500
 
 
-# Función interna para generar archivos complejos sin usar el endpoint HTTP
+# Función interna para procesar lenguaje natural sin usar el endpoint HTTP
+def process_natural_language_internal(text):
+# Solamente el código de la función corregida para el problema de indentación
 def generate_complex_file_internal(description, file_type="html", filename="", agent_id="general"):
     """
     Versión interna de generate_complex_file para uso dentro de handle_chat.
@@ -930,11 +932,7 @@ def generate_complex_file_internal(description, file_type="html", filename="", a
     import agents_generators
     
     # Utilizar la nueva implementación con soporte para agentes
-    return agents_generators.generate_complex_file_with_agent(description, file_type, filename, agent_id)
-
-# Función interna para procesar lenguaje natural sin usar el endpoint HTTP
-def process_natural_language_internal(text):
-    """Versión interna de process_natural_language para uso dentro de handle_chat"""
+    return agents_generators.generate_complex_file_with_agent(description, file_type, filename, agent_id)    """Versión interna de process_natural_language para uso dentro de handle_chat"""
     try:
         if not text:
             return {
