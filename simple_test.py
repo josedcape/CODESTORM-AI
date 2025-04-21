@@ -618,6 +618,13 @@ def serve_static(filename):
     """Servir archivos estáticos desde el directorio static."""
     return send_from_directory('static', filename)
 
+@app.route('/workspace/<path:filename>')
+def serve_workspace_file(filename):
+    """Servir archivos desde el workspace del usuario."""
+    return send_from_directory('user_workspaces/default', filename)
+
+# Esta ruta ya existe en otra parte del código, eliminamos esta duplicada
+
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port, debug=True)
