@@ -156,7 +156,7 @@
                         <span class="badge bg-secondary info-badge" id="file-type-badge">{{ file_type }}</span>
                     </h2>
                     <div>
-                        <a href="/" class="btn btn-sm btn-outline-secondary">
+                        <a href="/files" class="btn btn-sm btn-outline-secondary">
                             <i class="bi bi-arrow-left"></i> Volver
                         </a>
                     </div>
@@ -237,7 +237,7 @@
             function saveCode() {
                 const content = codeEditor.value;
                 
-                fetch('/api/save_file', {
+                fetch('/api/files/create', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',

@@ -4,7 +4,7 @@ import json
 import logging
 import subprocess
 from pathlib import Path
-from flask import Flask, render_template, jsonify, request, send_from_directory, redirect, url_for
+from flask import Flask, render_template, jsonify, request, send_from_directory, redirect, url_for, flash
 from werkzeug.utils import secure_filename
 import requests  # Usamos requests en lugar de aiohttp
 
@@ -76,6 +76,45 @@ def chat():
     """Ruta a la página de chat."""
     agent_id = request.args.get('agent', 'general')
     return render_template('chat.html', agent_id=agent_id)
+    
+@app.route('/files')
+def files():
+    """Ruta al explorador de archivos."""
+    return render_template('files.html')
+
+@app.route('/edit_file')
+def edit_file():
+    """Editar un archivo."""
+    file_path = request.args.get('path', '')
+    if not file_path:
+        return redirect('/files')
+    
+    try:
+        workspace = get_user_workspace()
+        full_path = os.path.join(workspace, file_path)
+        
+        # Verificar path traversal
+        if not os.path.normpath(full_path).startswith(os.path.normpath(workspace)):
+            flash('Ruta de archivo inválida', 'danger')
+            return redirect('/files')
+        
+        # Verificar que el archivo existe
+        if not os.path.exists(full_path) or not os.path.isfile(full_path):
+            flash('El archivo no existe', 'danger')
+            return redirect('/files')
+        
+        # Leer el archivo
+        with open(full_path, 'r', encoding='utf-8', errors='replace') as f:
+            content = f.read()
+        
+        # Determinar el tipo de archivo
+        file_type = os.path.splitext(file_path)[1].lstrip('.').upper() or 'TXT'
+        
+        return render_template('editor.html', file_path=file_path, file_content=content, file_type=file_type)
+    except Exception as e:
+        logger.error(f"Error al editar archivo: {str(e)}")
+        flash(f'Error al abrir el archivo: {str(e)}', 'danger')
+        return redirect('/files')
 
 # APIs para manejo de archivos
 @app.route('/api/files', methods=['GET'])
@@ -183,6 +222,49 @@ def api_create_file():
         })
     except Exception as e:
         logger.error(f"Error al crear archivo: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@app.route('/api/save_file', methods=['POST'])
+def save_file():
+    """Guarda cambios en un archivo."""
+    try:
+        data = request.json
+        file_path = data.get('file_path')
+        content = data.get('content', '')
+        
+        if not file_path:
+            return jsonify({
+                'success': False,
+                'error': 'Se requiere ruta de archivo'
+            }), 400
+        
+        workspace = get_user_workspace()
+        full_path = os.path.join(workspace, file_path)
+        
+        # Verificar path traversal
+        if not os.path.normpath(full_path).startswith(os.path.normpath(workspace)):
+            return jsonify({
+                'success': False,
+                'error': 'Ruta de archivo inválida'
+            }), 400
+        
+        # Crear directorios si no existen
+        os.makedirs(os.path.dirname(full_path), exist_ok=True)
+        
+        # Escribir contenido al archivo
+        with open(full_path, 'w', encoding='utf-8') as f:
+            f.write(content)
+        
+        return jsonify({
+            'success': True,
+            'file_path': file_path,
+            'message': 'Archivo guardado correctamente'
+        })
+    except Exception as e:
+        logger.error(f"Error al guardar archivo: {str(e)}")
         return jsonify({
             'success': False,
             'error': str(e)

@@ -325,10 +325,8 @@
 
     <!-- Bootstrap JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="https://cdn.socket.io/4.6.1/socket.io.min.js"></script>
-    <script src="{{ url_for('static', filename='js/websocket.js') }}"></script>
-    <script src="{{ url_for('static', filename='js/file-actions.js') }}"></script>
-    <script src="{{ url_for('static', filename='js/download-manager.js') }}"></script>
+    
+    <!-- Scripts simplificados -->
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             // Referencias a elementos del DOM
@@ -343,500 +341,348 @@
             const saveFileBtn = document.getElementById('save-file-btn');
             const cancelFileBtn = document.getElementById('cancel-file-btn');
             const uploadFileInput = document.getElementById('upload-file');
+            const cloneRepoBtn = document.getElementById('clone-repo-btn');
             
-            // Variable para almacenar el directorio actual
-            let currentDirectory = '/';
-            let creatingFolder = false;
+            // Variables de estado
+            let currentDirectory = '.';
+            let isCreatingFolder = false;
             
-            // Inicializar WebSocket
-            initializeWebSocket();
+            // Cargar archivos al inicio
+            loadFiles(currentDirectory);
             
-            // Configurar botones de descarga
-            const downloadCurrentDirBtn = document.getElementById('download-current-dir-btn');
-            const downloadAllBtn = document.getElementById('download-all-btn');
+            // Event listeners
+            newFileBtn.addEventListener('click', () => showCreateFileForm(false));
+            newFolderBtn.addEventListener('click', () => showCreateFileForm(true));
+            saveFileBtn.addEventListener('click', createFileOrFolder);
+            cancelFileBtn.addEventListener('click', hideCreateFileForm);
+            uploadFileInput.addEventListener('change', handleFileUpload);
+            cloneRepoBtn.addEventListener('click', showCloneRepoModal);
             
-            // Evento para descargar el directorio actual
-            if (downloadCurrentDirBtn) {
-                downloadCurrentDirBtn.addEventListener('click', function(e) {
-                    e.preventDefault();
-                    window.location.href = `/api/download_directory/${currentDirectory}`;
-                });
-            }
-            
-            // Evento para descargar todo el workspace
-            if (downloadAllBtn) {
-                downloadAllBtn.addEventListener('click', function(e) {
-                    e.preventDefault();
-                    window.location.href = '/api/download_directory/';
-                });
-            }
-            
-            // Escuchar eventos de cambio en archivos
-            document.addEventListener('file_change', function(e) {
-                console.log('Cambio detectado:', e.detail);
-                // Recargar directorio si hay cambios
-                loadDirectory(currentDirectory);
-            });
-            
-            // Cargar archivos iniciales
-            loadDirectory('/');
-            
-            // Botón para crear nuevo archivo
-            newFileBtn.addEventListener('click', function() {
-                showCreateForm(false);
-            });
-            
-            // Botón para crear nueva carpeta
-            newFolderBtn.addEventListener('click', function() {
-                showCreateForm(true);
-            });
-            
-            // Botón para guardar archivo/carpeta
-            saveFileBtn.addEventListener('click', function() {
-                const fileName = fileNameInput.value.trim();
-                
-                if (!fileName) {
-                    alert('Por favor, ingresa un nombre para el archivo o carpeta.');
-                    return;
-                }
-                
-                if (creatingFolder) {
-                    // Crear carpeta
-                    const folderPath = currentDirectory === '/' 
-                        ? `${currentDirectory}${fileName}` 
-                        : `${currentDirectory}/${fileName}`;
-                        
-                    window.fileActions.createFolder(folderPath)
-                        .then(() => {
-                            hideCreateForm();
-                            loadDirectory(currentDirectory);
-                        })
-                        .catch(error => {
-                            alert(`Error al crear carpeta: ${error.message}`);
-                        });
-                } else {
-                    // Crear archivo
-                    const content = fileContentInput.value;
-                    const filePath = currentDirectory === '/' 
-                        ? `${currentDirectory}${fileName}` 
-                        : `${currentDirectory}/${fileName}`;
-                        
-                    window.fileActions.createFile(filePath, content)
-                        .then(() => {
-                            hideCreateForm();
-                            loadDirectory(currentDirectory);
-                        })
-                        .catch(error => {
-                            alert(`Error al crear archivo: ${error.message}`);
-                        });
-                }
-            });
-            
-            // Botón para cancelar creación
-            cancelFileBtn.addEventListener('click', function() {
-                hideCreateForm();
-            });
-            
-            // Input para subir archivos
-            uploadFileInput.addEventListener('change', function(e) {
-                const files = e.target.files;
-                
-                if (files.length === 0) return;
-                
-                const uploads = Array.from(files).map(file => {
-                    return new Promise((resolve, reject) => {
-                        const reader = new FileReader();
-                        
-                        reader.onload = function(event) {
-                            const content = event.target.result;
-                            const filePath = currentDirectory === '/' 
-                                ? `${currentDirectory}${file.name}` 
-                                : `${currentDirectory}/${file.name}`;
-                                
-                            window.fileActions.createFile(filePath, content)
-                                .then(resolve)
-                                .catch(reject);
-                        };
-                        
-                        reader.onerror = reject;
-                        
-                        // Leer como texto para archivos que no son binarios
-                        // En una aplicación real deberías manejar binarios también
-                        reader.readAsText(file);
-                    });
-                });
-                
-                Promise.all(uploads)
-                    .then(() => {
-                        loadDirectory(currentDirectory);
-                        uploadFileInput.value = '';
+            // Cargar archivos
+            function loadFiles(directory) {
+                fetch(`/api/files?directory=${encodeURIComponent(directory)}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            displayFiles(data.files, directory);
+                            updateBreadcrumb(directory);
+                            currentDirectory = directory;
+                        } else {
+                            showNotification(data.error || 'Error al cargar archivos', 'danger');
+                        }
                     })
                     .catch(error => {
-                        alert(`Error al subir archivos: ${error.message}`);
-                        uploadFileInput.value = '';
+                        console.error('Error:', error);
+                        showNotification('Error al cargar archivos', 'danger');
                     });
-            });
+            }
             
-            // Función para mostrar el formulario de creación
-            function showCreateForm(isFolder) {
-                creatingFolder = isFolder;
+            // Mostrar archivos en el explorador
+            function displayFiles(files, directory) {
+                fileExplorerContent.innerHTML = '';
+                
+                // Si no estamos en el directorio raíz, añadir opción para subir
+                if (directory !== '.') {
+                    const parentDir = directory.split('/').slice(0, -1).join('/') || '.';
+                    const upDirectory = document.createElement('div');
+                    upDirectory.className = 'file-item directory';
+                    upDirectory.innerHTML = `
+                        <i class="bi bi-arrow-up-circle file-item-icon"></i>
+                        <span>..</span>
+                    `;
+                    upDirectory.addEventListener('click', () => loadFiles(parentDir));
+                    fileExplorerContent.appendChild(upDirectory);
+                }
+                
+                // Ordenar: primero directorios, luego archivos
+                const directories = files.filter(f => f.type === 'directory');
+                const regularFiles = files.filter(f => f.type === 'file');
+                
+                // Añadir directorios
+                directories.forEach(dir => {
+                    const dirElement = document.createElement('div');
+                    dirElement.className = 'file-item directory';
+                    dirElement.innerHTML = `
+                        <i class="bi bi-folder-fill file-item-icon"></i>
+                        <span>${dir.name}</span>
+                    `;
+                    dirElement.addEventListener('click', () => loadFiles(dir.path));
+                    fileExplorerContent.appendChild(dirElement);
+                });
+                
+                // Añadir archivos
+                regularFiles.forEach(file => {
+                    const fileElement = document.createElement('div');
+                    fileElement.className = 'file-item file';
+                    
+                    // Determinar icono según extensión
+                    let icon = 'bi-file-earmark';
+                    const ext = file.name.split('.').pop().toLowerCase();
+                    
+                    if (['html', 'htm'].includes(ext)) icon = 'bi-file-earmark-code';
+                    else if (['js', 'ts'].includes(ext)) icon = 'bi-filetype-js';
+                    else if (['css', 'scss'].includes(ext)) icon = 'bi-filetype-css';
+                    else if (['py'].includes(ext)) icon = 'bi-filetype-py';
+                    else if (['jpg', 'jpeg', 'png', 'gif'].includes(ext)) icon = 'bi-file-earmark-image';
+                    else if (['md'].includes(ext)) icon = 'bi-file-earmark-text';
+                    
+                    // Formatear tamaño
+                    const sizeStr = formatFileSize(file.size);
+                    
+                    fileElement.innerHTML = `
+                        <i class="bi ${icon} file-item-icon"></i>
+                        <span>${file.name}</span>
+                        <div class="file-item-details">
+                            <span class="file-size">${sizeStr}</span>
+                        </div>
+                    `;
+                    
+                    // Abrir archivo al hacer clic
+                    fileElement.addEventListener('click', () => {
+                        window.location.href = `/edit_file?path=${encodeURIComponent(file.path)}`;
+                    });
+                    
+                    fileExplorerContent.appendChild(fileElement);
+                });
+                
+                // Mostrar mensaje si no hay archivos
+                if (files.length === 0) {
+                    fileExplorerContent.innerHTML = '<div class="file-empty-message">No hay archivos en este directorio</div>';
+                }
+            }
+            
+            // Actualizar la navegación de migas de pan
+            function updateBreadcrumb(directory) {
+                const parts = directory === '.' ? [] : directory.split('/');
+                pathBreadcrumb.innerHTML = '';
+                
+                // Añadir root
+                const rootItem = document.createElement('li');
+                rootItem.className = 'breadcrumb-item';
+                rootItem.innerHTML = '<a href="#" data-path=".">Workspace</a>';
+                rootItem.querySelector('a').addEventListener('click', (e) => {
+                    e.preventDefault();
+                    loadFiles('.');
+                });
+                pathBreadcrumb.appendChild(rootItem);
+                
+                // Añadir cada parte del path
+                let currentPath = '';
+                parts.forEach((part, index) => {
+                    currentPath += (index === 0 ? '' : '/') + part;
+                    const item = document.createElement('li');
+                    
+                    if (index === parts.length - 1) {
+                        item.className = 'breadcrumb-item active';
+                        item.textContent = part;
+                    } else {
+                        item.className = 'breadcrumb-item';
+                        item.innerHTML = `<a href="#" data-path="${currentPath}">${part}</a>`;
+                        item.querySelector('a').addEventListener('click', (e) => {
+                            e.preventDefault();
+                            loadFiles(currentPath);
+                        });
+                    }
+                    
+                    pathBreadcrumb.appendChild(item);
+                });
+            }
+            
+            // Mostrar formulario para crear archivo/carpeta
+            function showCreateFileForm(isFolder) {
+                isCreatingFolder = isFolder;
                 createFileForm.classList.remove('d-none');
                 fileNameInput.value = '';
                 fileContentInput.value = '';
                 
                 if (isFolder) {
-                    fileContentContainer.classList.add('d-none');
+                    fileContentContainer.style.display = 'none';
                 } else {
-                    fileContentContainer.classList.remove('d-none');
+                    fileContentContainer.style.display = 'block';
                 }
                 
                 fileNameInput.focus();
             }
             
-            // Función para ocultar el formulario de creación
-            function hideCreateForm() {
+            // Ocultar formulario
+            function hideCreateFileForm() {
                 createFileForm.classList.add('d-none');
             }
             
-            // Función para cargar un directorio
-            function loadDirectory(path) {
-                path = path || '/';
+            // Crear archivo o carpeta
+            function createFileOrFolder() {
+                const name = fileNameInput.value.trim();
                 
-                // Normalizar path
-                if (path === '.') path = '/';
-                if (path.startsWith('./')) path = path.substring(2);
-                
-                currentDirectory = path;
-                
-                // Mostrar cargando
-                fileExplorerContent.innerHTML = `
-                    <div class="text-center py-5">
-                        <div class="spinner-border text-light" role="status">
-                            <span class="visually-hidden">Cargando...</span>
-                        </div>
-                        <p class="mt-3">Cargando archivos...</p>
-                    </div>
-                `;
-                
-                // Cargar archivos desde el servidor
-                fetch('/api/list_files', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({ directory: path })
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.error) {
-                        fileExplorerContent.innerHTML = `
-                            <div class="file-empty-message">
-                                <i class="bi bi-exclamation-circle text-warning fs-1"></i>
-                                <p class="mt-3">${data.error}</p>
-                            </div>
-                        `;
-                        return;
-                    }
-                    
-                    // Actualizar breadcrumb
-                    updateBreadcrumb(path);
-                    
-                    // Mostrar archivos
-                    displayFiles(data.files || []);
-                    
-                    // Disparar evento de cambio de directorio para actualizar otras partes
-                    document.dispatchEvent(new CustomEvent('directoryChanged', { 
-                        detail: { path: currentDirectory } 
-                    }));
-                    
-                    // Disparar evento cuando los archivos se han cargado
-                    document.dispatchEvent(new CustomEvent('filesLoaded'));
-                })
-                .catch(error => {
-                    console.error('Error loading files:', error);
-                    fileExplorerContent.innerHTML = `
-                        <div class="file-empty-message">
-                            <i class="bi bi-exclamation-circle text-danger fs-1"></i>
-                            <p class="mt-3">Error al cargar archivos: ${error.message}</p>
-                        </div>
-                    `;
-                });
-            }
-            
-            // Función para mostrar archivos
-            function displayFiles(files) {
-                if (files.length === 0) {
-                    fileExplorerContent.innerHTML = `
-                        <div class="file-empty-message">
-                            <i class="bi bi-folder2-open text-warning fs-1"></i>
-                            <p class="mt-3">No hay archivos en este directorio</p>
-                        </div>
-                    `;
+                if (!name) {
+                    showNotification('Por favor, introduce un nombre válido', 'warning');
                     return;
                 }
                 
-                // Ordenar archivos: primero directorios, luego archivos, ordenados alfabéticamente
-                files.sort((a, b) => {
-                    if (a.type === 'directory' && b.type !== 'directory') return -1;
-                    if (a.type !== 'directory' && b.type === 'directory') return 1;
-                    return a.name.localeCompare(b.name);
-                });
-                
-                // Crear lista de archivos
-                const fileList = document.createElement('ul');
-                fileList.className = 'file-list';
-                
-                // Agregar elemento para navegar al directorio padre, excepto en la raíz
-                if (currentDirectory !== '/') {
-                    const parentItem = document.createElement('li');
-                    parentItem.className = 'file-item directory';
-                    parentItem.innerHTML = `
-                        <i class="bi bi-arrow-90deg-up file-item-icon"></i>
-                        <span>..</span>
-                    `;
+                if (isCreatingFolder) {
+                    // Crear carpeta
+                    const folderPath = currentDirectory === '.' ? name : `${currentDirectory}/${name}`;
                     
-                    parentItem.addEventListener('click', function() {
-                        // Navegar al directorio padre
-                        const parentDir = currentDirectory.substring(0, currentDirectory.lastIndexOf('/'));
-                        loadDirectory(parentDir || '/');
-                    });
-                    
-                    fileList.appendChild(parentItem);
-                }
-                
-                // Agregar cada archivo/directorio a la lista
-                files.forEach(file => {
-                    const fileItem = document.createElement('li');
-                    fileItem.className = `file-item ${file.type}`;
-                    
-                    // Seleccionar ícono según tipo
-                    let icon = 'bi-file-earmark';
-                    if (file.type === 'directory') {
-                        icon = 'bi-folder';
-                    } else {
-                        // Identificar tipo de archivo por extensión
-                        const ext = file.name.split('.').pop()?.toLowerCase();
-                        if (['js', 'jsx', 'ts', 'tsx'].includes(ext)) icon = 'bi-filetype-js';
-                        else if (['py'].includes(ext)) icon = 'bi-filetype-py';
-                        else if (['html', 'htm'].includes(ext)) icon = 'bi-filetype-html';
-                        else if (['css', 'scss', 'sass'].includes(ext)) icon = 'bi-filetype-css';
-                        else if (['json'].includes(ext)) icon = 'bi-filetype-json';
-                        else if (['md', 'markdown'].includes(ext)) icon = 'bi-filetype-md';
-                        else if (['jpg', 'jpeg', 'png', 'gif', 'svg'].includes(ext)) icon = 'bi-file-earmark-image';
-                    }
-                    
-                    // Formatear fecha
-                    const modifiedDate = file.modified_at 
-                        ? new Date(file.modified_at).toLocaleString() 
-                        : '';
-                    
-                    // Formatear tamaño
-                    const formattedSize = file.type === 'file' 
-                        ? formatFileSize(file.size || 0) 
-                        : '';
-                    
-                    fileItem.innerHTML = `
-                        <i class="bi ${icon} file-item-icon"></i>
-                        <span>${file.name}</span>
-                        <div class="file-item-details">
-                            <span class="file-size">${formattedSize}</span>
-                            <span class="file-date">${modifiedDate}</span>
-                        </div>
-                    `;
-                    
-                    // Agregar manejador de clic
-                    fileItem.addEventListener('click', function() {
-                        if (file.type === 'directory') {
-                            // Navegar al directorio
-                            const dirPath = currentDirectory === '/' 
-                                ? `${currentDirectory}${file.name}` 
-                                : `${currentDirectory}/${file.name}`;
-                            loadDirectory(dirPath);
+                    fetch('/api/files/create', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            file_path: `${folderPath}/.gitkeep`,
+                            content: ''
+                        })
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            showNotification(`Carpeta ${name} creada correctamente`, 'success');
+                            loadFiles(currentDirectory);
+                            hideCreateFileForm();
                         } else {
-                            // Abrir archivo en editor
-                            const filePath = currentDirectory === '/' 
-                                ? `${currentDirectory}${file.name}` 
-                                : `${currentDirectory}/${file.name}`;
-                            window.location.href = `/edit/${filePath}`;
+                            showNotification(data.error || 'Error al crear carpeta', 'danger');
                         }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        showNotification('Error al crear carpeta', 'danger');
                     });
-                    
-                    fileList.appendChild(fileItem);
-                });
-                
-                fileExplorerContent.innerHTML = '';
-                fileExplorerContent.appendChild(fileList);
-                
-                // Añadir menú contextual a los elementos de archivo
-                addFileContextMenu();
-            }
-            
-            // Añadir menú contextual a los elementos de archivo
-            function addFileContextMenu() {
-                const fileItems = document.querySelectorAll('.file-item');
-                
-                fileItems.forEach(item => {
-                    item.addEventListener('contextmenu', function(e) {
-                        e.preventDefault();
-                        
-                        const fileName = item.querySelector('span').textContent;
-                        // No permitir operaciones en el directorio padre
-                        if (fileName === '..') return;
-                        
-                        const isDirectory = item.classList.contains('directory');
-                        const filePath = currentDirectory === '/' 
-                            ? fileName 
-                            : `${currentDirectory}/${fileName}`;
-                        
-                        // Crear menú contextual
-                        const menu = document.createElement('div');
-                        menu.className = 'file-context-menu position-absolute';
-                        menu.style.left = `${e.pageX}px`;
-                        menu.style.top = `${e.pageY}px`;
-                        
-                        // Elementos del menú contextual
-                        if (!isDirectory) {
-                            const editItem = document.createElement('div');
-                            editItem.className = 'context-menu-item';
-                            editItem.innerHTML = '<i class="bi bi-pencil"></i> Editar';
-                            editItem.addEventListener('click', () => {
-                                window.location.href = `/edit/${filePath}`;
-                            });
-                            menu.appendChild(editItem);
-                            
-                            const downloadItem = document.createElement('div');
-                            downloadItem.className = 'context-menu-item';
-                            downloadItem.innerHTML = '<i class="bi bi-download"></i> Descargar';
-                            downloadItem.addEventListener('click', () => {
-                                window.location.href = `/api/download_file/${filePath}`;
-                            });
-                            menu.appendChild(downloadItem);
-                        } else {
-                            const downloadZipItem = document.createElement('div');
-                            downloadZipItem.className = 'context-menu-item';
-                            downloadZipItem.innerHTML = '<i class="bi bi-file-earmark-zip"></i> Descargar como ZIP';
-                            downloadZipItem.addEventListener('click', () => {
-                                window.location.href = `/api/download_directory/${filePath}`;
-                            });
-                            menu.appendChild(downloadZipItem);
-                        }
-                        
-                        const deleteItem = document.createElement('div');
-                        deleteItem.className = 'context-menu-item danger';
-                        deleteItem.innerHTML = '<i class="bi bi-trash"></i> Eliminar';
-                        deleteItem.addEventListener('click', () => {
-                            window.fileActions.deleteFileOrFolder(filePath);
-                        });
-                        menu.appendChild(deleteItem);
-                        
-                        // Añadir menú al documento
-                        document.body.appendChild(menu);
-                        
-                        // Eliminar menú al hacer clic fuera
-                        const closeMenu = (e) => {
-                            if (!menu.contains(e.target)) {
-                                menu.remove();
-                                document.removeEventListener('click', closeMenu);
-                            }
-                        };
-                        
-                        setTimeout(() => {
-                            document.addEventListener('click', closeMenu);
-                        }, 0);
-                    });
-                });
-            }
-            
-            // Actualizar navegación de migas de pan
-            function updateBreadcrumb(path) {
-                // Limpiar migas de pan existentes
-                pathBreadcrumb.innerHTML = '';
-                
-                // Añadir raíz
-                const rootLi = document.createElement('li');
-                rootLi.className = 'breadcrumb-item';
-                
-                if (path === '/') {
-                    rootLi.classList.add('active');
-                    rootLi.textContent = '/';
                 } else {
-                    const rootLink = document.createElement('a');
-                    rootLink.href = '#';
-                    rootLink.textContent = '/';
-                    rootLink.addEventListener('click', (e) => {
-                        e.preventDefault();
-                        loadDirectory('.');
+                    // Crear archivo
+                    const content = fileContentInput.value;
+                    const filePath = currentDirectory === '.' ? name : `${currentDirectory}/${name}`;
+                    
+                    fetch('/api/files/create', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            file_path: filePath,
+                            content: content
+                        })
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            showNotification(`Archivo ${name} creado correctamente`, 'success');
+                            loadFiles(currentDirectory);
+                            hideCreateFileForm();
+                        } else {
+                            showNotification(data.error || 'Error al crear archivo', 'danger');
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        showNotification('Error al crear archivo', 'danger');
                     });
-                    rootLi.appendChild(rootLink);
                 }
+            }
+            
+            // Manejar subida de archivos
+            function handleFileUpload(e) {
+                const files = e.target.files;
                 
-                pathBreadcrumb.appendChild(rootLi);
+                if (files.length === 0) return;
                 
-                // Si estamos en la raíz, no hay más migas de pan para agregar
-                if (path === '/') return;
-                
-                // Dividir el camino en partes
-                const parts = path.split('/').filter(part => part);
-                let currentPath = '';
-                
-                // Añadir cada parte como miga de pan
-                parts.forEach((part, index) => {
-                    currentPath += '/' + part;
+                // Convertir FileList a Array para usar promesas
+                Array.from(files).forEach(file => {
+                    const reader = new FileReader();
                     
-                    const partLi = document.createElement('li');
-                    partLi.className = 'breadcrumb-item';
-                    
-                    if (index === parts.length - 1) {
-                        // Último elemento (directorio actual)
-                        partLi.classList.add('active');
-                        partLi.textContent = part;
-                    } else {
-                        // Directorio intermedio
-                        const partLink = document.createElement('a');
-                        partLink.href = '#';
-                        partLink.textContent = part;
+                    reader.onload = function(event) {
+                        const content = event.target.result;
+                        const filePath = currentDirectory === '.' ? file.name : `${currentDirectory}/${file.name}`;
                         
-                        // Almacenar ruta para usar en el evento de clic
-                        const pathForClick = currentPath;
-                        
-                        partLink.addEventListener('click', (e) => {
-                            e.preventDefault();
-                            loadDirectory(pathForClick);
+                        fetch('/api/files/create', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({
+                                file_path: filePath,
+                                content: content
+                            })
+                        })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.success) {
+                                showNotification(`Archivo ${file.name} subido correctamente`, 'success');
+                                loadFiles(currentDirectory);
+                            } else {
+                                showNotification(data.error || 'Error al subir archivo', 'danger');
+                            }
+                        })
+                        .catch(error => {
+                            console.error('Error:', error);
+                            showNotification('Error al subir archivo', 'danger');
                         });
-                        
-                        partLi.appendChild(partLink);
-                    }
+                    };
                     
-                    pathBreadcrumb.appendChild(partLi);
+                    reader.readAsText(file);
                 });
+                
+                // Reset input para permitir subir el mismo archivo de nuevo
+                uploadFileInput.value = '';
+            }
+            
+            // Mostrar modal para clonar repositorio
+            function showCloneRepoModal() {
+                const repoUrl = prompt('Introduce la URL del repositorio Git:');
+                
+                if (!repoUrl) return;
+                
+                // Ejecutar comando de clonación
+                fetch('/api/execute', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        command: `git clone ${repoUrl} ${currentDirectory === '.' ? '.' : currentDirectory}`
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success && data.status === 0) {
+                        showNotification('Repositorio clonado correctamente', 'success');
+                        loadFiles(currentDirectory);
+                    } else {
+                        showNotification(data.stderr || 'Error al clonar repositorio', 'danger');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    showNotification('Error al clonar repositorio', 'danger');
+                });
+            }
+            
+            // Mostrar notificación
+            function showNotification(message, type = 'info') {
+                const notificationContainer = document.createElement('div');
+                notificationContainer.className = `alert alert-${type} alert-dismissible fade show`;
+                notificationContainer.innerHTML = `
+                    ${message}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                `;
+                
+                document.body.appendChild(notificationContainer);
+                
+                // Auto-cerrar después de 5 segundos
+                setTimeout(() => {
+                    notificationContainer.classList.remove('show');
+                    setTimeout(() => notificationContainer.remove(), 300);
+                }, 5000);
             }
             
             // Formatear tamaño de archivo
             function formatFileSize(bytes) {
-                if (bytes === 0) return '0 B';
+                if (bytes === 0) return '0 Bytes';
                 
                 const k = 1024;
-                const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+                const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
                 const i = Math.floor(Math.log(bytes) / Math.log(k));
                 
                 return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
             }
-            
-            // Inicializar WebSocket
-            function initializeWebSocket() {
-                if (typeof initSocketConnection === 'function') {
-                    initSocketConnection((data) => {
-                        // Callback para cuando hay cambios notificados por WebSocket
-                        document.dispatchEvent(new CustomEvent('file_change', { detail: data }));
-                    });
-                }
-            }
-            
-            // Exponer funciones para uso desde otros scripts
-            window.fileExplorer = {
-                loadDirectory,
-                getCurrentDirectory: () => currentDirectory
-            };
         });
     </script>
 </body>
