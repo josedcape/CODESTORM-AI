@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panel de Control - Codestorm Assistant</title>
+    <link href="https://cdn.replit.com/agent/bootstrap-agent-dark-theme.min.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #0f1729;
+            color: #e2e8f0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        .dashboard-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid #2d3748;
+        }
+        .header h1 {
+            margin: 0;
+            background: linear-gradient(to right, #3b82f6, #10b981);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .header-actions {
+            display: flex;
+            gap: 10px;
+        }
+        .main-content {
+            display: grid;
+            grid-template-columns: 300px 1fr;
+            gap: 20px;
+        }
+        .sidebar {
+            background-color: #1e293b;
+            border-radius: 10px;
+            padding: 20px;
+        }
+        .sidebar-menu {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+        .sidebar-menu li {
+            margin-bottom: 10px;
+        }
+        .sidebar-menu a {
+            display: block;
+            padding: 10px 15px;
+            border-radius: 5px;
+            text-decoration: none;
+            color: #e2e8f0;
+            transition: background-color 0.3s;
+        }
+        .sidebar-menu a:hover {
+            background-color: #2d3748;
+        }
+        .sidebar-menu a.active {
+            background-color: #3b82f6;
+            color: white;
+        }
+        .content-area {
+            background-color: #1e293b;
+            border-radius: 10px;
+            padding: 20px;
+        }
+        .card {
+            background-color: #2d3748;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .card-title {
+            color: #38bdf8;
+            margin: 0 0 5px 0;
+        }
+        .card-content {
+            margin: 0;
+        }
+        .card-actions {
+            display: flex;
+            gap: 10px;
+        }
+        .btn {
+            padding: 8px 15px;
+            border-radius: 5px;
+            border: none;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: 600;
+        }
+        .btn-primary {
+            background-color: #3b82f6;
+            color: white;
+        }
+        .btn-secondary {
+            background-color: #475569;
+            color: white;
+        }
+        .btn-danger {
+            background-color: #ef4444;
+            color: white;
+        }
+        .btn:hover {
+            opacity: 0.9;
+            transform: scale(1.05);
+        }
+        .project-list {
+            margin-top: 20px;
+        }
+        @media (max-width: 768px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+            .header {
+                flex-direction: column;
+                text-align: center;
+                gap: 15px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard-container">
+        <div class="header">
+            <h1>Panel de Control</h1>
+            <div class="header-actions">
+                <a href="/codestorm/" class="btn btn-secondary">Inicio</a>
+                <a href="/codestorm/chat" class="btn btn-primary">Chat con IA</a>
+            </div>
+        </div>
+        
+        <div class="main-content">
+            <div class="sidebar">
+                <ul class="sidebar-menu">
+                    <li><a href="#" class="active">Proyectos</a></li>
+                    <li><a href="#">Editor de Código</a></li>
+                    <li><a href="#">Terminal</a></li>
+                    <li><a href="#">Agentes</a></li>
+                    <li><a href="#">Configuración</a></li>
+                </ul>
+            </div>
+            
+            <div class="content-area">
+                <h2>Mis Proyectos</h2>
+                <p>Administra tus proyectos actuales o crea nuevos.</p>
+                
+                <button class="btn btn-primary">Nuevo Proyecto</button>
+                
+                <div class="project-list">
+                    <div class="card">
+                        <div>
+                            <h3 class="card-title">API RESTful</h3>
+                            <p class="card-content">Backend en Flask con autenticación JWT</p>
+                        </div>
+                        <div class="card-actions">
+                            <button class="btn btn-secondary">Editar</button>
+                            <button class="btn btn-danger">Eliminar</button>
+                        </div>
+                    </div>
+                    
+                    <div class="card">
+                        <div>
+                            <h3 class="card-title">Dashboard React</h3>
+                            <p class="card-content">Frontend con React y ChartJS</p>
+                        </div>
+                        <div class="card-actions">
+                            <button class="btn btn-secondary">Editar</button>
+                            <button class="btn btn-danger">Eliminar</button>
+                        </div>
+                    </div>
+                    
+                    <div class="card">
+                        <div>
+                            <h3 class="card-title">Sistema de Ventas</h3>
+                            <p class="card-content">Aplicación web completa con Django</p>
+                        </div>
+                        <div class="card-actions">
+                            <button class="btn btn-secondary">Editar</button>
+                            <button class="btn btn-danger">Eliminar</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

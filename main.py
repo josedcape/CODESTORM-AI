@@ -1,137 +1,40 @@
-# Main entry point for the Flask application
 import os
-import logging
-import subprocess
-from pathlib import Path
-from flask import request, jsonify
-from app import app, socketio
+from flask import Flask, jsonify
 
-# Configurar un manejador para verificar la salud de la aplicación
-@app.route('/health')
-def health():
-    return "OK", 200
+def create_app():
+    app = Flask(__name__)
+    app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'codestorm-secret-key')
+    app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024  # 50 MB máximo para uploads
 
-# APIs simplificadas para ejecutar comandos y gestionar archivos
-@app.route('/api/execute_command', methods=['POST'])
-def execute_command_api():
-    """API simple para ejecutar comandos directamente."""
-    try:
-        data = request.json
-        command = data.get('command', '')
-        
-        if not command:
-            return jsonify({'error': 'No command provided'}), 400
-            
-        # Ejecutar el comando
-        workspace_path = Path('user_workspaces/default')
-        if not workspace_path.exists():
-            workspace_path.mkdir(parents=True, exist_ok=True)
-            
-        process = subprocess.Popen(
-            command,
-            shell=True,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            cwd=str(workspace_path)
-        )
-        
-        # Obtener stdout y stderr
-        stdout, stderr = process.communicate(timeout=30)
-        status = process.returncode
-        
-        return jsonify({
-            'success': status == 0,
-            'stdout': stdout.decode('utf-8', errors='replace'),
-            'stderr': stderr.decode('utf-8', errors='replace'),
-            'status': status
-        })
-    except subprocess.TimeoutExpired:
-        return jsonify({
-            'success': False,
-            'message': 'Command execution timed out (30s)'
-        }), 500
-    except Exception as e:
-        logging.error(f"Error executing command: {str(e)}")
-        return jsonify({
-            'success': False,
-            'message': f'Error: {str(e)}'
-        }), 500
+    @app.route('/health')
+    def health():
+        return jsonify({'status': 'ok', 'message': 'Codestorm Assistant funcionando correctamente'})
 
-@app.route('/api/create_file', methods=['POST'])
-def create_file_api():
-    """API simple para crear archivos."""
-    try:
-        data = request.json
-        file_path = data.get('file_path', '')
-        content = data.get('content', '')
-        
-        if not file_path:
-            return jsonify({'error': 'No file path provided'}), 400
-            
-        # Crear archivo
-        workspace_path = Path('user_workspaces/default')
-        if not workspace_path.exists():
-            workspace_path.mkdir(parents=True, exist_ok=True)
-            
-        target_file = (workspace_path / file_path).resolve()
-        
-        # Verificar path traversal
-        if not str(target_file).startswith(str(workspace_path.resolve())):
-            return jsonify({
-                'success': False,
-                'message': 'Access denied: Cannot access files outside workspace'
-            }), 403
-            
-        # Crear directorios si no existen
-        target_file.parent.mkdir(parents=True, exist_ok=True)
-        
-        # Escribir el archivo
-        with open(target_file, 'w') as f:
-            f.write(content)
-            
-        return jsonify({
-            'success': True,
-            'message': f'File {file_path} created successfully'
-        })
-    except Exception as e:
-        logging.error(f"Error creating file: {str(e)}")
-        return jsonify({
-            'success': False,
-            'message': f'Error: {str(e)}'
-        }), 500
+    @app.route('/')
+    def root():
+        return """
+        <html>
+        <head>
+            <title>Codestorm Assistant</title>
+            <meta http-equiv="refresh" content="0;url=/codestorm" />
+        </head>
+        <body>
+            <h1>Redirigiendo a Codestorm Assistant...</h1>
+            <p><a href="/codestorm">Haga clic aquí si no es redirigido automáticamente</a></p>
+        </body>
+        </html>
+        """
 
-@app.route('/api/list_files', methods=['GET'])
-def list_files_api():
-    """API simple para listar archivos del workspace."""
-    try:
-        workspace_path = Path('user_workspaces/default')
-        if not workspace_path.exists():
-            workspace_path.mkdir(parents=True, exist_ok=True)
-            
-        files = []
-        for item in workspace_path.glob('**/*'):
-            if item.is_file():
-                files.append({
-                    'path': str(item.relative_to(workspace_path)),
-                    'size': item.stat().st_size,
-                    'is_dir': False
-                })
-            elif item.is_dir():
-                files.append({
-                    'path': str(item.relative_to(workspace_path)),
-                    'is_dir': True
-                })
-                
-        return jsonify({
-            'success': True,
-            'files': files
-        })
-    except Exception as e:
-        logging.error(f"Error listing files: {str(e)}")
-        return jsonify({
-            'success': False,
-            'message': f'Error: {str(e)}'
-        }), 500
+    # Importar el blueprint de Codestorm después de asegurar que la app está definida
+    from codestorm_app import app as codestorm_blueprint
+    
+    # Registrar el blueprint de Codestorm bajo la URL /codestorm
+    app.register_blueprint(codestorm_blueprint, url_prefix='/codestorm')
+    
+    return app
 
-if __name__ == "__main__":
-    socketio.run(app, host="0.0.0.0", port=5000, debug=True)
+app = create_app()
+
+if __name__ == '__main__':
+    port = int(os.environ.get('PORT', 5000))
+    app.run(host='0.0.0.0', port=port, debug=True)

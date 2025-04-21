@@ -1,89 +1,157 @@
-# CODESTORM - Asistente de Terminal con IA
+# Codestorm Assistant
 
-CODESTORM es un asistente de terminal impulsado por inteligencia artificial que permite a los usuarios convertir instrucciones en lenguaje natural a comandos de terminal. La aplicación proporciona una interfaz interactiva con un explorador de archivos integrado y soporte para múltiples modelos de IA.
+![Codestorm Assistant](generated-icon.png)
 
-## Características
+Un asistente avanzado para desarrollo de código impulsado por inteligencia artificial, creado para facilitar la programación mediante instrucciones en lenguaje natural.
 
-- 🤖 Utiliza modelos de IA como OpenAI GPT, Anthropic Claude y Google Gemini
-- 💻 Convierte instrucciones en lenguaje natural a comandos de terminal
-- 📁 Explorador de archivos integrado para navegar, crear, editar y eliminar archivos
-- 🔄 Actualizaciones en tiempo real mediante WebSockets
-- 💾 Historial de comandos para referencia y reutilización
-- 🌐 Soporte para múltiples espacios de trabajo
-- ⚡ Caché local para comandos comunes, mejorando el tiempo de respuesta
-- 🔍 Resaltado de sintaxis para código
+## 🌟 Características Principales
 
-## Instalación
+- **Múltiples agentes especializados**: Desarrollador, Arquitecto y Experto Avanzado
+- **Soporte para múltiples modelos de IA**: OpenAI (GPT-4o), Anthropic (Claude) y Google Gemini
+- **Interfaz web intuitiva**: Panel de control completo con editor, terminal y chat integrados
+- **Generación de archivos complejos**: HTML, CSS, JavaScript, Python y más
+- **Ejecución de comandos**: Controla tu terminal mediante lenguaje natural
+- **APIs completas**: Endpoints para todas las funcionalidades
+- **WebSockets**: Actualizaciones en tiempo real para archivos y comandos
+- **Workspaces aislados**: Entornos de trabajo separados para diferentes usuarios/proyectos
 
-1. Clonar el repositorio:
+## 🚀 Inicio Rápido
+
+### Instalación
+
+1. Clona el repositorio:
+   ```bash
+   git clone https://github.com/josedcape/CODESTORM.git
+   cd CODESTORM
+   ```
+
+2. Instala las dependencias:
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+3. Configura las claves API en un archivo `.env`:
+   ```
+   OPENAI_API_KEY=tu_clave_aquí
+   ANTHROPIC_API_KEY=tu_clave_aquí
+   GEMINI_API_KEY=tu_clave_aquí
+   SECRET_KEY=una_clave_secreta_para_flask
+   ```
+
+### Uso
+
+#### Aplicación Web Completa
+
+```bash
+python main_completo.py
 ```
-git clone https://github.com/josedcape/CODESTORM.git
-cd CODESTORM
+
+La aplicación estará disponible en `http://localhost:5000`
+
+#### CLI Interactivo
+
+```bash
+python asistente_completo.py interact
 ```
 
-2. Instalar dependencias:
-```
-pip install -r requirements.txt
-```
+#### Comandos Específicos
 
-3. Configurar las claves API (crea un archivo `.env` con el siguiente contenido):
-```
-OPENAI_API_KEY=tu_clave_de_openai
-ANTHROPIC_API_KEY=tu_clave_de_anthropic
-GEMINI_API_KEY=tu_clave_de_gemini
+Generar un archivo con IA:
+```bash
+python asistente_completo.py generate "Crear una página web de portafolio personal con secciones para habilidades y proyectos" --type html --filename portfolio.html
 ```
 
-4. Iniciar la aplicación:
+Ejecutar un comando:
+```bash
+python asistente_completo.py exec "ls -la"
 ```
-python main.py
+
+Procesar instrucción en lenguaje natural:
+```bash
+python asistente_completo.py process "genera un programa en Python que calcule los números primos"
 ```
 
-## Uso
+## 🧠 Agentes Especializados
 
-1. Abrir la aplicación en el navegador (http://localhost:5000)
-2. Escribir instrucciones en lenguaje natural en el campo de entrada
-3. Seleccionar el modelo de IA deseado (OpenAI, Anthropic, Gemini)
-4. Hacer clic en "Ejecutar" para convertir la instrucción en un comando de terminal
-5. Ver el resultado del comando en la salida de la terminal
-6. Usar el explorador de archivos para gestionar tus archivos
+### Desarrollador
+Especializado en escribir código de alta calidad, bien documentado y eficiente. Ideal para implementaciones técnicas detalladas.
 
-### Ejemplos de comandos
+### Arquitecto
+Especializado en diseño de sistemas y componentes, patrones de diseño y estructura general. Perfecto para planificar aplicaciones.
 
-- "Mostrar archivos en el directorio actual"
-- "Crear una carpeta llamada proyectos"
-- "Mostrar la fecha y hora actual"
-- "Crear un archivo llamado hola.txt"
-- "Mostrar el contenido de README.md"
+### Experto Avanzado
+Especializado en soluciones complejas con optimizaciones avanzadas. Ideal para problemas técnicos desafiantes y rendimiento.
 
-## Estructura del proyecto
+## 📄 API Endpoints
+
+La aplicación ofrece un conjunto completo de APIs:
+
+- `GET /api/files`: Listar archivos del workspace
+- `POST /api/files/create`: Crear o actualizar un archivo
+- `GET /api/files/read`: Leer el contenido de un archivo
+- `DELETE /api/files/delete`: Eliminar un archivo
+- `POST /api/execute`: Ejecutar un comando
+- `POST /api/chat`: Interactuar con un agente especializado
+- `POST /api/process-code`: Procesar y mejorar código
+- `POST /api/generate-file`: Generar archivos complejos
+- `POST /api/process-instruction`: Procesar instrucciones en lenguaje natural
+
+## 📋 Ejemplos de Uso
+
+### Crear un archivo HTML
+```
+ejecutar: crear un archivo HTML con una página web personal
+```
+
+### Ejecutar comandos
+```
+ejecutar: ls -la
+```
+
+### Preguntar al asistente
+```
+¿Cuáles son los mejores patrones de diseño para una API REST?
+```
+
+## 📊 Estructura del Proyecto
 
 ```
 CODESTORM/
-├── app.py              # Aplicación Flask principal
-├── main.py             # Punto de entrada
-├── models.py           # Modelos de base de datos
-├── static/             # Archivos estáticos (CSS, JS)
-│   ├── css/            # Hojas de estilo
-│   └── js/             # Scripts JavaScript
-├── templates/          # Plantillas HTML
-├── user_workspaces/    # Espacios de trabajo de usuarios
-└── .env                # Variables de entorno (no incluido en el repositorio)
+├── main_completo.py           # Aplicación web principal
+├── asistente_completo.py      # CLI interactivo
+├── agents_utils.py            # Utilidades para agentes IA
+├── agents_generators.py       # Generadores de contenido
+├── static/                    # Archivos estáticos
+│   ├── css/                   # Estilos CSS
+│   └── js/                    # Scripts JavaScript
+├── templates/                 # Plantillas HTML
+├── user_workspaces/           # Workspaces de usuario
+└── .env                       # Variables de entorno
 ```
 
-## Tecnologías utilizadas
+## 🔧 Tecnologías Utilizadas
 
-- Flask: Framework web
-- Flask-SocketIO: Comunicación en tiempo real
-- SQLAlchemy: ORM para base de datos
-- OpenAI API: Modelo GPT-4o para procesamiento de lenguaje natural
-- Anthropic API: Modelo Claude para procesamiento de lenguaje natural
-- Google Gemini API: Modelo Gemini para procesamiento de lenguaje natural
-- Bootstrap: Framework CSS para la interfaz de usuario
+- **Backend**: Python, Flask, SocketIO
+- **Frontend**: HTML5, CSS3, JavaScript, Bootstrap
+- **IA**: OpenAI API, Anthropic API, Google Gemini API
+- **Otros**: WebSockets, SQLite (para almacenamiento)
 
-## Contribuir
+## 🤝 Contribuir
 
-Las contribuciones son bienvenidas. Por favor, siente libre de abrir un issue o enviar un pull request.
+Las contribuciones son bienvenidas. Por favor, sigue estos pasos:
 
-## Licencia
+1. Haz fork del repositorio
+2. Crea una rama para tu característica (`git checkout -b feature/amazing-feature`)
+3. Haz commit de tus cambios (`git commit -m 'Add amazing feature'`)
+4. Haz push a la rama (`git push origin feature/amazing-feature`)
+5. Abre un Pull Request
 
-Este proyecto está licenciado bajo la Licencia MIT - ver el archivo LICENSE para más detalles.
+## 📝 Licencia
+
+Este proyecto está licenciado bajo los términos de la Licencia MIT. Ver el archivo [LICENSE](LICENSE) para más detalles.
+
+## 📞 Contacto
+
+José - [@josedcape](https://github.com/josedcape)
+
+Link del proyecto: [https://github.com/josedcape/CODESTORM](https://github.com/josedcape/CODESTORM)
