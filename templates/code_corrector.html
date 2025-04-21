@@ -265,18 +265,28 @@
                                 <div class="split-pane">
                                     <div class="code-panel">
                                         <h6>Código Original</h6>
-                                        <textarea id="original-code" class="code-editor"></textarea>
+                                        <textarea id="original-code" class="code-editor" spellcheck="false"></textarea>
                                     </div>
                                     <div class="code-panel">
                                         <h6>Código Corregido</h6>
-                                        <textarea id="corrected-code" class="code-editor"></textarea>
+                                        <textarea id="corrected-code" class="code-editor" spellcheck="false"></textarea>
                                     </div>
                                 </div>
                                 
+                                <!-- Contenedor oculto para resaltado de sintaxis -->
+                                <div id="syntax-highlight-container" style="display: none;">
+                                    <pre><code id="highlighted-code" class="language-javascript"></code></pre>
+                                </div>
+                                
                                 <div class="d-flex justify-content-between mt-3">
-                                    <button id="analyze-btn" class="btn btn-futuristic">
-                                        <i class="bi bi-search"></i> Analizar Código
-                                    </button>
+                                    <div>
+                                        <button id="analyze-btn" class="btn btn-futuristic">
+                                            <i class="bi bi-search"></i> Analizar Código
+                                        </button>
+                                        <button id="process-btn" class="btn btn-primary ms-2">
+                                            <i class="bi bi-robot"></i> Enviar al Asistente
+                                        </button>
+                                    </div>
                                     <div>
                                         <button id="discard-btn" class="btn btn-outline-danger me-2">
                                             <i class="bi bi-x-circle"></i> Descartar
@@ -372,6 +382,11 @@ array.forEach(item => {
     <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-javascript.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-python.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-css.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-markup.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-json.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-bash.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-markdown.min.js"></script>
     <script src="{{ url_for('static', filename='js/websocket.js') }}"></script>
     <script src="{{ url_for('static', filename='js/file-actions.js') }}"></script>
     
@@ -381,15 +396,49 @@ array.forEach(item => {
             const originalCode = document.getElementById('original-code');
             const correctedCode = document.getElementById('corrected-code');
             const analyzeBtn = document.getElementById('analyze-btn');
+            const processBtn = document.getElementById('process-btn');
             const saveBtn = document.getElementById('save-btn');
             const discardBtn = document.getElementById('discard-btn');
             const uploadBtn = document.getElementById('upload-file-btn');
             const fileUpload = document.getElementById('file-upload');
             const progressBar = document.querySelector('.progress-bar');
+            const instructions = document.getElementById('correction-instructions');
+            const highlightedCode = document.getElementById('highlighted-code');
             
             // Variables para controlar el estado
             let currentFilePath = '';
             let isAnalyzing = false;
+            let currentLanguage = '';
+            
+            // Agregar estilos de Prism para una mejor visualización
+            const prismStyles = document.createElement('link');
+            prismStyles.rel = 'stylesheet';
+            prismStyles.href = 'https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css';
+            document.head.appendChild(prismStyles);
+            
+            // Función para aplicar resaltado de sintaxis a un textarea
+            function applyHighlighting(textArea, language = 'javascript') {
+                // Actualizar el contenido del elemento pre>code
+                highlightedCode.textContent = textArea.value;
+                highlightedCode.className = `language-${language}`;
+                
+                // Aplicar resaltado
+                Prism.highlightElement(highlightedCode);
+            }
+            
+            // Aplicar resaltado de sintaxis cuando cambie el contenido
+            originalCode.addEventListener('input', function() {
+                const extension = currentFilePath ? currentFilePath.split('.').pop()?.toLowerCase() : 'js';
+                
+                // Detectar lenguaje
+                let language = 'javascript';
+                if (extension === 'py') language = 'python';
+                else if (extension === 'html') language = 'markup';
+                else if (extension === 'css') language = 'css';
+                else if (extension === 'json') language = 'json';
+                
+                applyHighlighting(this, language);
+            });
             
             // Cargar archivos disponibles
             loadAvailableFiles();
@@ -414,6 +463,16 @@ array.forEach(item => {
                 }
                 
                 analyzeCode();
+            });
+            
+            // Botón para enviar al asistente IA
+            processBtn.addEventListener('click', function() {
+                if (!originalCode.value.trim()) {
+                    showNotification('Por favor carga un archivo o ingresa código para procesar', 'warning');
+                    return;
+                }
+                
+                sendToAssistant();
             });
             
             saveBtn.addEventListener('click', function() {
@@ -707,13 +766,51 @@ array.forEach(item => {
                     return '<p>No hay explicación detallada disponible.</p>';
                 }
                 
-                // Convertir markdown simple a HTML
-                return explanation.replace(/## (.*?)\n/g, '<h6>$1</h6>')
-                                 .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-                                 .replace(/\*(.*?)\*/g, '<em>$1</em>')
-                                 .replace(/```(.*?)```/gs, '<pre><code>$1</code></pre>')
-                                 .replace(/\n\n/g, '<br><br>')
-                                 .replace(/- (.*?)\n/g, '<li>$1</li>');
+                // Detectar y preservar bloques de código para no alterar su formato
+                let codeBlocks = [];
+                let count = 0;
+                const withPlaceholders = explanation.replace(/```([\s\S]*?)```/g, function(match) {
+                    const placeholder = `__CODE_BLOCK_${count}__`;
+                    codeBlocks[count] = match;
+                    count++;
+                    return placeholder;
+                });
+                
+                // Procesar formato markdown
+                let formatted = withPlaceholders
+                    .replace(/### ([^\n]+)/g, '<h5>$1</h5>')
+                    .replace(/## ([^\n]+)/g, '<h4>$1</h4>')
+                    .replace(/# ([^\n]+)/g, '<h3>$1</h3>')
+                    .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+                    .replace(/\*([^*]+)\*/g, '<em>$1</em>')
+                    .replace(/`([^`]+)`/g, '<code>$1</code>')
+                    .replace(/\n\n/g, '</p><p>')
+                    .replace(/\n/g, '<br>');
+                
+                // Restaurar los bloques de código con resaltado de sintaxis
+                for (let i = 0; i < codeBlocks.length; i++) {
+                    const block = codeBlocks[i];
+                    // Intentar detectar el lenguaje del bloque de código
+                    const langMatch = block.match(/```(\w*)/);
+                    const language = langMatch && langMatch[1] ? langMatch[1] : 'javascript';
+                    // Extraer el código sin las marcas de ```
+                    const code = block.replace(/```\w*\n/, '').replace(/```$/, '');
+                    
+                    formatted = formatted.replace(
+                        `__CODE_BLOCK_${i}__`, 
+                        `<pre><code class="language-${language}">${code}</code></pre>`
+                    );
+                }
+                
+                // Envolver en párrafos y retornar
+                if (!formatted.startsWith('<p>')) {
+                    formatted = `<p>${formatted}</p>`;
+                }
+                
+                // Procesar listas
+                formatted = formatted.replace(/- (.*?)\n/g, '<li>$1</li>');
+                
+                return formatted;
             }
             
             function formatFileSize(size) {
@@ -756,10 +853,137 @@ array.forEach(item => {
                 });
             }
             
+            // Función para enviar código al asistente IA
+            function sendToAssistant() {
+                if (isAnalyzing) return;
+                
+                isAnalyzing = true;
+                progressBar.style.width = '0%';
+                processBtn.disabled = true;
+                
+                const userInstructions = instructions.value || 'Revisa este código y hazlo más eficiente';
+                
+                // Detectar lenguaje de programación según la extensión del archivo
+                let codeLanguage = 'code';
+                if (currentFilePath) {
+                    const ext = currentFilePath.split('.').pop()?.toLowerCase();
+                    if (ext === 'py') codeLanguage = 'python';
+                    else if (ext === 'js') codeLanguage = 'javascript';
+                    else if (ext === 'html') codeLanguage = 'html';
+                    else if (ext === 'css') codeLanguage = 'css';
+                    else if (ext === 'json') codeLanguage = 'json';
+                }
+                
+                showNotification('Enviando al asistente...', 'info');
+                
+                // Animación de progreso
+                let progress = 0;
+                const interval = setInterval(() => {
+                    progress += 3;
+                    progressBar.style.width = Math.min(progress, 90) + '%';
+                    
+                    if (progress >= 90) {
+                        clearInterval(interval);
+                    }
+                }, 150);
+                
+                // Construir mensaje para enviar al asistente
+                const message = `Tengo el siguiente código en ${codeLanguage} que necesito mejorar:
+                
+\`\`\`${codeLanguage}
+${originalCode.value}
+\`\`\`
+
+Por favor, ${userInstructions}. Responde con el código mejorado y una explicación de tus cambios.`;
+                
+                // Enviar a la API de chat con el agente desarrollador
+                fetch('/api/chat', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        message: message,
+                        agent_id: 'developer', // Usar el agente de desarrollo
+                        model: 'openai' // Usar OpenAI por defecto
+                    }),
+                })
+                .then(response => response.json())
+                .then(data => {
+                    clearInterval(interval);
+                    progressBar.style.width = '100%';
+                    
+                    if (data.error) {
+                        showNotification('Error al procesar con el asistente: ' + data.error, 'danger');
+                        isAnalyzing = false;
+                        processBtn.disabled = false;
+                        return;
+                    }
+                    
+                    // Extraer el código de la respuesta (entre comillas de código)
+                    const codeMatches = data.response.match(/```[\s\S]*?```/g);
+                    
+                    if (codeMatches && codeMatches.length > 0) {
+                        // Extraer el código del primer bloque
+                        const extractedCode = codeMatches[0]
+                            .replace(/```.*\n/, '') // Quitar la primera línea con ```
+                            .replace(/```$/, '')    // Quitar el último ```
+                            .trim();
+                        
+                        // Actualizar código corregido
+                        correctedCode.value = extractedCode;
+                        
+                        // Colocar toda la respuesta en la explicación detallada
+                        document.getElementById('detailed-explanation').innerHTML = formatDetailedExplanation(data.response);
+                        
+                        // Extraer puntos clave como resumen
+                        let summary = data.response
+                            .split('```')
+                            .pop()
+                            .match(/[•\-*]\s.+/g) || [];
+                        
+                        // Si no hay puntos con viñetas, crear un resumen genérico
+                        if (summary.length === 0) {
+                            summary = ['Código corregido según las instrucciones solicitadas'];
+                        }
+                        
+                        document.getElementById('changes-summary').innerHTML = formatChangeSummary(summary);
+                    } else {
+                        // No se encontró código en la respuesta
+                        document.getElementById('detailed-explanation').innerHTML = formatDetailedExplanation(data.response);
+                        document.getElementById('changes-summary').innerHTML = '<li>Respuesta proporcionada por el asistente</li>';
+                    }
+                    
+                    // Aplicar el resaltado de sintaxis
+                    document.querySelectorAll('pre code').forEach((block) => {
+                        Prism.highlightElement(block);
+                    });
+                    
+                    // Habilitar botones
+                    isAnalyzing = false;
+                    processBtn.disabled = false;
+                    
+                    showNotification('Proceso completado', 'success');
+                    
+                    // Cambiar a la pestaña de explicación
+                    document.querySelector('a[href="#explain-tab"]').click();
+                })
+                .catch(error => {
+                    clearInterval(interval);
+                    progressBar.style.width = '0%';
+                    isAnalyzing = false;
+                    processBtn.disabled = false;
+                    
+                    console.error('Error:', error);
+                    showNotification('Error al comunicarse con el servidor: ' + error.message, 'danger');
+                });
+            }
+            
             // Exponer funciones para uso global
             window.codeCorrector = {
                 loadAvailableFiles,
                 analyzeCode,
+                sendToAssistant,
                 showNotification
             };
         });
