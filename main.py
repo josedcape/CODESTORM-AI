@@ -12,18 +12,8 @@ def create_app():
 
     @app.route('/')
     def root():
-        return """
-        <html>
-        <head>
-            <title>Codestorm Assistant</title>
-            <meta http-equiv="refresh" content="0;url=/codestorm" />
-        </head>
-        <body>
-            <h1>Redirigiendo a Codestorm Assistant...</h1>
-            <p><a href="/codestorm">Haga clic aquí si no es redirigido automáticamente</a></p>
-        </body>
-        </html>
-        """
+        from flask import redirect
+        return redirect('/codestorm')
 
     # Importar el blueprint de Codestorm después de asegurar que la app está definida
     from codestorm_app import app as codestorm_blueprint
