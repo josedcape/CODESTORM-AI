@@ -20,7 +20,28 @@ app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'codestorm-secret-key')
 def get_user_workspace(user_id='default'):
     """Obtiene o crea un espacio de trabajo para el usuario."""
     workspace_dir = os.path.join(os.getcwd(), 'user_workspaces', user_id)
+    
+    # Asegurarnos de que el directorio exista
     os.makedirs(workspace_dir, exist_ok=True)
+    
+    # Crear un archivo README.md si el workspace está vacío
+    readme_path = os.path.join(workspace_dir, 'README.md')
+    if not os.path.exists(readme_path) and len(os.listdir(workspace_dir)) == 0:
+        with open(readme_path, 'w', encoding='utf-8') as f:
+            f.write("""# Workspace de Usuario
+
+Este es tu espacio de trabajo personal en CODESTORM Assistant.
+
+## ¿Qué puedes hacer aquí?
+
+- Crear nuevos archivos y carpetas
+- Editar código con el asistente
+- Ejecutar comandos y aplicaciones
+- Gestionar tus proyectos
+
+¡Comienza creando un nuevo archivo o preguntando al asistente cómo ayudarte!
+""")
+            
     return workspace_dir
 
 def list_files(directory='.', user_id='default'):
