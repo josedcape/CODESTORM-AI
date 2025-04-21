@@ -1,160 +1,89 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Codestorm Assistant</title>
-    <link href="https://cdn.replit.com/agent/bootstrap-agent-dark-theme.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-    <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/prism.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-python.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-javascript.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-css.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-html.min.js"></script>
-</head>
-<body data-bs-theme="dark">
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
-        <div class="container-fluid">
-            <a class="navbar-brand" href="/">
-                <span class="text-primary fw-bold">Codestorm</span> Assistant
-            </a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-            <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav me-auto">
-                    <li class="nav-item">
-                        <a class="nav-link active" href="/">Inicio</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="/dashboard">Panel</a>
-                    </li>
-                </ul>
-            </div>
+{% extends 'base.html' %}
+
+{% block title %}Codestorm Assistant - Inicio{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row mb-5">
+        <div class="col-md-12 text-center">
+            <h1 class="display-3 fw-bold">
+                <span class="text-primary">Code</span><span class="text-info">storm</span> 
+                <span class="text-light">Assistant</span>
+            </h1>
+            <p class="lead">El asistente de desarrollo potenciado por IA que llevará tus proyectos al siguiente nivel</p>
         </div>
-    </nav>
+    </div>
 
-    <div class="container mt-4">
-        <div class="row">
-            <div class="col-md-6">
-                <div class="card">
-                    <div class="card-header bg-primary text-white">
-                        <h4 class="mb-0">Asistente de Desarrollo</h4>
-                    </div>
-                    <div class="card-body">
-                        <p class="lead">Bienvenido a Codestorm Assistant, tu asistente inteligente para desarrollo de software.</p>
-                        <p>Utiliza lenguaje natural para:</p>
-                        <ul>
-                            <li>Crear archivos de código</li>
-                            <li>Ejecutar comandos en terminal</li>
-                            <li>Buscar y editar contenido</li>
-                            <li>Generar soluciones completas</li>
-                        </ul>
-                        <div class="d-grid gap-2 mt-4">
-                            <a href="/dashboard" class="btn btn-primary">Ir al panel de control</a>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-6">
-                <div class="card">
-                    <div class="card-header bg-secondary text-white">
-                        <h4 class="mb-0">Consulta Rápida</h4>
-                    </div>
-                    <div class="card-body">
-                        <form id="quick-query-form">
-                            <div class="mb-3">
-                                <label for="queryType" class="form-label">Tipo de consulta</label>
-                                <select class="form-select" id="queryType">
-                                    <option value="command">Ejecutar comando</option>
-                                    <option value="file">Crear archivo</option>
-                                    <option value="question">Hacer pregunta</option>
-                                </select>
-                            </div>
-                            <div class="mb-3">
-                                <label for="queryContent" class="form-label">Consulta</label>
-                                <textarea class="form-control" id="queryContent" rows="3" placeholder="Escribe tu consulta aquí..."></textarea>
-                            </div>
-                            <div class="d-grid">
-                                <button type="submit" class="btn btn-secondary">Enviar consulta</button>
-                            </div>
-                        </form>
-                        
-                        <div class="mt-4">
-                            <p class="text-muted">Ejemplos de consultas:</p>
-                            <div class="accordion" id="examplesAccordion">
-                                <div class="accordion-item">
-                                    <h2 class="accordion-header">
-                                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#example1">
-                                            Ejemplo 1: Ejecutar comando
-                                        </button>
-                                    </h2>
-                                    <div id="example1" class="accordion-collapse collapse" data-bs-parent="#examplesAccordion">
-                                        <div class="accordion-body">
-                                            <p>Para listar archivos en el directorio actual:</p>
-                                            <pre><code class="language-bash">ls -la</code></pre>
-                                            <button class="btn btn-sm btn-outline-primary copy-example">Copiar</button>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="accordion-item">
-                                    <h2 class="accordion-header">
-                                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#example2">
-                                            Ejemplo 2: Crear archivo
-                                        </button>
-                                    </h2>
-                                    <div id="example2" class="accordion-collapse collapse" data-bs-parent="#examplesAccordion">
-                                        <div class="accordion-body">
-                                            <p>Para crear un archivo Python de saludo:</p>
-                                            <pre><code class="language-python">saludo.py
-
-def saludar(nombre):
-    return f"¡Hola, {nombre}!"
-
-if __name__ == "__main__":
-    nombre = input("¿Cómo te llamas? ")
-    print(saludar(nombre))
-</code></pre>
-                                            <button class="btn btn-sm btn-outline-primary copy-example">Copiar</button>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="accordion-item">
-                                    <h2 class="accordion-header">
-                                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#example3">
-                                            Ejemplo 3: Preguntar algo
-                                        </button>
-                                    </h2>
-                                    <div id="example3" class="accordion-collapse collapse" data-bs-parent="#examplesAccordion">
-                                        <div class="accordion-body">
-                                            <p>Para hacer una pregunta al asistente, escribe:</p>
-                                            <pre><code class="language-plaintext">¿Cuáles son los mejores patrones de diseño para una aplicación web en Python?</code></pre>
-                                            <button class="btn btn-sm btn-outline-primary copy-example">Copiar</button>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+    <div class="row justify-content-center mb-5">
+        <div class="col-md-8">
+            <div class="card border-primary bg-dark mb-4">
+                <div class="card-body">
+                    <h3 class="card-title text-primary mb-3">¿Qué es Codestorm Assistant?</h3>
+                    <p class="card-text">
+                        Codestorm Assistant es un entorno de desarrollo completo potenciado por IA que convierte tus instrucciones en lenguaje natural en código funcional, comandos de terminal y acciones sobre archivos.
+                    </p>
+                    <p class="card-text">
+                        Con múltiples agentes especializados, te ofrece asistencia para cualquier tarea de desarrollo, desde la creación de interfaces de usuario hasta la arquitectura de sistemas complejos.
+                    </p>
                 </div>
             </div>
         </div>
     </div>
 
-    <footer class="bg-dark text-light mt-5 py-3">
-        <div class="container">
-            <div class="row">
-                <div class="col-md-6">
-                    <p>&copy; 2025 Codestorm Assistant</p>
-                </div>
-                <div class="col-md-6 text-md-end">
-                    <p>Versión 1.0.0</p>
+    <div class="row mb-5">
+        <div class="col-md-4 mb-4">
+            <div class="card h-100 border-info bg-dark">
+                <div class="card-body">
+                    <h4 class="card-title text-info">
+                        <i class="bi bi-chat-dots me-2"></i>Chat Inteligente
+                    </h4>
+                    <p class="card-text">
+                        Comunícate con diferentes agentes especializados para obtener soluciones precisas a tus problemas de desarrollo.
+                    </p>
+                    <a href="/chat" class="btn btn-outline-info mt-3">Abrir Chat</a>
                 </div>
             </div>
         </div>
-    </footer>
+        <div class="col-md-4 mb-4">
+            <div class="card h-100 border-info bg-dark">
+                <div class="card-body">
+                    <h4 class="card-title text-info">
+                        <i class="bi bi-terminal me-2"></i>Ejecución de Comandos
+                    </h4>
+                    <p class="card-text">
+                        Ejecuta comandos directamente desde la interfaz o pide al asistente que interprete tus instrucciones en lenguaje natural.
+                    </p>
+                    <a href="/dashboard" class="btn btn-outline-info mt-3">Ir al Panel</a>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4 mb-4">
+            <div class="card h-100 border-info bg-dark">
+                <div class="card-body">
+                    <h4 class="card-title text-info">
+                        <i class="bi bi-file-earmark-code me-2"></i>Generación de Código
+                    </h4>
+                    <p class="card-text">
+                        Crea archivos completos a partir de descripciones en lenguaje natural usando agentes especializados por dominio.
+                    </p>
+                    <a href="/chat?agent=developer" class="btn btn-outline-info mt-3">Generar Código</a>
+                </div>
+            </div>
+        </div>
+    </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
-</body>
-</html>
+    <div class="row justify-content-center">
+        <div class="col-md-8 text-center">
+            <div class="alert alert-primary" role="alert">
+                <h4 class="alert-heading">¡Comienza ahora!</h4>
+                <p>Dirígete al Panel para gestionar tus archivos o abre el Asistente para empezar a trabajar con la IA.</p>
+                <hr>
+                <div class="d-flex justify-content-center gap-3">
+                    <a href="/dashboard" class="btn btn-primary">Panel de Control</a>
+                    <a href="/chat" class="btn btn-info">Asistente IA</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
