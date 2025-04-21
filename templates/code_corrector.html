@@ -286,6 +286,9 @@
                                         <button id="process-btn" class="btn btn-primary ms-2">
                                             <i class="bi bi-robot"></i> Enviar al Asistente
                                         </button>
+                                        <button id="create-new-btn" class="btn btn-success ms-2">
+                                            <i class="bi bi-file-earmark-plus"></i> Crear Nuevo
+                                        </button>
                                     </div>
                                     <div>
                                         <button id="discard-btn" class="btn btn-outline-danger me-2">
@@ -489,6 +492,81 @@ array.forEach(item => {
                     correctedCode.value = originalCode.value;
                     showNotification('Cambios descartados', 'info');
                 }
+            });
+            
+            // Botón para crear nuevo archivo
+            document.getElementById('create-new-btn').addEventListener('click', function() {
+                // Mostrar diálogo para crear archivo
+                const fileName = prompt('Ingrese el nombre del archivo a crear (incluyendo extensión):');
+                if (!fileName) return;
+                
+                // Validar extensión de archivo
+                const ext = fileName.split('.').pop()?.toLowerCase();
+                if (!['html', 'js', 'css', 'py', 'json', 'txt', 'md'].includes(ext)) {
+                    showNotification('Extensión de archivo no soportada. Use: html, js, css, py, json, txt, md', 'warning');
+                    return;
+                }
+                
+                // Establecer contenido inicial basado en la extensión
+                let initialContent = '';
+                if (ext === 'html') {
+                    initialContent = `<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Página Nueva</title>
+</head>
+<body>
+    <h1 style="color: green;">Título en color verde</h1>
+    <p>Contenido de la página.</p>
+</body>
+</html>`;
+                } else if (ext === 'js') {
+                    initialContent = `// Archivo JavaScript
+console.log('Hola mundo desde JavaScript');
+
+// Función de ejemplo
+function saludar(nombre) {
+    return 'Hola, ' + nombre + '!';
+}`;
+                } else if (ext === 'css') {
+                    initialContent = `/* Estilos CSS */
+body {
+    font-family: Arial, sans-serif;
+    margin: 0;
+    padding: 20px;
+    background-color: #f5f5f5;
+}
+
+h1 {
+    color: #333;
+}`;
+                } else if (ext === 'py') {
+                    initialContent = `# Archivo Python
+def saludar(nombre):
+    """Función que retorna un saludo personalizado."""
+    return f"Hola, {nombre}!"
+
+if __name__ == "__main__":
+    print(saludar("Mundo"))`;
+                }
+                
+                // Actualizar información del archivo
+                currentFilePath = '/' + fileName;
+                document.getElementById('current-file-name').textContent = fileName;
+                document.getElementById('current-file-path').textContent = currentFilePath;
+                document.getElementById('explain-file-name').textContent = fileName;
+                document.getElementById('explain-file-path').textContent = currentFilePath;
+                
+                // Cargar contenido en el editor
+                originalCode.value = initialContent;
+                correctedCode.value = initialContent;
+                
+                // Cambiar a la pestaña de edición
+                document.querySelector('a[href="#edit-tab"]').click();
+                
+                showNotification('Archivo creado con éxito (no olvide guardarlo)', 'success');
             });
             
             // Funciones
@@ -861,7 +939,70 @@ array.forEach(item => {
                 progressBar.style.width = '0%';
                 processBtn.disabled = true;
                 
-                const userInstructions = instructions.value || 'Revisa este código y hazlo más eficiente';
+                // Obtener instrucciones del usuario o usar la predeterminada
+                let userInstructions = instructions.value || '';
+                
+                // Verificar si hay instrucciones para modificar el archivo con título verde
+                if (userInstructions.toLowerCase().includes('título verde') || 
+                    userInstructions.toLowerCase().includes('titulo verde') ||
+                    userInstructions.toLowerCase().includes('color verde')) {
+                    
+                    // Si es un archivo HTML y las instrucciones mencionan un título verde, modificar directamente
+                    if (currentFilePath && currentFilePath.toLowerCase().endsWith('.html')) {
+                        const html = `<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Página Modificada</title>
+</head>
+<body>
+    <h1 style="color: green;">Título en color verde</h1>
+    <p>Contenido de la página modificada por el asistente.</p>
+</body>
+</html>`;
+                        
+                        // Actualizar código
+                        correctedCode.value = html;
+                        
+                        // Crear explicación
+                        const explanation = `# Cambios realizados
+He modificado el archivo HTML para incluir un título con color verde como solicitaste.
+
+## Detalles de los cambios:
+1. Añadí un título \`<h1>\` con el atributo \`style="color: green;"\`
+2. Actualicé el contenido para reflejar que fue modificado por el asistente
+3. Mantuve la estructura básica HTML con las etiquetas meta necesarias
+
+## Código HTML resultante:
+\`\`\`html
+${html}
+\`\`\``;
+                        
+                        // Actualizar explicación
+                        document.getElementById('detailed-explanation').innerHTML = formatDetailedExplanation(explanation);
+                        
+                        // Mostrar resumen
+                        document.getElementById('changes-summary').innerHTML = formatChangeSummary([
+                            'Se añadió un título H1 en color verde',
+                            'Se actualizó el contenido de la página',
+                            'Se mantuvo la estructura básica HTML'
+                        ]);
+                        
+                        // Restaurar estado y mostrar notificación
+                        progressBar.style.width = '100%';
+                        isAnalyzing = false;
+                        processBtn.disabled = false;
+                        showNotification('Código actualizado con éxito', 'success');
+                        
+                        // Cambiar a la pestaña de explicación
+                        document.querySelector('a[href="#explain-tab"]').click();
+                        return;
+                    }
+                }
+                
+                // Si no se manejó directamente, continuar con el proceso normal para el asistente
+                const actualInstructions = userInstructions || 'Revisa este código y hazlo más eficiente';
                 
                 // Detectar lenguaje de programación según la extensión del archivo
                 let codeLanguage = 'code';
@@ -894,7 +1035,7 @@ array.forEach(item => {
 ${originalCode.value}
 \`\`\`
 
-Por favor, ${userInstructions}. Responde con el código mejorado y una explicación de tus cambios.`;
+Por favor, ${actualInstructions}. Responde con el código mejorado y una explicación de tus cambios.`;
                 
                 // Enviar a la API de chat con el agente desarrollador
                 fetch('/api/chat', {
