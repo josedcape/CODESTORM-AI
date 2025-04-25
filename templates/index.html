@@ -4,26 +4,26 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Codestorm-Assistant</title>
-    
+
     <!-- Bootstrap CSS -->
     <link href="https://cdn.replit.com/agent/bootstrap-agent-dark-theme.min.css" rel="stylesheet">
-    
+
     <!-- Bootstrap Icons -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
-    
+
     <!-- Estilos compartidos de base -->
-    <link href="{{ url_for('static', filename='css/style.css') }}" rel="stylesheet">
-    
+    <link href="/static/css/style.css" rel="stylesheet">
+
     <style>
         /* Los estilos propios del index se mantienen, pero quitamos los de navbar
            que ahora vienen de style.css */
-        
+
         .logo-container {
             display: flex;
             align-items: center;
             margin-bottom: 2rem;
         }
-        
+
         .logo-img {
             width: 120px;
             height: 120px;
@@ -32,11 +32,11 @@
             border: 3px solid #1E88E5;
             box-shadow: 0 0 15px rgba(0, 150, 255, 0.5);
         }
-        
+
         .logo-text {
             margin-left: 1rem;
         }
-        
+
         .hero-section {
             background: linear-gradient(135deg, rgba(10, 33, 73, 0.9) 0%, rgba(13, 71, 161, 0.8) 100%);
             border-radius: 10px;
@@ -45,7 +45,7 @@
             box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
             border: 1px solid rgba(255, 255, 255, 0.1);
         }
-        
+
         .feature-card {
             background: rgba(9, 20, 40, 0.7);
             border: 1px solid rgba(30, 136, 229, 0.2);
@@ -55,30 +55,30 @@
             transition: all 0.3s ease;
             box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2);
         }
-        
+
         .feature-card:hover {
             transform: translateY(-5px);
             box-shadow: 0 8px 20px rgba(0, 100, 255, 0.3);
             border-color: rgba(30, 136, 229, 0.5);
         }
-        
+
         .feature-icon {
             font-size: 2rem;
             color: #1E88E5;
             margin-bottom: 1rem;
         }
-        
+
         @media (max-width: 768px) {
             .logo-container {
                 flex-direction: column;
                 text-align: center;
             }
-            
+
             .logo-text {
                 margin-left: 0;
                 margin-top: 1rem;
             }
-            
+
             .logo-img {
                 width: 100px;
                 height: 100px;
@@ -123,12 +123,12 @@
             </div>
         </div>
     </nav>
-    
+
     <!-- Hero Section -->
     <div class="container mt-4">
         <div class="hero-section">
             <div class="logo-container">
-                <img src="{{ url_for('static', filename='images/logo.jpg') }}" alt="Codestorm Assistant Logo" class="logo-img">
+                <img src="/static/images/logo.jpg" alt="Codestorm Assistant Logo" class="logo-img">
                 <div class="logo-text">
                     <h1 class="text-light">Codestorm Assistant</h1>
                     <p class="lead text-light">Asistente de desarrollo potenciado por IA para mejorar tu experiencia de programación</p>
@@ -161,7 +161,7 @@
                                 <option value="gemini">Google (Gemini)</option>
                             </select>
                         </div>
-                        
+
                         <div class="mb-3">
                             <label for="agent-select" class="form-label">Agente Especializado:</label>
                             <select id="agent-select" class="form-select form-select-sm futuristic-select">
@@ -215,7 +215,7 @@
                     </div>
                 </div>
             </div>
-            
+
             <!-- Terminal Output Column -->
             <div class="col-md-8 mb-4">
                 <div class="card h-100">
@@ -224,7 +224,7 @@
                         <div class="mb-3">
                             <label class="form-label">Comando Generado:</label>
                             <pre id="command-display" class="terminal-output p-2 mb-3"></pre>
-                            
+
                             <label class="form-label">Resultado:</label>
                             <pre id="output-display" class="terminal-output p-2"></pre>
                         </div>
@@ -232,7 +232,7 @@
                 </div>
             </div>
         </div>
-        
+
         <!-- Features Section -->
         <div class="row mt-4 mb-5">
             <div class="col-md-4 mb-4">
@@ -288,42 +288,42 @@
             const fileExplorer = document.getElementById('file-explorer');
             const directoryPath = document.getElementById('directory-path');
             const refreshBtn = document.getElementById('refresh-btn');
-            
+
             // Command history
             let commandHistory = [];
             let historyIndex = -1;
-            
+
             // Load initial files
             loadFiles('.');
-            
+
             // Event listeners
             executeBtn.addEventListener('click', executeInstruction);
             clearBtn.addEventListener('click', clearInputs);
             refreshBtn.addEventListener('click', () => loadFiles(directoryPath.textContent || '.'));
-            
+
             instructionInput.addEventListener('keydown', function(e) {
                 if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
                     e.preventDefault();
                     executeInstruction();
                 }
             });
-            
+
             function executeInstruction() {
                 const instruction = instructionInput.value.trim();
                 const model = modelSelect.value;
-                
+
                 if (!instruction) return;
-                
+
                 // Add to history
                 if (commandHistory.length === 0 || commandHistory[commandHistory.length - 1] !== instruction) {
                     commandHistory.push(instruction);
                     historyIndex = commandHistory.length;
                 }
-                
+
                 // Show loading
                 spinner.classList.remove('d-none');
                 executeBtn.disabled = true;
-                
+
                 // Process instruction
                 const agent = document.getElementById('agent-select').value;
                 fetch('/api/process', {
@@ -346,10 +346,10 @@
                         commandDisplay.textContent = '';
                         outputDisplay.textContent = data.result || 'Instrucción procesada correctamente';
                     }
-                    
+
                     // Reload file list
                     loadFiles(directoryPath.textContent || '.');
-                    
+
                     // Show success notification
                     showNotification(data.result || 'Instrucción procesada correctamente', 'success');
                 })
@@ -364,38 +364,38 @@
                     executeBtn.disabled = false;
                 });
             }
-            
+
             function clearInputs() {
                 instructionInput.value = '';
                 commandDisplay.textContent = '';
                 outputDisplay.textContent = '';
                 instructionInput.focus();
             }
-            
+
             function formatOutput(stdout, stderr, status) {
                 let output = '';
-                
+
                 if (stdout) {
                     output += `<div class="mb-2"><strong>Salida:</strong><pre class="mb-0 text-success">${stdout}</pre></div>`;
                 }
-                
+
                 if (stderr) {
                     output += `<div class="mb-2"><strong>Error:</strong><pre class="mb-0 text-danger">${stderr}</pre></div>`;
                 }
-                
+
                 if (status !== undefined) {
                     const statusClass = status === 0 ? 'text-success' : 'text-danger';
                     output += `<div><strong>Estado:</strong> <span class="${statusClass}">${status}</span></div>`;
                 }
-                
+
                 return output || 'No hay salida';
             }
-            
+
             function loadFiles(directory) {
                 fetch(`/api/files?directory=${encodeURIComponent(directory)}`)
                     .then(response => response.json())
                     .then(data => {
-                        if (data.success) {
+                        if (data.success && Array.isArray(data.files)) {
                             displayFiles(data.files, data.directory);
                             directoryPath.textContent = data.directory === '.' ? '/' : data.directory;
                         } else {
@@ -407,10 +407,10 @@
                         showNotification('Error al cargar archivos', 'danger');
                     });
             }
-            
+
             function displayFiles(files, directory) {
                 fileExplorer.innerHTML = '';
-                
+
                 // If not in root directory, add option to go up
                 if (directory !== '.') {
                     const parentDir = directory.split('/').slice(0, -1).join('/') || '.';
@@ -424,11 +424,11 @@
                     upDirectory.addEventListener('click', () => loadFiles(parentDir));
                     fileExplorer.appendChild(upDirectory);
                 }
-                
+
                 // Sort: directories first, then files
                 const directories = files.filter(f => f.type === 'directory');
                 const regularFiles = files.filter(f => f.type === 'file');
-                
+
                 // Add directories
                 directories.forEach(dir => {
                     const dirElement = document.createElement('div');
@@ -441,23 +441,23 @@
                     dirElement.addEventListener('click', () => loadFiles(dir.path));
                     fileExplorer.appendChild(dirElement);
                 });
-                
+
                 // Add files
                 regularFiles.forEach(file => {
                     const fileElement = document.createElement('div');
                     fileElement.className = 'p-2 border-bottom d-flex align-items-center justify-content-between';
-                    
+
                     // Determine icon based on extension
                     let icon = 'bi-file-earmark';
                     const ext = file.name.split('.').pop().toLowerCase();
-                    
+
                     if (['html', 'htm'].includes(ext)) icon = 'bi-file-earmark-code';
                     else if (['js', 'ts'].includes(ext)) icon = 'bi-filetype-js';
                     else if (['css', 'scss'].includes(ext)) icon = 'bi-filetype-css';
                     else if (['py'].includes(ext)) icon = 'bi-filetype-py';
                     else if (['jpg', 'jpeg', 'png', 'gif'].includes(ext)) icon = 'bi-file-earmark-image';
                     else if (['md'].includes(ext)) icon = 'bi-file-earmark-text';
-                    
+
                     fileElement.innerHTML = `
                         <div>
                             <i class="bi ${icon} me-2 text-muted"></i>
@@ -471,43 +471,43 @@
                     });
                     fileExplorer.appendChild(fileElement);
                 });
-                
+
                 // Show message if no files
                 if (files.length === 0) {
                     fileExplorer.innerHTML = '<div class="p-3 text-center text-muted">No hay archivos en este directorio</div>';
                 }
             }
-            
+
             function formatFileSize(bytes) {
                 if (bytes === 0) return '0 Bytes';
-                
+
                 const k = 1024;
                 const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
                 const i = Math.floor(Math.log(bytes) / Math.log(k));
-                
+
                 return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
             }
-            
+
             function showNotification(message, type = 'info') {
                 const container = document.getElementById('notifications');
                 if (!container) return;
-                
+
                 const notification = document.createElement('div');
                 notification.className = `alert alert-${type} alert-dismissible fade show`;
                 notification.innerHTML = `
                     ${message}
                     <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
                 `;
-                
+
                 container.appendChild(notification);
-                
+
                 // Auto-remove after 5 seconds
                 setTimeout(() => {
                     notification.classList.remove('show');
                     setTimeout(() => notification.remove(), 300);
                 }, 5000);
             }
-            
+
             // Command history navigation
             document.getElementById('previous-btn').addEventListener('click', () => {
                 if (historyIndex > 0) {
@@ -515,7 +515,7 @@
                     instructionInput.value = commandHistory[historyIndex];
                 }
             });
-            
+
             document.getElementById('next-btn').addEventListener('click', () => {
                 if (historyIndex < commandHistory.length - 1) {
                     historyIndex++;
@@ -525,15 +525,15 @@
                     instructionInput.value = '';
                 }
             });
-            
+
             // New file/folder buttons
             document.getElementById('new-file-btn').addEventListener('click', () => {
                 const filename = prompt('Nombre del nuevo archivo:');
                 if (!filename) return;
-                
+
                 const currentDir = directoryPath.textContent === '/' ? '.' : directoryPath.textContent;
                 const filePath = currentDir === '.' ? filename : `${currentDir}/${filename}`;
-                
+
                 fetch('/api/files/create', {
                     method: 'POST',
                     headers: {
@@ -558,14 +558,14 @@
                     showNotification('Error al crear archivo', 'danger');
                 });
             });
-            
+
             document.getElementById('new-folder-btn').addEventListener('click', () => {
                 const foldername = prompt('Nombre de la nueva carpeta:');
                 if (!foldername) return;
-                
+
                 const currentDir = directoryPath.textContent === '/' ? '.' : directoryPath.textContent;
                 const folderPath = currentDir === '.' ? foldername : `${currentDir}/${foldername}`;
-                
+
                 fetch('/api/files/create', {
                     method: 'POST',
                     headers: {
