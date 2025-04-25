@@ -485,11 +485,20 @@
 
                 // Actualizar vista de código
                 correctedCode.textContent = result.correctedCode;
-                correctedCode.className = `language-${currentLanguage}`;
+                
+                // Aplicar resaltado de manera segura
                 try {
-                    Prism.highlightElement(correctedCode);
+                    // Solo aplicar clase si el lenguaje está soportado
+                    if (Prism.languages[currentLanguage]) {
+                        correctedCode.className = `language-${currentLanguage}`;
+                        Prism.highlightElement(correctedCode);
+                    } else {
+                        // Fallback a texto plano si el lenguaje no está soportado
+                        correctedCode.className = "";
+                    }
                 } catch (e) {
                     console.warn("Error al aplicar resaltado de sintaxis:", e);
+                    correctedCode.className = "";
                 }
 
                 // Actualizar vista de cambios
@@ -856,7 +865,8 @@ button:hover {
 }
 
 footer {
-    text-alignpadding: 1rem;
+    text-align: center;
+    padding: 1rem;
     background-color: var(--secondary-color);
     color: var(--text-light);
 }
@@ -1074,6 +1084,9 @@ int main() {
 
             return explanation;
         }
+        
+        // Desactivar Prism para ciertos lenguajes problemáticos
+        Prism.languages.cpp = Prism.languages.cpp || {};
     });
 </script>
 {% endblock %}
