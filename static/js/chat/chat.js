@@ -173,7 +173,7 @@ function setupUIElements() {
  * Comprueba la conexión con el servidor de manera simplificada
  */
 function checkServerConnection() {
-    // Check health endpoint first with more robust error handling
+    // Check health endpoint with robust error handling
     silentLog('Verificando estado del servidor...');
     
     fetch(window.app.chat.apiEndpoints.health)
@@ -186,7 +186,11 @@ function checkServerConnection() {
                 }).then(chatResponse => {
                     if (chatResponse.ok || chatResponse.status === 204) {
                         silentLog('Chat endpoint is available');
-                        document.getElementById('status-indicator')?.classList.add('status-connected');
+                        const statusIndicator = document.getElementById('status-indicator');
+                        if (statusIndicator) {
+                            statusIndicator.style.backgroundColor = "#FFC107"; // amarillo
+                            statusIndicator.title = "Conexión parcial (endpoints limitados)";
+                        }
                         return { status: 'partial', message: 'Chat endpoint available but health check failed' };
                     } else {
                         throw new Error('All endpoints unavailable');
@@ -198,15 +202,23 @@ function checkServerConnection() {
         .then(data => {
             if (data.status === 'ok' || data.status === 'partial') {
                 silentLog('Server check passed:', data.status);
-                document.getElementById('status-indicator')?.classList.add('status-connected');
+                const statusIndicator = document.getElementById('status-indicator');
+                if (statusIndicator) {
+                    statusIndicator.style.backgroundColor = "#28a745"; // verde
+                    statusIndicator.title = "Servidor conectado";
+                }
             } else {
                 throw new Error('Server health check failed');
             }
         })
         .catch(error => {
             console.error('Server health check failed:', error);
-            addSystemMessage("Advertencia: Conexión limitada al servidor. Algunas funciones podrían no estar disponibles.");
-            document.getElementById('status-indicator')?.classList.add('status-disconnected');
+            // Solo mostrar mensaje de sistema en caso de error total
+            const statusIndicator = document.getElementById('status-indicator');
+            if (statusIndicator) {
+                statusIndicator.style.backgroundColor = "#dc3545"; // rojo
+                statusIndicator.title = "Servidor desconectado";
+            }
             
             // Try a ping to fallback endpoint as last resort
             fetch(window.app.chat.apiEndpoints.fallback, {
@@ -214,10 +226,14 @@ function checkServerConnection() {
             }).then(fallbackResponse => {
                 if (fallbackResponse.ok || fallbackResponse.status === 204) {
                     silentLog('Fallback endpoint is available');
-                    addSystemMessage("Endpoint alternativo disponible. Utilizando modo de respaldo.");
+                    if (statusIndicator) {
+                        statusIndicator.style.backgroundColor = "#FFC107"; // amarillo
+                        statusIndicator.title = "Usando conexión de respaldo";
+                    }
                 }
             }).catch(() => {
                 silentLog('All endpoints unavailable');
+                addSystemMessage("Error de conexión: No se pudo conectar con el servidor.");
             });
         });
 }
@@ -259,18 +275,22 @@ async function sendMessage() {
         sendButton.style.opacity = '0.6';
     }
 
+    // Mantener el contexto en un tamaño razonable (últimos 10 mensajes)
+    const contextToSend = window.app.chat.context.slice(-10);
+    
     // Preparar datos para enviar al servidor
     const requestData = {
         message: userMessage,
         agent_id: window.app.chat.activeAgent,
         model: window.app.chat.activeModel,
-        context: window.app.chat.context.slice(-10)  // Últimos 10 mensajes para contexto
+        context: contextToSend
     };
 
     // Mostrar indicador de carga
     const loadingMessageId = addLoadingMessage();
 
     try {
+        // No mostrar el debug en la interfaz
         silentLog('Enviando mensaje al servidor:', requestData);
 
         const response = await fetch('/api/chat', {
@@ -299,7 +319,7 @@ async function sendMessage() {
         }
 
         if (data.response) {
-            // Añadir respuesta al contexto y mostrarla
+            // Añadir respuesta al contexto
             window.app.chat.context.push({
                 role: 'assistant',
                 content: data.response

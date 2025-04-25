@@ -83,29 +83,6 @@ body {
     margin-right: 0.5rem;
 }
 
-.workspace-badge {
-    background-color: var(--primary-light);
-    color: var(--text-light);
-    border-radius: 20px;
-    padding: 0.25rem 0.75rem;
-    font-size: 0.8rem;
-    margin-right: 1rem;
-}
-
-.server-status {
-    display: flex;
-    align-items: center;
-    font-size: 0.8rem;
-}
-
-.status-indicator {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    background-color: var(--success-color);
-    margin-right: 0.5rem;
-}
-
 /* Main Content */
 .main-content {
     display: flex;
@@ -268,31 +245,17 @@ body {
     background-color: rgba(4, 12, 24, 0.8);
 }
 
-.message {
+/* Mensajes de chat optimizados */
+.message-container {
     margin-bottom: 1.5rem;
     animation: fadeIn 0.3s ease-out;
     max-width: 90%;
+    position: relative;
 }
 
 @keyframes fadeIn {
     from { opacity: 0; transform: translateY(10px); }
     to { opacity: 1; transform: translateY(0); }
-}
-
-.message.system {
-    margin: 0 auto;
-    background-color: rgba(10, 33, 73, 0.5);
-    border-radius: 8px;
-    padding: 0.5rem 1rem;
-    width: fit-content;
-    text-align: center;
-    border: 1px solid var(--border-medium);
-}
-
-.chat-message {
-    margin-bottom: 1.5rem;
-    animation: fadeIn 0.3s ease-out;
-    max-width: 90%;
 }
 
 .user-message {
@@ -301,6 +264,7 @@ body {
     border-radius: 10px 10px 0 10px;
     padding: 1rem;
     border: 1px solid var(--border-light);
+    color: var(--text-light);
 }
 
 .agent-message {
@@ -310,6 +274,7 @@ body {
     padding: 1rem;
     border: 1px solid var(--accent-blue);
     border-top-width: 2px;
+    color: var(--text-light);
 }
 
 .system-message {
@@ -321,32 +286,8 @@ body {
     max-width: 85%;
     text-align: center;
     border: 1px solid var(--border-medium);
-}
-
-.error-message {
-    margin: 1rem auto;
-    background-color: rgba(220, 53, 69, 0.3);
-    border-radius: 8px;
-    padding: 0.5rem 1rem;
-    width: fit-content;
-    max-width: 85%;
-    text-align: center;
-    border: 1px solid rgba(220, 53, 69, 0.5);
-    color: #ffcccc;
-}
-
-.debug-message {
-    margin: 1rem auto;
-    background-color: rgba(0, 123, 255, 0.2);
-    border-radius: 8px;
-    padding: 0.5rem 1rem;
-    width: fit-content;
-    max-width: 85%;
-    text-align: left;
-    border: 1px solid rgba(0, 123, 255, 0.4);
-    color: #ccddff;
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 0.8rem;
+    color: var(--text-medium);
+    font-size: 0.85rem;
 }
 
 .message-header {
@@ -367,51 +308,78 @@ body {
 }
 
 .message-content {
-    color: var(--text-light);
     line-height: 1.5;
     font-size: 0.95rem;
 }
 
-.system-message .message-content {
-    color: var(--text-medium);
-    font-size: 0.85rem;
+.message-actions {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 0.5rem;
+    gap: 0.5rem;
 }
 
+.btn-icon {
+    background: transparent;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: rgba(255, 255, 255, 0.7);
+    border-radius: 4px;
+    padding: 0.25rem 0.5rem;
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-icon:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: white;
+}
+
+/* Debug message estilizado pero discreto */
+.debug-message {
+    margin: 0.5rem auto;
+    background-color: rgba(0, 123, 255, 0.1);
+    border-radius: 4px;
+    padding: 0.25rem 0.5rem;
+    max-width: 90%;
+    font-size: 0.75rem;
+    font-family: monospace;
+    color: rgba(255, 255, 255, 0.5);
+    border: 1px solid rgba(0, 123, 255, 0.2);
+}
+
+/* Indicador de carga */
 .loading-message {
     margin: 1rem auto;
-    background-color: rgba(10, 33, 73, 0.3);
-    border-radius: 8px;
-    padding: 0.7rem 1rem;
-    width: fit-content;
-    display: flex;
-    align-items: center;
-    border: 1px solid rgba(70, 130, 243, 0.3);
-}
-
-.loading-animation {
+    padding: 0.7rem;
     display: flex;
     align-items: center;
     justify-content: center;
+}
+
+.typing-indicator {
+    display: flex;
+    align-items: center;
     gap: 0.3rem;
 }
 
-.loading-dot {
+.typing-indicator span {
     width: 8px;
     height: 8px;
     border-radius: 50%;
     background-color: var(--accent-gold);
-    animation: loadingAnimation 1.4s infinite ease-in-out both;
+    animation: typing 1.4s infinite ease-in-out both;
 }
 
-.loading-dot:nth-child(1) {
+.typing-indicator span:nth-child(1) {
     animation-delay: -0.32s;
 }
 
-.loading-dot:nth-child(2) {
+.typing-indicator span:nth-child(2) {
     animation-delay: -0.16s;
 }
 
-@keyframes loadingAnimation {
+@keyframes typing {
     0%, 80%, 100% {
         transform: scale(0);
     }
@@ -482,23 +450,6 @@ body {
     font-size: 1.2rem;
 }
 
-/* Retry Button */
-.retry-button {
-    background-color: var(--primary-light);
-    border: 1px solid var(--border-light);
-    color: var(--accent-gold);
-    padding: 0.4rem 0.8rem;
-    border-radius: 4px;
-    margin-top: 0.5rem;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    font-size: 0.9rem;
-}
-
-.retry-button:hover {
-    background-color: var(--primary-medium);
-}
-
 /* Code Blocks */
 pre {
     background-color: #282c34;
@@ -514,15 +465,13 @@ code {
     line-height: 1.5;
 }
 
-.inline-code {
-    background-color: rgba(40, 44, 52, 0.5);
-    padding: 0.1rem 0.3rem;
-    border-radius: 3px;
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 0.85em;
+.code-block-container {
+    margin: 1rem 0;
+    border-radius: 6px;
+    overflow: hidden;
 }
 
-.code-header {
+.code-toolbar {
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -530,8 +479,6 @@ code {
     padding: 0.5rem 1rem;
     border-radius: 6px 6px 0 0;
     border-bottom: 1px solid #181a1f;
-    margin-top: 1rem;
-    margin-bottom: 0;
 }
 
 .code-language {
@@ -540,64 +487,9 @@ code {
     font-weight: 600;
 }
 
-.code-buttons {
-    display: flex;
-    gap: 0.5rem;
-}
-
-.code-button {
-    background-color: transparent;
-    border: none;
-    color: #abb2bf;
-    cursor: pointer;
-    padding: 0.1rem 0.3rem;
+.code-copy-btn {
+    padding: 0.2rem 0.5rem;
     font-size: 0.75rem;
-}
-
-.code-button:hover {
-    color: #fff;
-}
-
-.message-actions {
-    display: flex;
-    justify-content: flex-end;
-    margin-top: 0.5rem;
-    gap: 0.5rem;
-}
-
-.copy-message {
-    background-color: transparent;
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    color: rgba(255, 255, 255, 0.7);
-    padding: 0.25rem 0.5rem;
-    border-radius: 4px;
-    font-size: 0.75rem;
-    cursor: pointer;
-    transition: all 0.2s ease;
-}
-
-.copy-message:hover {
-    background-color: rgba(255, 255, 255, 0.1);
-    color: white;
-}
-
-.copy-tooltip {
-    position: absolute;
-    background-color: rgba(0, 0, 0, 0.8);
-    color: white;
-    padding: 0.25rem 0.5rem;
-    border-radius: 4px;
-    font-size: 0.75rem;
-    right: 0;
-    top: -30px;
-    animation: fadeInOut 2s forwards;
-}
-
-@keyframes fadeInOut {
-    0% { opacity: 0; }
-    20% { opacity: 1; }
-    80% { opacity: 1; }
-    100% { opacity: 0; }
 }
 
 /* Footer */
@@ -630,7 +522,7 @@ code {
 }
 
 @media (max-width: 768px) {
-    .message {
+    .message-container {
         max-width: 95%;
     }
 }
@@ -643,39 +535,39 @@ code {
     <div class="sidebar">
         <div class="sidebar-section">
             <div class="sidebar-title">
-                <i class="bi bi-gear-fill"></i> Configuración de Agentes
+                <i class="bi bi-gear-fill"></i> Configuración
             </div>
-            
+
             <div class="mb-3">
-                <label for="model-select" class="form-label">Seleccionar Modelo de IA:</label>
+                <label for="model-select" class="form-label">Modelo de IA:</label>
                 <select id="model-select" class="form-select-dark">
                     <option value="openai">OpenAI (GPT-4o)</option>
                     <option value="anthropic">Anthropic (Claude)</option>
                     <option value="gemini" selected>Google (Gemini)</option>
                 </select>
             </div>
-            
+
             <div class="mb-3">
-                <label for="agent-selector" class="form-label">Seleccionar Agente:</label>
-                <select id="agent-selector" class="form-select-dark">
+                <label for="agent-select" class="form-label">Agente:</label>
+                <select id="agent-select" class="form-select-dark">
                     <option value="developer">Agente de Desarrollo</option>
                     <option value="architect" selected>Agente de Arquitectura</option>
                     <option value="advanced">Especialista Avanzado</option>
                     <option value="general">Asistente General</option>
                 </select>
             </div>
-            
+
             <div class="agent-card">
                 <div class="agent-header">
                     <div class="agent-icon">
                         <i class="bi bi-diagram-3"></i>
                     </div>
                     <div class="agent-info">
-                        <h5 class="agent-name">Agente de Arquitectura</h5>
+                        <h5 class="agent-name" id="agent-badge">Agente de Arquitectura</h5>
                         <p class="agent-description">Diseñador de arquitecturas escalables y optimizadas</p>
                     </div>
                 </div>
-                
+
                 <div class="capabilities-section">
                     <div class="sidebar-title" style="font-size: 0.9rem; margin-bottom: 0.5rem;">Capacidades:</div>
                     <ul class="capabilities-list" id="agent-capabilities">
@@ -695,21 +587,22 @@ code {
         <div class="chat-header">
             <h4 class="chat-title">
                 <i class="bi bi-chat-dots"></i> Chat con Agente Especializado
+                <span id="status-indicator" class="ms-2" style="display: inline-block; width: 10px; height: 10px; border-radius: 50%; background-color: #ccc;"></span>
             </h4>
         </div>
-        
-        <div class="chat-messages" id="chat-messages">
-            <!-- Mensajes iniciales para mostrar la conversación de ejemplo como en la captura de pantalla -->
-            <div class="chat-message system-message">
+
+        <div class="chat-messages" id="messages-container">
+            <!-- Mensaje inicial de bienvenida -->
+            <div class="message-container system-message">
                 <div class="message-content">
-                    Has cambiado al Agente de Arquitectura. Este agente se especializa en: Diseñador de arquitecturas escalables y optimizadas.
+                    ¡Bienvenido a Codestorm Assistant! Selecciona un modelo y agente para comenzar.
                 </div>
             </div>
         </div>
-        
+
         <div class="chat-input-area">
             <div class="chat-input-wrapper">
-                <textarea id="chat-input" class="chat-input" placeholder="Escribe tu mensaje..." rows="1"></textarea>
+                <textarea id="message-input" class="chat-input" placeholder="Escribe tu mensaje aquí..." rows="1"></textarea>
             </div>
             <button id="send-button" class="send-button">
                 <i class="bi bi-send"></i>
@@ -725,1068 +618,5 @@ code {
 
 {% block extra_js %}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
-
-<script>
-// CODESTORM - Sistema de chat con agentes especializados y conexión a APIs optimizada
-
-// DEBUG CONFIG
-const DEBUG_MODE = true; // Activar para mostrar mensajes de depuración
-const API_TIMEOUT = 30000; // 30 segundos de timeout para peticiones API
-const MAX_RETRIES = 3; // Número máximo de reintentos para peticiones fallidas
-
-// Inicializar el estado global de la aplicación
-window.app = window.app || {};
-window.app.chat = window.app.chat || {};
-window.app.chat.context = [];
-window.app.chat.lastRequest = null; // Almacena la última solicitud para reintentos
-window.app.chat.retryCount = 0; // Contador de reintentos
-window.app.chat.apiEndpoints = {
-    chat: '/api/chat', // Endpoint principal para chat
-    fallback: '/api/generate', // Endpoint alternativo si falla el principal
-    health: '/api/health' // Endpoint para verificar el estado del servidor
-};
-
-// Función para inicializar el chat
-function initializeChat() {
-    logInfo("Inicializando chat con configuración optimizada...");
-    
-    // Verificar estado del servidor
-    checkServerHealth()
-        .then(isHealthy => {
-            if (isHealthy) {
-                addSystemMessage("Conexión establecida con el servidor. Listo para conversar.");
-            } else {
-                addErrorMessage("No se pudo establecer conexión con el servidor. Algunas funciones podrían no estar disponibles.");
-            }
-        });
-    
-    // Configurar selectores y botones
-    setupEventListeners();
-    
-    // Cargar agentes en el selector
-    loadAgentSelector();
-    
-    // Configurar manejo de documentos
-    initializeDocumentFeatures();
-    
-    // Configurar manejo de errores global para las peticiones fetch
-    setupGlobalErrorHandling();
-}
-
-// Verificar el estado del servidor
-async function checkServerHealth() {
-    try {
-        logDebug("Verificando estado del servidor...");
-        
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 5000);
-        
-        const response = await fetch(window.app.chat.apiEndpoints.health, {
-            method: 'GET',
-            signal: controller.signal
-        });
-        
-        clearTimeout(timeoutId);
-        
-        if (response.ok) {
-            const data = await response.json();
-            logDebug("Estado del servidor:", data);
-            return data.status === 'ok';
-        }
-        
-        return false;
-    } catch (error) {
-        logError("Error al verificar estado del servidor:", error);
-        return false;
-    }
-}
-
-// Configurar event listeners
-function setupEventListeners() {
-    const sendButton = document.getElementById('send-button');
-    const chatInput = document.getElementById('chat-input');
-    const agentSelector = document.getElementById('agent-selector');
-    const modelSelector = document.getElementById('model-select');
-    
-    // Evento para enviar mensaje
-    if (sendButton) {
-        sendButton.addEventListener('click', function(e) {
-            e.preventDefault();
-            sendMessage();
-        });
-    }
-    
-    // Evento para enviar con Enter (sin Shift)
-    if (chatInput) {
-        chatInput.addEventListener('keydown', function(e) {
-            if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                sendMessage();
-            }
-        });
-        
-        // Auto-ajustar altura del textarea
-        chatInput.addEventListener('input', function() {
-            this.style.height = 'auto';
-            this.style.height = (this.scrollHeight < 150 ? this.scrollHeight : 150) + 'px';
-        });
-    }
-    
-    // Evento para cambiar de agente
-    if (agentSelector) {
-        agentSelector.addEventListener('change', function() {
-            const selectedAgentId = agentSelector.value;
-            setActiveAgent(selectedAgentId);
-        });
-    }
-    
-    // Evento para cambiar de modelo
-    if (modelSelector) {
-        modelSelector.addEventListener('change', function() {
-            const selectedModel = modelSelector.value;
-            addSystemMessage(`Modelo cambiado a: ${getModelName(selectedModel)}`);
-        });
-    }
-}
-
-// Configurar manejo global de errores
-function setupGlobalErrorHandling() {
-    window.addEventListener('error', function(event) {
-        logError("Error de JavaScript:", event.error);
-        // No mostrar al usuario cada error de JS para no saturar la interfaz
-    });
-    
-    window.addEventListener('unhandledrejection', function(event) {
-        logError("Promesa rechazada sin gestionar:", event.reason);
-        // No mostrar al usuario cada rechazo de promesa para no saturar la interfaz
-    });
-}
-
-// Obtener nombre amigable del modelo
-function getModelName(modelId) {
-    const models = {
-        'openai': 'OpenAI GPT-4o',
-        'anthropic': 'Anthropic Claude 3.5 Sonnet',
-        'gemini': 'Google Gemini 1.5 Pro'
-    };
-    return models[modelId] || modelId;
-}
-
-// Cargar los agentes en el selector
-function loadAgentSelector() {
-    const agentSelector = document.getElementById('agent-selector');
-    if (!agentSelector) return;
-    
-    // Definir agentes especializados si no existen
-    window.SPECIALIZED_AGENTS = window.SPECIALIZED_AGENTS || {
-        developer: {
-            id: 'developer',
-            name: 'Agente de Desarrollo',
-            icon: 'bi-code-slash',
-            description: 'Experto en optimización y edición de código en tiempo real',
-            capabilities: [
-                'Corrección y refactorización de código',
-                'Optimización de rendimiento',
-                'Integración de frameworks y librerías',
-                'Automatización de tareas',
-                'Generación de código limpio'
-            ]
-        },
-        architect: {
-            id: 'architect',
-            name: 'Agente de Arquitectura',
-            icon: 'bi-diagram-3',
-            description: 'Diseñador de arquitecturas escalables y optimizadas',
-            capabilities: [
-                'Definición de estructura del proyecto',
-                'Selección de tecnologías y frameworks',
-                'Asesoría en elección de bases de datos',
-                'Implementación de microservicios',
-                'Planificación de UI/UX y patrones de diseño'
-            ]
-        },
-        advanced: {
-            id: 'advanced',
-            name: 'Especialista Avanzado',
-            icon: 'bi-braces',
-            description: 'Experto en soluciones complejas e integraciones',
-            capabilities: [
-                'Desarrollo de soluciones avanzadas',
-                'Integración con APIs externas',
-                'Optimización de rendimiento',
-                'Seguridad y encriptación',
-                'Despliegue y configuración de servidores'
-            ]
-        },
-        general: {
-            id: 'general',
-            name: 'Asistente General',
-            icon: 'bi-chat-dots',
-            description: 'Asistente versátil para consultas generales',
-            capabilities: [
-                'Respuesta a preguntas generales',
-                'Orientación básica de desarrollo',
-                'Ayuda con conceptos de programación',
-                'Consejos de buenas prácticas',
-                'Resolución de problemas comunes'
-            ]
-        }
-    };
-    
-    // Inicializar el agente activo
-    window.app.activeAgent = window.SPECIALIZED_AGENTS.architect;
-}
-
-// Establecer el agente activo
-function setActiveAgent(agentId) {
-    const agent = window.SPECIALIZED_AGENTS[agentId];
-    if (!agent) return;
-    
-    window.app.activeAgent = agent;
-    
-    // Actualizar interfaz
-    updateAgentDescription(agent);
-    
-    // Actualizar selectores móviles si existen
-    const mobileAgentSelector = document.getElementById('mobile-agent-selector');
-    if (mobileAgentSelector) {
-        mobileAgentSelector.value = agentId;
-    }
-    
-    // Añadir mensaje al chat
-    addSystemMessage(`Has cambiado al ${agent.name}. Este agente se especializa en: ${agent.description}.`);
-}
-
-// Actualizar descripción del agente en la interfaz
-function updateAgentDescription(agent) {
-    const agentIcon = document.querySelector('.agent-icon i');
-    const agentName = document.querySelector('.agent-name');
-    const agentDescription = document.querySelector('.agent-description');
-    const agentCapabilities = document.getElementById('agent-capabilities');
-    
-    if (agentIcon) {
-        agentIcon.className = 'bi ' + agent.icon;
-    }
-    
-    if (agentName) {
-        agentName.textContent = agent.name;
-    }
-    
-    if (agentDescription) {
-        agentDescription.textContent = agent.description;
-    }
-    
-    if (agentCapabilities) {
-        agentCapabilities.innerHTML = '';
-        agent.capabilities.forEach(capability => {
-            const li = document.createElement('li');
-            li.textContent = capability;
-            agentCapabilities.appendChild(li);
-        });
-    }
-}
-
-// Enviar mensaje al servidor
-async function sendMessage() {
-    const chatInput = document.getElementById('chat-input');
-    const message = chatInput ? chatInput.value.trim() : '';
-    
-    if (!message) return;
-    
-    // Deshabilitar botón de envío
-    const sendButton = document.getElementById('send-button');
-    if (sendButton) {
-        sendButton.disabled = true;
-        sendButton.style.opacity = '0.6';
-    }
-    
-    // Limpiar input
-    chatInput.value = '';
-    chatInput.style.height = 'auto';
-    
-    // Añadir mensaje del usuario al chat
-    addUserMessage(message);
-    
-    // Mostrar indicador de carga
-    const loadingMessageId = addLoadingMessage();
-    
-    // Obtener información de agente y modelo
-    const agentId = document.getElementById('agent-selector')?.value || 'architect';
-    const modelId = document.getElementById('model-select')?.value || 'gemini';
-    
-    // Actualizar historial de contexto
-    window.app.chat.context.push({
-        role: 'user',
-        content: message
-    });
-    
-    // Mantener contexto a un tamaño razonable (últimos 8 mensajes)
-    if (window.app.chat.context.length > 8) {
-        window.app.chat.context = window.app.chat.context.slice(-8);
-    }
-    
-    // Preparar datos para el API
-    const requestData = {
-        message: message,
-        agent_id: agentId,
-        model: modelId,
-        context: window.app.chat.context
-    };
-    
-    // Guardar última solicitud para posibles reintentos
-    window.app.chat.lastRequest = {
-        data: requestData,
-        timestamp: Date.now()
-    };
-    
-    // Reiniciar contador de reintentos
-    window.app.chat.retryCount = 0;
-    
-    try {
-        logDebug('Enviando mensaje al servidor:', requestData);
-        addDebugMessage(`Enviando solicitud a ${window.app.chat.apiEndpoints.chat}`);
-        
-        // Crear controlador para timeout
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), API_TIMEOUT);
-        
-        // Realizar solicitud al API
-        const response = await fetch(window.app.chat.apiEndpoints.chat, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(requestData),
-            signal: controller.signal
-        });
-        
-        // Limpiar timeout
-        clearTimeout(timeoutId);
-        
-        // Verificar respuesta
-        if (!response.ok) {
-            throw new Error(`Error en respuesta del servidor: ${response.status} ${response.statusText}`);
-        }
-        
-        const data = await response.json();
-        logDebug('Respuesta recibida:', data);
-        
-        // Eliminar indicador de carga
-        removeLoadingMessage(loadingMessageId);
-        
-        // Habilitar botón de envío
-        if (sendButton) {
-            sendButton.disabled = false;
-            sendButton.style.opacity = '1';
-        }
-        
-        if (data.error) {
-            addErrorMessage(`Error del servidor: ${data.error}`);
-            showRetryOption();
-            return;
-        }
-        
-        if (data.response) {
-            // Añadir respuesta al contexto
-            window.app.chat.context.push({
-                role: 'assistant',
-                content: data.response
-            });
-            
-            // Añadir mensaje del agente al chat
-            addAgentMessage(data.response, window.app.activeAgent);
-            
-            // Procesar código HTML si existe
-            processHtmlCodeForPreview(data.response);
-        } else {
-            addErrorMessage('El servidor respondió, pero no se encontró contenido en la respuesta');
-            showRetryOption();
-        }
-    } catch (error) {
-        // Eliminar indicador de carga
-        removeLoadingMessage(loadingMessageId);
-        
-        // Habilitar botón de envío
-        if (sendButton) {
-            sendButton.disabled = false;
-            sendButton.style.opacity = '1';
-        }
-        
-        logError('Error al enviar mensaje:', error);
-        
-        if (error.name === 'AbortError') {
-            addErrorMessage("La solicitud ha tardado demasiado tiempo. El servidor no responde.");
-        } else {
-            addErrorMessage(`Error de conexión: ${error.message}`);
-        }
-        
-        // Mostrar opción para reintentar
-        showRetryOption();
-        
-        // Intentar con endpoint alternativo si es apropiado
-        if (window.app.chat.retryCount === 0) {
-            tryFallbackEndpoint(requestData);
-        }
-    }
-}
-
-// Intentar con endpoint alternativo
-async function tryFallbackEndpoint(requestData) {
-    try {
-        addSystemMessage("Intentando conexión alternativa...");
-        logDebug('Intentando endpoint alternativo:', window.app.chat.apiEndpoints.fallback);
-        
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), API_TIMEOUT);
-        
-        const response = await fetch(window.app.chat.apiEndpoints.fallback, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(requestData),
-            signal: controller.signal
-        });
-        
-        clearTimeout(timeoutId);
-        
-        if (!response.ok) {
-            throw new Error(`Error en respuesta alternativa: ${response.status}`);
-        }
-        
-        const data = await response.json();
-        logDebug('Respuesta alternativa recibida:', data);
-        
-        if (data.error) {
-            throw new Error(data.error);
-        }
-        
-        if (data.generated_text || data.response) {
-            const responseText = data.generated_text || data.response;
-            
-            // Actualizar historial de contexto
-            window.app.chat.context.push({
-                role: 'assistant',
-                content: responseText
-            });
-            
-            // Añadir mensaje del agente
-            addAgentMessage(responseText, window.app.activeAgent);
-            addSystemMessage("Conexión alternativa exitosa.");
-        } else {
-            throw new Error("Respuesta vacía del servidor alternativo");
-        }
-    } catch (error) {
-        logError('Error en endpoint alternativo:', error);
-        addSystemMessage("La conexión alternativa también falló.");
-    }
-}
-
-// Mostrar opción para reintentar
-function showRetryOption() {
-    const chatMessages = document.getElementById('chat-messages');
-    if (!chatMessages) return;
-    
-    const retryDiv = document.createElement('div');
-    retryDiv.className = 'chat-message system-message';
-    retryDiv.innerHTML = `
-        <div class="message-content">
-            ¿Quieres intentar enviar el mensaje de nuevo?
-            <button class="retry-button" id="retry-button">
-                <i class="bi bi-arrow-clockwise"></i> Reintentar
-            </button>
-        </div>
-    `;
-    
-    chatMessages.appendChild(retryDiv);
-    scrollToBottom(chatMessages);
-    
-    // Añadir event listener al botón
-    const retryButton = document.getElementById('retry-button');
-    if (retryButton) {
-        retryButton.addEventListener('click', function() {
-            // Incrementar contador de reintentos
-            window.app.chat.retryCount++;
-            
-            if (window.app.chat.retryCount > MAX_RETRIES) {
-                addErrorMessage(`Se ha alcanzado el número máximo de reintentos (${MAX_RETRIES})`);
-                return;
-            }
-            
-            // Eliminar el mensaje de reintento
-            retryDiv.remove();
-            
-            // Reintentar la última solicitud
-            if (window.app.chat.lastRequest) {
-                // Mostrar indicador de carga
-                addLoadingMessage();
-                
-                // Enviar la solicitud nuevamente
-                retryRequest();
-            }
-        });
-    }
-}
-
-// Reintentar la última solicitud
-async function retryRequest() {
-    if (!window.app.chat.lastRequest) {
-        addErrorMessage("No hay solicitud para reintentar");
-        return;
-    }
-    
-    const { data } = window.app.chat.lastRequest;
-    
-    try {
-        addSystemMessage(`Reintentando (${window.app.chat.retryCount}/${MAX_RETRIES})...`);
-        
-        // Usar un endpoint diferente para el reintento si es necesario
-        const endpoint = window.app.chat.retryCount > 1 
-            ? window.app.chat.apiEndpoints.fallback
-            : window.app.chat.apiEndpoints.chat;
-        
-        logDebug(`Reintentando solicitud (${window.app.chat.retryCount}/${MAX_RETRIES}) a ${endpoint}:`, data);
-        
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), API_TIMEOUT);
-        
-        const response = await fetch(endpoint, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(data),
-            signal: controller.signal
-        });
-        
-        clearTimeout(timeoutId);
-        
-        if (!response.ok) {
-            throw new Error(`Error en respuesta del servidor: ${response.status}`);
-        }
-        
-        const responseData = await response.json();
-        logDebug('Respuesta del reintento recibida:', responseData);
-        
-        // Eliminar indicador de carga
-        removeLoadingMessage();
-        
-        if (responseData.error) {
-            addErrorMessage(`Error del servidor: ${responseData.error}`);
-            showRetryOption();
-            return;
-        }
-        
-        if (responseData.response) {
-            // Añadir respuesta al contexto
-            window.app.chat.context.push({
-                role: 'assistant',
-                content: responseData.response
-            });
-            
-            // Añadir mensaje del agente al chat
-            addAgentMessage(responseData.response, window.app.activeAgent);
-            addSystemMessage("Reintento exitoso.");
-        } else {
-            addErrorMessage('El servidor respondió al reintento, pero no se encontró contenido en la respuesta');
-            showRetryOption();
-        }
-    } catch (error) {
-        // Eliminar indicador de carga
-        removeLoadingMessage();
-        
-        logError('Error en reintento:', error);
-        
-        if (error.name === 'AbortError') {
-            addErrorMessage("El reintento ha tardado demasiado tiempo. El servidor no responde.");
-        } else {
-            addErrorMessage(`Error de conexión en reintento: ${error.message}`);
-        }
-        
-        // Mostrar opción para reintentar de nuevo si no se ha alcanzado el máximo
-        if (window.app.chat.retryCount < MAX_RETRIES) {
-            showRetryOption();
-        } else {
-            addErrorMessage(`Se ha alcanzado el número máximo de reintentos (${MAX_RETRIES})`);
-        }
-    }
-}
-
-// Añadir mensaje del usuario al chat
-function addUserMessage(message) {
-    const chatMessages = document.getElementById('chat-messages');
-    if (!chatMessages) return null;
-    
-    const messageDiv = document.createElement('div');
-    messageDiv.className = 'chat-message user-message';
-    
-    messageDiv.innerHTML = `
-        <div class="message-header">
-            <span class="message-sender">Tú</span>
-            <span class="message-time">${getCurrentTime()}</span>
-        </div>
-        <div class="message-content">${formatMessage(message)}</div>
-    `;
-    
-    chatMessages.appendChild(messageDiv);
-    scrollToBottom(chatMessages);
-    
-    return messageDiv;
-}
-
-// Añadir mensaje del agente al chat
-function addAgentMessage(message, agent) {
-    const chatMessages = document.getElementById('chat-messages');
-    if (!chatMessages) return null;
-    
-    const messageDiv = document.createElement('div');
-    messageDiv.className = 'chat-message agent-message';
-    
-    messageDiv.innerHTML = `
-        <div class="message-header">
-            <span class="message-sender">${agent.name}</span>
-            <span class="message-time">${getCurrentTime()}</span>
-        </div>
-        <div class="message-content">${formatMessage(message)}</div>
-        <div class="message-actions">
-            <button class="btn btn-sm btn-outline-light copy-message" title="Copiar mensaje">
-                <i class="bi bi-clipboard"></i>
-            </button>
-        </div>
-    `;
-    
-    chatMessages.appendChild(messageDiv);
-    scrollToBottom(chatMessages);
-    
-    // Añadir event listener al botón de copiar
-    const copyButton = messageDiv.querySelector('.copy-message');
-    if (copyButton) {
-        copyButton.addEventListener('click', function() {
-            copyMessageToClipboard(messageDiv);
-        });
-    }
-    
-    // Procesar bloques de código
-    processCodeBlocks(messageDiv);
-    
-    return messageDiv;
-}
-
-// Añadir mensaje del sistema al chat
-function addSystemMessage(message) {
-    const chatMessages = document.getElementById('chat-messages');
-    if (!chatMessages) return null;
-    
-    const messageDiv = document.createElement('div');
-    messageDiv.className = 'chat-message system-message';
-    
-    messageDiv.innerHTML = `
-        <div class="message-content">${message}</div>
-    `;
-    
-    chatMessages.appendChild(messageDiv);
-    scrollToBottom(chatMessages);
-    
-    return messageDiv;
-}
-
-// Añadir mensaje de error al chat
-function addErrorMessage(message) {
-    const chatMessages = document.getElementById('chat-messages');
-    if (!chatMessages) return null;
-    
-    const messageDiv = document.createElement('div');
-    messageDiv.className = 'chat-message error-message';
-    
-    messageDiv.innerHTML = `
-        <div class="message-content">
-            <i class="bi bi-exclamation-triangle me-2"></i>${message}
-        </div>
-    `;
-    
-    chatMessages.appendChild(messageDiv);
-    scrollToBottom(chatMessages);
-    
-    return messageDiv;
-}
-
-// Añadir mensaje de depuración (solo visible en modo DEBUG)
-function addDebugMessage(message) {
-    if (!DEBUG_MODE) return null;
-    
-    const chatMessages = document.getElementById('chat-messages');
-    if (!chatMessages) return null;
-    
-    const messageDiv = document.createElement('div');
-    messageDiv.className = 'chat-message debug-message';
-    
-    messageDiv.innerHTML = `
-        <div class="message-content">
-            <strong>DEBUG:</strong> ${message}
-        </div>
-    `;
-    
-    chatMessages.appendChild(messageDiv);
-    scrollToBottom(chatMessages);
-    
-    return messageDiv;
-}
-
-// Añadir indicador de carga al chat
-function addLoadingMessage() {
-    const chatMessages = document.getElementById('chat-messages');
-    if (!chatMessages) return null;
-    
-    // Crear ID único para este mensaje de carga
-    const loadingId = 'loading-' + Date.now();
-    
-    const loadingDiv = document.createElement('div');
-    loadingDiv.className = 'chat-message loading-message';
-    loadingDiv.id = loadingId;
-    loadingDiv.innerHTML = `
-        <div class="loading-animation">
-            <div class="loading-dot"></div>
-            <div class="loading-dot"></div>
-            <div class="loading-dot"></div>
-        </div>
-    `;
-    
-    chatMessages.appendChild(loadingDiv);
-    scrollToBottom(chatMessages);
-    
-    return loadingId;
-}
-
-// Eliminar indicador de carga
-function removeLoadingMessage(loadingId) {
-    if (loadingId) {
-        const loadingMessage = document.getElementById(loadingId);
-        if (loadingMessage) {
-            loadingMessage.remove();
-            return;
-        }
-    }
-    
-    // Si no se proporciona ID, eliminar todos los mensajes de carga
-    const loadingMessages = document.querySelectorAll('.loading-message');
-    loadingMessages.forEach(element => element.remove());
-}
-
-// Formatear mensaje (procesar código y markdown)
-function formatMessage(text) {
-    if (!text) return '';
-    
-    // Escapar HTML
-    text = escapeHtml(text);
-    
-    // Procesar bloques de código
-    text = text.replace(/```([a-z]*)\n([\s\S]*?)```/g, function(match, language, code) {
-        return `
-            <div class="code-header">
-                <span class="code-language">${language || 'code'}</span>
-                <div class="code-buttons">
-                    <button class="code-button copy-code-btn" title="Copiar código">
-                        <i class="bi bi-clipboard"></i> Copiar
-                    </button>
-                </div>
-            </div>
-            <pre><code class="${language || ''}">${code}</code></pre>
-        `;
-    });
-    
-    // Procesar código inline
-    text = text.replace(/`([^`]+)`/g, '<code class="inline-code">$1</code>');
-    
-    // Procesar saltos de línea
-    text = text.replace(/\n/g, '<br>');
-    
-    return text;
-}
-
-// Procesar bloques de código
-function processCodeBlocks(messageElement) {
-    if (!messageElement) return;
-    
-    // Aplicar resaltado de sintaxis
-    const codeBlocks = messageElement.querySelectorAll('pre code');
-    if (window.hljs) {
-        codeBlocks.forEach(block => {
-            window.hljs.highlightElement(block);
-        });
-    }
-    
-    // Añadir funcionalidad de copiar
-    const copyButtons = messageElement.querySelectorAll('.copy-code-btn');
-    copyButtons.forEach(button => {
-        button.addEventListener('click', function() {
-            const codeBlock = this.closest('.message-content').querySelector('pre code');
-            copyToClipboard(codeBlock.textContent);
-            
-            // Cambiar texto del botón temporalmente
-            const originalText = this.innerHTML;
-            this.innerHTML = '<i class="bi bi-check"></i> Copiado';
-            
-            setTimeout(() => {
-                this.innerHTML = originalText;
-            }, 2000);
-        });
-    });
-}
-
-// Copiar al portapapeles
-function copyToClipboard(text) {
-    navigator.clipboard.writeText(text)
-        .then(() => logDebug('Texto copiado al portapapeles'))
-        .catch(err => logError('Error al copiar texto:', err));
-}
-
-// Copiar mensaje completo al portapapeles
-function copyMessageToClipboard(messageElement) {
-    if (!messageElement) return;
-    
-    const messageContent = messageElement.querySelector('.message-content');
-    if (!messageContent) return;
-    
-    const textToCopy = messageContent.textContent.trim();
-    
-    navigator.clipboard.writeText(textToCopy)
-        .then(() => {
-            showCopyFeedback(messageElement);
-        })
-        .catch(err => {
-            logError('Error al copiar texto:', err);
-            // Método alternativo
-            fallbackCopyToClipboard(textToCopy, messageElement);
-        });
-}
-
-// Método alternativo para copiar
-function fallbackCopyToClipboard(text, messageElement) {
-    const textArea = document.createElement('textarea');
-    textArea.value = text;
-    textArea.style.position = 'fixed';
-    textArea.style.opacity = '0';
-    
-    document.body.appendChild(textArea);
-    textArea.focus();
-    textArea.select();
-    
-    try {
-        const successful = document.execCommand('copy');
-        if (successful) {
-            showCopyFeedback(messageElement);
-        }
-    } catch (err) {
-        logError('Error en fallback de copiar:', err);
-    }
-    
-    document.body.removeChild(textArea);
-}
-
-// Mostrar feedback visual de copia
-function showCopyFeedback(messageElement) {
-    const copyButton = messageElement.querySelector('.copy-message');
-    if (!copyButton) return;
-    
-    const originalHTML = copyButton.innerHTML;
-    copyButton.innerHTML = '<i class="bi bi-check"></i>';
-    copyButton.title = '¡Copiado!';
-    copyButton.classList.add('btn-success');
-    copyButton.classList.remove('btn-outline-light');
-    
-    setTimeout(() => {
-        copyButton.innerHTML = originalHTML;
-        copyButton.title = 'Copiar mensaje';
-        copyButton.classList.remove('btn-success');
-        copyButton.classList.add('btn-outline-light');
-    }, 1500);
-}
-
-// Procesar código HTML para previsualización
-function processHtmlCodeForPreview(message) {
-    if (!message) return;
-    
-    const htmlRegex = /```html([\s\S]*?)```/g;
-    const htmlMatches = message.match(htmlRegex);
-    
-    if (htmlMatches && htmlMatches.length > 0) {
-        const htmlCode = htmlMatches[0].replace(/```html/, '').replace(/```$/, '').trim();
-        
-        // Mostrar botón para previsualizar
-        const previewButton = document.createElement('button');
-        previewButton.className = 'btn btn-primary mt-2';
-        previewButton.innerHTML = '<i class="bi bi-eye"></i> Previsualizar HTML';
-        previewButton.addEventListener('click', function() {
-            openPreviewInNewWindow(htmlCode);
-        });
-        
-        // Añadir al último mensaje del agente
-        const lastAgentMessage = document.querySelector('.chat-message.agent-message:last-child .message-content');
-        if (lastAgentMessage) {
-            lastAgentMessage.appendChild(previewButton);
-        }
-    }
-}
-
-// Mejorar HTML para previsualización
-function enhanceHtmlForPreview(htmlContent) {
-    if (!htmlContent.includes('<!DOCTYPE html>')) {
-        htmlContent = `<!DOCTYPE html>
-<html lang="es">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Previsualización CODESTORM</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      line-height: 1.6;
-      color: #333;
-      margin: 0;
-      padding: 20px;
-    }
-  </style>
-</head>
-<body>
-${htmlContent}
-</body>
-</html>`;
-    }
-    
-    return htmlContent;
-}
-
-// Abrir previsualización en nueva ventana
-function openPreviewInNewWindow(htmlContent) {
-    const enhancedHtml = enhanceHtmlForPreview(htmlContent);
-    const newWindow = window.open('', '_blank');
-    
-    if (newWindow) {
-        newWindow.document.write(enhancedHtml);
-        newWindow.document.close();
-    } else {
-        addErrorMessage('El navegador bloqueó la apertura de una nueva ventana. Por favor, permita ventanas emergentes para este sitio.');
-    }
-}
-
-// Inicializar funcionalidades de documentos
-function initializeDocumentFeatures() {
-    // Esta función está preparada para añadir soporte para documentos
-    // como contexto adicional para las conversaciones
-    logDebug("Características de documentos inicializadas");
-}
-
-// Escapar HTML
-function escapeHtml(text) {
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-}
-
-// Obtener hora actual formateada
-function getCurrentTime() {
-    const now = new Date();
-    return now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-}
-
-// Scroll al final del chat
-function scrollToBottom(container) {
-    if (container) {
-        container.scrollTop = container.scrollHeight;
-    }
-}
-
-// Funciones de logging
-function logDebug(...args) {
-    if (DEBUG_MODE) {
-        console.log('[DEBUG]', ...args);
-    }
-}
-
-function logInfo(...args) {
-    console.log('[INFO]', ...args);
-}
-
-function logWarning(...args) {
-    console.warn('[WARNING]', ...args);
-}
-
-function logError(...args) {
-    console.error('[ERROR]', ...args);
-}
-
-// Inicializar cuando el DOM esté listo
-document.addEventListener('DOMContentLoaded', function() {
-    // Inicializar chat
-    initializeChat();
-    
-    // Añadir mensaje inicial para mostrar que está listo
-    setTimeout(() => {
-        addDebugMessage("Sistema inicializado. Verificando endpoints disponibles...");
-        
-        // Intentar detectar los endpoints disponibles
-        detectAvailableEndpoints();
-        
-        // Mostrar ejemplo de conversación desde la captura
-        addUserMessage("vamos a crear una pagina de ventas atractiva y moderna");
-        
-        const agentResponseText = "Para crear la página que necesitas, necesito más detalles. ¿Puedes proporcionar detalles específicos sobre el diseño y contenido que deseas incluir?";
-        addAgentMessage(agentResponseText, window.app.activeAgent);
-        
-        addUserMessage("si es de color azul cielo con estilo futurista");
-        
-        // Scroll al final
-        scrollToBottom(document.getElementById('chat-messages'));
-    }, 100);
-});
-
-// Detectar endpoints disponibles
-async function detectAvailableEndpoints() {
-    const endpoints = [
-        { name: 'chat', path: window.app.chat.apiEndpoints.chat },
-        { name: 'fallback', path: window.app.chat.apiEndpoints.fallback }
-    ];
-    
-    const results = {};
-    
-    for (const endpoint of endpoints) {
-        try {
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 2000);
-            
-            const response = await fetch(endpoint.path, {
-                method: 'OPTIONS',
-                signal: controller.signal
-            });
-            
-            clearTimeout(timeoutId);
-            
-            results[endpoint.name] = {
-                available: response.ok,
-                status: response.status
-            };
-            
-            logDebug(`Endpoint ${endpoint.name} (${endpoint.path}) disponible:`, response.ok);
-        } catch (error) {
-            results[endpoint.name] = {
-                available: false,
-                error: error.message
-            };
-            
-            logWarning(`Endpoint ${endpoint.name} (${endpoint.path}) no disponible:`, error.message);
-        }
-    }
-    
-    // Mostrar mensaje al usuario según disponibilidad
-    if (results.chat.available) {
-        addDebugMessage("Endpoint principal disponible");
-    } else if (results.fallback.available) {
-        addDebugMessage("Endpoint principal no disponible. Se usará el endpoint alternativo.");
-        addSystemMessage("La conexión principal no está disponible. Se utilizará un método alternativo.");
-    } else {
-        addDebugMessage("Ningún endpoint API está disponible.");
-        addErrorMessage("No se pudo conectar a los servidores de IA. Por favor, revisa tu conexión o contacta al administrador.");
-    }
-}
-</script>
+<script src="{{ url_for('static', filename='js/chat/chat.js') }}"></script>
 {% endblock %}

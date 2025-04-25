@@ -84,28 +84,113 @@ def handle_chat():
         user_message = data.get('message', '')
         agent_id = data.get('agent_id', 'architect')
         model = data.get('model', 'openai')
+        context = data.get('context', [])
         
         if not user_message:
             return jsonify({'error': 'No message provided'}), 400
             
-        # Simple test response
-        response = f"Respuesta simulada del asistente ({model}/{agent_id}): He recibido tu mensaje '{user_message[:30]}...'"
+        # Configuración de prompts según el agente seleccionado
+        agent_prompts = {
+            'developer': "Eres un Agente de Desarrollo experto en optimización y edición de código en tiempo real. Tu objetivo es ayudar con tareas de programación, desde corrección de errores hasta implementación de funcionalidades completas.",
+            'architect': "Eres un Agente de Arquitectura especializado en diseñar arquitecturas escalables y optimizadas. Ayudas en decisiones sobre estructura de código, patrones de diseño y selección de tecnologías.",
+            'advanced': "Eres un Especialista Avanzado experto en soluciones complejas e integraciones avanzadas. Puedes asesorar sobre tecnologías emergentes y soluciones sofisticadas.",
+            'general': "Eres un Asistente General con conocimientos amplios de desarrollo de software y buenas prácticas."
+        }
         
-        # Intentar usar OpenAI si está disponible
+        # Seleccionar prompt adecuado según el agente o usar prompt por defecto
+        system_prompt = agent_prompts.get(agent_id, "Eres un asistente especializado en desarrollo de software.")
+        
+        response = ""
+        logging.info(f"Procesando mensaje con modelo: {model}")
+        
+        # Generar respuesta con OpenAI
         if model == 'openai' and openai_client:
             try:
+                messages = [{"role": "system", "content": system_prompt}]
+                
+                # Añadir mensajes de contexto previo
+                for msg in context:
+                    if isinstance(msg, dict) and 'role' in msg and 'content' in msg:
+                        if msg['role'] in ['user', 'assistant', 'system']:
+                            messages.append({
+                                "role": msg['role'],
+                                "content": msg['content']
+                            })
+                
+                # Añadir mensaje actual
+                messages.append({"role": "user", "content": user_message})
+                
                 completion = openai_client.chat.completions.create(
                     model="gpt-4o",
-                    messages=[
-                        {"role": "system", "content": "Eres un asistente útil especializado en desarrollo de software."},
-                        {"role": "user", "content": user_message}
-                    ],
+                    messages=messages,
                     temperature=0.7
                 )
                 response = completion.choices[0].message.content
+                logging.info("Respuesta generada con OpenAI")
             except Exception as e:
                 logging.error(f"Error with OpenAI API: {str(e)}")
-                response = f"Error al procesar con OpenAI: {str(e)}"
+                response = f"Error al conectar con OpenAI: {str(e)}"
+        
+        # Generar respuesta con Gemini
+        elif model == 'gemini' and os.environ.get('GEMINI_API_KEY'):
+            try:
+                import google.generativeai as genai
+                
+                gemini_api_key = os.environ.get('GEMINI_API_KEY')
+                genai.configure(api_key=gemini_api_key)
+                gemini_model = genai.GenerativeModel('gemini-1.5-pro')
+                
+                # Construir prompt con contexto
+                prompt = system_prompt + "\n\n"
+                for msg in context:
+                    if isinstance(msg, dict) and 'role' in msg and 'content' in msg:
+                        role_prefix = "Usuario: " if msg['role'] == 'user' else "Asistente: "
+                        prompt += role_prefix + msg['content'] + "\n\n"
+                
+                prompt += "Usuario: " + user_message + "\n\nAsistente:"
+                
+                gemini_response = gemini_model.generate_content(prompt)
+                response = gemini_response.text
+                logging.info("Respuesta generada con Gemini")
+            except Exception as e:
+                logging.error(f"Error with Gemini API: {str(e)}")
+                response = f"Error al conectar con Gemini: {str(e)}"
+                
+        # Generar respuesta con Anthropic
+        elif model == 'anthropic' and os.environ.get('ANTHROPIC_API_KEY'):
+            try:
+                import anthropic
+                
+                client = anthropic.Anthropic(api_key=os.environ.get('ANTHROPIC_API_KEY'))
+                messages = [{"role": "system", "content": system_prompt}]
+                
+                # Añadir mensajes de contexto
+                for msg in context:
+                    if isinstance(msg, dict) and 'role' in msg and 'content' in msg:
+                        if msg['role'] in ['user', 'assistant']:
+                            messages.append({
+                                "role": msg['role'],
+                                "content": msg['content']
+                            })
+                
+                # Añadir mensaje actual
+                messages.append({"role": "user", "content": user_message})
+                
+                completion = client.messages.create(
+                    model="claude-3-5-sonnet-latest",
+                    messages=messages,
+                    max_tokens=2000
+                )
+                response = completion.content[0].text
+                logging.info("Respuesta generada con Anthropic")
+            except Exception as e:
+                logging.error(f"Error with Anthropic API: {str(e)}")
+                response = f"Error al conectar con Anthropic: {str(e)}"
+        
+        # Si no hay modelo disponible
+        else:
+            response = "Lo siento, no hay un modelo de IA configurado disponible. Por favor, verifica las API keys en la configuración."
+            logging.warning(f"No hay modelo disponible para: {model}")
         
         return jsonify({'response': response})
     except Exception as e:
