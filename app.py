@@ -1376,6 +1376,7 @@ def health_check():
         # Check database connection
         db_status = "ok"
         try:
+            from sqlalchemy import text
             db.session.execute(text('SELECT 1'))
             db.session.commit()
         except Exception as e:
@@ -1403,6 +1404,12 @@ def health_check():
             "error": str(e),
             "timestamp": datetime.now().isoformat()
         }), 500
+
+# Endpoint simplificado para la verificación del servidor
+@app.route('/health', methods=['GET'])
+def simple_health_check():
+    """Simple health check endpoint."""
+    return jsonify({"status": "ok"})
 
 @app.route('/api/generate', methods=['POST'])
 def generate():

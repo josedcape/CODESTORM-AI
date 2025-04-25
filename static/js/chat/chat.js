@@ -84,18 +84,15 @@ window.app.chat = {
 function initializeChat() {
     // Inicializar logs silenciosamente
     silentLog('Inicializando chat con configuración optimizada...');
-    
+
     // Configurar selectores y elementos de la UI
     setupUIElements();
-    
+
     // Verificar conexión con el servidor - versión simplificada
     checkServerConnection();
-    
+
     // Inicializar características avanzadas
     setupDocumentFeatures();
-    
-    // Añadir mensaje de bienvenida
-    addSystemMessage('¡Bienvenido a Codestorm Assistant! Selecciona un modelo y agente para comenzar.');
 }
 
 /**
@@ -115,14 +112,14 @@ function setupUIElements() {
         agentBadge: document.getElementById('agent-badge'),
         statusIndicator: document.getElementById('status-indicator')
     };
-    
+
     const {messageInput, sendButton, modelSelect, agentSelect} = window.app.chat.elements;
-    
+
     // Configurar eventos principales
     if (sendButton) {
         sendButton.addEventListener('click', sendMessage);
     }
-    
+
     if (messageInput) {
         messageInput.addEventListener('keydown', (e) => {
             if (e.key === 'Enter' && !e.shiftKey) {
@@ -131,19 +128,19 @@ function setupUIElements() {
             } else if (e.key === 'Enter' && e.shiftKey) {
                 // Permitir saltos de línea con Shift+Enter
             }
-            
+
             // Ajustar altura al contenido
             setTimeout(() => {
                 adjustTextareaHeight(messageInput);
             }, 0);
         });
-        
+
         // Ajustar altura al escribir
         messageInput.addEventListener('input', () => {
             adjustTextareaHeight(messageInput);
         });
     }
-    
+
     // Cambiar modelo de IA
     if (modelSelect) {
         modelSelect.addEventListener('change', () => {
@@ -152,7 +149,7 @@ function setupUIElements() {
             addSystemMessage(`Modelo cambiado a: ${window.app.chat.availableModels[window.app.chat.activeModel]}`);
         });
     }
-    
+
     // Cambiar agente
     if (agentSelect) {
         agentSelect.addEventListener('change', () => {
@@ -160,14 +157,14 @@ function setupUIElements() {
             window.app.chat.activeAgent = agentSelect.value;
             updateAgentInfo(window.app.chat.activeAgent);
             silentLog('Agente cambiado a:', window.app.chat.activeAgent);
-            
+
             // Añadir notificación solo si realmente cambió
             if (previousAgent !== window.app.chat.activeAgent) {
                 addSystemMessage(`Has cambiado al ${window.app.chat.availableAgents[window.app.chat.activeAgent].name}. ${window.app.chat.availableAgents[window.app.chat.activeAgent].description}`);
             }
         });
     }
-    
+
     // Actualizar info del agente inicial
     updateAgentInfo(window.app.chat.activeAgent);
 }
@@ -212,30 +209,30 @@ function setupDocumentFeatures() {
  */
 async function sendMessage() {
     const {messageInput, sendButton} = window.app.chat.elements;
-    
+
     if (!messageInput) return;
-    
+
     const userMessage = messageInput.value.trim();
     if (!userMessage) return;
-    
+
     // Añadir mensaje del usuario al chat y contexto
     addUserMessage(userMessage);
     window.app.chat.context.push({
         role: 'user',
         content: userMessage
     });
-    
+
     // Limpiar input y ajustar altura
     messageInput.value = '';
     adjustTextareaHeight(messageInput);
     messageInput.focus();
-    
+
     // Deshabilitar botón mientras se procesa
     if (sendButton) {
         sendButton.disabled = true;
         sendButton.style.opacity = '0.6';
     }
-    
+
     // Preparar datos para enviar al servidor
     const requestData = {
         message: userMessage,
@@ -243,13 +240,13 @@ async function sendMessage() {
         model: window.app.chat.activeModel,
         context: window.app.chat.context.slice(-10)  // Últimos 10 mensajes para contexto
     };
-    
+
     // Mostrar indicador de carga
     const loadingMessageId = addLoadingMessage();
-    
+
     try {
         silentLog('Enviando mensaje al servidor:', requestData);
-        
+
         const response = await fetch('/api/chat', {
             method: 'POST',
             headers: {
@@ -257,31 +254,31 @@ async function sendMessage() {
             },
             body: JSON.stringify(requestData)
         });
-        
+
         // Verificar si hubo error HTTP
         if (!response.ok) {
             throw new Error(`Error del servidor: ${response.status} ${response.statusText}`);
         }
-        
+
         const data = await response.json();
         silentLog('Respuesta recibida:', data);
-        
+
         // Eliminar indicador de carga
         removeLoadingMessage(loadingMessageId);
-        
+
         // Habilitar botón de envío
         if (sendButton) {
             sendButton.disabled = false;
             sendButton.style.opacity = '1';
         }
-        
+
         if (data.response) {
             // Añadir respuesta al contexto y mostrarla
             window.app.chat.context.push({
                 role: 'assistant',
                 content: data.response
             });
-            
+
             // Añadir mensaje del agente al chat
             addAgentMessage(data.response, window.app.chat.activeAgent);
         } else if (data.error) {
@@ -292,12 +289,12 @@ async function sendMessage() {
     } catch (error) {
         // Eliminar indicador de carga y habilitar botón
         removeLoadingMessage(loadingMessageId);
-        
+
         if (sendButton) {
             sendButton.disabled = false;
             sendButton.style.opacity = '1';
         }
-        
+
         silentLog('Error al enviar mensaje:', error);
         addSystemMessage(`Error de conexión: ${error.message}`);
     }
@@ -320,7 +317,7 @@ function addUserMessage(message) {
             </div>
         </div>
     `;
-    
+
     appendMessageToChat(messageHTML);
     scrollToBottom();
 }
@@ -334,7 +331,7 @@ function addAgentMessage(message, agentId) {
     const agent = window.app.chat.availableAgents[agentId] || window.app.chat.availableAgents.general;
     const messageId = `msg-${++window.app.chat.chatMessageId}`;
     const formattedMessage = formatMessageContent(message);
-    
+
     const messageHTML = `
         <div class="message-container agent-message" id="${messageId}">
             <div class="message-header">
@@ -354,13 +351,13 @@ function addAgentMessage(message, agentId) {
             </div>
         </div>
     `;
-    
+
     appendMessageToChat(messageHTML);
-    
+
     // Procesar elementos especiales (código, HTML, etc)
     processCodeBlocks(messageId);
     processHTMLPreview(messageId);
-    
+
     scrollToBottom();
 }
 
@@ -377,7 +374,7 @@ function addSystemMessage(message) {
             </div>
         </div>
     `;
-    
+
     appendMessageToChat(messageHTML);
     scrollToBottom();
 }
@@ -399,10 +396,10 @@ function addLoadingMessage() {
             </div>
         </div>
     `;
-    
+
     appendMessageToChat(messageHTML);
     scrollToBottom();
-    
+
     return messageId;
 }
 
@@ -430,13 +427,13 @@ function removeLoadingMessage(messageId) {
 function processCodeBlocks(messageId) {
     const messageElement = document.getElementById(messageId);
     if (!messageElement) return;
-    
+
     const codeBlocks = messageElement.querySelectorAll('pre code');
-    
+
     codeBlocks.forEach((codeBlock, index) => {
         const codeContent = codeBlock.textContent;
         const copyButtonId = `copy-code-${messageId}-${index}`;
-        
+
         // Detectar lenguaje de programación
         let language = 'plaintext';
         const codeClasses = codeBlock.className.split(' ');
@@ -446,21 +443,21 @@ function processCodeBlocks(messageId) {
                 break;
             }
         }
-        
+
         // Crear contenedor para el bloque de código con botón de copiar
         const codeContainer = document.createElement('div');
         codeContainer.className = 'code-block-container';
-        
+
         // Barra de herramientas
         const toolbar = document.createElement('div');
         toolbar.className = 'code-toolbar';
-        
+
         // Etiqueta de lenguaje
         const langLabel = document.createElement('span');
         langLabel.className = 'code-language';
         langLabel.textContent = language;
         toolbar.appendChild(langLabel);
-        
+
         // Botón de copiar
         const copyButton = document.createElement('button');
         copyButton.id = copyButtonId;
@@ -471,15 +468,15 @@ function processCodeBlocks(messageId) {
             copyToClipboard(null, 'code', codeContent, copyButtonId);
         };
         toolbar.appendChild(copyButton);
-        
+
         codeContainer.appendChild(toolbar);
-        
+
         // Conservar el bloque de código original
         const newCodeBlock = document.createElement('pre');
         newCodeBlock.className = codeBlock.parentElement.className;
         newCodeBlock.appendChild(codeBlock.cloneNode(true));
         codeContainer.appendChild(newCodeBlock);
-        
+
         // Reemplazar el bloque original con el contenedor mejorado
         codeBlock.parentElement.replaceWith(codeContainer);
     });
@@ -492,16 +489,16 @@ function processCodeBlocks(messageId) {
 function processHTMLPreview(messageId) {
     const messageElement = document.getElementById(messageId);
     if (!messageElement) return;
-    
+
     const codeBlocks = messageElement.querySelectorAll('pre code.language-html');
-    
+
     codeBlocks.forEach((codeBlock, index) => {
         const htmlContent = codeBlock.textContent;
-        
+
         // Solo añadir vista previa si el HTML tiene suficiente contenido
         if (htmlContent.length > 50) {
             const previewButtonId = `preview-${messageId}-${index}`;
-            
+
             // Crear botón de vista previa
             const previewButton = document.createElement('button');
             previewButton.id = previewButtonId;
@@ -510,7 +507,7 @@ function processHTMLPreview(messageId) {
             previewButton.onclick = function() {
                 showHTMLPreview(htmlContent);
             };
-            
+
             // Añadir botón después del bloque de código
             codeBlock.parentElement.parentElement.appendChild(previewButton);
         }
@@ -524,7 +521,7 @@ function processHTMLPreview(messageId) {
 function showHTMLPreview(htmlContent) {
     // Crear una ventana emergente para la vista previa
     const previewWindow = window.open('', '_blank', 'width=800,height=600');
-    
+
     if (previewWindow) {
         previewWindow.document.write(`
             <!DOCTYPE html>
@@ -570,7 +567,7 @@ function showHTMLPreview(htmlContent) {
  */
 function copyToClipboard(elementId, type, content, buttonId) {
     let textToCopy = '';
-    
+
     if (type === 'code' && content) {
         textToCopy = content;
     } else if (type === 'message' && elementId) {
@@ -583,7 +580,7 @@ function copyToClipboard(elementId, type, content, buttonId) {
             }
         }
     }
-    
+
     if (textToCopy) {
         navigator.clipboard.writeText(textToCopy)
             .then(() => {
@@ -594,7 +591,7 @@ function copyToClipboard(elementId, type, content, buttonId) {
                         const originalHTML = button.innerHTML;
                         button.innerHTML = '<i class="bi bi-check"></i>';
                         button.classList.add('btn-success');
-                        
+
                         setTimeout(() => {
                             button.innerHTML = originalHTML;
                             button.classList.remove('btn-success');
@@ -618,31 +615,31 @@ function copyToClipboard(elementId, type, content, buttonId) {
  */
 function formatMessageContent(content) {
     if (!content) return '';
-    
+
     // Función básica de conversión de markdown a HTML
     let formattedContent = content
         // Enlaces
         .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>')
-        
+
         // Negrita
         .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
-        
+
         // Cursiva
         .replace(/\*([^*]+)\*/g, '<em>$1</em>')
-        
+
         // Bloques de código en línea
         .replace(/`([^`]+)`/g, '<code>$1</code>')
-        
+
         // Preservar saltos de línea
         .replace(/\n/g, '<br>');
-    
+
     // Manejar bloques de código con sintaxis ```
     const codeBlockRegex = /```([a-zA-Z]*)\n([\s\S]+?)```/g;
     formattedContent = formattedContent.replace(codeBlockRegex, (match, language, code) => {
         language = language || 'plaintext';
         return `<pre><code class="language-${language}">${code.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</code></pre>`;
     });
-    
+
     return formattedContent;
 }
 
@@ -653,7 +650,7 @@ function formatMessageContent(content) {
 function updateAgentInfo(agentId) {
     const agent = window.app.chat.availableAgents[agentId] || window.app.chat.availableAgents.general;
     const {agentInfo, agentCapabilities, agentBadge} = window.app.chat.elements;
-    
+
     // Actualizar información del agente
     if (agentInfo) {
         agentInfo.innerHTML = `
@@ -664,7 +661,7 @@ function updateAgentInfo(agentId) {
             </div>
         `;
     }
-    
+
     // Actualizar lista de capacidades
     if (agentCapabilities) {
         agentCapabilities.innerHTML = '';
@@ -674,7 +671,7 @@ function updateAgentInfo(agentId) {
             agentCapabilities.appendChild(item);
         });
     }
-    
+
     // Actualizar badge del agente
     if (agentBadge) {
         agentBadge.textContent = agent.name;
@@ -687,17 +684,17 @@ function updateAgentInfo(agentId) {
  */
 function adjustTextareaHeight(textarea) {
     if (!textarea) return;
-    
+
     // Restablecer altura para obtener la correcta
     textarea.style.height = 'auto';
-    
+
     // Calcular nueva altura (con límite máximo)
     const maxHeight = 200; // altura máxima en px
     const newHeight = Math.min(textarea.scrollHeight, maxHeight);
-    
+
     // Establecer nueva altura
     textarea.style.height = `${newHeight}px`;
-    
+
     // Añadir/quitar clase de scroll si es necesario
     if (textarea.scrollHeight > maxHeight) {
         textarea.classList.add('scrollable');
@@ -713,11 +710,11 @@ function adjustTextareaHeight(textarea) {
 function appendMessageToChat(messageHTML) {
     const {messagesContainer} = window.app.chat.elements;
     if (!messagesContainer) return;
-    
+
     // Crear elemento temporal para insertar HTML
     const tempDiv = document.createElement('div');
     tempDiv.innerHTML = messageHTML;
-    
+
     // Añadir el nodo al contenedor
     messagesContainer.appendChild(tempDiv.firstElementChild);
 }
@@ -728,7 +725,7 @@ function appendMessageToChat(messageHTML) {
 function scrollToBottom() {
     const {messagesContainer} = window.app.chat.elements;
     if (!messagesContainer) return;
-    
+
     messagesContainer.scrollTop = messagesContainer.scrollHeight;
 }
 
@@ -740,11 +737,11 @@ function getCurrentTime() {
     const now = new Date();
     let hours = now.getHours();
     let minutes = now.getMinutes();
-    
+
     // Añadir ceros iniciales si es necesario
     hours = hours < 10 ? '0' + hours : hours;
     minutes = minutes < 10 ? '0' + minutes : minutes;
-    
+
     return `${hours}:${minutes}`;
 }
 
@@ -761,5 +758,7 @@ function silentLog(message, data) {
 document.addEventListener('DOMContentLoaded', function() {
     window.app.chat.chatMessageId = 0;  // Reiniciar contador de mensajes
     initializeChat();
-});
 
+    // Añadir mensaje de bienvenida del sistema
+    addSystemMessage('¡Bienvenido a Codestorm Assistant! Selecciona un modelo y agente para comenzar.');
+});
