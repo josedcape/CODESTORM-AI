@@ -187,6 +187,11 @@
         user-select: none;
     }
 
+    .model-selector-container {
+        gap: 1rem;
+    }
+
+
     @keyframes spin {
         to { transform: rotate(360deg); }
     }
@@ -229,6 +234,29 @@
                     <div class="mb-3">
                         <label for="instructions" class="form-label">Instrucciones para la corrección:</label>
                         <textarea id="instructions" class="instructions-textarea" placeholder="Describe qué correcciones necesitas en el código. Por ejemplo: 'Corrige el manejo de errores y optimiza el rendimiento'"></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label for="model-selector" class="form-label">Modelo de IA:</label>
+                        <div class="d-flex model-selector-container">
+                            <div class="form-check form-check-inline">
+                                <input class="form-check-input" type="radio" name="model-selector" id="model-openai" value="openai" checked>
+                                <label class="form-check-label" for="model-openai">
+                                    <i class="fa-solid fa-robot me-1"></i> OpenAI
+                                </label>
+                            </div>
+                            <div class="form-check form-check-inline">
+                                <input class="form-check-input" type="radio" name="model-selector" id="model-gemini" value="gemini">
+                                <label class="form-check-label" for="model-gemini">
+                                    <i class="fa-solid fa-microchip me-1"></i> Gemini
+                                </label>
+                            </div>
+                            <div class="form-check form-check-inline">
+                                <input class="form-check-input" type="radio" name="model-selector" id="model-claude" value="anthropic">
+                                <label class="form-check-label" for="model-claude">
+                                    <i class="fa-solid fa-brain me-1"></i> Claude
+                                </label>
+                            </div>
+                        </div>
                     </div>
                     <div class="mb-3">
                         <label for="code-input" class="form-label">Código a corregir:</label>
@@ -325,6 +353,7 @@
 <script>
     document.addEventListener('DOMContentLoaded', function() {
         let currentLanguage = 'python';
+        let selectedModel = 'openai'; // Default model
 
         // Elementos del DOM
         const codeInput = document.getElementById('code-input');
@@ -342,6 +371,7 @@
         const codeView = document.getElementById('code-view');
         const changesList = document.getElementById('changes-list');
         const explanationContent = document.getElementById('explanation-content');
+        const modelSelector = document.getElementsByName('model-selector');
 
         // Función para manejar código grande
         function handleLargeCode() {
@@ -404,6 +434,15 @@
             });
         });
 
+
+        // Modelo de IA seleccionado
+        for (let i = 0; i < modelSelector.length; i++) {
+            modelSelector[i].addEventListener('change', function() {
+                selectedModel = this.value;
+            });
+        }
+
+
         // Cargar componentes de Prism.js según demanda
         function loadPrismLanguage(language) {
             if (!Prism.languages[language]) {
@@ -442,7 +481,7 @@
             // Simulación de procesamiento 
             setTimeout(() => {
                 // Procesar código (simulado)
-                const result = processCode(code, instructions, currentLanguage);
+                const result = processCode(code, instructions, currentLanguage, selectedModel);
 
                 // Actualizar vista de código
                 correctedCode.textContent = result.correctedCode;
@@ -512,7 +551,7 @@
         }
 
         // Función para procesar código (simulada)
-        function processCode(code, instructions, language) {
+        function processCode(code, instructions, language, model) {
             // Ejemplos de código limpio para demostración
             const samples = {
                 python: generatePythonSample(code, instructions),
@@ -527,10 +566,21 @@
             // Obtener el código específico del lenguaje o usar un genérico
             const correctedCode = samples[language] || generateGenericSample(code, language);
 
+            // Simular diferentes respuestas basadas en el modelo seleccionado
+            let explanation = generateExplanation(instructions, language, model);
+            if(model === 'gemini'){
+                explanation += " Gemini se ha utilizado para procesar tu código";
+            } else if (model === 'anthropic'){
+                explanation += " Claude se ha utilizado para procesar tu código";
+            } else {
+                explanation += " OpenAI se ha utilizado para procesar tu código";
+            }
+
+
             return {
                 correctedCode: correctedCode,
                 changes: generateChanges(instructions),
-                explanation: generateExplanation(instructions, language)
+                explanation: explanation
             };
         }
 
@@ -1005,7 +1055,7 @@ int main() {
         }
 
         // Generar explicación (simulado)
-        function generateExplanation(instructions, language) {
+        function generateExplanation(instructions, language, model) {
             // Crear una explicación basada en el lenguaje y las instrucciones
             let explanation = `El código ha sido optimizado siguiendo las mejores prácticas de ${language}. `;
 
