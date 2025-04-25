@@ -176,6 +176,17 @@ function checkServerConnection() {
     // Check health endpoint with robust error handling
     silentLog('Verificando estado del servidor...');
     
+    // Asegurarse de que los endpoints estén definidos
+    if (!window.app || !window.app.chat || !window.app.chat.apiEndpoints) {
+        silentLog('Error: API endpoints no definidos');
+        const statusIndicator = document.getElementById('status-indicator');
+        if (statusIndicator) {
+            statusIndicator.style.backgroundColor = "#dc3545"; // rojo
+            statusIndicator.title = "Error de configuración";
+        }
+        return;
+    }
+    
     fetch(window.app.chat.apiEndpoints.health)
         .then(response => {
             if (!response.ok) {
@@ -525,6 +536,18 @@ function processCodeBlocks(messageId) {
 
         // Reemplazar el bloque original con el contenedor mejorado
         codeBlock.parentElement.replaceWith(codeContainer);
+        
+        // Aplicar highlight.js al nuevo bloque de código
+        try {
+            if (window.hljs) {
+                const codeElements = codeContainer.querySelectorAll('code');
+                codeElements.forEach(el => {
+                    window.hljs.highlightElement(el);
+                });
+            }
+        } catch (e) {
+            silentLog('Error al aplicar highlight.js:', e);
+        }
     });
 }
 
@@ -662,29 +685,60 @@ function copyToClipboard(elementId, type, content, buttonId) {
 function formatMessageContent(content) {
     if (!content) return '';
 
-    // Función básica de conversión de markdown a HTML
+    // Reemplazar titulares de markdown
     let formattedContent = content
+        // Titulares
+        .replace(/^### (.*$)/gm, '<h3>$1</h3>')
+        .replace(/^## (.*$)/gm, '<h2>$1</h2>')
+        .replace(/^# (.*$)/gm, '<h1>$1</h1>')
+        
         // Enlaces
         .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>')
 
         // Negrita
         .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+        .replace(/__([^_]+)__/g, '<strong>$1</strong>')
 
         // Cursiva
         .replace(/\*([^*]+)\*/g, '<em>$1</em>')
+        .replace(/_([^_]+)_/g, '<em>$1</em>')
+
+        // Listas
+        .replace(/^\s*\* (.*$)/gm, '<li>$1</li>')
+        .replace(/^\s*- (.*$)/gm, '<li>$1</li>')
+        .replace(/^\s*\d+\. (.*$)/gm, '<li>$1</li>')
+        
+        // Citas
+        .replace(/^\> (.*$)/gm, '<blockquote>$1</blockquote>')
 
         // Bloques de código en línea
         .replace(/`([^`]+)`/g, '<code>$1</code>')
+        
+        // Líneas horizontales
+        .replace(/^\s*[\-=_]{3,}\s*$/gm, '<hr>');
 
-        // Preservar saltos de línea
-        .replace(/\n/g, '<br>');
+    // Envolver listas en <ul> o <ol>
+    formattedContent = formattedContent
+        .replace(/<li>.*?<\/li>/g, function(match) {
+            return '<ul>' + match + '</ul>';
+        })
+        .replace(/<ul><\/li><li>/g, '<ul><li>')
+        .replace(/<\/li><li><\/ul>/g, '</li></ul>')
+        .replace(/<\/ul><ul>/g, '');
 
     // Manejar bloques de código con sintaxis ```
     const codeBlockRegex = /```([a-zA-Z]*)\n([\s\S]+?)```/g;
     formattedContent = formattedContent.replace(codeBlockRegex, (match, language, code) => {
         language = language || 'plaintext';
-        return `<pre><code class="language-${language}">${code.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</code></pre>`;
+        // Limpiar el código para prevenir problemas de HTML
+        const cleanedCode = code.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        
+        // Crear contenedor de código con highlighting
+        return `<pre><code class="language-${language}">${cleanedCode}</code></pre>`;
     });
+    
+    // Preservar saltos de línea (después de procesar todo lo demás)
+    formattedContent = formattedContent.replace(/\n/g, '<br>');
 
     return formattedContent;
 }

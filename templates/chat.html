@@ -617,6 +617,22 @@ code {
 {% endblock %}
 
 {% block extra_js %}
+<!-- Cargar highlight.js con todos los lenguajes comunes -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/python.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/javascript.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/css.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/html.min.js"></script>
+<script>
+    // Inicializar highlight.js
+    document.addEventListener('DOMContentLoaded', (event) => {
+        hljs.configure({
+            languages: ['javascript', 'python', 'html', 'css', 'bash', 'json']
+        });
+        
+        // No destacar automáticamente todos los bloques de código
+        // Lo haremos manualmente en processCodeBlocks()
+    });
+</script>
 <script src="{{ url_for('static', filename='js/chat/chat.js') }}"></script>
 {% endblock %}

@@ -134,26 +134,49 @@ def handle_chat():
         # Generar respuesta con Gemini
         elif model == 'gemini' and os.environ.get('GEMINI_API_KEY'):
             try:
-                import google.generativeai as genai
+                try:
+                    import google.generativeai as genai
+                except ImportError:
+                    # Si el módulo no está instalado, intentamos instalarlo
+                    logging.warning("Módulo google.generativeai no encontrado, intentando instalarlo...")
+                    import subprocess
+                    subprocess.check_call(["pip", "install", "google-generativeai"])
+                    import google.generativeai as genai
                 
                 gemini_api_key = os.environ.get('GEMINI_API_KEY')
                 genai.configure(api_key=gemini_api_key)
-                gemini_model = genai.GenerativeModel('gemini-1.5-pro')
+                
+                # Configurar el modelo con opciones de generación
+                gemini_model = genai.GenerativeModel(
+                    model_name='gemini-1.5-pro',
+                    generation_config={
+                        'temperature': 0.7,
+                        'top_p': 0.9,
+                        'top_k': 40,
+                        'max_output_tokens': 2048,
+                    }
+                )
                 
                 # Construir prompt con contexto
+                # Formato de mensajes específico para mejor comprensión por parte de Gemini
                 prompt = system_prompt + "\n\n"
                 for msg in context:
                     if isinstance(msg, dict) and 'role' in msg and 'content' in msg:
                         role_prefix = "Usuario: " if msg['role'] == 'user' else "Asistente: "
                         prompt += role_prefix + msg['content'] + "\n\n"
                 
-                prompt += "Usuario: " + user_message + "\n\nAsistente:"
+                prompt += "Usuario: " + user_message + "\n\n" + "Asistente (responde usando markdown con código formateado):"
                 
+                logging.debug(f"Enviando prompt a Gemini: {prompt[:200]}...")
                 gemini_response = gemini_model.generate_content(prompt)
                 response = gemini_response.text
-                logging.info("Respuesta generada con Gemini")
+                logging.info(f"Respuesta generada con Gemini: {response[:100]}...")
+            except ImportError as ie:
+                logging.error(f"Error al importar módulos para Gemini: {str(ie)}")
+                response = f"Error: No se pudo importar el módulo google.generativeai. Por favor, ejecuta 'pip install google-generativeai' e inténtalo de nuevo."
             except Exception as e:
                 logging.error(f"Error with Gemini API: {str(e)}")
+                logging.error(traceback.format_exc())
                 response = f"Error al conectar con Gemini: {str(e)}"
                 
         # Generar respuesta con Anthropic
