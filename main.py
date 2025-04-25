@@ -53,6 +53,7 @@ def chat():
     return render_template('chat.html')
 
 @app.route('/code-corrector')
+@app.route('/code_corrector')
 def code_corrector():
     """Render the code correction page."""
     return render_template('code_corrector.html')
