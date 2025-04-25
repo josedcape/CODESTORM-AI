@@ -605,6 +605,20 @@
             }
 
             function displayFiles(files) {
+                if (!files || !Array.isArray(files)) {
+                    showNotification('Error: Formato de archivos inválido recibido del servidor', 'danger');
+                    filesContainer.innerHTML = `
+                        <div class="p-4 text-center text-danger">
+                            <i class="bi bi-exclamation-triangle" style="font-size: 2rem;"></i>
+                            <p class="mt-2">Error en los datos de archivos recibidos</p>
+                            <button class="btn btn-sm btn-outline-primary mt-3" onclick="loadFiles(currentPath)">
+                                <i class="bi bi-arrow-repeat"></i> Intentar nuevamente
+                            </button>
+                        </div>
+                    `;
+                    return;
+                }
+                
                 filesContainer.innerHTML = '';
 
                 // Si no estamos en la raíz, mostrar opción para subir un nivel

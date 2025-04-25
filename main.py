@@ -148,6 +148,156 @@ def list_files():
             'error': str(e)
         }), 500
 
+@app.route('/api/files/read', methods=['GET'])
+def read_file():
+    """API para leer el contenido de un archivo."""
+    try:
+        file_path = request.args.get('file_path')
+        if not file_path:
+            return jsonify({
+                'success': False,
+                'error': 'No se proporcionó ruta de archivo'
+            }), 400
+            
+        # Prevenir path traversal
+        if '..' in file_path:
+            return jsonify({
+                'success': False,
+                'error': 'Ruta de archivo inválida'
+            }), 400
+            
+        # Verificar que el archivo existe
+        if not os.path.exists(file_path) or os.path.isdir(file_path):
+            return jsonify({
+                'success': False,
+                'error': 'Archivo no encontrado o es un directorio'
+            }), 404
+            
+        # Leer contenido del archivo
+        try:
+            with open(file_path, 'r', encoding='utf-8') as f:
+                content = f.read()
+                
+            return jsonify({
+                'success': True,
+                'content': content,
+                'file_path': file_path
+            })
+        except Exception as e:
+            logging.error(f"Error al leer archivo: {str(e)}")
+            return jsonify({
+                'success': False,
+                'error': f'Error al leer archivo: {str(e)}'
+            }), 500
+            
+    except Exception as e:
+        logging.error(f"Error en endpoint de lectura de archivo: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@app.route('/api/files/create', methods=['POST'])
+def create_file():
+    """API para crear un archivo o directorio."""
+    try:
+        data = request.json
+        if not data:
+            return jsonify({
+                'success': False,
+                'error': 'No se proporcionaron datos'
+            }), 400
+            
+        file_path = data.get('file_path')
+        content = data.get('content', '')
+        
+        if not file_path:
+            return jsonify({
+                'success': False,
+                'error': 'No se proporcionó ruta de archivo'
+            }), 400
+            
+        # Prevenir path traversal
+        if '..' in file_path:
+            return jsonify({
+                'success': False,
+                'error': 'Ruta de archivo inválida'
+            }), 400
+            
+        # Crear directorio padre si no existe
+        parent_dir = os.path.dirname(file_path)
+        if parent_dir and not os.path.exists(parent_dir):
+            os.makedirs(parent_dir, exist_ok=True)
+            
+        # Crear archivo
+        with open(file_path, 'w', encoding='utf-8') as f:
+            f.write(content)
+            
+        return jsonify({
+            'success': True,
+            'message': f'Archivo {file_path} creado exitosamente'
+        })
+            
+    except Exception as e:
+        logging.error(f"Error en endpoint de creación de archivo: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@app.route('/api/files/delete', methods=['DELETE'])
+def delete_file():
+    """API para eliminar un archivo o directorio."""
+    try:
+        data = request.json
+        if not data:
+            return jsonify({
+                'success': False,
+                'error': 'No se proporcionaron datos'
+            }), 400
+            
+        file_path = data.get('file_path')
+        
+        if not file_path:
+            return jsonify({
+                'success': False,
+                'error': 'No se proporcionó ruta de archivo'
+            }), 400
+            
+        # Prevenir path traversal
+        if '..' in file_path:
+            return jsonify({
+                'success': False,
+                'error': 'Ruta de archivo inválida'
+            }), 400
+            
+        # Verificar que el archivo existe
+        if not os.path.exists(file_path):
+            return jsonify({
+                'success': False,
+                'error': 'Archivo no encontrado'
+            }), 404
+            
+        # Eliminar archivo o directorio
+        if os.path.isdir(file_path):
+            shutil.rmtree(file_path)
+            message = f'Directorio {file_path} eliminado exitosamente'
+        else:
+            os.remove(file_path)
+            message = f'Archivo {file_path} eliminado exitosamente'
+            
+        return jsonify({
+            'success': True,
+            'message': message
+        })
+            
+    except Exception as e:
+        logging.error(f"Error en endpoint de eliminación de archivo: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
 @app.route('/api/process', methods=['POST'])
 def process_request():
     """API para procesar solicitudes genéricas."""
