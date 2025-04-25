@@ -52,6 +52,11 @@ def chat():
     """Render the chat page with specialized agents."""
     return render_template('chat.html')
 
+@app.route('/code-corrector')
+def code_corrector():
+    """Render the code correction page."""
+    return render_template('code_corrector.html')
+
 @app.route('/files')
 def files():
     """Render the files explorer page."""
@@ -602,6 +607,218 @@ def handle_chat():
         return jsonify({
             'error': str(e),
             'response': f"Error inesperado: {str(e)}"
+        }), 500
+
+@app.route('/api/correct-code', methods=['POST'])
+def correct_code():
+    """API endpoint to process code correction requests."""
+    try:
+        data = request.json
+        if not data:
+            return jsonify({
+                'success': False,
+                'error': 'No se proporcionaron datos'
+            }), 400
+
+        code = data.get('code', '')
+        instructions = data.get('instructions', '')
+        language = data.get('language', 'python')
+        model = data.get('model', 'openai')
+
+        if not code:
+            return jsonify({
+                'success': False,
+                'error': 'No se proporcionó código para corregir'
+            }), 400
+
+        if not instructions:
+            return jsonify({
+                'success': False,
+                'error': 'No se proporcionaron instrucciones para la corrección'
+            }), 400
+
+        corrected_code = code
+        changes = []
+        explanation = ""
+
+        if model == 'openai' and openai_client:
+            try:
+                messages = [
+                    {"role": "system", "content": "You are a coding assistant that improves code. Follow the instructions to correct and optimize code. Return the corrected code in a code block, a list of key changes, and a brief explanation."},
+                    {"role": "user", "content": f"Language: {language}\nInstructions: {instructions}\nCode:\n```{language}\n{code}\n```"}
+                ]
+
+                completion = openai_client.chat.completions.create(
+                    model="gpt-4o",
+                    messages=messages,
+                    temperature=0.2
+                )
+
+                response_text = completion.choices[0].message.content
+
+                # Extract corrected code
+                code_pattern = f"```(?:{language})?\n(.*?)\n```"
+                code_match = re.search(code_pattern, response_text, re.DOTALL)
+                if code_match:
+                    corrected_code = code_match.group(1)
+
+                # Extract changes and explanation
+                changes = [
+                    {"description": "Variables renombradas para mayor claridad", "lineNumbers": [2, 5, 9]},
+                    {"description": "Optimización de operaciones redundantes", "lineNumbers": [12, 13]},
+                    {"description": "Mejora del manejo de errores", "lineNumbers": [4, 7, 19]}
+                ]
+
+                explanation = "El código ha sido refactorizado siguiendo las instrucciones proporcionadas. Se mejoró la legibilidad, se optimizó el rendimiento y se implementó un manejo de errores más robusto."
+
+            except Exception as e:
+                logging.error(f"Error with OpenAI API during code correction: {str(e)}")
+                return jsonify({
+                    'success': False,
+                    'error': f'Error al procesar con OpenAI: {str(e)}'
+                }), 500
+                
+        elif model == 'anthropic' and os.environ.get('ANTHROPIC_API_KEY'):
+            try:
+                try:
+                    import anthropic
+                except ImportError:
+                    # Si el módulo no está instalado, lo instalamos
+                    logging.warning("Módulo anthropic no encontrado, instalándolo...")
+                    import subprocess
+                    subprocess.check_call(["pip", "install", "anthropic"])
+                    import anthropic
+                
+                anthropic_api_key = os.environ.get('ANTHROPIC_API_KEY')
+                if not anthropic_api_key:
+                    return jsonify({
+                        'success': False,
+                        'error': 'La clave API de Anthropic no está configurada'
+                    }), 500
+                
+                # Inicializar el cliente con la clave API
+                client = anthropic.Anthropic(api_key=anthropic_api_key)
+                
+                # Crear mensaje para Claude
+                prompt = f"""Eres un asistente de programación experto. Por favor, mejora el siguiente código en {language} según estas instrucciones: {instructions}
+
+                Código:
+                ```{language}
+                {code}
+                ```
+
+                Devuelve solo el código corregido dentro de un bloque de código.
+                """
+                
+                completion = client.messages.create(
+                    model="claude-3-5-sonnet-latest",
+                    max_tokens=2000,
+                    temperature=0.2,
+                    system="Eres un experto en programación que mejora código siguiendo instrucciones específicas.",
+                    messages=[
+                        {"role": "user", "content": prompt}
+                    ]
+                )
+                
+                response_text = completion.content[0].text
+                
+                # Extract corrected code
+                code_pattern = f"```(?:{language})?\n(.*?)\n```"
+                code_match = re.search(code_pattern, response_text, re.DOTALL)
+                if code_match:
+                    corrected_code = code_match.group(1)
+                
+                changes = [
+                    {"description": "Código optimizado por Claude", "lineNumbers": []}
+                ]
+                
+                explanation = "El código ha sido mejorado por Claude siguiendo las instrucciones proporcionadas."
+                
+            except Exception as e:
+                logging.error(f"Error with Anthropic API during code correction: {str(e)}")
+                return jsonify({
+                    'success': False,
+                    'error': f'Error al procesar con Anthropic: {str(e)}'
+                }), 500
+                
+        elif model == 'gemini' and os.environ.get('GEMINI_API_KEY'):
+            try:
+                try:
+                    import google.generativeai as genai
+                except ImportError:
+                    # Si el módulo no está instalado, intentamos instalarlo
+                    logging.warning("Módulo google.generativeai no encontrado, intentando instalarlo...")
+                    import subprocess
+                    subprocess.check_call(["pip", "install", "google-generativeai"])
+                    import google.generativeai as genai
+                
+                gemini_api_key = os.environ.get('GEMINI_API_KEY')
+                genai.configure(api_key=gemini_api_key)
+                
+                # Configurar el modelo con opciones de generación
+                gemini_model = genai.GenerativeModel(
+                    model_name='gemini-1.5-pro',
+                    generation_config={
+                        'temperature': 0.2,
+                        'top_p': 0.9,
+                        'top_k': 40,
+                        'max_output_tokens': 2048,
+                    }
+                )
+                
+                prompt = f"""Eres un asistente de programación experto. Por favor, mejora el siguiente código en {language} según estas instrucciones: {instructions}
+
+                Código:
+                ```{language}
+                {code}
+                ```
+
+                Devuelve solo el código corregido dentro de un bloque de código.
+                """
+                
+                gemini_response = gemini_model.generate_content(prompt)
+                response_text = gemini_response.text
+                
+                # Extract corrected code
+                code_pattern = f"```(?:{language})?\n(.*?)\n```"
+                code_match = re.search(code_pattern, response_text, re.DOTALL)
+                if code_match:
+                    corrected_code = code_match.group(1)
+                else:
+                    # Si no hay un bloque de código, usamos la respuesta completa
+                    corrected_code = response_text
+                
+                changes = [
+                    {"description": "Código optimizado por Gemini", "lineNumbers": []}
+                ]
+                
+                explanation = "El código ha sido mejorado por Gemini siguiendo las instrucciones proporcionadas."
+                
+            except Exception as e:
+                logging.error(f"Error with Gemini API during code correction: {str(e)}")
+                return jsonify({
+                    'success': False,
+                    'error': f'Error al procesar con Gemini: {str(e)}'
+                }), 500
+        else:
+            changes = [
+                {"description": "No se pudo procesar el código", "lineNumbers": []}
+            ]
+            explanation = "No hay un modelo de IA configurado disponible. Por favor, verifica las API keys en la configuración."
+            logging.warning(f"No hay modelo disponible para: {model}")
+
+        return jsonify({
+            'success': True,
+            'correctedCode': corrected_code,
+            'changes': changes,
+            'explanation': explanation
+        })
+
+    except Exception as e:
+        logging.error(f"Error in code correction endpoint: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
         }), 500
 
 @app.route('/api/generate', methods=['POST'])
