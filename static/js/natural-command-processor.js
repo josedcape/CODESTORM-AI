@@ -265,12 +265,12 @@ window.naturalCommandProcessor = (function() {
     function deleteFile(filename) {
         return new Promise((resolve, reject) => {
             fetch('/api/files/delete', {
-                method: 'POST',
+                method: 'DELETE',  // Changed from POST to DELETE
                 headers: {
                     'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({
-                    path: filename
+                    file_path: filename  // Also fixed the property name to match backend
                 })
             })
             .then(response => {
@@ -353,3 +353,4 @@ window.naturalCommandProcessor = (function() {
         extractCommand: extractCommand
     };
 })();
+

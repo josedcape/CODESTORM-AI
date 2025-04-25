@@ -1,865 +1,765 @@
-// CODESTORM - Sistema de chat con agentes especializados y funcionalidades avanzadas
+/**
+ * Codestorm Assistant - Módulo de Chat
+ * Versión: 2.0.1
+ * Fecha: 25-04-2025
+ */
 
-// Función principal para inicializar el chat
-function initializeChat() {
-  const chatContainer = document.getElementById('chat-container');
-  const chatMessages = document.getElementById('chat-messages');
-  const chatForm = document.getElementById('chat-form');
-  const chatInput = document.getElementById('chat-input');
-  const agentSelector = document.getElementById('agent-selector');
-  
-  // Cargar los agentes en el selector
-  loadAgentSelector();
-  
-  // Evento para enviar mensaje y autoajustar altura
-  chatForm.addEventListener('submit', function(e) {
-    e.preventDefault();
-    const message = chatInput.value.trim();
-    if (message) {
-      sendMessage(message);
-      chatInput.value = '';
-      // Restablecer altura después de enviar
-      chatInput.style.height = 'auto';
-    }
-  });
-  
-  // Autoajustar altura del textarea al escribir
-  chatInput.addEventListener('input', function() {
-    this.style.height = 'auto';
-    this.style.height = (this.scrollHeight) + 'px';
-  });
-  
-  // Evento para cambiar de agente
-  agentSelector.addEventListener('change', function() {
-    const selectedAgentId = agentSelector.value;
-    setActiveAgent(selectedAgentId);
-  });
-  
-  // Inicializar detección de comandos de creación de páginas
-  initCreationCommandDetection();
-}
+// Namespace principal para la aplicación
+window.app = window.app || {};
+window.app.chat = window.app.chat || {};
+window.app.chat.apiEndpoints = {
+    chat: '/api/chat',
+    fallback: '/api/generate',
+    health: '/api/health'
+};
 
-// Cargar los agentes en el selector
-function loadAgentSelector() {
-  const agentSelector = document.getElementById('agent-selector');
-  if (!agentSelector) return; // Prevenir errores si el elemento no existe
-  
-  // Limpiar el selector actual
-  agentSelector.innerHTML = '';
-  
-  // Verificar que SPECIALIZED_AGENTS está disponible
-  if (typeof window.SPECIALIZED_AGENTS === 'undefined') {
-    console.error("Error: SPECIALIZED_AGENTS no está definido");
-    // Usar agentes predefinidos básicos si no están disponibles
-    window.SPECIALIZED_AGENTS = {
-      developer: {
-        id: 'developer',
-        name: 'Agente de Desarrollo',
-        icon: 'bi-code-slash',
-        description: 'Experto en optimización y edición de código en tiempo real',
-        capabilities: ['Corrección de código', 'Optimización', 'Desarrollo']
-      },
-      architect: {
-        id: 'architect',
-        name: 'Agente de Arquitectura',
-        icon: 'bi-diagram-3',
-        description: 'Diseñador de arquitecturas escalables',
-        capabilities: ['Diseño de sistemas', 'Planificación', 'Estructura']
-      }
-    };
-  }
-  
-  // Crear opciones HTML directamente para mejor rendimiento
-  let optionsHTML = '';
-  
-  // Opción por defecto (Developer)
-  optionsHTML += `<option value="developer" selected>Agente de Desarrollo</option>`;
-  
-  // Añadir el resto de agentes
-  for (const agentId in window.SPECIALIZED_AGENTS) {
-    if (agentId !== 'developer') {
-      const agent = window.SPECIALIZED_AGENTS[agentId];
-      optionsHTML += `<option value="${agentId}">${agent.name}</option>`;
-    }
-  }
-  
-  // Insertar todas las opciones de una vez (mejor rendimiento)
-  agentSelector.innerHTML = optionsHTML;
-}
-
-// Establecer el agente activo
-function setActiveAgent(agentId) {
-  // Asegurarse de que SPECIALIZED_AGENTS está definido
-  if (typeof window.SPECIALIZED_AGENTS === 'undefined') {
-    console.error("Error: SPECIALIZED_AGENTS no está definido");
-    return;
-  }
-  
-  // Obtener el agente seleccionado o usar el agente desarrollador por defecto
-  window.app = window.app || {};
-  window.app.activeAgent = window.SPECIALIZED_AGENTS[agentId] || window.SPECIALIZED_AGENTS.developer;
-  
-  // Actualizar el valor del selector
-  const agentSelector = document.getElementById('agent-selector');
-  if (agentSelector) {
-    agentSelector.value = agentId;
-  }
-  
-  // Actualizar la descripción del agente
-  updateAgentDescription(window.app.activeAgent);
-  
-  // Actualizar el icono del avatar
-  updateAgentAvatar(window.app.activeAgent);
-  
-  // Añadir mensaje informativo al chat
-  addSystemMessage(`Has cambiado al <strong>${window.app.activeAgent.name}</strong>. Este agente se especializa en: ${window.app.activeAgent.description}.`);
-}
-
-// Actualizar el avatar del agente
-function updateAgentAvatar(agent) {
-  const agentAvatar = document.querySelector('.agent-avatar i');
-  if (agentAvatar) {
-    agentAvatar.className = `bi ${agent.icon}`;
-  }
-}
-
-// Actualizar la descripción del agente
-function updateAgentDescription(agent) {
-  const agentDescription = document.getElementById('agent-description');
-  const agentCapabilities = document.getElementById('agent-capabilities');
-  const agentTitle = document.querySelector('.agent-details h5');
-  
-  if (agentDescription && agentCapabilities) {
-    agentDescription.textContent = agent.description;
-    if (agentTitle) {
-      agentTitle.textContent = agent.name;
-    }
-    
-    // Mostrar capacidades
-    agentCapabilities.innerHTML = '';
-    agent.capabilities.forEach(capability => {
-      const li = document.createElement('li');
-      li.textContent = capability;
-      agentCapabilities.appendChild(li);
-    });
-  }
-}
-
-// Inicializar detección de comandos de creación
-function initCreationCommandDetection() {
-  // Patrones para detectar comandos de creación
-  window.app.creationPatterns = {
-    page: /crea(r)?\s+(una)?\s+p[áa]gina|genera(r)?\s+(una)?\s+p[áa]gina/i,
-    component: /crea(r)?\s+(un)?\s+componente|genera(r)?\s+(un)?\s+componente/i,
-    form: /crea(r)?\s+(un)?\s+formulario|genera(r)?\s+(un)?\s+formulario/i
-  };
-}
-
-// Enviar mensaje al backend - Versión mejorada con sistema multi-agente
-function sendMessage(message) {
-  // Verificar si es un comando de creación
-  if (handleCreationCommand(message)) {
-    return; // Si se manejó como comando de creación, no enviamos al backend
-  }
-  
-  // Añadir mensaje del usuario al chat
-  addUserMessage(message);
-  
-  // Verificar si es un comando para modificar archivos o ejecutar comandos en lenguaje natural
-  if (window.naturalCommandProcessor) {
-    const parsedRequest = window.naturalCommandProcessor.processRequest(message);
-    if (parsedRequest.success) {
-      // Es un comando para manipular archivos o ejecutar comandos
-      // Mostrar indicador de carga
-      addLoadingMessage();
-      
-      // Procesar la solicitud mediante el API de lenguaje natural en el backend
-      fetch('/api/natural_language', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
+// Configuración del módulo de chat
+window.app.chat = {
+    context: [], // Historial de mensajes para mantener contexto
+    chatMessageId: 0, // Contador de ID para mensajes
+    activeModel: 'gemini', // Modelo predeterminado
+    activeAgent: 'architect', // Agente predeterminado
+    debugMode: false, // Desactivar modo debug por defecto
+    availableAgents: {
+        'developer': {
+            name: 'Agente de Desarrollo',
+            description: 'Especialista en optimización y edición de código en tiempo real',
+            capabilities: [
+                'Programación en múltiples lenguajes',
+                'Depuración de código y resolución de errores',
+                'Implementación de funcionalidades',
+                'Pruebas y optimización de rendimiento',
+                'Gestión de dependencias y librerías'
+            ],
+            icon: 'code-slash'
         },
-        body: JSON.stringify({
-          text: message
-        }),
-      })
-      .then(response => response.json())
-      .then(data => {
-        // Remover indicador de carga
-        removeLoadingMessage();
-        
-        // Obtener el agente activo
-        const activeAgent = window.app.activeAgent || window.SPECIALIZED_AGENTS.developer;
-        
-        if (data.success) {
-          // La acción fue exitosa, mostrar el resultado
-          let resultMessage = data.message || 'Acción completada correctamente';
-          
-          // Si hay contenido de archivo o salida de comando, agregarla
-          if (data.content) {
-            resultMessage += '\n\n```' + (data.file_type || '') + '\n' + data.content + '\n```';
-          }
-          
-          if (data.stdout) {
-            resultMessage += '\n\n```bash\n# Salida del comando:\n' + data.stdout + '\n```';
-          }
-          
-          if (data.stderr && data.stderr.trim()) {
-            resultMessage += '\n\n```bash\n# Errores:\n' + data.stderr + '\n```';
-          }
-          
-          // Agregar respuesta del agente
-          addAgentMessage(resultMessage, activeAgent);
-        } else {
-          // Hubo un error en la acción
-          addAgentMessage('No pude completar esa acción: ' + data.message, activeAgent);
+        'architect': {
+            name: 'Agente de Arquitectura',
+            description: 'Diseñador de arquitecturas escalables y optimizadas',
+            capabilities: [
+                'Definición de estructura del proyecto',
+                'Selección de tecnologías y frameworks',
+                'Asesoría en elección de bases de datos',
+                'Implementación de microservicios',
+                'Planificación de UI/UX y patrones de diseño'
+            ],
+            icon: 'diagram-3'
+        },
+        'advanced': {
+            name: 'Agente Avanzado',
+            description: 'Experto en integraciones complejas y soluciones avanzadas',
+            capabilities: [
+                'Implementación de IA y aprendizaje automático',
+                'Arquitecturas distribuidas y serverless',
+                'Optimización de sistemas a gran escala',
+                'Estrategias de seguridad y encriptación',
+                'DevOps y automatización de procesos'
+            ],
+            icon: 'cpu'
+        },
+        'general': {
+            name: 'Asistente General',
+            description: 'Asistente versátil para diversas tareas de programación',
+            capabilities: [
+                'Resolución de consultas generales',
+                'Asistencia en proyectos diversos',
+                'Explicación de conceptos técnicos',
+                'Recomendaciones de buenas prácticas',
+                'Orientación en elección de tecnologías'
+            ],
+            icon: 'person-check'
         }
-      })
-      .catch(error => {
-        console.error('Error al procesar lenguaje natural:', error);
-        removeLoadingMessage();
-        addSystemMessage('Error de conexión. Por favor, inténtalo de nuevo.');
-      });
-      
-      return; // Terminamos aquí porque ya procesamos el comando
+    },
+    // Modelos de IA disponibles
+    availableModels: {
+        'openai': 'OpenAI (GPT-4o)',
+        'anthropic': 'Anthropic (Claude)',
+        'gemini': 'Google (Gemini)'
     }
-  }
-  
-  // Obtener el agente activo
-  const activeAgent = window.app.activeAgent || window.SPECIALIZED_AGENTS.developer;
-  const agentId = activeAgent.id || 'developer';
-  
-  // Mostrar indicador de carga con estilo futurista
-  addLoadingMessage();
-  
-  // Determinar si estamos en modo colaborativo
-  const collaborativeMode = true; // Activar por defecto
-  
-  // Enviar al backend con el modelo seleccionado
-  const modelSelect = document.getElementById('model-select');
-  const selectedModel = modelSelect ? modelSelect.value : 'openai';
-  
-  // Obtener el contexto de la conversación reciente (últimos 5 mensajes)
-  let conversationContext = [];
-  const chatMessages = document.querySelectorAll('.chat-message');
-  let contextCount = 0;
-  
-  // Reunir los últimos mensajes como contexto, hasta un máximo de 5
-  for (let i = chatMessages.length - 2; i >= 0 && contextCount < 5; i--) { // -2 para ignorar el mensaje actual
-    const msg = chatMessages[i];
-    const role = msg.classList.contains('user-message') ? 'user' : 
-                 msg.classList.contains('system-message') ? 'system' : 'assistant';
-    const content = msg.querySelector('.message-content').textContent;
+};
+
+/**
+ * Inicializa el chat y configura los manejadores de eventos
+ */
+function initializeChat() {
+    // Inicializar logs silenciosamente
+    silentLog('Inicializando chat con configuración optimizada...');
     
-    // Añadir al inicio para mantener el orden cronológico
-    conversationContext.unshift({
-      role: role,
-      content: content
+    // Configurar selectores y elementos de la UI
+    setupUIElements();
+    
+    // Verificar conexión con el servidor - versión simplificada
+    checkServerConnection();
+    
+    // Inicializar características avanzadas
+    setupDocumentFeatures();
+    
+    // Añadir mensaje de bienvenida
+    addSystemMessage('¡Bienvenido a Codestorm Assistant! Selecciona un modelo y agente para comenzar.');
+}
+
+/**
+ * Configura las referencias a elementos UI y sus eventos
+ */
+function setupUIElements() {
+    // Elementos principales
+    window.app.chat.elements = {
+        chatContainer: document.getElementById('chat-container'),
+        messagesContainer: document.getElementById('messages-container'),
+        messageInput: document.getElementById('message-input'),
+        sendButton: document.getElementById('send-button'),
+        modelSelect: document.getElementById('model-select'),
+        agentSelect: document.getElementById('agent-select'),
+        agentInfo: document.getElementById('agent-info'),
+        agentCapabilities: document.getElementById('agent-capabilities'),
+        agentBadge: document.getElementById('agent-badge'),
+        statusIndicator: document.getElementById('status-indicator')
+    };
+    
+    const {messageInput, sendButton, modelSelect, agentSelect} = window.app.chat.elements;
+    
+    // Configurar eventos principales
+    if (sendButton) {
+        sendButton.addEventListener('click', sendMessage);
+    }
+    
+    if (messageInput) {
+        messageInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendMessage();
+            } else if (e.key === 'Enter' && e.shiftKey) {
+                // Permitir saltos de línea con Shift+Enter
+            }
+            
+            // Ajustar altura al contenido
+            setTimeout(() => {
+                adjustTextareaHeight(messageInput);
+            }, 0);
+        });
+        
+        // Ajustar altura al escribir
+        messageInput.addEventListener('input', () => {
+            adjustTextareaHeight(messageInput);
+        });
+    }
+    
+    // Cambiar modelo de IA
+    if (modelSelect) {
+        modelSelect.addEventListener('change', () => {
+            window.app.chat.activeModel = modelSelect.value;
+            silentLog('Modelo cambiado a:', window.app.chat.activeModel);
+            addSystemMessage(`Modelo cambiado a: ${window.app.chat.availableModels[window.app.chat.activeModel]}`);
+        });
+    }
+    
+    // Cambiar agente
+    if (agentSelect) {
+        agentSelect.addEventListener('change', () => {
+            const previousAgent = window.app.chat.activeAgent;
+            window.app.chat.activeAgent = agentSelect.value;
+            updateAgentInfo(window.app.chat.activeAgent);
+            silentLog('Agente cambiado a:', window.app.chat.activeAgent);
+            
+            // Añadir notificación solo si realmente cambió
+            if (previousAgent !== window.app.chat.activeAgent) {
+                addSystemMessage(`Has cambiado al ${window.app.chat.availableAgents[window.app.chat.activeAgent].name}. ${window.app.chat.availableAgents[window.app.chat.activeAgent].description}`);
+            }
+        });
+    }
+    
+    // Actualizar info del agente inicial
+    updateAgentInfo(window.app.chat.activeAgent);
+}
+
+/**
+ * Comprueba la conexión con el servidor de manera simplificada
+ */
+function checkServerConnection() {
+    // Check health endpoint first
+    fetch(window.app.chat.apiEndpoints.health)
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.status === 'ok') {
+                silentLog('Server health check passed');
+                document.getElementById('status-indicator')?.classList.add('status-connected');
+            } else {
+                throw new Error('Server health check failed');
+            }
+        })
+        .catch(error => {
+            console.error('Server health check failed:', error);
+            addSystemMessage("Advertencia: Conexión limitada al servidor. Algunas funciones podrían no estar disponibles.");
+            document.getElementById('status-indicator')?.classList.add('status-disconnected');
+        });
+}
+
+/**
+ * Configura funcionalidades relacionadas con documentos
+ */
+function setupDocumentFeatures() {
+    // Configuración silenciosa
+    silentLog('Características de documentos inicializadas');
+}
+
+/**
+ * Envía un mensaje al servidor y procesa la respuesta
+ */
+async function sendMessage() {
+    const {messageInput, sendButton} = window.app.chat.elements;
+    
+    if (!messageInput) return;
+    
+    const userMessage = messageInput.value.trim();
+    if (!userMessage) return;
+    
+    // Añadir mensaje del usuario al chat y contexto
+    addUserMessage(userMessage);
+    window.app.chat.context.push({
+        role: 'user',
+        content: userMessage
     });
     
-    contextCount++;
-  }
-  
-  console.log("Enviando mensaje al backend:", {
-    message: message,
-    agent_id: agentId,
-    context: conversationContext,
-    model: selectedModel,
-    collaborative_mode: collaborativeMode
-  });
-  
-  // Enviar al backend con información completa
-  fetch('/api/chat', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      message: message,
-      agent_id: agentId,
-      context: conversationContext,
-      model: selectedModel,
-      collaborative_mode: collaborativeMode
-    }),
-  })
-  .then(response => response.json())
-  .then(data => {
-    // Remover indicador de carga
-    removeLoadingMessage();
+    // Limpiar input y ajustar altura
+    messageInput.value = '';
+    adjustTextareaHeight(messageInput);
+    messageInput.focus();
     
-    if (data.error) {
-      addSystemMessage(`Error: ${data.error}`);
-      return;
+    // Deshabilitar botón mientras se procesa
+    if (sendButton) {
+        sendButton.disabled = true;
+        sendButton.style.opacity = '0.6';
     }
     
-    // Mostrar la respuesta del agente
-    addAgentMessage(data.response, activeAgent);
+    // Preparar datos para enviar al servidor
+    const requestData = {
+        message: userMessage,
+        agent_id: window.app.chat.activeAgent,
+        model: window.app.chat.activeModel,
+        context: window.app.chat.context.slice(-10)  // Últimos 10 mensajes para contexto
+    };
     
-    // Procesar recomendaciones de agentes si las hay
-    if (data.response.includes('**Nota:** Para esta consulta, también podrías consultar a:')) {
-      const recommendationSection = data.response.split('**Nota:** Para esta consulta, también podrías consultar a:')[1];
-      // Extraer recomendaciones de agentes
-      const agentRecommendations = recommendationSection.match(/- El (.*?), para obtener/g);
-      
-      if (agentRecommendations && agentRecommendations.length > 0) {
-        // Añadir opciones para cambiar de agente
-        const agentOptions = agentRecommendations.map(rec => {
-          const agentName = rec.match(/- El (.*?),/)[1];
-          let agentId = '';
-          
-          // Mapear nombres a IDs
-          if (agentName.includes('Desarrollo')) agentId = 'developer';
-          else if (agentName.includes('Arquitectura')) agentId = 'architect';
-          else if (agentName.includes('Avanzado')) agentId = 'advanced';
-          
-          return { id: agentId, name: agentName };
+    // Mostrar indicador de carga
+    const loadingMessageId = addLoadingMessage();
+    
+    try {
+        silentLog('Enviando mensaje al servidor:', requestData);
+        
+        const response = await fetch('/api/chat', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(requestData)
         });
         
-        // Mostrar opciones de cambio como botones
-        let agentButtonsHTML = '<div class="agent-recommendations mt-2">';
-        agentButtonsHTML += '<p class="text-muted small">¿Quieres cambiar de agente para esta consulta?</p>';
+        // Verificar si hubo error HTTP
+        if (!response.ok) {
+            throw new Error(`Error del servidor: ${response.status} ${response.statusText}`);
+        }
         
-        agentOptions.forEach(agent => {
-          agentButtonsHTML += `<button class="btn btn-sm btn-outline-primary me-2 mt-1 switch-agent-btn" data-agent-id="${agent.id}">
-            Cambiar a ${agent.name}
-          </button>`;
-        });
+        const data = await response.json();
+        silentLog('Respuesta recibida:', data);
         
-        agentButtonsHTML += '</div>';
+        // Eliminar indicador de carga
+        removeLoadingMessage(loadingMessageId);
         
-        // Añadir botones al último mensaje del agente
-        const lastAgentMessage = document.querySelector('.chat-message.agent-message:last-child .message-content');
-        if (lastAgentMessage) {
-          lastAgentMessage.insertAdjacentHTML('beforeend', agentButtonsHTML);
-          
-          // Añadir event listeners a los botones
-          document.querySelectorAll('.switch-agent-btn').forEach(btn => {
-            btn.addEventListener('click', function() {
-              const newAgentId = this.getAttribute('data-agent-id');
-              if (newAgentId) {
-                setActiveAgent(newAgentId);
-                addSystemMessage(`Has cambiado al ${window.SPECIALIZED_AGENTS[newAgentId].name}. Puedes repetir tu consulta para obtener su perspectiva.`);
-              }
+        // Habilitar botón de envío
+        if (sendButton) {
+            sendButton.disabled = false;
+            sendButton.style.opacity = '1';
+        }
+        
+        if (data.response) {
+            // Añadir respuesta al contexto y mostrarla
+            window.app.chat.context.push({
+                role: 'assistant',
+                content: data.response
             });
-          });
+            
+            // Añadir mensaje del agente al chat
+            addAgentMessage(data.response, window.app.chat.activeAgent);
+        } else if (data.error) {
+            addSystemMessage(`Error: ${data.error}`);
+        } else {
+            addSystemMessage("El servidor respondió pero no envió ningún mensaje");
         }
-      }
-    }
-    
-    // Detectar y procesar código HTML dentro de la respuesta
-    processHtmlCodeForPreview(data.response);
-  })
-  .catch(error => {
-    console.error('Error:', error);
-    removeLoadingMessage();
-    addSystemMessage('Error de conexión. Por favor, verifica tu conexión e intenta de nuevo.');
-  });
-}
-
-// Manejar comandos de creación
-function handleCreationCommand(message) {
-  const lowerMsg = message.toLowerCase();
-  
-  // Verificar si es un comando para crear una página
-  if (window.app.creationPatterns.page.test(lowerMsg)) {
-    
-    // Si el mensaje es muy genérico, solicitar más información
-    if (message.length < 30 || !lowerMsg.includes('para')) {
-      addUserMessage(message);
-      
-      // Agregar sugerencias específicas basadas en el tipo de comando
-      const questions = [
-        "¿Para qué tipo de producto o servicio necesitas la página?",
-        "¿Puedes proporcionar detalles específicos sobre el diseño y contenido que deseas incluir?",
-        "¿Qué secciones específicas necesitas en esta página (por ejemplo: header, galería, testimonios, formulario de contacto)?",
-        "¿Tienes preferencias de estilo o paleta de colores para esta página?"
-      ];
-      
-      // Seleccionar una pregunta aleatoria
-      const randomIndex = Math.floor(Math.random() * questions.length);
-      const randomQuestion = questions[randomIndex];
-      
-      removeLoadingMessage();
-      addAgentMessage(`Para crear la página que necesitas, necesito más detalles. ${randomQuestion}`, window.app.activeAgent);
-      
-      return true; // Comando manejado
-    }
-  } 
-  // Verificar si es un comando para crear un componente
-  else if (window.app.creationPatterns.component.test(lowerMsg)) {
-    if (message.length < 25) {
-      addUserMessage(message);
-      
-      const questions = [
-        "¿Qué tipo de componente necesitas exactamente (navbar, card, slider, galería)?",
-        "¿Puedes describir la funcionalidad específica que debería tener este componente?",
-        "¿Cómo debería integrarse este componente con el resto de tu página?"
-      ];
-      
-      const randomIndex = Math.floor(Math.random() * questions.length);
-      const randomQuestion = questions[randomIndex];
-      
-      removeLoadingMessage();
-      addAgentMessage(`Para crear el componente adecuado, necesito más información. ${randomQuestion}`, window.app.activeAgent);
-      
-      return true; // Comando manejado
-    }
-  }
-  // Verificar si es un comando para crear un formulario
-  else if (window.app.creationPatterns.form.test(lowerMsg)) {
-    if (message.length < 20) {
-      addUserMessage(message);
-      
-      const questions = [
-        "¿Qué tipo de datos necesitas recopilar con este formulario?",
-        "¿Necesitas funcionalidades específicas como validación de datos o integración con algún servicio?",
-        "¿Es un formulario de contacto, registro, pedido u otro tipo?"
-      ];
-      
-      const randomIndex = Math.floor(Math.random() * questions.length);
-      const randomQuestion = questions[randomIndex];
-      
-      removeLoadingMessage();
-      addAgentMessage(`Para diseñar el formulario adecuado, necesito más detalles. ${randomQuestion}`, window.app.activeAgent);
-      
-      return true; // Comando manejado
-    }
-  }
-  
-  return false; // No se manejó como comando especial
-}
-
-// Procesar código HTML para previsualización
-function processHtmlCodeForPreview(text) {
-  // Buscar bloques de código HTML
-  const htmlRegex = /```html([\s\S]*?)```/g;
-  const htmlMatches = text.match(htmlRegex);
-  
-  if (htmlMatches && htmlMatches.length > 0) {
-    // Extraer el contenido HTML del primer bloque
-    const htmlContent = htmlMatches[0].replace(/```html/, '').replace(/```$/, '').trim();
-    
-    // Si existe contenido HTML válido, mostrar previsualización
-    if (htmlContent && htmlContent.includes('<html') || htmlContent.includes('<body') || htmlContent.includes('<div')) {
-      // Mejorar el HTML añadiendo referencias necesarias y estilos
-      const enhancedHtml = enhanceHtmlForPreview(htmlContent);
-      
-      // Mostrar en el iframe de previsualización
-      if (typeof window.showPreview === 'function') {
-        window.showPreview(enhancedHtml);
+    } catch (error) {
+        // Eliminar indicador de carga y habilitar botón
+        removeLoadingMessage(loadingMessageId);
         
-        // Añadir botón para ver en diferentes dispositivos en el mensaje
-        const lastMessage = document.querySelector('.chat-message.agent-message:last-child .message-content');
-        if (lastMessage) {
-          const previewButtonsHtml = `
-            <div class="preview-actions mt-3">
-              <button class="btn btn-sm btn-futuristic" onclick="document.getElementById('preview-section').scrollIntoView({behavior: 'smooth'})">
-                <i class="bi bi-eye"></i> Ver previsualización
-              </button>
-            </div>`;
-          
-          lastMessage.insertAdjacentHTML('beforeend', previewButtonsHtml);
+        if (sendButton) {
+            sendButton.disabled = false;
+            sendButton.style.opacity = '1';
         }
-      }
+        
+        silentLog('Error al enviar mensaje:', error);
+        addSystemMessage(`Error de conexión: ${error.message}`);
     }
-  }
 }
 
-// Mejorar el HTML para previsualización
-function enhanceHtmlForPreview(htmlContent) {
-  // Verificar si el HTML tiene las etiquetas básicas
-  const hasHtmlTag = htmlContent.includes('<html');
-  const hasHeadTag = htmlContent.includes('<head');
-  const hasBodyTag = htmlContent.includes('<body');
-  
-  // Contenido básico para cabecera si no existe
-  let headContent = `
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link href="https://cdn.replit.com/agent/bootstrap-agent-dark-theme.min.css" rel="stylesheet">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
-    <title>Previsualización</title>
-    <style>
-      /* Estilos básicos para la previsualización */
-      body {
-        font-family: 'Sora', sans-serif;
-        line-height: 1.6;
-      }
-      .responsive-img {
-        max-width: 100%;
-        height: auto;
-      }
-      .card {
-        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-        transition: all 0.3s ease;
-      }
-      .card:hover {
-        transform: translateY(-5px);
-        box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
-      }
-    </style>`;
-  
-  // Construir el HTML mejorado
-  let enhancedHtml = '';
-  
-  if (!hasHtmlTag) {
-    enhancedHtml += '<!DOCTYPE html>\n<html lang="es">\n';
-    
-    if (!hasHeadTag) {
-      enhancedHtml += '<head>' + headContent + '</head>\n';
-    }
-    
-    if (!hasBodyTag) {
-      enhancedHtml += '<body>\n' + htmlContent + '\n</body>\n';
-    } else {
-      enhancedHtml += htmlContent;
-    }
-    
-    enhancedHtml += '</html>';
-  } else {
-    // Si ya tiene etiqueta HTML pero no head, insertarla
-    if (!hasHeadTag) {
-      enhancedHtml = htmlContent.replace('<html', '<html lang="es"').replace('>', '>\n<head>' + headContent + '</head>');
-    } else {
-      // Si tiene head, añadir solo los estilos
-      enhancedHtml = htmlContent.replace('</head>', headContent + '</head>');
-    }
-  }
-  
-  return enhancedHtml;
-}
-
-// Añadir mensaje del usuario al chat con estilo futurista
+/**
+ * Añade mensaje del usuario al chat
+ * @param {string} message - Mensaje a mostrar
+ */
 function addUserMessage(message) {
-  const chatMessages = document.getElementById('chat-messages');
-  
-  const messageElement = document.createElement('div');
-  messageElement.className = 'chat-message user-message';
-  
-  const messageContent = document.createElement('div');
-  messageContent.className = 'message-content';
-  messageContent.innerHTML = `<p>${escapeHtml(message)}</p>`;
-  
-  const messageInfo = document.createElement('div');
-  messageInfo.className = 'message-info';
-  messageInfo.innerHTML = `<span class="message-time">${getCurrentTime()}</span>
-                           <span class="message-user">Tú</span>`;
-  
-  messageElement.appendChild(messageContent);
-  messageElement.appendChild(messageInfo);
-  
-  chatMessages.appendChild(messageElement);
-  scrollToBottom(chatMessages);
-}
-
-// Añadir mensaje del agente al chat con estilo futurista
-function addAgentMessage(message, agent) {
-  const chatMessages = document.getElementById('chat-messages');
-  
-  const messageElement = document.createElement('div');
-  messageElement.className = 'chat-message agent-message';
-  
-  // Convertir Markdown a HTML con resaltado de sintaxis mejorado
-  const formattedMessage = formatMarkdown(message);
-  
-  const messageContent = document.createElement('div');
-  messageContent.className = 'message-content';
-  messageContent.innerHTML = formattedMessage;
-  
-  const messageInfo = document.createElement('div');
-  messageInfo.className = 'message-info';
-  messageInfo.innerHTML = `<span class="message-time">${getCurrentTime()}</span>
-                           <span class="message-agent"><i class="bi ${agent.icon}"></i> ${agent.name}</span>
-                           <button class="copy-btn" onclick="copyMessageToClipboard(this)">
-                             <i class="bi bi-clipboard"></i>
-                           </button>`;
-  
-  messageElement.appendChild(messageContent);
-  messageElement.appendChild(messageInfo);
-  
-  chatMessages.appendChild(messageElement);
-  scrollToBottom(chatMessages);
-  
-  // Inicializar resaltado de sintaxis mejorado
-  document.querySelectorAll('pre code').forEach((block) => {
-    hljs.highlightElement(block);
-    
-    // Añadir botones para copiar código
-    const codeContainer = block.parentNode;
-    const codeLanguage = block.className.replace('language-', '');
-    
-    // Crear un contenedor para el encabezado del código
-    const codeHeader = document.createElement('div');
-    codeHeader.className = 'code-header';
-    codeHeader.innerHTML = `
-      <span>${codeLanguage}</span>
-      <div class="code-actions">
-        <button class="code-action-btn" onclick="copyCode(this)">
-          <i class="bi bi-clipboard"></i> Copiar
-        </button>
-      </div>
+    const messageId = `msg-${++window.app.chat.chatMessageId}`;
+    const messageHTML = `
+        <div class="message-container user-message" id="${messageId}">
+            <div class="message-header">
+                <span class="message-author">Tú</span>
+                <span class="message-time">${getCurrentTime()}</span>
+            </div>
+            <div class="message-content">
+                ${formatMessageContent(message)}
+            </div>
+        </div>
     `;
     
-    // Convertir pre en un código con encabezado
-    codeContainer.classList.add('code-block');
-    codeContainer.parentNode.insertBefore(codeHeader, codeContainer);
-  });
+    appendMessageToChat(messageHTML);
+    scrollToBottom();
 }
 
-// Copiar código al portapapeles
-function copyCode(button) {
-  const codeBlock = button.closest('.code-header').nextElementSibling.querySelector('code');
-  const codeText = codeBlock.textContent;
-  
-  navigator.clipboard.writeText(codeText)
-    .then(() => {
-      // Cambiar ícono y texto temporalmente para indicar éxito
-      const icon = button.querySelector('i');
-      icon.className = 'bi bi-clipboard-check';
-      button.innerHTML = '<i class="bi bi-clipboard-check"></i> Copiado';
-      
-      setTimeout(() => {
-        icon.className = 'bi bi-clipboard';
-        button.innerHTML = '<i class="bi bi-clipboard"></i> Copiar';
-      }, 2000);
-    })
-    .catch(err => {
-      console.error('Error al copiar código: ', err);
-    });
-}
-
-// Añadir mensaje del sistema al chat
-function addSystemMessage(message) {
-  const chatMessages = document.getElementById('chat-messages');
-  
-  const messageElement = document.createElement('div');
-  messageElement.className = 'chat-message system-message';
-  
-  const messageContent = document.createElement('div');
-  messageContent.className = 'message-content';
-  messageContent.innerHTML = `<p>${message}</p>`;
-  
-  messageElement.appendChild(messageContent);
-  
-  chatMessages.appendChild(messageElement);
-  scrollToBottom(chatMessages);
-}
-
-// Añadir mensaje de carga al chat con estilo futurista
-function addLoadingMessage() {
-  const chatMessages = document.getElementById('chat-messages');
-  if (!chatMessages) {
-    console.error("No se encontró el contenedor de mensajes");
-    return;
-  }
-  
-  const messageElement = document.createElement('div');
-  messageElement.className = 'chat-message agent-message loading-message';
-  messageElement.id = 'loading-message';
-  
-  const messageContent = document.createElement('div');
-  messageContent.className = 'message-content';
-  messageContent.innerHTML = `<div class="loading-indicator">
-                                <div class="loading-dots">
-                                  <span></span><span></span><span></span>
-                                </div>
-                              </div>`;
-  
-  messageElement.appendChild(messageContent);
-  
-  chatMessages.appendChild(messageElement);
-  scrollToBottom(chatMessages);
-}
-
-// Remover mensaje de carga
-function removeLoadingMessage() {
-  const loadingMessage = document.getElementById('loading-message');
-  if (loadingMessage) {
-    loadingMessage.remove();
-  } else {
-    // Si no se encuentra por ID, buscar por clase
-    const loadingMessages = document.querySelectorAll('.chat-message.agent-message.loading-message');
-    loadingMessages.forEach(msg => msg.remove());
-  }
-}
-
-// Formatear markdown y resaltar código con mejoras
-function formatMarkdown(text) {
-  // Convertir código en bloques con mejoras para la UI
-  text = text.replace(/```(\w*)([\s\S]*?)```/g, function(match, language, code) {
-    language = language || 'plaintext';
-    return `<pre><code class="language-${language}">${escapeHtml(code.trim())}</code></pre>`;
-  });
-  
-  // Código en línea
-  text = text.replace(/`([^`]+)`/g, '<code>$1</code>');
-  
-  // Encabezados
-  text = text.replace(/^### (.*$)/gm, '<h3>$1</h3>');
-  text = text.replace(/^## (.*$)/gm, '<h2>$1</h2>');
-  text = text.replace(/^# (.*$)/gm, '<h1>$1</h1>');
-  
-  // Énfasis (negrita, cursiva)
-  text = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-  text = text.replace(/\*(.*?)\*/g, '<em>$1</em>');
-  
-  // Listas
-  text = text.replace(/^\s*- (.*$)/gm, '<li>$1</li>');
-  text = text.replace(/(<li>.*<\/li>\n)+/g, '<ul>$&</ul>');
-  
-  // Listas numeradas
-  text = text.replace(/^\s*\d+\.\s+(.*$)/gm, '<li>$1</li>');
-  text = text.replace(/(<li>.*<\/li>\n)+/g, '<ol>$&</ol>');
-  
-  // Enlaces
-  text = text.replace(/\[(.*?)\]\((.*?)\)/g, '<a href="$2" target="_blank" class="link-accent">$1</a>');
-  
-  // Tablas (soporte básico)
-  if (text.includes('|')) {
-    const lines = text.split('\n');
-    let inTable = false;
-    let tableLines = [];
-    let processedLines = [];
+/**
+ * Añade mensaje del agente al chat
+ * @param {string} message - Mensaje a mostrar
+ * @param {string} agentId - ID del agente
+ */
+function addAgentMessage(message, agentId) {
+    const agent = window.app.chat.availableAgents[agentId] || window.app.chat.availableAgents.general;
+    const messageId = `msg-${++window.app.chat.chatMessageId}`;
+    const formattedMessage = formatMessageContent(message);
     
-    for (let i = 0; i < lines.length; i++) {
-      const line = lines[i];
-      
-      if (line.trim().startsWith('|') && line.includes('|')) {
-        if (!inTable) {
-          inTable = true;
-          tableLines = [];
-        }
-        tableLines.push(line);
-      } else if (inTable) {
-        inTable = false;
-        if (tableLines.length >= 2) {
-          const tableHTML = convertTableToHTML(tableLines);
-          processedLines.push(tableHTML);
-        } else {
-          processedLines = processedLines.concat(tableLines);
-        }
-        processedLines.push(line);
-      } else {
-        processedLines.push(line);
-      }
-    }
-    
-    // Manejar tabla al final del texto
-    if (inTable && tableLines.length >= 2) {
-      const tableHTML = convertTableToHTML(tableLines);
-      processedLines.push(tableHTML);
-    }
-    
-    text = processedLines.join('\n');
-  }
-  
-  // Párrafos (asegurarse de que el contenido no dentro de otras etiquetas esté en párrafos)
-  text = text.replace(/^(?!<[a-z]).+/gm, function(match) {
-    if (match.trim().length === 0) return match;
-    return `<p>${match}</p>`;
-  });
-  
-  return text;
-}
-
-// Convertir tabla Markdown a HTML
-function convertTableToHTML(tableLines) {
-  // Eliminar líneas de separación (---)
-  const filteredLines = tableLines.filter(line => !line.match(/^\s*\|[\s\-\|]*\|\s*$/));
-  
-  let tableHTML = '<div class="table-responsive"><table class="table table-dark table-striped">';
-  let isHeader = true;
-  
-  filteredLines.forEach(line => {
-    const cells = line.split('|').slice(1, -1); // Remover primero y último vacíos
-    
-    if (isHeader) {
-      tableHTML += '<thead><tr>';
-      cells.forEach(cell => {
-        tableHTML += `<th>${cell.trim()}</th>`;
-      });
-      tableHTML += '</tr></thead><tbody>';
-      isHeader = false;
-    } else {
-      tableHTML += '<tr>';
-      cells.forEach(cell => {
-        tableHTML += `<td>${cell.trim()}</td>`;
-      });
-      tableHTML += '</tr>';
-    }
-  });
-  
-  tableHTML += '</tbody></table></div>';
-  return tableHTML;
-}
-
-// Copiar mensaje al portapapeles con notificación mejorada
-function copyMessageToClipboard(button) {
-  const messageElement = button.closest('.chat-message.agent-message');
-  const content = messageElement.querySelector('.message-content').textContent;
-  
-  navigator.clipboard.writeText(content)
-    .then(() => {
-      // Cambiar ícono temporalmente para indicar éxito
-      const icon = button.querySelector('i');
-      icon.className = 'bi bi-clipboard-check';
-      
-      // Mostrar notificación flotante
-      const notification = document.createElement('div');
-      notification.className = 'position-fixed top-0 end-0 p-3';
-      notification.style.zIndex = '5000';
-      notification.innerHTML = `
-        <div class="toast show bg-success text-white" role="alert">
-          <div class="toast-header bg-success text-white">
-            <i class="bi bi-check-circle me-2"></i>
-            <strong class="me-auto">Éxito</strong>
-            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast"></button>
-          </div>
-          <div class="toast-body">
-            Contenido copiado al portapapeles
-          </div>
+    const messageHTML = `
+        <div class="message-container agent-message" id="${messageId}">
+            <div class="message-header">
+                <span class="message-author">
+                    <i class="bi bi-${agent.icon}"></i> 
+                    ${agent.name}
+                </span>
+                <span class="message-time">${getCurrentTime()}</span>
+            </div>
+            <div class="message-content">
+                ${formattedMessage}
+            </div>
+            <div class="message-actions">
+                <button class="btn btn-sm btn-icon" onclick="copyToClipboard('${messageId}', 'message')" title="Copiar mensaje">
+                    <i class="bi bi-clipboard"></i>
+                </button>
+            </div>
         </div>
-      `;
-      document.body.appendChild(notification);
-      
-      setTimeout(() => {
-        icon.className = 'bi bi-clipboard';
-        notification.remove();
-      }, 2000);
-    })
-    .catch(err => {
-      console.error('Error al copiar: ', err);
+    `;
+    
+    appendMessageToChat(messageHTML);
+    
+    // Procesar elementos especiales (código, HTML, etc)
+    processCodeBlocks(messageId);
+    processHTMLPreview(messageId);
+    
+    scrollToBottom();
+}
+
+/**
+ * Añade mensaje del sistema al chat (notificaciones, etc)
+ * @param {string} message - Mensaje a mostrar
+ */
+function addSystemMessage(message) {
+    const messageId = `msg-${++window.app.chat.chatMessageId}`;
+    const messageHTML = `
+        <div class="message-container system-message" id="${messageId}">
+            <div class="message-content">
+                <i class="bi bi-info-circle"></i> ${message}
+            </div>
+        </div>
+    `;
+    
+    appendMessageToChat(messageHTML);
+    scrollToBottom();
+}
+
+/**
+ * Añade un mensaje de carga al chat
+ * @returns {string} ID del mensaje de carga
+ */
+function addLoadingMessage() {
+    const messageId = `loading-${Date.now()}`;
+    const messageHTML = `
+        <div class="message-container loading-message" id="${messageId}">
+            <div class="message-content">
+                <div class="typing-indicator">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    appendMessageToChat(messageHTML);
+    scrollToBottom();
+    
+    return messageId;
+}
+
+/**
+ * Elimina un mensaje de carga
+ * @param {string} messageId - ID del mensaje a eliminar
+ */
+function removeLoadingMessage(messageId) {
+    if (messageId) {
+        const loadingElement = document.getElementById(messageId);
+        if (loadingElement) {
+            loadingElement.remove();
+        }
+    } else {
+        // Si no se especifica ID, eliminar todos los indicadores de carga
+        const loadingElements = document.querySelectorAll('.loading-message');
+        loadingElements.forEach(el => el.remove());
+    }
+}
+
+/**
+ * Procesa bloques de código en el mensaje
+ * @param {string} messageId - ID del elemento del mensaje
+ */
+function processCodeBlocks(messageId) {
+    const messageElement = document.getElementById(messageId);
+    if (!messageElement) return;
+    
+    const codeBlocks = messageElement.querySelectorAll('pre code');
+    
+    codeBlocks.forEach((codeBlock, index) => {
+        const codeContent = codeBlock.textContent;
+        const copyButtonId = `copy-code-${messageId}-${index}`;
+        
+        // Detectar lenguaje de programación
+        let language = 'plaintext';
+        const codeClasses = codeBlock.className.split(' ');
+        for (const cls of codeClasses) {
+            if (cls.startsWith('language-')) {
+                language = cls.replace('language-', '');
+                break;
+            }
+        }
+        
+        // Crear contenedor para el bloque de código con botón de copiar
+        const codeContainer = document.createElement('div');
+        codeContainer.className = 'code-block-container';
+        
+        // Barra de herramientas
+        const toolbar = document.createElement('div');
+        toolbar.className = 'code-toolbar';
+        
+        // Etiqueta de lenguaje
+        const langLabel = document.createElement('span');
+        langLabel.className = 'code-language';
+        langLabel.textContent = language;
+        toolbar.appendChild(langLabel);
+        
+        // Botón de copiar
+        const copyButton = document.createElement('button');
+        copyButton.id = copyButtonId;
+        copyButton.className = 'btn btn-sm btn-dark code-copy-btn';
+        copyButton.innerHTML = '<i class="bi bi-clipboard"></i>';
+        copyButton.title = 'Copiar código';
+        copyButton.onclick = function() {
+            copyToClipboard(null, 'code', codeContent, copyButtonId);
+        };
+        toolbar.appendChild(copyButton);
+        
+        codeContainer.appendChild(toolbar);
+        
+        // Conservar el bloque de código original
+        const newCodeBlock = document.createElement('pre');
+        newCodeBlock.className = codeBlock.parentElement.className;
+        newCodeBlock.appendChild(codeBlock.cloneNode(true));
+        codeContainer.appendChild(newCodeBlock);
+        
+        // Reemplazar el bloque original con el contenedor mejorado
+        codeBlock.parentElement.replaceWith(codeContainer);
     });
 }
 
-// Obtener hora actual formateada
+/**
+ * Procesa previsualizaciones HTML en el mensaje
+ * @param {string} messageId - ID del elemento del mensaje
+ */
+function processHTMLPreview(messageId) {
+    const messageElement = document.getElementById(messageId);
+    if (!messageElement) return;
+    
+    const codeBlocks = messageElement.querySelectorAll('pre code.language-html');
+    
+    codeBlocks.forEach((codeBlock, index) => {
+        const htmlContent = codeBlock.textContent;
+        
+        // Solo añadir vista previa si el HTML tiene suficiente contenido
+        if (htmlContent.length > 50) {
+            const previewButtonId = `preview-${messageId}-${index}`;
+            
+            // Crear botón de vista previa
+            const previewButton = document.createElement('button');
+            previewButton.id = previewButtonId;
+            previewButton.className = 'btn btn-sm btn-primary mt-2';
+            previewButton.innerHTML = '<i class="bi bi-eye"></i> Ver HTML';
+            previewButton.onclick = function() {
+                showHTMLPreview(htmlContent);
+            };
+            
+            // Añadir botón después del bloque de código
+            codeBlock.parentElement.parentElement.appendChild(previewButton);
+        }
+    });
+}
+
+/**
+ * Muestra una previsualización de código HTML
+ * @param {string} htmlContent - Contenido HTML a previsualizar
+ */
+function showHTMLPreview(htmlContent) {
+    // Crear una ventana emergente para la vista previa
+    const previewWindow = window.open('', '_blank', 'width=800,height=600');
+    
+    if (previewWindow) {
+        previewWindow.document.write(`
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <title>Vista Previa HTML</title>
+                <meta charset="UTF-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <!-- Bootstrap CSS -->
+                <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+                <style>
+                    body { padding: 20px; }
+                    .preview-container { border: 1px solid #dee2e6; padding: 20px; border-radius: 6px; }
+                </style>
+            </head>
+            <body>
+                <div class="container">
+                    <div class="row mb-3">
+                        <div class="col">
+                            <h3>Vista Previa HTML</h3>
+                            <p class="text-muted">Generado por Codestorm Assistant</p>
+                        </div>
+                    </div>
+                    <div class="preview-container">
+                        ${htmlContent}
+                    </div>
+                </div>
+            </body>
+            </html>
+        `);
+        previewWindow.document.close();
+    } else {
+        alert('No se pudo abrir la vista previa. Verifica que no estén bloqueadas las ventanas emergentes.');
+    }
+}
+
+/**
+ * Copia el contenido al portapapeles
+ * @param {string} elementId - ID del elemento que contiene el contenido
+ * @param {string} type - Tipo de contenido ('message' o 'code')
+ * @param {string} content - Contenido a copiar (opcional, solo para 'code')
+ * @param {string} buttonId - ID del botón de copiar (opcional)
+ */
+function copyToClipboard(elementId, type, content, buttonId) {
+    let textToCopy = '';
+    
+    if (type === 'code' && content) {
+        textToCopy = content;
+    } else if (type === 'message' && elementId) {
+        const messageElement = document.getElementById(elementId);
+        if (messageElement) {
+            const contentElement = messageElement.querySelector('.message-content');
+            if (contentElement) {
+                // Obtener el texto plano, manteniendo saltos de línea pero sin HTML
+                textToCopy = contentElement.innerText;
+            }
+        }
+    }
+    
+    if (textToCopy) {
+        navigator.clipboard.writeText(textToCopy)
+            .then(() => {
+                // Mostrar confirmación
+                if (buttonId) {
+                    const button = document.getElementById(buttonId);
+                    if (button) {
+                        const originalHTML = button.innerHTML;
+                        button.innerHTML = '<i class="bi bi-check"></i>';
+                        button.classList.add('btn-success');
+                        
+                        setTimeout(() => {
+                            button.innerHTML = originalHTML;
+                            button.classList.remove('btn-success');
+                        }, 2000);
+                    }
+                } else {
+                    addSystemMessage('Contenido copiado al portapapeles');
+                }
+            })
+            .catch(err => {
+                console.error('Error al copiar:', err);
+                addSystemMessage('No se pudo copiar al portapapeles');
+            });
+    }
+}
+
+/**
+ * Formatea el contenido del mensaje (markdown, código, etc)
+ * @param {string} content - Contenido a formatear
+ * @returns {string} Contenido formateado con HTML
+ */
+function formatMessageContent(content) {
+    if (!content) return '';
+    
+    // Función básica de conversión de markdown a HTML
+    let formattedContent = content
+        // Enlaces
+        .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>')
+        
+        // Negrita
+        .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+        
+        // Cursiva
+        .replace(/\*([^*]+)\*/g, '<em>$1</em>')
+        
+        // Bloques de código en línea
+        .replace(/`([^`]+)`/g, '<code>$1</code>')
+        
+        // Preservar saltos de línea
+        .replace(/\n/g, '<br>');
+    
+    // Manejar bloques de código con sintaxis ```
+    const codeBlockRegex = /```([a-zA-Z]*)\n([\s\S]+?)```/g;
+    formattedContent = formattedContent.replace(codeBlockRegex, (match, language, code) => {
+        language = language || 'plaintext';
+        return `<pre><code class="language-${language}">${code.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</code></pre>`;
+    });
+    
+    return formattedContent;
+}
+
+/**
+ * Actualiza la información del agente seleccionado
+ * @param {string} agentId - ID del agente
+ */
+function updateAgentInfo(agentId) {
+    const agent = window.app.chat.availableAgents[agentId] || window.app.chat.availableAgents.general;
+    const {agentInfo, agentCapabilities, agentBadge} = window.app.chat.elements;
+    
+    // Actualizar información del agente
+    if (agentInfo) {
+        agentInfo.innerHTML = `
+            <i class="bi bi-${agent.icon} agent-icon"></i>
+            <div>
+                <h3>${agent.name}</h3>
+                <p>${agent.description}</p>
+            </div>
+        `;
+    }
+    
+    // Actualizar lista de capacidades
+    if (agentCapabilities) {
+        agentCapabilities.innerHTML = '';
+        agent.capabilities.forEach(capability => {
+            const item = document.createElement('li');
+            item.textContent = capability;
+            agentCapabilities.appendChild(item);
+        });
+    }
+    
+    // Actualizar badge del agente
+    if (agentBadge) {
+        agentBadge.textContent = agent.name;
+    }
+}
+
+/**
+ * Ajusta la altura del textarea automáticamente
+ * @param {HTMLTextAreaElement} textarea - Elemento textarea
+ */
+function adjustTextareaHeight(textarea) {
+    if (!textarea) return;
+    
+    // Restablecer altura para obtener la correcta
+    textarea.style.height = 'auto';
+    
+    // Calcular nueva altura (con límite máximo)
+    const maxHeight = 200; // altura máxima en px
+    const newHeight = Math.min(textarea.scrollHeight, maxHeight);
+    
+    // Establecer nueva altura
+    textarea.style.height = `${newHeight}px`;
+    
+    // Añadir/quitar clase de scroll si es necesario
+    if (textarea.scrollHeight > maxHeight) {
+        textarea.classList.add('scrollable');
+    } else {
+        textarea.classList.remove('scrollable');
+    }
+}
+
+/**
+ * Añade un mensaje al contenedor de chat
+ * @param {string} messageHTML - HTML del mensaje
+ */
+function appendMessageToChat(messageHTML) {
+    const {messagesContainer} = window.app.chat.elements;
+    if (!messagesContainer) return;
+    
+    // Crear elemento temporal para insertar HTML
+    const tempDiv = document.createElement('div');
+    tempDiv.innerHTML = messageHTML;
+    
+    // Añadir el nodo al contenedor
+    messagesContainer.appendChild(tempDiv.firstElementChild);
+}
+
+/**
+ * Desplaza el chat hasta abajo
+ */
+function scrollToBottom() {
+    const {messagesContainer} = window.app.chat.elements;
+    if (!messagesContainer) return;
+    
+    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+}
+
+/**
+ * Obtiene la hora actual formateada (HH:MM)
+ * @returns {string} Hora formateada
+ */
 function getCurrentTime() {
-  const now = new Date();
-  return now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+    const now = new Date();
+    let hours = now.getHours();
+    let minutes = now.getMinutes();
+    
+    // Añadir ceros iniciales si es necesario
+    hours = hours < 10 ? '0' + hours : hours;
+    minutes = minutes < 10 ? '0' + minutes : minutes;
+    
+    return `${hours}:${minutes}`;
 }
 
-// Desplazarse al fondo del contenedor de mensajes con animación
-function scrollToBottom(container) {
-  container.scrollTo({
-    top: container.scrollHeight,
-    behavior: 'smooth'
-  });
+/**
+ * Registra información en la consola sin mostrarla en la interfaz
+ * @param {string} message - Mensaje a registrar
+ * @param {any} data - Datos adicionales (opcional)
+ */
+function silentLog(message, data) {
+    console.log(`[INFO] ${message}`, data !== undefined ? data : '');
 }
 
-// Escapar HTML para evitar inyección de código
-function escapeHtml(text) {
-  const div = document.createElement('div');
-  div.textContent = text;
-  return div.innerHTML;
-}
+// Inicializar el chat cuando el DOM esté listo
+document.addEventListener('DOMContentLoaded', function() {
+    window.app.chat.chatMessageId = 0;  // Reiniciar contador de mensajes
+    initializeChat();
+});
 
-// Exponer funciones necesarias globalmente
-window.copyMessageToClipboard = copyMessageToClipboard;
-window.copyCode = copyCode;
-window.app = window.app || {};
-window.app.chat = {
-  initialize: initializeChat,
-  sendMessage: sendMessage,
-  setActiveAgent: setActiveAgent,
-  handleCreationCommand: handleCreationCommand
-};

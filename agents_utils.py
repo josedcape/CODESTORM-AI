@@ -55,56 +55,26 @@ def setup_ai_clients():
 setup_ai_clients()
 
 def get_agent_system_prompt(agent_id):
-    """
-    Obtiene el prompt de sistema según el agente especializado seleccionado.
-    
-    Args:
-        agent_id: ID del agente (developer, architect, advanced, general)
-        
-    Returns:
-        str: Prompt de sistema para el agente
-    """
-    agent_system_prompts = {
-        'developer': """Eres un Desarrollador experto en la creación de código de alta calidad. 
-Tu especialidad es escribir código eficiente, bien documentado y que sigue las mejores prácticas actuales. 
-Eres meticuloso con la estructura, optimizaciones y detalles de implementación.
-Cuando generes código, asegúrate de que sea completo, funcional y siga los estándares modernos.""",
-
-        'architect': """Eres un Arquitecto de Software experto en diseño de sistemas y componentes. 
-Tu especialidad es crear estructuras escalables, mantenibles y bien organizadas. 
-Te enfocas en patrones de diseño, modularidad y principios SOLID.
-Cuando generes soluciones, prioriza la estructura y la relación entre componentes.""",
-
-        'advanced': """Eres un Desarrollador Avanzado especializado en implementaciones sofisticadas. 
-Tu especialidad es crear soluciones complejas con características avanzadas, optimizaciones de rendimiento y técnicas modernas. 
-Dominas los detalles más profundos de las tecnologías.
-Cuando generes código, utiliza técnicas avanzadas y optimizaciones apropiadas.""",
-
-        'general': """Eres un asistente experto en desarrollo de software especializado en crear archivos de alta calidad.
-Proporcionas respuestas claras y útiles, generas código cuando es necesario, y explicas conceptos de manera accesible.
-Tu objetivo es ayudar a los usuarios a desarrollar software de manera efectiva y eficiente."""
+    """Obtiene el prompt de sistema para el agente especificado."""
+    prompts = {
+        'developer': """Eres un desarrollador experto. Tu objetivo es ayudar con código, 
+                      debugging y mejores prácticas de programación. Proporciona ejemplos 
+                      de código claros y explicaciones concisas.""",
+        'architect': """Eres un arquitecto de software experto. Tu objetivo es ayudar con 
+                       diseño de sistemas, patrones y decisiones arquitectónicas.""",
+        'general': """Eres un asistente general experto en tecnología y programación. 
+                     Ayudas con cualquier tema relacionado con desarrollo de software."""
     }
-    
-    return agent_system_prompts.get(agent_id, agent_system_prompts['general'])
+    return prompts.get(agent_id, prompts['general'])
 
 def get_agent_name(agent_id):
-    """
-    Obtiene el nombre descriptivo del agente para usar en los prompts.
-    
-    Args:
-        agent_id: ID del agente (developer, architect, advanced, general)
-        
-    Returns:
-        str: Nombre descriptivo del agente
-    """
-    agent_names = {
+    """Obtiene el nombre amigable del agente."""
+    names = {
         'developer': "Desarrollador Experto",
         'architect': "Arquitecto de Software",
-        'advanced': "Especialista Avanzado",
         'general': "Asistente General"
     }
-    
-    return agent_names.get(agent_id, "Asistente General")
+    return names.get(agent_id, "Asistente General")
 
 def generate_with_openai(prompt, system_prompt, temperature=0.7):
     """
@@ -366,47 +336,48 @@ def create_file_with_agent(description, file_type, filename, agent_id, workspace
 
 def generate_response(user_message, agent_id="general", context=None, model="openai"):
     """
-    Genera una respuesta utilizando un agente especializado.
-    
-    Args:
-        user_message: Mensaje del usuario
-        agent_id: ID del agente especializado
-        context: Contexto de la conversación (opcional)
-        model: Modelo de IA a utilizar (openai, anthropic, gemini)
-        
-    Returns:
-        dict: Resultado de la operación con claves success y response
+    Genera una respuesta usando el modelo de IA especificado.
     """
     try:
         system_prompt = get_agent_system_prompt(agent_id)
         agent_name = get_agent_name(agent_id)
         
+        # Formatear el contexto y el mensaje para el prompt
         if context:
-            # Formatear contexto para el prompt
-            context_str = "\n".join([f"{'Usuario' if msg['role'] == 'user' else agent_name}: {msg['content']}" for msg in context])
+            context_str = "\n".join([
+                f"{'Usuario' if msg['role'] == 'user' else agent_name}: {msg['content']}" 
+                for msg in context
+            ])
             prompt = f"""Historial de conversación:
             {context_str}
             
             Usuario: {user_message}
             
-            Como {agent_name}, responde al último mensaje del usuario de manera útil, clara y precisa."""
+            Como {agent_name}, responde al último mensaje del usuario."""
         else:
             prompt = f"""Usuario: {user_message}
             
-            Como {agent_name}, responde al mensaje del usuario de manera útil, clara y precisa."""
+            Como {agent_name}, responde al mensaje del usuario."""
         
-        response_content = generate_content(prompt, system_prompt, model)
-        
+        # Generar respuesta según el modelo seleccionado
+        if model == "anthropic" and os.environ.get('ANTHROPIC_API_KEY'):
+            response = generate_with_anthropic(prompt, system_prompt)
+        elif model == "gemini" and os.environ.get('GEMINI_API_KEY'):
+            response = generate_with_gemini(prompt, system_prompt)
+        else:
+            # OpenAI por defecto
+            response = generate_with_openai(prompt, system_prompt)
+            
         return {
             'success': True,
-            'response': response_content
+            'response': response
         }
-            
+        
     except Exception as e:
         logging.error(f"Error generando respuesta: {str(e)}")
         return {
             'success': False,
-            'error': f'Error generando respuesta: {str(e)}'
+            'error': str(e)
         }
 
 def analyze_code(code, language="python", instructions="Mejorar el código", model="openai"):
@@ -668,3 +639,4 @@ Responde en formato JSON con la siguiente estructura:
             'success': False,
             'error': f'Error procesando instrucción: {str(e)}'
         }
+
