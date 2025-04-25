@@ -54,6 +54,31 @@ mode = "sequential"
 task = "shell.exec"
 args = "gunicorn --bind 0.0.0.0:5000 --workers 1 main:app --reload"
 
+[[workflows.workflow]]
+name = "Check API Keys"
+author = 41940718
+mode = "sequential"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "echo \"Verificando claves API configuradas...\""
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "echo \"ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:0:5}...\""
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "echo \"OPENAI_API_KEY: ${OPENAI_API_KEY:0:5}...\""
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "echo \"GEMINI_API_KEY: ${GEMINI_API_KEY:0:5}...\""
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "echo \"Recuerda configurar tus claves API en el panel de Secrets\""
+
 [[ports]]
 localPort = 5000
 externalPort = 80

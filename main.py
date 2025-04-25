@@ -196,8 +196,15 @@ def handle_chat():
                     subprocess.check_call(["pip", "install", "anthropic"])
                     import anthropic
                 
-                client = anthropic.Anthropic(api_key=os.environ.get('ANTHROPIC_API_KEY'))
-                messages = [{"role": "system", "content": system_prompt}]
+                anthropic_api_key = os.environ.get('ANTHROPIC_API_KEY')
+                if not anthropic_api_key:
+                    return jsonify({'response': "Error: La clave API de Anthropic no está configurada. Verifica las variables de entorno."})
+                
+                # Inicializar el cliente con la clave API
+                client = anthropic.Anthropic(api_key=anthropic_api_key)
+                
+                # Preparar mensajes con formato de Anthropic
+                messages = []
                 
                 # Añadir mensajes de contexto
                 for msg in context:
@@ -211,21 +218,54 @@ def handle_chat():
                 # Añadir mensaje actual
                 messages.append({"role": "user", "content": user_message})
                 
-                completion = client.messages.create(
-                    model="claude-3-5-sonnet-latest",
-                    messages=messages,
-                    max_tokens=2000
-                )
-                response = completion.content[0].text
-                logging.info("Respuesta generada con Anthropic")
+                # Asegurar que al menos hay un mensaje del usuario
+                if not messages:
+                    messages.append({"role": "user", "content": user_message})
+                
+                # Realizar la llamada a la API de Anthropic con manejo de errores mejorado
+                try:
+                    completion = client.messages.create(
+                        model="claude-3-5-sonnet-latest",
+                        system=system_prompt,
+                        messages=messages,
+                        max_tokens=2000,
+                        temperature=0.7
+                    )
+                    
+                    # Verificar si la respuesta tiene contenido
+                    if completion.content and len(completion.content) > 0:
+                        response = completion.content[0].text
+                        # Formatear la respuesta para usar markdown
+                        response = response.replace("```", "\n```\n").replace("`", " ` ")
+                        logging.info("Respuesta generada con Anthropic")
+                    else:
+                        response = "No se recibió respuesta de Anthropic. Por favor, intenta de nuevo."
+                except Exception as api_error:
+                    logging.error(f"Error en la llamada a la API de Anthropic: {str(api_error)}")
+                    logging.error(traceback.format_exc())
+                    response = f"Error al procesar la solicitud con Anthropic: {str(api_error)}"
+                    
             except Exception as e:
                 logging.error(f"Error with Anthropic API: {str(e)}")
+                logging.error(traceback.format_exc())
                 response = f"Error al conectar con Anthropic: {str(e)}"
         
         # Si no hay modelo disponible
         else:
             response = "Lo siento, no hay un modelo de IA configurado disponible. Por favor, verifica las API keys en la configuración."
             logging.warning(f"No hay modelo disponible para: {model}")
+        
+        # Formatear la respuesta para que se vea bien en markdown
+        if response:
+            # Asegurar que los bloques de código estén correctamente formateados
+            response = re.sub(r'```([a-zA-Z0-9]+)?\s*', r'```\1\n', response)
+            response = re.sub(r'\s*```', r'\n```', response)
+            
+            # Asegurar que los títulos tengan espacio después del #
+            response = re.sub(r'(^|\n)#([^#\s])', r'\1# \2', response)
+            
+            # Asegurar que las listas tengan formato adecuado
+            response = re.sub(r'(^|\n)(-|\d+\.) ([^\s])', r'\1\2 \3', response)
         
         return jsonify({'response': response})
     except Exception as e:
