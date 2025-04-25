@@ -961,5 +961,4 @@ document.addEventListener('DOMContentLoaded', function() {
     initializeChat();
 
     // Añadir mensaje de bienvenida del sistema
-    addSystemMessage('¡Bienvenido a([a-zA-Z0-9]+)?/g, function(match, lang) {
-            return '
+    addSystemMessage('¡Bienvenido a Codestorm Assistant! Selecciona un modelo y agente para comenzar.');
