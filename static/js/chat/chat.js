@@ -173,17 +173,31 @@ function setupUIElements() {
  * Comprueba la conexión con el servidor de manera simplificada
  */
 function checkServerConnection() {
-    // Check health endpoint first
+    // Check health endpoint first with more robust error handling
+    silentLog('Verificando estado del servidor...');
+    
     fetch(window.app.chat.apiEndpoints.health)
         .then(response => {
             if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
+                silentLog(`Health endpoint returned status: ${response.status}`);
+                // Try to test the chat endpoint directly
+                return fetch(window.app.chat.apiEndpoints.chat, {
+                    method: 'OPTIONS'
+                }).then(chatResponse => {
+                    if (chatResponse.ok || chatResponse.status === 204) {
+                        silentLog('Chat endpoint is available');
+                        document.getElementById('status-indicator')?.classList.add('status-connected');
+                        return { status: 'partial', message: 'Chat endpoint available but health check failed' };
+                    } else {
+                        throw new Error('All endpoints unavailable');
+                    }
+                });
             }
             return response.json();
         })
         .then(data => {
-            if (data.status === 'ok') {
-                silentLog('Server health check passed');
+            if (data.status === 'ok' || data.status === 'partial') {
+                silentLog('Server check passed:', data.status);
                 document.getElementById('status-indicator')?.classList.add('status-connected');
             } else {
                 throw new Error('Server health check failed');
@@ -193,6 +207,18 @@ function checkServerConnection() {
             console.error('Server health check failed:', error);
             addSystemMessage("Advertencia: Conexión limitada al servidor. Algunas funciones podrían no estar disponibles.");
             document.getElementById('status-indicator')?.classList.add('status-disconnected');
+            
+            // Try a ping to fallback endpoint as last resort
+            fetch(window.app.chat.apiEndpoints.fallback, {
+                method: 'OPTIONS'
+            }).then(fallbackResponse => {
+                if (fallbackResponse.ok || fallbackResponse.status === 204) {
+                    silentLog('Fallback endpoint is available');
+                    addSystemMessage("Endpoint alternativo disponible. Utilizando modo de respaldo.");
+                }
+            }).catch(() => {
+                silentLog('All endpoints unavailable');
+            });
         });
 }
 
