@@ -15,6 +15,39 @@ Un asistente avanzado para desarrollo de código impulsado por inteligencia arti
 - **WebSockets**: Actualizaciones en tiempo real para archivos y comandos
 - **Workspaces aislados**: Entornos de trabajo separados para diferentes usuarios/proyectos
 
+## 💼 Componentes del Sistema
+
+### Principales Dependencias
+- **Framework Web**:
+  - Flask y sus extensiones (Flask-Cors, Flask-SocketIO, Flask-SQLAlchemy)
+  - Gunicorn (para servir la aplicación)
+- **Integraciones de IA**:
+  - OpenAI API (GPT-4o)
+  - Anthropic API (Claude)
+  - Google Generative AI (Gemini)
+- **Base de datos**:
+  - SQLAlchemy
+  - PostgreSQL (psycopg2-binary)
+- **Utilidades**:
+  - Python-dotenv (para variables de entorno)
+  - Requests (para llamadas HTTP)
+  - Eventlet (para manejo asíncrono)
+  - GitPython y PyGitHub (para integración con Git)
+
+### Configuración del Servidor
+- El servidor está configurado para ejecutarse con Gunicorn en el puerto 5000
+- Workflows configurados:
+  - "Run CODESTORM" (principal)
+  - "Start application"
+  - "Run Application"
+  - "Check API Keys"
+
+### Sistema Multiagente Implementado
+- **Agente General**: Asistente versátil para tareas diversas
+- **Agente Desarrollador**: Especializado en escribir y depurar código
+- **Agente Arquitecto**: Enfocado en diseño de sistemas y estructuras
+- **Agente Avanzado**: Para soluciones técnicas complejas y optimizaciones
+
 ## 🚀 Inicio Rápido
 
 ### Instalación
