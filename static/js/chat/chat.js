@@ -175,7 +175,7 @@ function setupUIElements() {
 function checkServerConnection() {
     // Check health endpoint with robust error handling
     silentLog('Verificando estado del servidor...');
-    
+
     // Asegurarse de que los endpoints estén definidos
     if (!window.app || !window.app.chat || !window.app.chat.apiEndpoints) {
         silentLog('Error: API endpoints no definidos');
@@ -186,7 +186,7 @@ function checkServerConnection() {
         }
         return;
     }
-    
+
     fetch(window.app.chat.apiEndpoints.health)
         .then(response => {
             if (!response.ok) {
@@ -230,7 +230,7 @@ function checkServerConnection() {
                 statusIndicator.style.backgroundColor = "#dc3545"; // rojo
                 statusIndicator.title = "Servidor desconectado";
             }
-            
+
             // Try a ping to fallback endpoint as last resort
             fetch(window.app.chat.apiEndpoints.fallback, {
                 method: 'OPTIONS'
@@ -288,7 +288,7 @@ async function sendMessage() {
 
     // Mantener el contexto en un tamaño razonable (últimos 10 mensajes)
     const contextToSend = window.app.chat.context.slice(-10);
-    
+
     // Preparar datos para enviar al servidor
     const requestData = {
         message: userMessage,
@@ -536,7 +536,7 @@ function processCodeBlocks(messageId) {
 
         // Reemplazar el bloque original con el contenedor mejorado
         codeBlock.parentElement.replaceWith(codeContainer);
-        
+
         // Aplicar highlight.js al nuevo bloque de código
         try {
             if (window.hljs) {
@@ -691,7 +691,7 @@ function formatMessageContent(content) {
         .replace(/^### (.*$)/gm, '<h3>$1</h3>')
         .replace(/^## (.*$)/gm, '<h2>$1</h2>')
         .replace(/^# (.*$)/gm, '<h1>$1</h1>')
-        
+
         // Enlaces
         .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>')
 
@@ -707,13 +707,13 @@ function formatMessageContent(content) {
         .replace(/^\s*\* (.*$)/gm, '<li>$1</li>')
         .replace(/^\s*- (.*$)/gm, '<li>$1</li>')
         .replace(/^\s*\d+\. (.*$)/gm, '<li>$1</li>')
-        
+
         // Citas
         .replace(/^\> (.*$)/gm, '<blockquote>$1</blockquote>')
 
         // Bloques de código en línea
         .replace(/`([^`]+)`/g, '<code>$1</code>')
-        
+
         // Líneas horizontales
         .replace(/^\s*[\-=_]{3,}\s*$/gm, '<hr>');
 
@@ -732,11 +732,11 @@ function formatMessageContent(content) {
         language = language || 'plaintext';
         // Limpiar el código para prevenir problemas de HTML
         const cleanedCode = code.replace(/</g, '&lt;').replace(/>/g, '&gt;');
-        
+
         // Crear contenedor de código con highlighting
         return `<pre><code class="language-${language}">${cleanedCode}</code></pre>`;
     });
-    
+
     // Preservar saltos de línea (después de procesar todo lo demás)
     formattedContent = formattedContent.replace(/\n/g, '<br>');
 
@@ -852,6 +852,107 @@ function getCurrentTime() {
  */
 function silentLog(message, data) {
     console.log(`[INFO] ${message}`, data !== undefined ? data : '');
+}
+
+
+function addMessageToChat(sender, content, timestamp = null) {
+    const chatMessages = document.getElementById('chat-messages');
+    const messageDiv = document.createElement('div');
+
+    // Determinar clase CSS según el remitente
+    let messageClass = 'message-bubble';
+    if (sender === 'Tú') {
+        messageClass += ' user-message';
+    } else {
+        messageClass += ' agent-message';
+    }
+
+    // Formatear timestamp
+    let timeStr = '';
+    if (timestamp) {
+        const date = new Date(timestamp);
+        timeStr = date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+    } else {
+        const now = new Date();
+        timeStr = now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+    }
+
+    // Intentar formatear el contenido como markdown si no es del usuario
+    let formattedContent = content;
+    if (sender !== 'Tú') {
+        try {
+            // Cargar marked.js si no está cargado
+            if (typeof marked === 'undefined') {
+                // Usamos marked desde CDN si no está disponible
+                const script = document.createElement('script');
+                script.src = 'https://cdn.jsdelivr.net/npm/marked/marked.min.js';
+                document.head.appendChild(script);
+
+                // Esperamos a que se cargue antes de formatear
+                script.onload = () => {
+                    formattedContent = marked.parse(content);
+                    updateMessage();
+                };
+            } else {
+                formattedContent = marked.parse(content);
+            }
+        } catch (e) {
+            console.error('Error al formatear markdown:', e);
+        }
+    }
+
+    // Construir HTML del mensaje
+    messageDiv.className = 'message-container ' + (sender === 'Tú' ? 'user-container' : 'agent-container');
+
+    function updateMessage() {
+        messageDiv.innerHTML = `
+            <div class="message-header">
+                <strong>${sender}</strong>
+                <span class="message-time">${timeStr}</span>
+            </div>
+            <div class="${messageClass}">
+                ${formattedContent}
+            </div>
+        `;
+    }
+
+    updateMessage();
+
+    // Añadir al contenedor de mensajes
+    chatMessages.appendChild(messageDiv);
+
+    // Scroll al final
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+
+    // Aplicar resaltado de sintaxis a bloques de código
+    if (sender !== 'Tú') {
+        setTimeout(() => {
+            const codeBlocks = messageDiv.querySelectorAll('pre code');
+            if (codeBlocks.length > 0) {
+                // Cargar highlight.js si no está cargado
+                if (typeof hljs === 'undefined') {
+                    const highlightScript = document.createElement('script');
+                    highlightScript.src = 'https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/highlight.min.js';
+                    document.head.appendChild(highlightScript);
+
+                    const highlightCss = document.createElement('link');
+                    highlightCss.rel = 'stylesheet';
+                    highlightCss.href = 'https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/github-dark.min.css';
+                    document.head.appendChild(highlightCss);
+
+                    highlightScript.onload = () => {
+                        codeBlocks.forEach(block => {
+                            hljs.highlightElement(block);
+                        });
+                    };
+                } else {
+                    codeBlocks.forEach(block => {
+                        hljs.highlightElement(block);
+                    });
+                }
+            }
+        }, 100);
+    }
 }
 
 // Inicializar el chat cuando el DOM esté listo

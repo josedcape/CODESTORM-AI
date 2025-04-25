@@ -83,6 +83,80 @@
   background-color: var(--bs-gray-900);
 }
 
+/* Estilos para los mensajes */
+.message-container {
+    margin-bottom: 15px;
+    max-width: 80%;
+    clear: both;
+}
+
+/* Estilos para markdown */
+.agent-message {
+    line-height: 1.5;
+}
+
+.agent-message pre {
+    background-color: #1e1e1e;
+    border-radius: 5px;
+    padding: 10px;
+    overflow-x: auto;
+    margin: 10px 0;
+}
+
+.agent-message code {
+    font-family: 'Fira Code', monospace;
+    font-size: 0.9em;
+}
+
+.agent-message p {
+    margin-bottom: 0.8em;
+}
+
+.agent-message h1, .agent-message h2, .agent-message h3, 
+.agent-message h4, .agent-message h5, .agent-message h6 {
+    margin-top: 1em;
+    margin-bottom: 0.5em;
+    font-weight: 600;
+}
+
+.agent-message ul, .agent-message ol {
+    padding-left: 1.5em;
+    margin-bottom: 1em;
+}
+
+.agent-message a {
+    color: #4a9eff;
+    text-decoration: none;
+}
+
+.agent-message a:hover {
+    text-decoration: underline;
+}
+
+.agent-message blockquote {
+    border-left: 4px solid #333;
+    padding-left: 10px;
+    margin-left: 0;
+    color: #aaa;
+}
+
+.agent-message table {
+    border-collapse: collapse;
+    width: 100%;
+    margin-bottom: 1em;
+}
+
+.agent-message th, .agent-message td {
+    border: 1px solid #444;
+    padding: 8px;
+    text-align: left;
+}
+
+.agent-message th {
+    background-color: #333;
+}
+
+
 /* Estilos de mensajes */
 .chat-message {
   display: flex;

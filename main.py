@@ -187,7 +187,14 @@ def handle_chat():
         # Generar respuesta con Anthropic
         elif model == 'anthropic' and os.environ.get('ANTHROPIC_API_KEY'):
             try:
-                import anthropic
+                try:
+                    import anthropic
+                except ImportError:
+                    # Si el módulo no está instalado, lo instalamos
+                    logging.warning("Módulo anthropic no encontrado, instalándolo...")
+                    import subprocess
+                    subprocess.check_call(["pip", "install", "anthropic"])
+                    import anthropic
                 
                 client = anthropic.Anthropic(api_key=os.environ.get('ANTHROPIC_API_KEY'))
                 messages = [{"role": "system", "content": system_prompt}]
