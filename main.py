@@ -82,6 +82,178 @@ def health_check():
             "timestamp": time.time()
         }), 500
 
+@app.route('/api/files', methods=['GET'])
+def list_files():
+    """API para listar archivos del workspace."""
+    try:
+        directory = request.args.get('directory', '.')
+        
+        # Listar archivos en el directorio solicitado
+        if directory.startswith('/'):
+            directory = directory[1:]
+        
+        # Prevenir path traversal
+        if '..' in directory:
+            return jsonify({
+                'success': False,
+                'error': 'Directorio inválido'
+            }), 400
+        
+        # Verificar que el directorio existe
+        if not os.path.exists(directory) and directory != '.':
+            return jsonify({
+                'success': False,
+                'error': 'Directorio no encontrado'
+            }), 404
+        
+        # Listar archivos y carpetas
+        files = []
+        try:
+            for item in os.listdir(directory if directory != '.' else '.'):
+                item_path = os.path.join(directory, item) if directory != '.' else item
+                
+                if os.path.isdir(item_path):
+                    files.append({
+                        'name': item,
+                        'path': item_path,
+                        'type': 'directory',
+                        'size': 0,
+                        'modified': os.path.getmtime(item_path)
+                    })
+                else:
+                    file_size = os.path.getsize(item_path)
+                    files.append({
+                        'name': item,
+                        'path': item_path,
+                        'type': 'file',
+                        'size': file_size,
+                        'modified': os.path.getmtime(item_path)
+                    })
+        except Exception as e:
+            logging.error(f"Error al listar archivos: {str(e)}")
+            return jsonify({
+                'success': False,
+                'error': f'Error al listar archivos: {str(e)}'
+            }), 500
+        
+        return jsonify({
+            'success': True,
+            'files': files,
+            'current_dir': directory
+        })
+    except Exception as e:
+        logging.error(f"Error en endpoint de archivos: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@app.route('/api/process', methods=['POST'])
+def process_request():
+    """API para procesar solicitudes genéricas."""
+    try:
+        data = request.json
+        if not data:
+            return jsonify({
+                'success': False,
+                'error': 'No se proporcionaron datos'
+            }), 400
+        
+        action = data.get('action', '')
+        
+        if action == 'execute_command':
+            command = data.get('command', '')
+            if not command:
+                return jsonify({
+                    'success': False,
+                    'error': 'No se proporcionó comando'
+                }), 400
+            
+            try:
+                # Ejecutar comando de forma segura
+                process = subprocess.Popen(
+                    command,
+                    shell=True,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    text=True
+                )
+                stdout, stderr = process.communicate(timeout=30)
+                
+                return jsonify({
+                    'success': True,
+                    'stdout': stdout,
+                    'stderr': stderr,
+                    'status': process.returncode
+                })
+            except subprocess.TimeoutExpired:
+                return jsonify({
+                    'success': False,
+                    'error': 'Tiempo de espera agotado'
+                }), 408
+            except Exception as e:
+                return jsonify({
+                    'success': False,
+                    'error': str(e)
+                }), 500
+        
+        elif action == 'create_file':
+            file_path = data.get('file_path', '')
+            content = data.get('content', '')
+            is_directory = data.get('is_directory', False)
+            
+            if not file_path:
+                return jsonify({
+                    'success': False,
+                    'error': 'No se proporcionó ruta de archivo'
+                }), 400
+            
+            # Prevenir path traversal
+            if '..' in file_path:
+                return jsonify({
+                    'success': False,
+                    'error': 'Ruta de archivo inválida'
+                }), 400
+            
+            try:
+                if is_directory:
+                    os.makedirs(file_path, exist_ok=True)
+                    message = f'Directorio {file_path} creado exitosamente'
+                else:
+                    # Crear directorio padre si no existe
+                    parent_dir = os.path.dirname(file_path)
+                    if parent_dir and not os.path.exists(parent_dir):
+                        os.makedirs(parent_dir, exist_ok=True)
+                    
+                    # Escribir archivo
+                    with open(file_path, 'w', encoding='utf-8') as f:
+                        f.write(content)
+                    
+                    message = f'Archivo {file_path} creado exitosamente'
+                
+                return jsonify({
+                    'success': True,
+                    'message': message
+                })
+            except Exception as e:
+                return jsonify({
+                    'success': False,
+                    'error': str(e)
+                }), 500
+        
+        else:
+            return jsonify({
+                'success': False,
+                'error': f'Acción desconocida: {action}'
+            }), 400
+        
+    except Exception as e:
+        logging.error(f"Error en endpoint de procesamiento: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
 @app.route('/api/chat', methods=['POST'])
 def handle_chat():
     """Process chat messages using the selected model."""
