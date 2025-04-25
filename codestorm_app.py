@@ -630,6 +630,8 @@ def health_check():
             "timestamp": datetime.now().isoformat()
         }), 500
 
+
+
 @app.route('/api/generate', methods=['POST'])
 def generate():
     """Fallback endpoint for content generation."""
