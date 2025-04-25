@@ -22,7 +22,7 @@
                 <i class="fa-solid fa-code me-2 text-gold"></i>
                 <span class="codestorm-logo">Codestorm Assistant</span>
             </a>
-            
+
             <!-- Botones de navegación principales -->
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav ms-4">
@@ -48,7 +48,7 @@
                     </li>
                 </ul>
             </div>
-            
+
             <!-- Indicador de workspace y estado -->
             <div class="workspace-status ms-auto">
                 <span class="workspace-badge">
@@ -61,7 +61,7 @@
             </div>
         </div>
     </nav>
-    
+
     <div class="container-fluid">
         <div class="row">
             <!-- Barra lateral (solo visible en páginas específicas) -->
@@ -72,7 +72,7 @@
                     <h5 class="sidebar-title mb-3">
                         <i class="fa-solid fa-sliders me-2"></i> Configuración de Agentes
                     </h5>
-                    
+
                     <div class="mb-3">
                         <label class="form-label">Seleccionar Modelo de IA:</label>
                         <select class="form-select form-select-sm futuristic-select">
@@ -81,7 +81,7 @@
                             <option value="gemini" selected>Google (Gemini)</option>
                         </select>
                     </div>
-                    
+
                     <div class="mb-3">
                         <label class="form-label">Seleccionar Agente:</label>
                         <select class="form-select form-select-sm futuristic-select">
@@ -91,7 +91,7 @@
                             <option value="advanced">Experto Avanzado</option>
                         </select>
                     </div>
-                    
+
                     <div class="agent-card selected">
                         <div class="agent-icon">
                             <i class="fa-solid fa-building"></i>
@@ -101,7 +101,7 @@
                             <p class="agent-description">Diseñador de arquitecturas escalables y optimizadas</p>
                         </div>
                     </div>
-                    
+
                     <h6 class="mt-4 mb-2 sidebar-subtitle">Capacidades:</h6>
                     <ul class="agent-capabilities">
                         <li>Definición de estructura del proyecto</li>
@@ -114,7 +114,7 @@
                 </div>
             </div>
             {% endif %}
-            
+
             <!-- Contenido principal -->
             <div class="{% if '/chat' in request.path or '/dashboard' in request.path %}col-md-9 ms-sm-auto col-lg-10{% else %}col-12{% endif %} px-md-4 main-content">
                 <div class="content-container">
@@ -128,7 +128,7 @@
             </div>
         </div>
     </div>
-    
+
     <!-- Footer futurista -->
     <footer class="futuristic-footer">
         <div class="container-fluid">

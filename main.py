@@ -51,6 +51,11 @@ def chat():
     """Render the chat page with specialized agents."""
     return render_template('chat.html')
 
+@app.route('/files')
+def files():
+    """Render the files explorer page."""
+    return render_template('files.html')
+
 @app.route('/api/health', methods=['GET'])
 def health_check():
     """Health check endpoint for the application."""
