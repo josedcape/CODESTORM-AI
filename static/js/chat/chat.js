@@ -962,3 +962,4 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Añadir mensaje de bienvenida del sistema
     addSystemMessage('¡Bienvenido a Codestorm Assistant! Selecciona un modelo y agente para comenzar.');
+});
