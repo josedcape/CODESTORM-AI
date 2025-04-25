@@ -4,6 +4,7 @@ from flask_cors import CORS
 import os
 import logging
 import json
+import re
 from dotenv import load_dotenv
 import openai
 import requests
@@ -199,6 +200,11 @@ def handle_chat():
                 anthropic_api_key = os.environ.get('ANTHROPIC_API_KEY')
                 if not anthropic_api_key:
                     return jsonify({'response': "Error: La clave API de Anthropic no está configurada. Verifica las variables de entorno."})
+                
+                # Validar formato de la clave API (verificación básica)
+                if not anthropic_api_key.startswith('sk-'):
+                    logging.warning("La clave API de Anthropic parece tener un formato incorrecto")
+                    return jsonify({'response': "Error: La clave API de Anthropic parece tener un formato incorrecto. Debe comenzar con 'sk-'."})
                 
                 # Inicializar el cliente con la clave API
                 client = anthropic.Anthropic(api_key=anthropic_api_key)
