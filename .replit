@@ -10,7 +10,7 @@ deploymentTarget = "autoscale"
 run = ["sh", "-c", "python main_completo.py"]
 
 [workflows]
-runButton = "Run Application"
+runButton = "Run CODESTORM"
 
 [[workflows.workflow]]
 name = "Project"
@@ -38,6 +38,15 @@ waitForPort = 5000
 
 [[workflows.workflow]]
 name = "Run Application"
+author = 41940718
+mode = "sequential"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "gunicorn --bind 0.0.0.0:5000 main:app --reload"
+
+[[workflows.workflow]]
+name = "Run CODESTORM"
 author = 41940718
 mode = "sequential"
 
