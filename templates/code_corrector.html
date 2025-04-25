@@ -3,10 +3,9 @@
 {% block title %}CODESTORM - Corrector de Código{% endblock %}
 
 {% block extra_css %}
-<!-- Prism.js para resaltado de sintaxis -->
 <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet" />
+<link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/line-numbers/prism-line-numbers.min.css" rel="stylesheet" />
 <style>
-    /* Estilos específicos para corrector de código */
     .code-correction-container {
         border-radius: 8px;
         overflow: hidden;
@@ -14,7 +13,7 @@
         display: flex;
         flex-direction: column;
     }
-    
+
     .code-editor-pane, .correction-result-pane {
         background-color: var(--bg-tertiary);
         border: 1px solid var(--accent-primary);
@@ -22,7 +21,7 @@
         overflow: hidden;
         height: 100%;
     }
-    
+
     .code-editor-header, .correction-result-header {
         background-color: var(--bg-secondary);
         border-bottom: 1px solid var(--accent-primary);
@@ -33,16 +32,16 @@
         justify-content: space-between;
         align-items: center;
     }
-    
+
     .code-editor-body, .correction-result-body {
         padding: 1rem;
         overflow-y: auto;
         height: calc(100% - 50px);
     }
-    
+
     .code-textarea {
         width: 100%;
-        height: 300px;
+        height: 500px;
         background-color: var(--bg-tertiary);
         color: var(--text-primary);
         border: 1px solid var(--accent-primary);
@@ -50,11 +49,15 @@
         font-family: 'JetBrains Mono', monospace;
         padding: 0.75rem;
         resize: vertical;
+        max-height: 2000px;
+        font-size: 14px;
+        line-height: 1.5;
+        tab-size: 4;
     }
-    
+
     .instructions-textarea {
         width: 100%;
-        height: 120px;
+        height: 100px;
         background-color: var(--bg-tertiary);
         color: var(--text-primary);
         border: 1px solid var(--accent-primary);
@@ -63,7 +66,7 @@
         resize: vertical;
         margin-bottom: 1rem;
     }
-    
+
     .language-selector {
         background-color: var(--bg-tertiary);
         color: var(--text-primary);
@@ -72,28 +75,28 @@
         padding: 0.5rem;
         margin-bottom: 1rem;
     }
-    
+
     .changes-container {
         border-left: 2px solid var(--accent-primary);
         padding-left: 1rem;
         margin-bottom: 1.5rem;
     }
-    
+
     .change-description {
         font-weight: 500;
         color: var(--text-primary);
     }
-    
+
     .change-lines {
         font-size: 0.85rem;
         color: var(--text-secondary);
     }
-    
+
     .view-toggle-buttons {
         display: flex;
         gap: 0.5rem;
     }
-    
+
     .view-toggle-btn {
         background-color: var(--bg-tertiary);
         color: var(--text-secondary);
@@ -104,31 +107,31 @@
         cursor: pointer;
         transition: all var(--transition-fast);
     }
-    
+
     .view-toggle-btn:hover, .view-toggle-btn.active {
         background-color: var(--accent-primary);
         color: var(--bg-primary);
     }
-    
+
     .diff-line {
         display: block;
         margin: 0;
         padding: 0 5px;
         font-family: 'JetBrains Mono', monospace;
     }
-    
+
     .diff-line-add {
         background-color: rgba(40, 167, 69, 0.2);
     }
-    
+
     .diff-line-remove {
         background-color: rgba(220, 53, 69, 0.2);
     }
-    
+
     .diff-line-context {
         color: var(--text-secondary);
     }
-    
+
     .loading-overlay {
         position: absolute;
         top: 0;
@@ -144,13 +147,13 @@
         opacity: 0;
         transition: opacity 0.3s, visibility 0s 0.3s;
     }
-    
+
     .loading-overlay.active {
         visibility: visible;
         opacity: 1;
         transition: opacity 0.3s;
     }
-    
+
     .loading-spinner {
         width: 50px;
         height: 50px;
@@ -159,7 +162,31 @@
         border-radius: 50%;
         animation: spin 1s linear infinite;
     }
-    
+
+    pre[class*="language-"] {
+        max-height: 600px;
+        overflow-y: auto;
+        margin: 0;
+    }
+
+    .code-output-wrapper {
+        position: relative;
+        max-height: 600px;
+        overflow: auto;
+    }
+
+    .line-numbers .line-numbers-rows {
+        position: absolute;
+        pointer-events: none;
+        top: 0;
+        font-size: 100%;
+        left: -3.8em;
+        width: 3em;
+        letter-spacing: -1px;
+        border-right: 1px solid #999;
+        user-select: none;
+    }
+
     @keyframes spin {
         to { transform: rotate(360deg); }
     }
@@ -168,21 +195,19 @@
 
 {% block content %}
 <div class="content-container">
-    <!-- Título y descripción -->
     <div class="mb-4">
         <h2 class="mb-2"><i class="fa-solid fa-code me-2"></i>Corrector de Código</h2>
         <p class="text-muted">Mejora y optimiza tu código con asistencia inteligente de IA. Proporciona instrucciones específicas para obtener correcciones precisas.</p>
     </div>
-    
+
     <div class="row">
-        <!-- Panel editor de código -->
         <div class="col-lg-6">
             <div class="code-editor-pane">
                 <div class="code-editor-header">
                     <span>Código a corregir</span>
                     <div class="dropdown">
                         <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" id="languageDropdown" data-bs-toggle="dropdown" aria-expanded="false">
-                            <i class="fa-solid fa-code me-1"></i> Lenguaje
+                            <i class="fa-solid fa-code me-1"></i> Python
                         </button>
                         <ul class="dropdown-menu" aria-labelledby="languageDropdown">
                             <li><a class="dropdown-item" href="#" data-language="python">Python</a></li>
@@ -191,6 +216,12 @@
                             <li><a class="dropdown-item" href="#" data-language="css">CSS</a></li>
                             <li><a class="dropdown-item" href="#" data-language="java">Java</a></li>
                             <li><a class="dropdown-item" href="#" data-language="cpp">C++</a></li>
+                            <li><a class="dropdown-item" href="#" data-language="csharp">C#</a></li>
+                            <li><a class="dropdown-item" href="#" data-language="php">PHP</a></li>
+                            <li><a class="dropdown-item" href="#" data-language="ruby">Ruby</a></li>
+                            <li><a class="dropdown-item" href="#" data-language="go">Go</a></li>
+                            <li><a class="dropdown-item" href="#" data-language="rust">Rust</a></li>
+                            <li><a class="dropdown-item" href="#" data-language="swift">Swift</a></li>
                         </ul>
                     </div>
                 </div>
@@ -214,8 +245,7 @@
                 </div>
             </div>
         </div>
-        
-        <!-- Panel de resultados -->
+
         <div class="col-lg-6 mt-4 mt-lg-0">
             <div class="correction-result-pane">
                 <div class="correction-result-header">
@@ -230,24 +260,24 @@
                     </div>
                 </div>
                 <div class="correction-result-body position-relative">
-                    <!-- Overlay de carga -->
                     <div class="loading-overlay" id="loading-overlay">
                         <div class="text-center">
                             <div class="loading-spinner mb-3"></div>
                             <p class="text-light">Procesando código...</p>
                         </div>
                     </div>
-                    
-                    <!-- Vista de código corregido -->
+
                     <div id="code-view" class="view-content">
                         <div id="initial-message" class="text-center py-5">
                             <i class="fa-solid fa-code text-muted mb-3" style="font-size: 3rem;"></i>
                             <h4 class="text-muted">Esperando código para corregir</h4>
                             <p class="text-muted">Ingresa tu código y las instrucciones de corrección para comenzar.</p>
                         </div>
-                        
+
                         <div id="corrected-code-container" style="display: none;">
-                            <pre class="language-python"><code id="corrected-code"></code></pre>
+                            <div class="code-output-wrapper">
+                                <pre class="line-numbers language-python"><code id="corrected-code"></code></pre>
+                            </div>
                             <div class="d-flex justify-content-end mt-3">
                                 <button id="copy-button" class="btn btn-sm btn-outline-secondary me-2">
                                     <i class="fa-regular fa-copy me-1"></i> Copiar
@@ -258,14 +288,13 @@
                             </div>
                         </div>
                     </div>
-                    
-                    <!-- Vista de cambios realizados -->
+
                     <div id="changes-view" class="view-content" style="display: none;">
                         <h5 class="mb-3">Cambios realizados:</h5>
                         <div id="changes-list">
                             <!-- Los cambios se insertarán aquí dinámicamente -->
                         </div>
-                        
+
                         <h5 class="mt-4 mb-3">Explicación:</h5>
                         <div id="explanation-content" class="p-3 border border-1 rounded">
                             <!-- La explicación se insertará aquí dinámicamente -->
@@ -280,14 +309,23 @@
 
 {% block extra_js %}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/line-numbers/prism-line-numbers.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-python.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-javascript.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-css.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-markup.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-java.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-cpp.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-csharp.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-php.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-ruby.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-go.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-rust.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-swift.min.js"></script>
 <script>
     document.addEventListener('DOMContentLoaded', function() {
         let currentLanguage = 'python';
-        
+
         // Elementos del DOM
         const codeInput = document.getElementById('code-input');
         const instructionsInput = document.getElementById('instructions');
@@ -304,18 +342,42 @@
         const codeView = document.getElementById('code-view');
         const changesList = document.getElementById('changes-list');
         const explanationContent = document.getElementById('explanation-content');
-        
+
+        // Función para manejar código grande
+        function handleLargeCode() {
+            // Ajustar altura del editor de código basado en el número de líneas
+            const lineCount = codeInput.value.split('\n').length;
+            const minHeight = 300;
+            const maxHeight = 700;
+            const lineHeight = 20; // altura aproximada por línea
+            const calculatedHeight = Math.min(maxHeight, Math.max(minHeight, lineCount * lineHeight));
+            codeInput.style.height = calculatedHeight + 'px';
+        }
+
+        // Debounce para optimizar rendimiento
+        function debounce(func, wait) {
+            let timeout;
+            return function(...args) {
+                clearTimeout(timeout);
+                timeout = setTimeout(() => func.apply(this, args), wait);
+            };
+        }
+
+        // Aplicar función debounced para input
+        const debouncedHandleLargeCode = debounce(handleLargeCode, 300);
+        codeInput.addEventListener('input', debouncedHandleLargeCode);
+
         // Cambiar entre vistas (código/cambios)
         document.querySelectorAll('.view-toggle-btn').forEach(button => {
             button.addEventListener('click', function() {
                 const view = this.getAttribute('data-view');
-                
+
                 // Actualizar botones
                 document.querySelectorAll('.view-toggle-btn').forEach(btn => {
                     btn.classList.remove('active');
                 });
                 this.classList.add('active');
-                
+
                 // Mostrar la vista correspondiente
                 if (view === 'code') {
                     codeView.style.display = 'block';
@@ -326,72 +388,91 @@
                 }
             });
         });
-        
+
         // Selección de lenguaje
         document.querySelectorAll('[data-language]').forEach(item => {
             item.addEventListener('click', function(e) {
                 e.preventDefault();
                 currentLanguage = this.getAttribute('data-language');
-                languageDropdown.textContent = currentLanguage;
-                
+                languageDropdown.innerHTML = `<i class="fa-solid fa-code me-1"></i> ${currentLanguage.charAt(0).toUpperCase() + currentLanguage.slice(1)}`;
+
                 // Actualizar el resaltado de sintaxis
-                correctedCode.className = `language-${currentLanguage}`;
-                Prism.highlightElement(correctedCode);
+                if (correctedCode.textContent) {
+                    correctedCode.className = `language-${currentLanguage}`;
+                    Prism.highlightElement(correctedCode);
+                }
             });
         });
-        
+
+        // Cargar componentes de Prism.js según demanda
+        function loadPrismLanguage(language) {
+            if (!Prism.languages[language]) {
+                const script = document.createElement('script');
+                script.src = `https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-${language}.min.js`;
+                document.head.appendChild(script);
+                script.onload = function() {
+                    if (correctedCode.textContent) {
+                        Prism.highlightElement(correctedCode);
+                    }
+                };
+            }
+        }
+
         // Botón para corregir código
         correctButton.addEventListener('click', function() {
             const code = codeInput.value.trim();
             const instructions = instructionsInput.value.trim();
-            
+
             if (!code) {
                 alert('Por favor ingresa código para corregir.');
                 return;
             }
-            
+
             if (!instructions) {
                 alert('Por favor ingresa instrucciones para la corrección.');
                 return;
             }
-            
+
             // Mostrar overlay de carga
             loadingOverlay.classList.add('active');
-            
-            // Simulación de envío al servidor (en producción esto sería una llamada API real)
+
+            // Asegurar que el componente del lenguaje está cargado
+            loadPrismLanguage(currentLanguage);
+
+            // Simulación de procesamiento 
             setTimeout(() => {
-                // Simulamos un resultado
-                const result = simulateCodeCorrection(code, instructions, currentLanguage);
-                
+                // Procesar código (simulado)
+                const result = processCode(code, instructions, currentLanguage);
+
                 // Actualizar vista de código
                 correctedCode.textContent = result.correctedCode;
                 correctedCode.className = `language-${currentLanguage}`;
                 Prism.highlightElement(correctedCode);
-                
+
                 // Actualizar vista de cambios
                 renderChanges(result.changes);
-                explanationContent.textContent = result.explanation;
-                
+                explanationContent.innerHTML = result.explanation;
+
                 // Mostrar resultado
                 initialMessage.style.display = 'none';
                 correctedCodeContainer.style.display = 'block';
-                
+
                 // Ocultar overlay de carga
                 loadingOverlay.classList.remove('active');
-            }, 2000);
+            }, 1500);
         });
-        
+
         // Botón para limpiar
         clearButton.addEventListener('click', function() {
             codeInput.value = '';
             instructionsInput.value = '';
+            codeInput.style.height = '300px';
         });
-        
+
         // Botón para copiar código corregido
         copyButton.addEventListener('click', function() {
             navigator.clipboard.writeText(correctedCode.textContent)
                 .then(() => {
-                    // Cambiar temporalmente el texto del botón para indicar éxito
                     const originalText = this.innerHTML;
                     this.innerHTML = '<i class="fa-solid fa-check me-1"></i> Copiado!';
                     setTimeout(() => {
@@ -403,19 +484,18 @@
                     alert('No se pudo copiar el código.');
                 });
         });
-        
+
         // Botón para aplicar cambios
         applyButton.addEventListener('click', function() {
             codeInput.value = correctedCode.textContent;
+            handleLargeCode();
             alert('Cambios aplicados al editor.');
         });
-        
-        // Función para renderizar los cambios en la vista de cambios
+
+        // Función para renderizar los cambios
         function renderChanges(changes) {
-            // Limpiar lista actual
             changesList.innerHTML = '';
-            
-            // Renderizar cada cambio
+
             if (changes && changes.length > 0) {
                 changes.forEach((change, index) => {
                     const changeElement = document.createElement('div');
@@ -430,68 +510,516 @@
                 changesList.innerHTML = '<p class="text-muted fst-italic">No se especificaron cambios detallados.</p>';
             }
         }
-        
-        // Función para simular la corrección de código (en producción, esto sería reemplazado por una llamada API real)
-        function simulateCodeCorrection(code, instructions, language) {
-            // Ejemplo simple de respuesta simulada
+
+        // Función para procesar código (simulada)
+        function processCode(code, instructions, language) {
+            // Ejemplos de código limpio para demostración
+            const samples = {
+                python: generatePythonSample(code, instructions),
+                javascript: generateJavaScriptSample(code, instructions),
+                html: generateHtmlSample(code, instructions),
+                css: generateCssSample(code, instructions),
+                java: generateJavaSample(code, instructions),
+                cpp: generateCppSample(code, instructions),
+                // Para otros lenguajes, usa un generador genérico
+            };
+
+            // Obtener el código específico del lenguaje o usar un genérico
+            const correctedCode = samples[language] || generateGenericSample(code, language);
+
             return {
-                correctedCode: improveCode(code, language),
-                changes: [
-                    {
-                        description: "Corregido manejo de errores con bloques try-except",
-                        lineNumbers: [5, 6, 7]
-                    },
-                    {
-                        description: "Optimizado rendimiento eliminando operaciones redundantes",
-                        lineNumbers: [12, 13]
-                    },
-                    {
-                        description: "Mejorada la legibilidad con mejores nombres de variables",
-                        lineNumbers: [1, 8, 15]
-                    }
-                ],
-                explanation: "El código ha sido refactorizado para mejorar la robustez y el rendimiento. Se implementaron patrones de manejo de errores adecuados, se eliminaron operaciones redundantes y se mejoraron los nombres de variables para incrementar la legibilidad."
+                correctedCode: correctedCode,
+                changes: generateChanges(instructions),
+                explanation: generateExplanation(instructions, language)
             };
         }
-        
-        // Función simple para "mejorar" el código (solo para demostración)
-        function improveCode(code, language) {
-            // En producción, esto sería el resultado real de la IA
-            if (language === 'python') {
-                // Simulamos mejoras para Python
-                return `# Código optimizado y corregido
-import os
-from typing import List, Dict, Optional
 
-def process_data(file_path: str) -> Optional[Dict]:
-    """Procesa datos desde un archivo de manera segura.
-    
-    Args:
-        file_path: Ruta al archivo a procesar
-        
-    Returns:
-        Diccionario con los datos procesados o None si hay error
-    """
-    try:
-        if not os.path.exists(file_path):
-            print(f"El archivo {file_path} no existe")
-            return None
-            
-        # Procesamiento de datos mejorado
-        result = {}
-        with open(file_path, 'r') as file:
-            for line in file:
-                key, value = line.strip().split(':', 1)
-                result[key.strip()] = value.strip()
-                
-        return result
-    except Exception as e:
-        print(f"Error procesando {file_path}: {e}")
-        return None`;
-            } else {
-                // Por defecto, devolvemos una versión "mejorada" genérica
-                return code + `\n\n// Código optimizado y con mejor manejo de errores\n// Se implementaron buenas prácticas según las instrucciones`;
+        // Generadores de código limpio para cada lenguaje
+        function generatePythonSample(code, instructions) {
+            // Solo para simulación - en producción esto vendría de la IA
+            return `def process_data(file_path):
+    if not os.path.exists(file_path):
+        return None
+
+    result = {}
+    with open(file_path, 'r') as file:
+        for line in file:
+            key, value = line.strip().split(':', 1)
+            result[key.strip()] = value.strip()
+
+    return result
+
+def analyze_results(data):
+    if not data:
+        return {}
+
+    metrics = {}
+    for key, value in data.items():
+        metrics[key] = float(value) if value.replace('.', '', 1).isdigit() else 0
+
+    return metrics
+
+def main():
+    file_data = process_data("data.txt")
+    if file_data:
+        results = analyze_results(file_data)
+        for key, value in results.items():
+            print(f"{key}: {value:.2f}")`;
+        }
+
+        function generateJavaScriptSample(code, instructions) {
+            return `function processData(filePath) {
+    if (!fs.existsSync(filePath)) {
+        return null;
+    }
+
+    const result = {};
+    const fileContent = fs.readFileSync(filePath, 'utf8');
+    const lines = fileContent.split('\\n');
+
+    for (const line of lines) {
+        if (line.trim() === '') continue;
+        const [key, value] = line.split(':', 2);
+        result[key.trim()] = value.trim();
+    }
+
+    return result;
+}
+
+function analyzeResults(data) {
+    if (!data) {
+        return {};
+    }
+
+    const metrics = {};
+    for (const [key, value] of Object.entries(data)) {
+        metrics[key] = isNumeric(value) ? parseFloat(value) : 0;
+    }
+
+    return metrics;
+}
+
+function isNumeric(str) {
+    return !isNaN(str) && !isNaN(parseFloat(str));
+}
+
+function main() {
+    const fileData = processData('data.txt');
+    if (fileData) {
+        const results = analyzeResults(fileData);
+        for (const [key, value] of Object.entries(results)) {
+            console.log(`${key}: ${value.toFixed(2)}`);
+        }
+    }
+}`;
+        }
+
+        function generateHtmlSample(code, instructions) {
+            return `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Data Analyzer</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <header>
+        <h1>Data Analyzer Tool</h1>
+        <nav>
+            <ul>
+                <li><a href="#upload">Upload</a></li>
+                <li><a href="#analyze">Analyze</a></li>
+                <li><a href="#results">Results</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <main>
+        <section id="upload">
+            <h2>Upload Data</h2>
+            <form id="upload-form">
+                <div class="form-group">
+                    <label for="file-input">Select File:</label>
+                    <input type="file" id="file-input" accept=".txt,.csv">
+                </div>
+                <button type="submit">Upload</button>
+            </form>
+        </section>
+
+        <section id="analyze">
+            <h2>Analysis Options</h2>
+            <div class="options-container">
+                <div class="option">
+                    <input type="checkbox" id="option-1" checked>
+                    <label for="option-1">Basic Statistics</label>
+                </div>
+                <div class="option">
+                    <input type="checkbox" id="option-2">
+                    <label for="option-2">Advanced Analysis</label>
+                </div>
+                <div class="option">
+                    <input type="checkbox" id="option-3">
+                    <label for="option-3">Generate Graphs</label>
+                </div>
+            </div>
+            <button id="analyze-btn">Analyze Data</button>
+        </section>
+
+        <section id="results">
+            <h2>Results</h2>
+            <div id="results-container">
+                <p class="placeholder-text">Results will appear here after analysis</p>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <p>&copy; 2025 Data Analyzer Tool</p>
+    </footer>
+
+    <script src="script.js"></script>
+</body>
+</html>`;
+        }
+
+        function generateCssSample(code, instructions) {
+            return `:root {
+    --primary-color: #4a6fdc;
+    --secondary-color: #1d3557;
+    --accent-color: #e63946;
+    --text-light: #f1faee;
+    --text-dark: #1d3557;
+    --background-light: #f1faee;
+    --background-dark: #1d3557;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    line-height: 1.6;
+    color: var(--text-dark);
+    background-color: var(--background-light);
+}
+
+header {
+    background-color: var(--primary-color);
+    color: var(--text-light);
+    padding: 1rem 2rem;
+}
+
+header h1 {
+    margin-bottom: 1rem;
+}
+
+nav ul {
+    display: flex;
+    list-style: none;
+}
+
+nav ul li {
+    margin-right: 1.5rem;
+}
+
+nav ul li a {
+    color: var(--text-light);
+    text-decoration: none;
+    transition: color 0.3s ease;
+}
+
+nav ul li a:hover {
+    color: var(--background-light);
+}
+
+main {
+    max-width: 1200px;
+    margin: 2rem auto;
+    padding: 0 2rem;
+}
+
+section {
+    margin-bottom: 3rem;
+}
+
+h2 {
+    margin-bottom: 1.5rem;
+    color: var(--secondary-color);
+}
+
+.form-group {
+    margin-bottom: 1.5rem;
+}
+
+label {
+    display: block;
+    margin-bottom: 0.5rem;
+}
+
+input[type="file"] {
+    padding: 0.5rem;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+}
+
+button {
+    background-color: var(--primary-color);
+    color: var(--text-light);
+    border: none;
+    padding: 0.7rem 1.5rem;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+button:hover {
+    background-color: var(--secondary-color);
+}
+
+.options-container {
+    margin-bottom: 1.5rem;
+}
+
+.option {
+    margin-bottom: 0.5rem;
+}
+
+#results-container {
+    background-color: #fff;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    padding: 1.5rem;
+    min-height: 200px;
+}
+
+.placeholder-text {
+    color: #777;
+    font-style: italic;
+}
+
+footer {
+    text-align: center;
+    padding: 1rem;
+    background-color: var(--secondary-color);
+    color: var(--text-light);
+}
+
+@media (max-width: 768px) {
+    nav ul {
+        flex-direction: column;
+    }
+
+    nav ul li {
+        margin-right: 0;
+        margin-bottom: 0.5rem;
+    }
+}`;
+        }
+
+        function generateJavaSample(code, instructions) {
+            return `import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+public class DataProcessor {
+    public static Map<String, String> processData(String filePath) {
+        File file = new File(filePath);
+        if (!file.exists()) {
+            return null;
+        }
+
+        Map<String, String> result = new HashMap<>();
+        try {
+            List<String> lines = Files.readAllLines(Paths.get(filePath));
+            for (String line : lines) {
+                if (line.trim().isEmpty()) continue;
+                String[] parts = line.split(":", 2);
+                if (parts.length == 2) {
+                    result.put(parts[0].trim(), parts[1].trim());
+                }
             }
+        } catch (IOException e) {
+            System.err.println("Error reading file: " + e.getMessage());
+            return null;
+        }
+
+        return result;
+    }
+
+    public static Map<String, Double> analyzeResults(Map<String, String> data) {
+        if (data == null) {
+            return new HashMap<>();
+        }
+
+        Map<String, Double> metrics = new HashMap<>();
+        for (Map.Entry<String, String> entry : data.entrySet()) {
+            try {
+                metrics.put(entry.getKey(), Double.parseDouble(entry.getValue()));
+            } catch (NumberFormatException e) {
+                metrics.put(entry.getKey(), 0.0);
+            }
+        }
+
+        return metrics;
+    }
+
+    public static void main(String[] args) {
+        Map<String, String> fileData = processData("data.txt");
+        if (fileData != null) {
+            Map<String, Double> results = analyzeResults(fileData);
+            for (Map.Entry<String, Double> entry : results.entrySet()) {
+                System.out.printf("%s: %.2f%n", entry.getKey(), entry.getValue());
+            }
+        }
+    }
+}`;
+        }
+
+        function generateCppSample(code, instructions) {
+            return `#include <iostream>
+#include <fstream>
+#include <string>
+#include <map>
+#include <vector>
+#include <filesystem>
+
+namespace fs = std::filesystem;
+
+std::map<std::string, std::string> processData(const std::string& filePath) {
+    if (!fs::exists(filePath)) {
+        return {};
+    }
+
+    std::map<std::string, std::string> result;
+    std::ifstream file(filePath);
+
+    if (!file.is_open()) {
+        return {};
+    }
+
+    std::string line;
+    while (std::getline(file, line)) {
+        if (line.empty()) continue;
+
+        size_t pos = line.find(':');
+        if (pos != std::string::npos) {
+            std::string key = line.substr(0, pos);
+            std::string value = line.substr(pos + 1);
+
+            key.erase(0, key.find_first_not_of(" "));
+            key.erase(key.find_last_not_of(" ") + 1);
+
+            value.erase(0, value.find_first_not_of(" "));
+            value.erase(value.find_last_not_of(" ") + 1);
+
+            result[key] = value;
+        }
+    }
+
+    file.close();
+    return result;
+}
+
+std::map<std::string, double> analyzeResults(const std::map<std::string, std::string>& data) {
+    std::map<std::string, double> metrics;
+
+    for (const auto& [key, value] : data) {
+        try {
+            metrics[key] = std::stod(value);
+        } catch (const std::exception&) {
+            metrics[key] = 0.0;
+        }
+    }
+
+    return metrics;
+}
+
+int main() {
+    auto fileData = processData("data.txt");
+
+    if (!fileData.empty()) {
+        auto results = analyzeResults(fileData);
+
+        for (const auto& [key, value] : results) {
+            std::cout << key << ": " << std::fixed << std::setprecision(2) << value << std::endl;
+        }
+    } else {
+        std::cout << "No data found or file could not be read." << std::endl;
+    }
+
+    return 0;
+}`;
+        }
+
+        function generateGenericSample(code, language) {
+            // Devolver el código ingresado con formato mejorado
+            return code;
+        }
+
+        // Generar cambios (simulado)
+        function generateChanges(instructions) {
+            // Crear cambios basados en las instrucciones
+            const baseChanges = [
+                {
+                    description: "Reemplazo de variables con nombres descriptivos para mejorar legibilidad",
+                    lineNumbers: [2, 5, 9, 15]
+                },
+                {
+                    description: "Optimización de bucles para mejorar rendimiento",
+                    lineNumbers: [12, 13, 14]
+                },
+                {
+                    description: "Corrección de manejo de errores",
+                    lineNumbers: [4, 7, 19, 22]
+                },
+                {
+                    description: "Refactorización para mejorar la estructura del código",
+                    lineNumbers: [1, 8, 25, 30]
+                }
+            ];
+
+            // Simular que se generan cambios específicos basados en instrucciones
+            if (instructions.toLowerCase().includes('rendimiento')) {
+                baseChanges.push({
+                    description: "Implementación de caché para mejorar tiempos de respuesta",
+                    lineNumbers: [10, 11, 17]
+                });
+            }
+
+            if (instructions.toLowerCase().includes('errores')) {
+                baseChanges.push({
+                    description: "Adición de validación de entrada para prevenir errores",
+                    lineNumbers: [3, 6, 27]
+                });
+            }
+
+            return baseChanges;
+        }
+
+        // Generar explicación (simulado)
+        function generateExplanation(instructions, language) {
+            // Crear una explicación basada en el lenguaje y las instrucciones
+            let explanation = `El código ha sido optimizado siguiendo las mejores prácticas de ${language}. `;
+
+            if (instructions.toLowerCase().includes('rendimiento')) {
+                explanation += "Se han eliminado operaciones redundantes y optimizado los bucles para mejorar el rendimiento. ";
+            }
+
+            if (instructions.toLowerCase().includes('errores')) {
+                explanation += "Se ha implementado un manejo de errores más robusto con validación de entradas. ";
+            }
+
+            explanation += "La estructura general del código ha sido refactorizada para mejorar la legibilidad y mantenibilidad.";
+
+            return explanation;
         }
     });
 </script>
