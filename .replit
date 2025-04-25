@@ -7,7 +7,7 @@ packages = ["glibcLocales", "iana-etc", "openssl", "postgresql"]
 
 [deployment]
 deploymentTarget = "autoscale"
-run = ["sh", "-c", "python main_completo.py"]
+run = ["sh", "-c", "gunicorn --bind 0.0.0.0:5000 --workers 1 main:app"]
 
 [workflows]
 runButton = "Run CODESTORM"
