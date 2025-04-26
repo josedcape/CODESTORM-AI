@@ -870,7 +870,7 @@ def process_request():
             }), 400
 
         action = data.get('action', '')
-        user_id = data.get('user_", "\n```\n").replace("`", " ` ")
+        user_id = data.get('user_id', 'default')
                         logging.info("Respuesta generada con Anthropic")
                     else:
                         response = "No se recibió respuesta de Anthropic. Por favor, intenta de nuevo."
