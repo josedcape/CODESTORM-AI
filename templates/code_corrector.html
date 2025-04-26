@@ -343,13 +343,6 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-css.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-markup.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-java.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-cpp.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-csharp.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-php.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-ruby.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-go.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-rust.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-swift.min.js"></script>
 <script>
     document.addEventListener('DOMContentLoaded', function() {
         let currentLanguage = 'python';
@@ -426,14 +419,12 @@
                 currentLanguage = this.getAttribute('data-language');
                 languageDropdown.innerHTML = `<i class="fa-solid fa-code me-1"></i> ${currentLanguage.charAt(0).toUpperCase() + currentLanguage.slice(1)}`;
 
-                // Actualizar el resaltado de sintaxis
+                // Actualizar el resaltado de sintaxis si hay código
                 if (correctedCode.textContent) {
-                    correctedCode.className = `language-${currentLanguage}`;
-                    Prism.highlightElement(correctedCode);
+                    updateCodeHighlighting();
                 }
             });
         });
-
 
         // Modelo de IA seleccionado
         for (let i = 0; i < modelSelector.length; i++) {
@@ -442,19 +433,39 @@
             });
         }
 
+        // Función para actualizar el resaltado de sintaxis de manera segura
+        function updateCodeHighlighting() {
+            try {
+                // Limpiar clases anteriores
+                correctedCode.className = '';
 
-        // Cargar componentes de Prism.js según demanda
-        function loadPrismLanguage(language) {
-            if (!Prism.languages[language]) {
-                const script = document.createElement('script');
-                script.src = `https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-${language}.min.js`;
-                document.head.appendChild(script);
-                script.onload = function() {
-                    if (correctedCode.textContent) {
-                        Prism.highlightElement(correctedCode);
-                    }
-                };
+                // Aplicar nueva clase si el lenguaje está soportado
+                if (Prism.languages[currentLanguage]) {
+                    correctedCode.className = `language-${currentLanguage}`;
+                    Prism.highlightElement(correctedCode);
+                }
+            } catch (e) {
+                console.warn("Error al aplicar resaltado de sintaxis:", e);
             }
+        }
+
+        // Función para cargar bibliotecas adicionales de Prism bajo demanda
+        function loadPrismLanguage(language) {
+            if (!Prism.languages[language] && language !== 'cpp') {
+                try {
+                    const script = document.createElement('script');
+                    script.src = `https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-${language}.min.js`;
+                    document.head.appendChild(script);
+                    return new Promise((resolve) => {
+                        script.onload = resolve;
+                        script.onerror = resolve; // Continue even if loading fails
+                    });
+                } catch (e) {
+                    console.warn(`No se pudo cargar el lenguaje: ${language}`, e);
+                    return Promise.resolve();
+                }
+            }
+            return Promise.resolve();
         }
 
         // Botón para corregir código
@@ -475,43 +486,54 @@
             // Mostrar overlay de carga
             loadingOverlay.classList.add('active');
 
-            // Asegurar que el componente del lenguaje está cargado
-            loadPrismLanguage(currentLanguage);
-
-            // Simulación de procesamiento 
-            setTimeout(() => {
-                // Procesar código (simulado)
-                const result = processCode(code, instructions, currentLanguage, selectedModel);
-
-                // Actualizar vista de código
-                correctedCode.textContent = result.correctedCode;
-                
-                // Aplicar resaltado de manera segura
-                try {
-                    // Solo aplicar clase si el lenguaje está soportado
-                    if (Prism.languages[currentLanguage]) {
-                        correctedCode.className = `language-${currentLanguage}`;
-                        Prism.highlightElement(correctedCode);
-                    } else {
-                        // Fallback a texto plano si el lenguaje no está soportado
-                        correctedCode.className = "";
+            // Intentar cargar el lenguaje si es necesario
+            loadPrismLanguage(currentLanguage)
+                .then(() => {
+                    // Enviar solicitud al servidor
+                    return fetch('/api/correct-code', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            code: code,
+                            instructions: instructions,
+                            language: currentLanguage,
+                            model: selectedModel
+                        }),
+                    });
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Error en la respuesta del servidor');
                     }
-                } catch (e) {
-                    console.warn("Error al aplicar resaltado de sintaxis:", e);
-                    correctedCode.className = "";
-                }
+                    return response.json();
+                })
+                .then(data => {
+                    if (data.success) {
+                        // Actualizar vista de código
+                        correctedCode.textContent = data.correctedCode;
+                        updateCodeHighlighting();
 
-                // Actualizar vista de cambios
-                renderChanges(result.changes);
-                explanationContent.innerHTML = result.explanation;
+                        // Actualizar vista de cambios
+                        renderChanges(data.changes);
+                        explanationContent.innerHTML = data.explanation;
 
-                // Mostrar resultado
-                initialMessage.style.display = 'none';
-                correctedCodeContainer.style.display = 'block';
-
-                // Ocultar overlay de carga
-                loadingOverlay.classList.remove('active');
-            }, 1500);
+                        // Mostrar resultado
+                        initialMessage.style.display = 'none';
+                        correctedCodeContainer.style.display = 'block';
+                    } else {
+                        alert('Error: ' + data.error);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('Error al procesar la solicitud: ' + error.message);
+                })
+                .finally(() => {
+                    // Ocultar overlay de carga
+                    loadingOverlay.classList.remove('active');
+                });
         });
 
         // Botón para limpiar
@@ -554,7 +576,7 @@
                     changeElement.className = 'changes-container';
                     changeElement.innerHTML = `
                         <p class="change-description">${index + 1}. ${change.description}</p>
-                        ${change.lineNumbers ? `<p class="change-lines">Líneas: ${change.lineNumbers.join(', ')}</p>` : ''}
+                        ${change.lineNumbers && change.lineNumbers.length > 0 ? `<p class="change-lines">Líneas: ${change.lineNumbers.join(', ')}</p>` : ''}
                     `;
                     changesList.appendChild(changeElement);
                 });
@@ -562,531 +584,6 @@
                 changesList.innerHTML = '<p class="text-muted fst-italic">No se especificaron cambios detallados.</p>';
             }
         }
-
-        // Función para procesar código (simulada)
-        function processCode(code, instructions, language, model) {
-            // Ejemplos de código limpio para demostración
-            const samples = {
-                python: generatePythonSample(code, instructions),
-                javascript: generateJavaScriptSample(code, instructions),
-                html: generateHtmlSample(code, instructions),
-                css: generateCssSample(code, instructions),
-                java: generateJavaSample(code, instructions),
-                cpp: generateCppSample(code, instructions),
-                // Para otros lenguajes, usa un generador genérico
-            };
-
-            // Obtener el código específico del lenguaje o usar un genérico
-            const correctedCode = samples[language] || generateGenericSample(code, language);
-
-            // Simular diferentes respuestas basadas en el modelo seleccionado
-            let explanation = generateExplanation(instructions, language, model);
-            if(model === 'gemini'){
-                explanation += " Gemini se ha utilizado para procesar tu código";
-            } else if (model === 'anthropic'){
-                explanation += " Claude se ha utilizado para procesar tu código";
-            } else {
-                explanation += " OpenAI se ha utilizado para procesar tu código";
-            }
-
-
-            return {
-                correctedCode: correctedCode,
-                changes: generateChanges(instructions),
-                explanation: explanation
-            };
-        }
-
-        // Generadores de código limpio para cada lenguaje
-        function generatePythonSample(code, instructions) {
-            // Solo para simulación - en producción esto vendría de la IA
-            return `def process_data(file_path):
-    if not os.path.exists(file_path):
-        return None
-
-    result = {}
-    with open(file_path, 'r') as file:
-        for line in file:
-            key, value = line.strip().split(':', 1)
-            result[key.strip()] = value.strip()
-
-    return result
-
-def analyze_results(data):
-    if not data:
-        return {}
-
-    metrics = {}
-    for key, value in data.items():
-        metrics[key] = float(value) if value.replace('.', '', 1).isdigit() else 0
-
-    return metrics
-
-def main():
-    file_data = process_data("data.txt")
-    if file_data:
-        results = analyze_results(file_data)
-        for key, value in results.items():
-            print(f"{key}: {value:.2f}")`;
-        }
-
-        function generateJavaScriptSample(code, instructions) {
-            return `function processData(filePath) {
-    if (!fs.existsSync(filePath)) {
-        return null;
-    }
-
-    const result = {};
-    const fileContent = fs.readFileSync(filePath, 'utf8');
-    const lines = fileContent.split('\\n');
-
-    for (const line of lines) {
-        if (line.trim() === '') continue;
-        const [key, value] = line.split(':', 2);
-        result[key.trim()] = value.trim();
-    }
-
-    return result;
-}
-
-function analyzeResults(data) {
-    if (!data) {
-        return {};
-    }
-
-    const metrics = {};
-    for (const [key, value] of Object.entries(data)) {
-        metrics[key] = isNumeric(value) ? parseFloat(value) : 0;
-    }
-
-    return metrics;
-}
-
-function isNumeric(str) {
-    return !isNaN(str) && !isNaN(parseFloat(str));
-}
-
-function main() {
-    const fileData = processData('data.txt');
-    if (fileData) {
-        const results = analyzeResults(fileData);
-        for (const [key, value] of Object.entries(results)) {
-            console.log(`${key}: ${value.toFixed(2)}`);
-        }
-    }
-}`;
-        }
-
-        function generateHtmlSample(code, instructions) {
-            return `<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Data Analyzer</title>
-    <link rel="stylesheet" href="styles.css">
-</head>
-<body>
-    <header>
-        <h1>Data Analyzer Tool</h1>
-        <nav>
-            <ul>
-                <li><a href="#upload">Upload</a></li>
-                <li><a href="#analyze">Analyze</a></li>
-                <li><a href="#results">Results</a></li>
-            </ul>
-        </nav>
-    </header>
-
-    <main>
-        <section id="upload">
-            <h2>Upload Data</h2>
-            <form id="upload-form">
-                <div class="form-group">
-                    <label for="file-input">Select File:</label>
-                    <input type="file" id="file-input" accept=".txt,.csv">
-                </div>
-                <button type="submit">Upload</button>
-            </form>
-        </section>
-
-        <section id="analyze">
-            <h2>Analysis Options</h2>
-            <div class="options-container">
-                <div class="option">
-                    <input type="checkbox" id="option-1" checked>
-                    <label for="option-1">Basic Statistics</label>
-                </div>
-                <div class="option">
-                    <input type="checkbox" id="option-2">
-                    <label for="option-2">Advanced Analysis</label>
-                </div>
-                <div class="option">
-                    <input type="checkbox" id="option-3">
-                    <label for="option-3">Generate Graphs</label>
-                </div>
-            </div>
-            <button id="analyze-btn">Analyze Data</button>
-        </section>
-
-        <section id="results">
-            <h2>Results</h2>
-            <div id="results-container">
-                <p class="placeholder-text">Results will appear here after analysis</p>
-            </div>
-        </section>
-    </main>
-
-    <footer>
-        <p>&copy; 2025 Data Analyzer Tool</p>
-    </footer>
-
-    <script src="script.js"></script>
-</body>
-</html>`;
-        }
-
-        function generateCssSample(code, instructions) {
-            return `:root {
-    --primary-color: #4a6fdc;
-    --secondary-color: #1d3557;
-    --accent-color: #e63946;
-    --text-light: #f1faee;
-    --text-dark: #1d3557;
-    --background-light: #f1faee;
-    --background-dark: #1d3557;
-}
-
-* {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
-}
-
-body {
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    line-height: 1.6;
-    color: var(--text-dark);
-    background-color: var(--background-light);
-}
-
-header {
-    background-color: var(--primary-color);
-    color: var(--text-light);
-    padding: 1rem 2rem;
-}
-
-header h1 {
-    margin-bottom: 1rem;
-}
-
-nav ul {
-    display: flex;
-    list-style: none;
-}
-
-nav ul li {
-    margin-right: 1.5rem;
-}
-
-nav ul li a {
-    color: var(--text-light);
-    text-decoration: none;
-    transition: color 0.3s ease;
-}
-
-nav ul li a:hover {
-    color: var(--background-light);
-}
-
-main {
-    max-width: 1200px;
-    margin: 2rem auto;
-    padding: 0 2rem;
-}
-
-section {
-    margin-bottom: 3rem;
-}
-
-h2 {
-    margin-bottom: 1.5rem;
-    color: var(--secondary-color);
-}
-
-.form-group {
-    margin-bottom: 1.5rem;
-}
-
-label {
-    display: block;
-    margin-bottom: 0.5rem;
-}
-
-input[type="file"] {
-    padding: 0.5rem;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-}
-
-button {
-    background-color: var(--primary-color);
-    color: var(--text-light);
-    border: none;
-    padding: 0.7rem 1.5rem;
-    border-radius: 4px;
-    cursor: pointer;
-    transition: background-color 0.3s ease;
-}
-
-button:hover {
-    background-color: var(--secondary-color);
-}
-
-.options-container {
-    margin-bottom: 1.5rem;
-}
-
-.option {
-    margin-bottom: 0.5rem;
-}
-
-#results-container {
-    background-color: #fff;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-    padding: 1.5rem;
-    min-height: 200px;
-}
-
-.placeholder-text {
-    color: #777;
-    font-style: italic;
-}
-
-footer {
-    text-align: center;
-    padding: 1rem;
-    background-color: var(--secondary-color);
-    color: var(--text-light);
-}
-
-@media (max-width: 768px) {
-    nav ul {
-        flex-direction: column;
-    }
-
-    nav ul li {
-        margin-right: 0;
-        margin-bottom: 0.5rem;
-    }
-}`;
-        }
-
-        function generateJavaSample(code, instructions) {
-            return `import java.io.File;
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Paths;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
-public class DataProcessor {
-    public static Map<String, String> processData(String filePath) {
-        File file = new File(filePath);
-        if (!file.exists()) {
-            return null;
-        }
-
-        Map<String, String> result = new HashMap<>();
-        try {
-            List<String> lines = Files.readAllLines(Paths.get(filePath));
-            for (String line : lines) {
-                if (line.trim().isEmpty()) continue;
-                String[] parts = line.split(":", 2);
-                if (parts.length == 2) {
-                    result.put(parts[0].trim(), parts[1].trim());
-                }
-            }
-        } catch (IOException e) {
-            System.err.println("Error reading file: " + e.getMessage());
-            return null;
-        }
-
-        return result;
-    }
-
-    public static Map<String, Double> analyzeResults(Map<String, String> data) {
-        if (data == null) {
-            return new HashMap<>();
-        }
-
-        Map<String, Double> metrics = new HashMap<>();
-        for (Map.Entry<String, String> entry : data.entrySet()) {
-            try {
-                metrics.put(entry.getKey(), Double.parseDouble(entry.getValue()));
-            } catch (NumberFormatException e) {
-                metrics.put(entry.getKey(), 0.0);
-            }
-        }
-
-        return metrics;
-    }
-
-    public static void main(String[] args) {
-        Map<String, String> fileData = processData("data.txt");
-        if (fileData != null) {
-            Map<String, Double> results = analyzeResults(fileData);
-            for (Map.Entry<String, Double> entry : results.entrySet()) {
-                System.out.printf("%s: %.2f%n", entry.getKey(), entry.getValue());
-            }
-        }
-    }
-}`;
-        }
-
-        function generateCppSample(code, instructions) {
-            return `#include <iostream>
-#include <fstream>
-#include <string>
-#include <map>
-#include <vector>
-#include <filesystem>
-
-namespace fs = std::filesystem;
-
-std::map<std::string, std::string> processData(const std::string& filePath) {
-    if (!fs::exists(filePath)) {
-        return {};
-    }
-
-    std::map<std::string, std::string> result;
-    std::ifstream file(filePath);
-
-    if (!file.is_open()) {
-        return {};
-    }
-
-    std::string line;
-    while (std::getline(file, line)) {
-        if (line.empty()) continue;
-
-        size_t pos = line.find(':');
-        if (pos != std::string::npos) {
-            std::string key = line.substr(0, pos);
-            std::string value = line.substr(pos + 1);
-
-            key.erase(0, key.find_first_not_of(" "));
-            key.erase(key.find_last_not_of(" ") + 1);
-
-            value.erase(0, value.find_first_not_of(" "));
-            value.erase(value.find_last_not_of(" ") + 1);
-
-            result[key] = value;
-        }
-    }
-
-    file.close();
-    return result;
-}
-
-std::map<std::string, double> analyzeResults(const std::map<std::string, std::string>& data) {
-    std::map<std::string, double> metrics;
-
-    for (const auto& [key, value] : data) {
-        try {
-            metrics[key] = std::stod(value);
-        } catch (const std::exception&) {
-            metrics[key] = 0.0;
-        }
-    }
-
-    return metrics;
-}
-
-int main() {
-    auto fileData = processData("data.txt");
-
-    if (!fileData.empty()) {
-        auto results = analyzeResults(fileData);
-
-        for (const auto& [key, value] : results) {
-            std::cout << key << ": " << std::fixed << std::setprecision(2) << value << std::endl;
-        }
-    } else {
-        std::cout << "No data found or file could not be read." << std::endl;
-    }
-
-    return 0;
-}`;
-        }
-
-        function generateGenericSample(code, language) {
-            // Devolver el código ingresado con formato mejorado
-            return code;
-        }
-
-        // Generar cambios (simulado)
-        function generateChanges(instructions) {
-            // Crear cambios basados en las instrucciones
-            const baseChanges = [
-                {
-                    description: "Reemplazo de variables con nombres descriptivos para mejorar legibilidad",
-                    lineNumbers: [2, 5, 9, 15]
-                },
-                {
-                    description: "Optimización de bucles para mejorar rendimiento",
-                    lineNumbers: [12, 13, 14]
-                },
-                {
-                    description: "Corrección de manejo de errores",
-                    lineNumbers: [4, 7, 19, 22]
-                },
-                {
-                    description: "Refactorización para mejorar la estructura del código",
-                    lineNumbers: [1, 8, 25, 30]
-                }
-            ];
-
-            // Simular que se generan cambios específicos basados en instrucciones
-            if (instructions.toLowerCase().includes('rendimiento')) {
-                baseChanges.push({
-                    description: "Implementación de caché para mejorar tiempos de respuesta",
-                    lineNumbers: [10, 11, 17]
-                });
-            }
-
-            if (instructions.toLowerCase().includes('errores')) {
-                baseChanges.push({
-                    description: "Adición de validación de entrada para prevenir errores",
-                    lineNumbers: [3, 6, 27]
-                });
-            }
-
-            return baseChanges;
-        }
-
-        // Generar explicación (simulado)
-        function generateExplanation(instructions, language, model) {
-            // Crear una explicación basada en el lenguaje y las instrucciones
-            let explanation = `El código ha sido optimizado siguiendo las mejores prácticas de ${language}. `;
-
-            if (instructions.toLowerCase().includes('rendimiento')) {
-                explanation += "Se han eliminado operaciones redundantes y optimizado los bucles para mejorar el rendimiento. ";
-            }
-
-            if (instructions.toLowerCase().includes('errores')) {
-                explanation += "Se ha implementado un manejo de errores más robusto con validación de entradas. ";
-            }
-
-            explanation += "La estructura general del código ha sido refactorizada para mejorar la legibilidad y mantenibilidad.";
-
-            return explanation;
-        }
-        
-        // Desactivar Prism para ciertos lenguajes problemáticos
-        Prism.languages.cpp = Prism.languages.cpp || {};
     });
 </script>
 {% endblock %}
