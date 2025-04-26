@@ -18,22 +18,33 @@
     <link href="{{ url_for('static', filename='css/styles.css') }}" rel="stylesheet">
     <link href="{{ url_for('static', filename='css/futuristic.css') }}" rel="stylesheet">
 
+    {% extends "base.html" %}
+
+    {% block title %}CODESTORM - Previsualización{% endblock %}
+
+    {% block extra_css %}
     <style>
         body, html {
             height: 100%;
             margin: 0;
             padding: 0;
-            overflow: hidden;
+            overflow-x: hidden;
+        }
+
+        .content-container {
+            padding-bottom: 20px;
         }
 
         .iframe-container {
             position: relative;
             width: 100%;
-            height: calc(100vh - 120px);
+            height: calc(100vh - 250px);
+            min-height: 400px;
             overflow: hidden;
-            margin-top: 20px;
+            margin-top: 10px;
             border-radius: 8px;
             transition: all 0.3s ease;
+            border: 1px solid rgba(36, 104, 173, 0.2);
         }
 
         .preview-frame {
@@ -43,43 +54,43 @@
             background-color: #fff;
         }
 
+        /* Mejorado: Controles de dispositivo con scroll horizontal suave */
         .device-controls {
             display: flex;
-            justify-content: flex-start;
-            padding: 15px;
+            padding: 10px 15px;
             background: linear-gradient(90deg, var(--darker-blue) 0%, var(--dark-blue) 100%);
             border-radius: 8px 8px 0 0;
             overflow-x: auto;
-            white-space: nowrap;
             scrollbar-width: thin;
             -webkit-overflow-scrolling: touch;
+            white-space: nowrap;
+            gap: 5px;
         }
 
         .device-controls::-webkit-scrollbar {
-            height: 6px;
+            height: 4px;
         }
 
         .device-controls::-webkit-scrollbar-track {
             background: rgba(8, 27, 41, 0.5);
-            border-radius: 3px;
         }
 
         .device-controls::-webkit-scrollbar-thumb {
             background-color: var(--primary-blue);
-            border-radius: 3px;
+            border-radius: 4px;
         }
 
         .device-button {
             background-color: rgba(8, 27, 41, 0.7);
             color: var(--text-light);
             border: 1px solid var(--silver);
-            padding: 8px 15px;
-            margin: 0 5px;
+            padding: 6px 12px;
             border-radius: 20px;
             cursor: pointer;
             transition: all 0.3s ease;
             display: inline-flex;
             align-items: center;
+            font-size: 0.85rem;
             flex-shrink: 0;
         }
 
@@ -90,7 +101,7 @@
         }
 
         .device-button i {
-            margin-right: 8px;
+            margin-right: 6px;
         }
 
         /* Indicadores de tamaño */
@@ -106,89 +117,382 @@
             z-index: 100;
         }
 
+        /* Panel de código colapsable */
+        .code-panel {
+            transition: all 0.3s ease;
+            margin-bottom: 15px;
+            border: 1px solid var(--primary-blue);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .code-panel-header {
+            background: linear-gradient(90deg, var(--darker-blue) 0%, var(--dark-blue) 100%);
+            padding: 8px 15px;
+            color: var(--text-light);
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .code-panel-body {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease;
+        }
+
+        .code-panel-body.open {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .code-editor {
+            width: 100%;
+            height: 200px;
+            font-family: 'JetBrains Mono', monospace;
+            resize: vertical;
+            background-color: #1e1e1e;
+            color: #f8f8f8;
+            border: none;
+            border-radius: 0;
+            padding: 10px;
+        }
+
+        /* Controles flotantes */
+        .floating-controls {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .floating-btn {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.3);
+            cursor: pointer;
+            font-size: 1.2rem;
+            background: var(--primary-blue);
+            color: white;
+            border: none;
+            transition: all 0.2s ease;
+        }
+
+        .floating-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.4);
+        }
+
+        .floating-btn.secondary {
+            background: var(--dark-blue);
+        }
+
+        /* Controles de animación mejorados */
+        .animation-controls {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            z-index: 100;
+            background-color: rgba(0, 0, 0, 0.7);
+            padding: 5px 10px;
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+        }
+
+        .animation-controls button {
+            background: none;
+            border: none;
+            color: white;
+            font-size: 1.2rem;
+            cursor: pointer;
+            margin: 0 5px;
+            padding: 5px;
+        }
+
+        .animation-controls button:hover {
+            color: var(--accent-gold);
+        }
+
+        .file-controls {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+        }
+
+        .file-upload-btn {
+            position: relative;
+            overflow: hidden;
+        }
+
+        .file-upload-btn input[type=file] {
+            position: absolute;
+            top: 0;
+            right: 0;
+            min-width: 100%;
+            min-height: 100%;
+            opacity: 0;
+            cursor: pointer;
+        }
+
+        .preview-error {
+            color: #ff5252;
+            background-color: rgba(255, 82, 82, 0.1);
+            border-left: 3px solid #ff5252;
+            padding: 10px;
+            margin-top: 10px;
+            border-radius: 0 4px 4px 0;
+        }
+
+        /* Modo oscuro para el iframe */
+        .dark-mode {
+            background-color: #222;
+            filter: invert(1) hue-rotate(180deg);
+        }
+
+        /* Ajustes responsive */
         @media (max-width: 768px) {
-            body {
-                padding-bottom: 80px;
+            .file-controls {
+                flex-direction: column;
             }
 
-            .container-fluid {
-                margin-bottom: 100px;
+            .iframe-container {
+                height: calc(100vh - 320px);
             }
 
-            .mobile-optimized {
-                contain: layout style;
-                content-visibility: auto;
+            .floating-controls {
+                bottom: 70px;
+            }
+
+            .device-button {
+                padding: 5px 10px;
+                font-size: 0.75rem;
+            }
+
+            .device-button i {
+                margin-right: 4px;
             }
         }
+
+        /* Área de arrastrar y soltar mejorada */
+        .drop-zone {
+            border: 2px dashed rgba(36, 104, 173, 0.3);
+            transition: all 0.3s ease;
+        }
+
+        .drop-zone.active {
+            border: 2px dashed var(--primary-blue);
+            background-color: rgba(36, 104, 173, 0.05);
+        }
+
+        /* Tooltips para botones */
+        .tooltip-container {
+            position: relative;
+        }
+
+        .tooltip-container .tooltip-text {
+            visibility: hidden;
+            width: 120px;
+            background-color: var(--dark-blue);
+            color: #fff;
+            text-align: center;
+            border-radius: 6px;
+            padding: 5px;
+            position: absolute;
+            z-index: 1;
+            bottom: 125%;
+            left: 50%;
+            margin-left: -60px;
+            opacity: 0;
+            transition: opacity 0.3s;
+            font-size: 0.75rem;
+        }
+
+        .tooltip-container:hover .tooltip-text {
+            visibility: visible;
+            opacity: 1;
+        }
     </style>
-</head>
-<body>
-    <nav class="navbar navbar-expand-lg navbar-futuristic">
-        <div class="container-fluid">
-            <a class="navbar-brand" href="/">
-                <i class="bi bi-terminal"></i>
-                CODESTORM Assistant
-            </a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-            <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav">
-                    <li class="nav-item">
-                        <a class="nav-link" href="/">Terminal</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="/chat">Chat Especializado</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="/files">Explorador de Archivos</a>
-                    </li>
-                </ul>
+    {% endblock %}
+
+    {% block content %}
+    <div class="content-container">
+        <div class="mb-3">
+            <h2><i class="bi bi-window me-2"></i>Previsualización Web</h2>
+            <p class="text-muted">Visualiza tu código HTML, CSS y JavaScript en tiempo real.</p>
+        </div>
+
+        <!-- Panel de código colapsable -->
+        <div class="code-panel mb-3">
+            <div class="code-panel-header" id="code-panel-header">
+                <span><i class="bi bi-code-slash me-2"></i>Editor de Código</span>
+                <i class="bi bi-chevron-down" id="code-panel-icon"></i>
+            </div>
+            <div class="code-panel-body" id="code-panel-body">
+                <textarea id="code-editor" class="code-editor" placeholder="Pega tu código HTML/CSS aquí"></textarea>
+                <div id="preview-error" class="preview-error" style="display: none;"></div>
+
+                <!-- Controles de código -->
+                <div class="p-2 bg-dark d-flex justify-content-between">
+                    <div>
+                        <button class="btn btn-sm btn-primary" id="render-btn">
+                            <i class="bi bi-play-fill me-1"></i>Renderizar
+                        </button>
+                        <button class="btn btn-sm btn-outline-secondary ms-2" id="clear-btn">
+                            <i class="bi bi-trash me-1"></i>Limpiar
+                        </button>
+                    </div>
+                    <div>
+                        <button class="btn btn-sm btn-outline-info" id="format-code-btn">
+                            <i class="bi bi-text-indent-left me-1"></i>Formatear
+                        </button>
+                    </div>
+                </div>
             </div>
         </div>
-    </nav>
 
-    <div class="container-fluid mt-4">
-        <div class="row">
-            <div class="col-12">
-                <div class="card card-futuristic">
-                    <div class="card-header card-header-futuristic d-flex justify-content-between align-items-center">
-                        <span><i class="bi bi-window me-2"></i>Previsualización</span>
-                        <div>
-                            <a href="/chat" class="btn btn-sm btn-futuristic">
-                                <i class="bi bi-arrow-left"></i> Volver al Chat
-                            </a>
-                        </div>
-                    </div>
-                    <div class="card-body p-0">
-                        <div class="device-controls">
-                            <button class="device-button active" data-device="desktop">
-                                <i class="bi bi-laptop"></i> Escritorio
-                            </button>
-                            <button class="device-button" data-device="tablet">
-                                <i class="bi bi-tablet"></i> Tablet
-                            </button>
-                            <button class="device-button" data-device="mobile">
-                                <i class="bi bi-phone"></i> Móvil
-                            </button>
-                        </div>
+        <!-- Controles de archivo -->
+        <div class="file-controls">
+            <div class="d-flex gap-2 flex-wrap">
+                <button class="btn btn-futuristic file-upload-btn">
+                    <i class="bi bi-upload me-1"></i>Subir HTML
+                    <input type="file" id="file-upload" accept=".html,.htm">
+                </button>
+                <button class="btn btn-futuristic" id="paste-code-btn">
+                    <i class="bi bi-clipboard-plus me-1"></i>Pegar código
+                </button>
+            </div>
 
-                        <div class="iframe-container" id="iframe-container">
-                            <div class="size-indicator" id="size-indicator">1200 x 800</div>
-                            <iframe id="preview-frame" class="preview-frame" srcdoc="<html><body><div style='display: flex; justify-content: center; align-items: center; height: 100vh; flex-direction: column; font-family: sans-serif; color: #333;'><h2>Esperando contenido...</h2><p>El contenido HTML se mostrará aquí</p></div></body></html>"></iframe>
-                        </div>
+            <div class="d-flex gap-2 ms-auto flex-wrap">
+                <div class="btn-group">
+                    <button class="btn btn-outline-secondary" id="toggle-dark-mode">
+                        <i class="bi bi-moon"></i>
+                    </button>
+                    <button class="btn btn-outline-secondary" id="fullscreen-btn">
+                        <i class="bi bi-fullscreen"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Contenedor principal de vista previa -->
+        <div class="card card-futuristic">
+            <div class="card-header card-header-futuristic p-0">
+                <!-- Controles de dispositivo -->
+                <div class="device-controls">
+                    <button class="device-button active" data-device="desktop">
+                        <i class="bi bi-laptop"></i>Escritorio
+                    </button>
+                    <button class="device-button" data-device="large-desktop">
+                        <i class="bi bi-display"></i>Monitor Grande
+                    </button>
+                    <button class="device-button" data-device="tablet">
+                        <i class="bi bi-tablet"></i>Tablet
+                    </button>
+                    <button class="device-button" data-device="mobile">
+                        <i class="bi bi-phone"></i>Móvil
+                    </button>
+                    <button class="device-button" data-device="small-mobile">
+                        <i class="bi bi-phone-flip"></i>Móvil Pequeño
+                    </button>
+                </div>
+            </div>
+
+            <div class="card-body p-0">
+                <!-- Contenedor del iframe -->
+                <div class="iframe-container drop-zone" id="iframe-container">
+                    <div class="size-indicator" id="size-indicator">1200 x 800</div>
+                    <div class="animation-controls">
+                        <button id="pause-animation-btn" title="Pausar animaciones">
+                            <i class="bi bi-pause-fill"></i>
+                        </button>
+                        <button id="play-animation-btn" title="Reanudar animaciones" style="display: none;">
+                            <i class="bi bi-play-fill"></i>
+                        </button>
+                        <button id="restart-animation-btn" title="Reiniciar animaciones">
+                            <i class="bi bi-arrow-clockwise"></i>
+                        </button>
                     </div>
+                    <iframe id="preview-frame" class="preview-frame" srcdoc="<html><body><div style='display: flex; justify-content: center; align-items: center; height: 100vh; flex-direction: column; font-family: sans-serif; color: #333; background-color: #f5f5f5;'><h2>Esperando contenido...</h2><p>Carga un archivo HTML o pega tu código para previsualizar</p></div></body></html>" sandbox="allow-same-origin allow-scripts"></iframe>
                 </div>
             </div>
         </div>
     </div>
 
+    <!-- Controles flotantes -->
+    <div class="floating-controls d-none d-md-flex">
+        <button class="floating-btn" id="float-code-toggle" title="Mostrar/Ocultar Editor">
+            <i class="bi bi-code-square"></i>
+        </button>
+        <button class="floating-btn secondary" id="float-render-btn" title="Renderizar Código">
+            <i class="bi bi-play-fill"></i>
+        </button>
+    </div>
+    {% endblock %}
+
+    {% block extra_js %}
     <script>
         document.addEventListener('DOMContentLoaded', function() {
+            // Referencias a elementos DOM
             const iframeContainer = document.getElementById('iframe-container');
             const previewFrame = document.getElementById('preview-frame');
             const deviceButtons = document.querySelectorAll('.device-button');
             const sizeIndicator = document.getElementById('size-indicator');
+            const codeEditor = document.getElementById('code-editor');
+            const renderBtn = document.getElementById('render-btn');
+            const clearBtn = document.getElementById('clear-btn');
+            const fileUpload = document.getElementById('file-upload');
+            const pasteCodeBtn = document.getElementById('paste-code-btn');
+            const previewError = document.getElementById('preview-error');
+            const codePanelHeader = document.getElementById('code-panel-header');
+            const codePanelBody = document.getElementById('code-panel-body');
+            const codePanelIcon = document.getElementById('code-panel-icon');
+            const formatCodeBtn = document.getElementById('format-code-btn');
+            const toggleDarkMode = document.getElementById('toggle-dark-mode');
+            const fullscreenBtn = document.getElementById('fullscreen-btn');
+
+            // Botones flotantes
+            const floatCodeToggle = document.getElementById('float-code-toggle');
+            const floatRenderBtn = document.getElementById('float-render-btn');
+
+            // Controles de animación
+            const pauseAnimationBtn = document.getElementById('pause-animation-btn');
+            const playAnimationBtn = document.getElementById('play-animation-btn');
+            const restartAnimationBtn = document.getElementById('restart-animation-btn');
+
+            // Estado para modo oscuro
+            let darkMode = false;
+
+            // Función para mostrar/ocultar panel de código
+            function toggleCodePanel() {
+                if (codePanelBody.classList.contains('open')) {
+                    codePanelBody.classList.remove('open');
+                    codePanelIcon.classList.remove('bi-chevron-up');
+                    codePanelIcon.classList.add('bi-chevron-down');
+                } else {
+                    codePanelBody.classList.add('open');
+                    codePanelIcon.classList.remove('bi-chevron-down');
+                    codePanelIcon.classList.add('bi-chevron-up');
+                }
+            }
+
+            // Evento para alternar panel de código
+            codePanelHeader.addEventListener('click', toggleCodePanel);
+            floatCodeToggle.addEventListener('click', toggleCodePanel);
+
+            // Renderizar desde botón flotante
+            floatRenderBtn.addEventListener('click', function() {
+                renderBtn.click();
+            });
 
             // Función para cambiar el tamaño según el dispositivo
             function resizePreview(device) {
@@ -200,16 +504,32 @@
                         height = '100%';
                         iframeContainer.style.width = '100%';
                         break;
+                    case 'large-desktop':
+                        width = '1440px';
+                        height = '900px';
+                        iframeContainer.style.width = '100%';
+                        iframeContainer.style.maxWidth = '1440px';
+                        iframeContainer.style.margin = '0 auto';
+                        break;
                     case 'tablet':
                         width = '768px';
                         height = '1024px';
                         iframeContainer.style.width = '768px';
+                        iframeContainer.style.maxWidth = '100%';
                         iframeContainer.style.margin = '0 auto';
                         break;
                     case 'mobile':
                         width = '375px';
                         height = '667px';
                         iframeContainer.style.width = '375px';
+                        iframeContainer.style.maxWidth = '100%';
+                        iframeContainer.style.margin = '0 auto';
+                        break;
+                    case 'small-mobile':
+                        width = '320px';
+                        height = '568px';
+                        iframeContainer.style.width = '320px';
+                        iframeContainer.style.maxWidth = '100%';
                         iframeContainer.style.margin = '0 auto';
                         break;
                 }
@@ -234,19 +554,163 @@
                 });
             });
 
-            // Obtener HTML de la sesión si existe
-            const sessionHtml = sessionStorage.getItem('previewHtml');
-            if (sessionHtml) {
-                previewFrame.srcdoc = sessionHtml;
-            }
+            // Cargar archivo HTML
+            fileUpload.addEventListener('change', function(e) {
+                const file = e.target.files[0];
+                if (!file) return;
 
-            // Función para recibir mensajes con HTML
-            window.addEventListener('message', function(event) {
-                if (event.data && event.data.type === 'preview-html') {
-                    previewFrame.srcdoc = event.data.html;
-                    sessionStorage.setItem('previewHtml', event.data.html);
+                // Verificar si es un archivo HTML
+                if (!file.name.match(/\.(html|htm)$/i)) {
+                    showError('Solo se permiten archivos HTML.');
+                    return;
+                }
+
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    codeEditor.value = e.target.result;
+                    if (!codePanelBody.classList.contains('open')) {
+                        toggleCodePanel();
+                    }
+                    hideError();
+                };
+                reader.readAsText(file);
+            });
+
+            // Mostrar área de código al hacer clic en Pegar código
+            pasteCodeBtn.addEventListener('click', function() {
+                if (!codePanelBody.classList.contains('open')) {
+                    toggleCodePanel();
+                }
+                codeEditor.focus();
+
+                // Intentar pegar desde el portapapeles (requiere permisos)
+                try {
+                    navigator.clipboard.readText()
+                        .then(text => {
+                            codeEditor.value = text;
+                        })
+                        .catch(err => {
+                            console.error('Error al leer del portapapeles:', err);
+                        });
+                } catch (e) {
+                    console.log('Portapapeles no disponible automáticamente. Por favor pega manualmente.');
                 }
             });
+
+            // Renderizar código HTML
+            renderBtn.addEventListener('click', function() {
+                const htmlCode = codeEditor.value.trim();
+
+                if (!htmlCode) {
+                    showError('Por favor ingresa código HTML para previsualizar.');
+                    return;
+                }
+
+                // Validación básica
+                if (!htmlCode.includes('<html') && !htmlCode.includes('<!DOCTYPE')) {
+                    // Si no es HTML completo, envolverlo automáticamente
+                    const wrappedHtml = `
+                        <!DOCTYPE html>
+                        <html>
+                        <head>
+                            <meta charset="UTF-8">
+                            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                            <style>
+                                body {
+                                    font-family: Arial, sans-serif;
+                                }
+                            </style>
+                        </head>
+                        <body>
+                            ${htmlCode}
+                        </body>
+                        </html>
+                    `;
+                    renderHtml(wrappedHtml);
+                } else {
+                    renderHtml(htmlCode);
+                }
+            });
+
+            // Función para renderizar HTML
+            function renderHtml(html) {
+                try {
+                    // Guardar en sessionStorage
+                    sessionStorage.setItem('previewHtml', html);
+
+                    // Actualizar iframe
+                    previewFrame.srcdoc = html;
+                    hideError();
+                } catch (e) {
+                    showError(`Error al renderizar: ${e.message}`);
+                }
+            }
+
+            // Función para mostrar error
+            function showError(message) {
+                previewError.textContent = message;
+                previewError.style.display = 'block';
+            }
+
+            // Función para ocultar error
+            function hideError() {
+                previewError.style.display = 'none';
+            }
+
+            // Limpiar todo
+            clearBtn.addEventListener('click', function() {
+                codeEditor.value = '';
+                previewFrame.srcdoc = `<html><body><div style='display: flex; justify-content: center; align-items: center; height: 100vh; flex-direction: column; font-family: sans-serif; color: #333; background-color: #f5f5f5;'><h2>Esperando contenido...</h2><p>Carga un archivo HTML o pega tu código para previsualizar</p></div></body></html>`;
+                hideError();
+            });
+
+            // Controles de animación
+            pauseAnimationBtn.addEventListener('click', function() {
+                const frame = previewFrame.contentWindow.document;
+                const styleElement = frame.createElement('style');
+                styleElement.id = 'animation-pause';
+                styleElement.textContent = '* { animation-play-state: paused !important; transition: none !important; }';
+                frame.head.appendChild(styleElement);
+
+                pauseAnimationBtn.style.display = 'none';
+                playAnimationBtn.style.display = 'inline-block';
+            });
+
+            playAnimationBtn.addEventListener('click', function() {
+                const frame = previewFrame.contentWindow.document;
+                const pauseStyle = frame.getElementById('animation-pause');
+                if (pauseStyle) {
+                    pauseStyle.remove();
+                }
+
+                playAnimationBtn.style.display = 'none';
+                pauseAnimationBtn.style.display = 'inline-block';
+            });
+
+            restartAnimationBtn.addEventListener('click', function() {
+                // Guardar el HTML actual
+                const currentHtml = previewFrame.srcdoc;
+
+                // Recargar el iframe
+                previewFrame.srcdoc = '';
+                setTimeout(() => {
+                    previewFrame.srcdoc = currentHtml;
+
+                    // Asegurarse que las animaciones estén reproduciéndose
+                    playAnimationBtn.style.display = 'none';
+                    pauseAnimationBtn.style.display = 'inline-block';
+                }, 50);
+            });
+
+            // Verificar si hay HTML guardado en sessionStorage
+            const savedHtml = sessionStorage.getItem('previewHtml');
+            if (savedHtml) {
+                codeEditor.value = savedHtml;
+                if (!codePanelBody.classList.contains('open')) {
+                    toggleCodePanel();
+                }
+                previewFrame.srcdoc = savedHtml;
+            }
 
             // Actualizar indicador de tamaño al cambiar el tamaño de la ventana
             window.addEventListener('resize', function() {
@@ -255,533 +719,98 @@
                     sizeIndicator.textContent = `${iframeContainer.offsetWidth} x ${iframeContainer.offsetHeight}`;
                 }
             });
-        });
-    </script>
-</body>
-</html>
-{% extends "base.html" %}
 
-{% block title %}CODESTORM - Previsualización{% endblock %}
-
-{% block extra_css %}
-<style>
-    body, html {
-        height: 100%;
-        margin: 0;
-        padding: 0;
-        overflow: hidden;
-    }
-
-    .iframe-container {
-        position: relative;
-        width: 100%;
-        height: calc(100vh - 170px);
-        overflow: hidden;
-        margin-top: 20px;
-        border-radius: 8px;
-        transition: all 0.3s ease;
-    }
-
-    .preview-frame {
-        width: 100%;
-        height: 100%;
-        border: none;
-        background-color: #fff;
-    }
-
-    .device-controls {
-        display: flex;
-        justify-content: center;
-        padding: 15px;
-        background: linear-gradient(90deg, var(--darker-blue) 0%, var(--dark-blue) 100%);
-        border-radius: 8px 8px 0 0;
-    }
-
-    .device-button {
-        background-color: rgba(8, 27, 41, 0.7);
-        color: var(--text-light);
-        border: 1px solid var(--silver);
-        padding: 8px 15px;
-        margin: 0 5px;
-        border-radius: 20px;
-        cursor: pointer;
-        transition: all 0.3s ease;
-        display: flex;
-        align-items: center;
-    }
-
-    .device-button.active {
-        background-color: var(--primary-blue);
-        color: white;
-        box-shadow: 0 0 10px var(--glow-color);
-    }
-
-    .device-button i {
-        margin-right: 8px;
-    }
-
-    /* Indicadores de tamaño */
-    .size-indicator {
-        position: absolute;
-        top: 10px;
-        right: 10px;
-        background-color: rgba(0, 0, 0, 0.5);
-        color: white;
-        padding: 5px 10px;
-        border-radius: 4px;
-        font-size: 12px;
-        z-index: 100;
-    }
-
-    /* Área para cargar código */
-    .code-input-area {
-        margin-bottom: 15px;
-    }
-
-    .code-editor {
-        width: 100%;
-        height: 200px;
-        font-family: 'JetBrains Mono', monospace;
-        resize: vertical;
-        background-color: #1e1e1e;
-        color: #f8f8f8;
-        border: 1px solid var(--primary-blue);
-        border-radius: 4px;
-        padding: 10px;
-    }
-
-    .code-controls {
-        display: flex;
-        justify-content: space-between;
-        margin-top: 10px;
-    }
-
-    .animation-controls {
-        position: absolute;
-        bottom: 10px;
-        left: 10px;
-        z-index: 100;
-        background-color: rgba(0, 0, 0, 0.7);
-        padding: 5px 10px;
-        border-radius: 20px;
-        display: flex;
-        align-items: center;
-    }
-
-    .animation-controls button {
-        background: none;
-        border: none;
-        color: white;
-        font-size: 1.2rem;
-        cursor: pointer;
-        margin: 0 5px;
-        padding: 5px;
-    }
-
-    .animation-controls button:hover {
-        color: var(--accent-gold);
-    }
-
-    .file-upload-container {
-        margin-bottom: 15px;
-    }
-
-    .file-upload-btn {
-        position: relative;
-        overflow: hidden;
-    }
-
-    .file-upload-btn input[type=file] {
-        position: absolute;
-        top: 0;
-        right: 0;
-        min-width: 100%;
-        min-height: 100%;
-        opacity: 0;
-        cursor: pointer;
-    }
-
-    .preview-error {
-        color: #ff5252;
-        background-color: rgba(255, 82, 82, 0.1);
-        border-left: 3px solid #ff5252;
-        padding: 10px;
-        margin-top: 10px;
-        border-radius: 0 4px 4px 0;
-    }
-
-    @media (max-width: 768px) {
-        body {
-            padding-bottom: 80px;
-        }
-
-        .container-fluid {
-            margin-bottom: 100px;
-        }
-
-        .mobile-optimized {
-            contain: layout style;
-            content-visibility: auto;
-        }
-    }
-</style>
-{% endblock %}
-
-{% block content %}
-<div class="content-container">
-    <div class="mb-4">
-        <h2><i class="bi bi-window me-2"></i>Previsualización Web</h2>
-        <p class="text-muted">Visualiza tu código HTML, CSS y JavaScript en tiempo real para comprobar diseños, animaciones y funcionalidades.</p>
-    </div>
-
-    <div class="card card-futuristic">
-        <div class="card-header card-header-futuristic d-flex justify-content-between align-items-center">
-            <span><i class="bi bi-window me-2"></i>Previsualización Web</span>
-            <div>
-                <a href="/chat" class="btn btn-sm btn-futuristic">
-                    <i class="bi bi-arrow-left"></i> Volver al Chat
-                </a>
-            </div>
-        </div>
-        <div class="card-body">
-            <!-- Área para cargar archivos -->
-            <div class="file-upload-container">
-                <div class="row">
-                    <div class="col-12 col-sm-6 mb-2 mb-sm-0">
-                        <div class="d-flex align-items-center flex-wrap">
-                            <button class="btn btn-futuristic file-upload-btn me-2 mb-2 mb-sm-0">
-                                <i class="bi bi-upload me-1"></i> Subir HTML
-                                <input type="file" id="file-upload" accept=".html,.htm">
-                            </button>
-                            <button class="btn btn-futuristic" id="paste-code-btn">
-                                <i class="bi bi-clipboard-plus me-1"></i> Pegar código
-                            </button>
-                        </div>
-                    </div>
-                    <div class="col-12 col-sm-6 d-flex justify-content-start justify-content-sm-end mt-2 mt-sm-0">
-                        <button class="btn btn-primary me-2" id="render-btn">
-                            <i class="bi bi-play-fill"></i> Renderizar
-                        </button>
-                        <button class="btn btn-outline-danger" id="clear-btn">
-                            <i class="bi bi-trash"></i> Limpiar
-                        </button>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Área para código (oculta por defecto) -->
-            <div class="code-input-area" id="code-input-area" style="display: none;">
-                <textarea id="code-editor" class="code-editor" placeholder="Pega tu código HTML/CSS aquí"></textarea>
-                <div id="preview-error" class="preview-error" style="display: none;"></div>
-            </div>
-
-            <!-- Controles de dispositivo -->
-            <div class="device-controls">
-                <button class="device-button active" data-device="desktop">
-                    <i class="bi bi-laptop"></i> Escritorio
-                </button>
-                <button class="device-button" data-device="tablet">
-                    <i class="bi bi-tablet"></i> Tablet
-                </button>
-                <button class="device-button" data-device="mobile">
-                    <i class="bi bi-phone"></i> Móvil
-                </button>
-                <button class="device-button" data-device="large-desktop">
-                    <i class="bi bi-display"></i> Monitor Grande
-                </button>
-                <button class="device-button" data-device="small-mobile">
-                    <i class="bi bi-phone-flip"></i> Móvil Pequeño
-                </button>
-            </div>
-
-            <!-- Contenedor del iframe -->
-            <div class="iframe-container" id="iframe-container">
-                <div class="size-indicator" id="size-indicator">1200 x 800</div>
-                <div class="animation-controls">
-                    <button id="pause-animation-btn" title="Pausar animaciones">
-                        <i class="bi bi-pause-fill"></i>
-                    </button>
-                    <button id="play-animation-btn" title="Reanudar animaciones" style="display: none;">
-                        <i class="bi bi-play-fill"></i>
-                    </button>
-                    <button id="restart-animation-btn" title="Reiniciar animaciones">
-                        <i class="bi bi-arrow-clockwise"></i>
-                    </button>
-                </div>
-                <iframe id="preview-frame" class="preview-frame" srcdoc="<html><body><div style='display: flex; justify-content: center; align-items: center; height: 100vh; flex-direction: column; font-family: sans-serif; color: #333; background-color: #f5f5f5;'><h2>Esperando contenido...</h2><p>Carga un archivo HTML o pega tu código para previsualizar</p></div></body></html>" sandbox="allow-same-origin allow-scripts"></iframe>
-            </div>
-        </div>
-    </div>
-</div>
-{% endblock %}
-
-{% block extra_js %}
-<script>
-    document.addEventListener('DOMContentLoaded', function() {
-        // Referencias a elementos DOM
-        const iframeContainer = document.getElementById('iframe-container');
-        const previewFrame = document.getElementById('preview-frame');
-        const deviceButtons = document.querySelectorAll('.device-button');
-        const sizeIndicator = document.getElementById('size-indicator');
-        const codeEditor = document.getElementById('code-editor');
-        const codeInputArea = document.getElementById('code-input-area');
-        const renderBtn = document.getElementById('render-btn');
-        const clearBtn = document.getElementById('clear-btn');
-        const fileUpload = document.getElementById('file-upload');
-        const pasteCodeBtn = document.getElementById('paste-code-btn');
-        const previewError = document.getElementById('preview-error');
-
-        // Controles de animación
-        const pauseAnimationBtn = document.getElementById('pause-animation-btn');
-        const playAnimationBtn = document.getElementById('play-animation-btn');
-        const restartAnimationBtn = document.getElementById('restart-animation-btn');
-
-        // Función para cambiar el tamaño según el dispositivo
-        function resizePreview(device) {
-            let width, height;
-
-            switch(device) {
-                case 'desktop':
-                    width = '100%';
-                    height = '100%';
-                    iframeContainer.style.width = '100%';
-                    break;
-                case 'large-desktop':
-                    width = '1440px';
-                    height = '900px';
-                    iframeContainer.style.width = '1440px';
-                    iframeContainer.style.margin = '0 auto';
-                    break;
-                case 'tablet':
-                    width = '768px';
-                    height = '1024px';
-                    iframeContainer.style.width = '768px';
-                    iframeContainer.style.margin = '0 auto';
-                    break;
-                case 'mobile':
-                    width = '375px';
-                    height = '667px';
-                    iframeContainer.style.width = '375px';
-                    iframeContainer.style.margin = '0 auto';
-                    break;
-                case 'small-mobile':
-                    width = '320px';
-                    height = '568px';
-                    iframeContainer.style.width = '320px';
-                    iframeContainer.style.margin = '0 auto';
-                    break;
-            }
-
-            // Actualizar indicador de tamaño
-            sizeIndicator.textContent = width === '100%' ? 
-                `${iframeContainer.offsetWidth} x ${iframeContainer.offsetHeight}` : 
-                `${width} x ${height}`;
-        }
-
-        // Inicializar con tamaño de escritorio
-        resizePreview('desktop');
-
-        // Añadir eventos a los botones de dispositivo
-        deviceButtons.forEach(button => {
-            button.addEventListener('click', function() {
-                deviceButtons.forEach(btn => btn.classList.remove('active'));
-                this.classList.add('active');
-
-                const device = this.getAttribute('data-device');
-                resizePreview(device);
+            // Arrastrar y soltar archivos
+            iframeContainer.addEventListener('dragover', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                iframeContainer.classList.add('active');
             });
-        });
 
-        // Cargar archivo HTML
-        fileUpload.addEventListener('change', function(e) {
-            const file = e.target.files[0];
-            if (!file) return;
+            iframeContainer.addEventListener('dragleave', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                iframeContainer.classList.remove('active');
+            });
 
-            // Verificar si es un archivo HTML
-            if (!file.name.match(/\.(html|htm)$/i)) {
-                showError('Solo se permiten archivos HTML.');
-                return;
-            }
+            iframeContainer.addEventListener('drop', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                iframeContainer.classList.remove('active');
 
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                codeEditor.value = e.target.result;
-                codeInputArea.style.display = 'block';
-                hideError();
-            };
-            reader.readAsText(file);
-        });
+                const files = e.dataTransfer.files;
+                if (files.length > 0) {
+                    const file = files[0];
+                    if (file.name.match(/\.(html|htm)$/i)) {
+                        fileUpload.files = files;
+                        const event = new Event('change');
+                        fileUpload.dispatchEvent(event);
+                    } else {
+                        showError('Solo se permiten archivos HTML.');
+                    }
+                }
+            });
 
-        // Mostrar área de código al hacer clic en Pegar código
-        pasteCodeBtn.addEventListener('click', function() {
-            codeInputArea.style.display = 'block';
-            codeEditor.focus();
+            // Formatear código
+            formatCodeBtn.addEventListener('click', function() {
+                try {
+                    // Formateo HTML básico
+                    let code = codeEditor.value;
+                    if (code.trim()) {
+                        // Crear un documento temporal
+                        const parser = new DOMParser();
+                        const doc = parser.parseFromString(code, 'text/html');
 
-            // Intentar pegar desde el portapapeles (requiere permisos)
-            try {
-                navigator.clipboard.readText()
-                    .then(text => {
-                        codeEditor.value = text;
-                    })
-                    .catch(err => {
-                        console.error('Error al leer del portapapeles:', err);
-                    });
-            } catch (e) {
-                console.log('Portapapeles no disponible automáticamente. Por favor pega manualmente.');
-            }
-        });
+                        // Formateo básico con indentación
+                        const serializer = new XMLSerializer();
+                        let formattedHtml = serializer.serializeToString(doc);
 
-        // Renderizar código HTML
-        renderBtn.addEventListener('click', function() {
-            const htmlCode = codeEditor.value.trim();
+                        // Intenta formatear secciones de estilo y script
+                        formattedHtml = formattedHtml.replace(/<style>([\s\S]*?)<\/style>/g, function(match, p1) {
+                            return '<style>\n' + p1.trim().split('}').join('}\n').trim() + '\n</style>';
+                        });
 
-            if (!htmlCode) {
-                showError('Por favor ingresa código HTML para previsualizar.');
-                return;
-            }
+                        codeEditor.value = formattedHtml;
+                    }
+                } catch (e) {
+                    console.error('Error al formatear:', e);
+                }
+            });
 
-            // Validación básica
-            if (!htmlCode.includes('<html') && !htmlCode.includes('<!DOCTYPE')) {
-                // Si no es HTML completo, envolverlo automáticamente
-                const wrappedHtml = `
-                    <!DOCTYPE html>
-                    <html>
-                    <head>
-                        <meta charset="UTF-8">
-                        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                        <style>
-                            body {
-                                font-family: Arial, sans-serif;
-                            }
-                        </style>
-                    </head>
-                    <body>
-                        ${htmlCode}
-                    </body>
-                    </html>
-                `;
-                renderHtml(wrappedHtml);
-            } else {
-                renderHtml(htmlCode);
-            }
-        });
-
-        // Función para renderizar HTML
-        function renderHtml(html) {
-            try {
-                // Guardar en sessionStorage
-                sessionStorage.setItem('previewHtml', html);
-
-                // Actualizar iframe
-                previewFrame.srcdoc = html;
-                hideError();
-            } catch (e) {
-                showError(`Error al renderizar: ${e.message}`);
-            }
-        }
-
-        // Función para mostrar error
-        function showError(message) {
-            previewError.textContent = message;
-            previewError.style.display = 'block';
-        }
-
-        // Función para ocultar error
-        function hideError() {
-            previewError.style.display = 'none';
-        }
-
-        // Limpiar todo
-        clearBtn.addEventListener('click', function() {
-            codeEditor.value = '';
-            previewFrame.srcdoc = `<html><body><div style='display: flex; justify-content: center; align-items: center; height: 100vh; flex-direction: column; font-family: sans-serif; color: #333; background-color: #f5f5f5;'><h2>Esperando contenido...</h2><p>Carga un archivo HTML o pega tu código para previsualizar</p></div></body></html>`;
-            hideError();
-        });
-
-        // Controles de animación
-        pauseAnimationBtn.addEventListener('click', function() {
-            const frame = previewFrame.contentWindow.document;
-            const styleElement = frame.createElement('style');
-            styleElement.id = 'animation-pause';
-            styleElement.textContent = '* { animation-play-state: paused !important; transition: none !important; }';
-            frame.head.appendChild(styleElement);
-
-            pauseAnimationBtn.style.display = 'none';
-            playAnimationBtn.style.display = 'inline-block';
-        });
-
-        playAnimationBtn.addEventListener('click', function() {
-            const frame = previewFrame.contentWindow.document;
-            const pauseStyle = frame.getElementById('animation-pause');
-            if (pauseStyle) {
-                pauseStyle.remove();
-            }
-
-            playAnimationBtn.style.display = 'none';
-            pauseAnimationBtn.style.display = 'inline-block';
-        });
-
-        restartAnimationBtn.addEventListener('click', function() {
-            // Guardar el HTML actual
-            const currentHtml = previewFrame.srcdoc;
-
-            // Recargar el iframe
-            previewFrame.srcdoc = '';
-            setTimeout(() => {
-                previewFrame.srcdoc = currentHtml;
-
-                // Asegurarse que las animaciones estén reproduciéndose
-                playAnimationBtn.style.display = 'none';
-                pauseAnimationBtn.style.display = 'inline-block';
-            }, 50);
-        });
-
-        // Verificar si hay HTML guardado en sessionStorage
-        const savedHtml = sessionStorage.getItem('previewHtml');
-        if (savedHtml) {
-            codeEditor.value = savedHtml;
-            codeInputArea.style.display = 'block';
-            previewFrame.srcdoc = savedHtml;
-        }
-
-        // Actualizar indicador de tamaño al cambiar el tamaño de la ventana
-        window.addEventListener('resize', function() {
-            const activeDevice = document.querySelector('.device-button.active').getAttribute('data-device');
-            if (activeDevice === 'desktop') {
-                sizeIndicator.textContent = `${iframeContainer.offsetWidth} x ${iframeContainer.offsetHeight}`;
-            }
-        });
-
-        // Arrastrar y soltar archivos
-        iframeContainer.addEventListener('dragover', function(e) {
-            e.preventDefault();
-            e.stopPropagation();
-            iframeContainer.style.border = '2px dashed #4e73df';
-        });
-
-        iframeContainer.addEventListener('dragleave', function(e) {
-            e.preventDefault();
-            e.stopPropagation();
-            iframeContainer.style.border = 'none';
-        });
-
-        iframeContainer.addEventListener('drop', function(e) {
-            e.preventDefault();
-            e.stopPropagation();
-            iframeContainer.style.border = 'none';
-
-            const files = e.dataTransfer.files;
-            if (files.length > 0) {
-                const file = files[0];
-                if (file.name.match(/\.(html|htm)$/i)) {
-                    fileUpload.files = files;
-                    const event = new Event('change');
-                    fileUpload.dispatchEvent(event);
+            // Modo oscuro para el iframe
+            toggleDarkMode.addEventListener('click', function() {
+                darkMode = !darkMode;
+                if (darkMode) {
+                    previewFrame.classList.add('dark-mode');
+                    toggleDarkMode.innerHTML = '<i class="bi bi-sun"></i>';
                 } else {
-                    showError('Solo se permiten archivos HTML.');
+                    previewFrame.classList.remove('dark-mode');
+                    toggleDarkMode.innerHTML = '<i class="bi bi-moon"></i>';
+                }
+            });
+
+            // Pantalla completa
+            fullscreenBtn.addEventListener('click', function() {
+                if (iframeContainer.requestFullscreen) {
+                    iframeContainer.requestFullscreen();
+                } else if (iframeContainer.webkitRequestFullscreen) { /* Safari */
+                    iframeContainer.webkitRequestFullscreen();
+                } else if (iframeContainer.msRequestFullscreen) { /* IE11 */
+                    iframeContainer.msRequestFullscreen();
+                }
+            });
+
+            // Inicializar el panel de código cerrado en móviles
+            if (window.innerWidth < 768) {
+                if (codePanelBody.classList.contains('open')) {
+                    toggleCodePanel();
+                }
+            } else {
+                // En desktop, abrir el panel si hay código
+                if (codeEditor.value && !codePanelBody.classList.contains('open')) {
+                    toggleCodePanel();
                 }
             }
         });
-    });
-</script>
-{% endblock %}
+    </script>
+    {% endblock %}
