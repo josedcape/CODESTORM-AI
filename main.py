@@ -645,7 +645,7 @@ def generate():
             'error': str(e)
         }), 500
 
-@app.route('/api/code_corrector', methods=['POST'])
+@app.route('/api/corrector_code', methods=['POST'])
 def correct_code():
     """API para corregir código utilizando IA."""
     data = request.json
