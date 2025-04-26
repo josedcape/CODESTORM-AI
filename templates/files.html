@@ -1161,6 +1161,9 @@
                 if (!repoUrl) return;
                 
                 showNotification('Clonando repositorio...', 'info');
+                statusIndicator.classList.remove('status-connected', 'status-disconnected');
+                statusIndicator.classList.add('status-connecting');
+                statusIndicator.title = 'Clonando repositorio...';
                 
                 fetch('/api/repo/clone', {
                     method: 'POST',
@@ -1172,11 +1175,17 @@
                 })
                 .then(response => {
                     if (!response.ok) {
-                        throw new Error(`Error del servidor: ${response.status}`);
+                        console.error('Error en la respuesta:', response.status, response.statusText);
+                        return response.json().then(errorData => {
+                            throw new Error(`Error del servidor: ${response.status}` + (errorData.error ? ` - ${errorData.error}` : ''));
+                        });
                     }
                     return response.json();
                 })
                 .then(data => {
+                    statusIndicator.classList.remove('status-connecting');
+                    statusIndicator.classList.add('status-connected');
+                    
                     if (data.success) {
                         showNotification(data.message, 'success');
                         loadFiles(currentPath);
@@ -1185,6 +1194,9 @@
                     }
                 })
                 .catch(error => {
+                    statusIndicator.classList.remove('status-connecting');
+                    statusIndicator.classList.add('status-disconnected');
+                    
                     console.error('Error:', error);
                     showNotification('Error al clonar repositorio: ' + error.message, 'danger');
                 });

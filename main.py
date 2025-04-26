@@ -783,6 +783,9 @@ def clone_repository():
                 'error': f'Ya existe un directorio con el nombre {target_dir}'
             }), 400
             
+        # Crear directorio padre si no existe
+        os.makedirs(os.path.dirname(full_target_path), exist_ok=True)
+            
         # Instalar git si no está instalado
         try:
             subprocess.run(['git', '--version'], check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
@@ -792,15 +795,23 @@ def clone_repository():
                 'error': 'Git no está instalado en el sistema'
             }), 500
             
-        # Clonar el repositorio
+        # Clonar el repositorio con manejo de errores mejorado
         try:
             process = subprocess.run(
                 ['git', 'clone', repo_url, full_target_path],
-                check=True,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
                 text=True
             )
+            
+            # Verificar si hay error en la salida de error de git
+            if process.returncode != 0:
+                return jsonify({
+                    'success': False,
+                    'error': f'Error al clonar repositorio: {process.stderr}'
+                }), 500
+            
+            logging.info(f"Repositorio clonado exitosamente: {repo_url} -> {full_target_path}")
             
             return jsonify({
                 'success': True,
@@ -808,14 +819,16 @@ def clone_repository():
                 'output': process.stdout,
                 'target_dir': target_dir
             })
-        except subprocess.CalledProcessError as e:
+        except Exception as e:
+            logging.error(f"Error al ejecutar git clone: {str(e)}")
             return jsonify({
                 'success': False,
-                'error': f'Error al clonar repositorio: {e.stderr}'
+                'error': f'Error al clonar repositorio: {str(e)}'
             }), 500
             
     except Exception as e:
         logging.error(f"Error al clonar repositorio: {str(e)}")
+        logging.error(traceback.format_exc())  # Añadir traza completa para mejor depuración
         return jsonify({
             'success': False,
             'error': str(e)
