@@ -490,7 +490,6 @@
             loadPrismLanguage(currentLanguage)
                 .then(() => {
                     // Enviar solicitud al servidor
-                    // Cambiamos a /api/process_code para usar el endpoint existente
                     return fetch('/api/process_code', {
                         method: 'POST',
                         headers: {
@@ -513,10 +512,16 @@
                 .then(data => {
                     console.log("Respuesta del servidor:", data);
                     
+                    // Verificar si hay error en la respuesta
+                    if (!data.success && data.error) {
+                        alert('Error: ' + data.error);
+                        return;
+                    }
+                    
                     // Manejar la respuesta según el formato del endpoint /api/process_code
-                    if (data.corrected_code || data.code) {
+                    if (data.corrected_code) {
                         // Actualizar vista de código
-                        correctedCode.textContent = data.corrected_code || data.code || '';
+                        correctedCode.textContent = data.corrected_code;
                         updateCodeHighlighting();
 
                         // Crear estructuras de cambios si no existen
@@ -529,8 +534,6 @@
                         // Mostrar resultado
                         initialMessage.style.display = 'none';
                         correctedCodeContainer.style.display = 'block';
-                    } else if (data.error) {
-                        alert('Error: ' + data.error);
                     } else {
                         // Si la respuesta no tiene el formato esperado pero parece válida
                         correctedCode.textContent = JSON.stringify(data, null, 2);
