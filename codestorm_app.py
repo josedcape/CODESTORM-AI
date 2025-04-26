@@ -121,6 +121,11 @@ def chat():
     agent_id = request.args.get('agent', 'general')
     return render_template('chat.html', agent_id=agent_id)
 
+@app.route('/code_corrector')
+def code_corrector():
+    """Ruta a la página del corrector de código."""
+    return render_template('code_corrector.html')
+
 # APIs para manejo de archivos
 @app.route('/api/files', methods=['GET'])
 def api_list_files():
