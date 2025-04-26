@@ -1,4 +1,3 @@
-
 from flask import Flask, render_template, request, jsonify, session
 from flask_cors import CORS
 import os
@@ -10,9 +9,11 @@ import openai
 import requests
 import traceback
 import time
+import subprocess
+import shutil
 
-# Load environment variables
-load_dotenv()
+# Load environment variables with force reload
+load_dotenv(override=True)
 
 # Configure logging
 logging.basicConfig(
@@ -27,10 +28,35 @@ CORS(app)  # Enable CORS for all routes
 # Set session secret
 app.secret_key = os.environ.get("SESSION_SECRET", os.urandom(24).hex())
 
-# Get API keys from environment
-openai_api_key = os.environ.get("OPENAI_API_KEY", "")
-anthropic_api_key = os.environ.get("ANTHROPIC_API_KEY", "")
-gemini_api_key = os.environ.get("GEMINI_API_KEY", "")
+# Verificar y cargar explícitamente las claves API
+openai_api_key = os.environ.get('OPENAI_API_KEY')
+anthropic_api_key = os.environ.get('ANTHROPIC_API_KEY')
+gemini_api_key = os.environ.get('GEMINI_API_KEY')
+
+if openai_api_key:
+    # Configurar la API key de OpenAI
+    openai.api_key = openai_api_key
+    logging.info(f"OpenAI API key configurada: {openai_api_key[:5]}...{openai_api_key[-5:]}")
+else:
+    logging.warning("OPENAI_API_KEY no encontrada")
+
+if anthropic_api_key:
+    logging.info(f"Anthropic API key configurada: {anthropic_api_key[:5]}...{anthropic_api_key[-5:]}")
+else:
+    logging.warning("ANTHROPIC_API_KEY no encontrada")
+
+if gemini_api_key:
+    try:
+        import google.generativeai as genai
+        genai.configure(api_key=gemini_api_key)
+        logging.info(f"Gemini API key configurada: {gemini_api_key[:5]}...{gemini_api_key[-5:]}")
+    except ImportError as ie:
+        logging.error(f"Error al importar módulos para Gemini: {str(ie)}")
+    except Exception as e:
+        logging.error(f"Error al configurar Gemini API: {str(e)}")
+else:
+    logging.warning("GEMINI_API_KEY no encontrada")
+
 
 # Initialize API clients with error handling
 openai_client = None
@@ -460,7 +486,7 @@ def handle_chat():
                 response = f"Error al conectar con OpenAI: {str(e)}"
 
         # Generar respuesta con Gemini
-        elif model == 'gemini' and os.environ.get('GEMINI_API_KEY'):
+        elif model == 'gemini' and gemini_api_key:
             try:
                 try:
                     import google.generativeai as genai
@@ -470,9 +496,6 @@ def handle_chat():
                     import subprocess
                     subprocess.check_call(["pip", "install", "google-generativeai"])
                     import google.generativeai as genai
-
-                gemini_api_key = os.environ.get('GEMINI_API_KEY')
-                genai.configure(api_key=gemini_api_key)
 
                 # Configurar el modelo con opciones de generación
                 gemini_model = genai.GenerativeModel(
@@ -508,7 +531,7 @@ def handle_chat():
                 response = f"Error al conectar con Gemini: {str(e)}"
 
         # Generar respuesta con Anthropic
-        elif model == 'anthropic' and os.environ.get('ANTHROPIC_API_KEY'):
+        elif model == 'anthropic' and anthropic_api_key:
             try:
                 try:
                     import anthropic
@@ -518,15 +541,6 @@ def handle_chat():
                     import subprocess
                     subprocess.check_call(["pip", "install", "anthropic"])
                     import anthropic
-
-                anthropic_api_key = os.environ.get('ANTHROPIC_API_KEY')
-                if not anthropic_api_key:
-                    return jsonify({'response': "Error: La clave API de Anthropic no está configurada. Verifica las variables de entorno."})
-
-                # Validar formato de la clave API (verificación básica)
-                if not anthropic_api_key.startswith('sk-'):
-                    logging.warning("La clave API de Anthropic parece tener un formato incorrecto")
-                    return jsonify({'response': "Error: La clave API de Anthropic parece tener un formato incorrecto. Debe comenzar con 'sk-'."})
 
                 # Inicializar el cliente con la clave API
                 client = anthropic.Anthropic(api_key=anthropic_api_key)
@@ -630,6 +644,35 @@ def generate():
             'success': False,
             'error': str(e)
         }), 500
+
+@app.route('/code-corrector')
+def code_corrector():
+    """Render the code corrector page."""
+    return render_template('code_corrector.html')
+
+@app.route('/api_status')
+def api_status():
+    """Muestra el estado de las claves API configuradas."""
+    openai_key = os.environ.get('OPENAI_API_KEY', 'No configurada')
+    anthropic_key = os.environ.get('ANTHROPIC_API_KEY', 'No configurada')
+    gemini_key = os.environ.get('GEMINI_API_KEY', 'No configurada')
+
+    # Ocultar la mayoría de los caracteres para seguridad
+    if openai_key != 'No configurada':
+        openai_key = openai_key[:5] + "..." + openai_key[-5:] if len(openai_key) > 10 else "***configurada***"
+
+    if anthropic_key != 'No configurada':
+        anthropic_key = anthropic_key[:5] + "..." + anthropic_key[-5:] if len(anthropic_key) > 10 else "***configurada***"
+
+    if gemini_key != 'No configurada':
+        gemini_key = gemini_key[:5] + "..." + gemini_key[-5:] if len(gemini_key) > 10 else "***configurada***"
+
+    return jsonify({
+        'openai': openai_key,
+        'anthropic': anthropic_key,
+        'gemini': gemini_key,
+        'message': 'Visita esta URL para verificar el estado de las APIs'
+    })
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)
