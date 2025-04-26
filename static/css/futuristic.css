@@ -377,9 +377,28 @@ body {
 /* Preview section */
 .device-toggle-buttons {
     display: flex;
-    justify-content: center;
+    justify-content: flex-start;
     background-color: rgba(13, 36, 60, 0.7);
     border-bottom: 1px solid var(--primary-blue);
+    overflow-x: auto;
+    white-space: nowrap;
+    scrollbar-width: thin;
+    -webkit-overflow-scrolling: touch;
+    padding: 0 10px;
+}
+
+.device-toggle-buttons::-webkit-scrollbar {
+    height: 6px;
+}
+
+.device-toggle-buttons::-webkit-scrollbar-track {
+    background: rgba(13, 36, 60, 0.5);
+    border-radius: 3px;
+}
+
+.device-toggle-buttons::-webkit-scrollbar-thumb {
+    background-color: var(--primary-blue);
+    border-radius: 3px;
 }
 
 .device-toggle-btn {
@@ -391,6 +410,10 @@ body {
     cursor: pointer;
     transition: all 0.3s ease;
     border-bottom: 2px solid transparent;
+    white-space: nowrap;
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
 }
 
 .device-toggle-btn.active {
