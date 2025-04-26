@@ -871,9 +871,8 @@ def process_request():
 
         action = data.get('action', '')
         user_id = data.get('user_id', 'default')
-                        logging.info("Respuesta generada con Anthropic")
-                    else:
-                        response = "No se recibió respuesta de Anthropic. Por favor, intenta de nuevo."
+        
+        # Aquí inicia el resto del código que fue eliminado
                 except Exception as api_error:
                     logging.error(f"Error en la llamada a la API de Anthropic: {str(api_error)}")
                     logging.error(traceback.format_exc())
@@ -937,27 +936,26 @@ def generate():
             'error': str(e)
         }), 500
 
-@app.route('/api/corrector_code', methods=['POST'])
-def correct_code():
-    """API para corregir código utilizando IA."""
-    data = request.json
-    code = data.get('code', '')
-    instructions = data.get('instructions', '')
-    language = data.get('language', 'python')
-    model_choice = data.get('model', 'openai')
-
-    if not code or not instructions:
-        return jsonify({
-            'success': False,
-            'error': 'Código o instrucciones faltantes'
-        })
-
+@app.route('/api/process_code', methods=['POST'])
+def process_code():
+    """Process code for corrections and improvements."""
     try:
-        # Procesar según el modelo elegido
-        result = None
+        data = request.json
+        code = data.get('code', '')
+        instructions = data.get('instructions', 'Corrige errores y mejora la calidad del código')
+        language = data.get('language', 'python')
+        model = data.get('model', 'openai')
+        
+        if not code:
+            return jsonify({
+                'success': False,
+                'error': 'No se proporcionó código para procesar'
+            }), 400
 
-        if model_choice == 'openai' and openai_client:
+        # Verificar qué modelo usar
+        if model == 'openai' and openai_client:
             try:
+                # Usar OpenAI para corregir el código
                 response = openai_client.chat.completions.create(
                     model="gpt-4o",
                     messages=[
@@ -966,72 +964,25 @@ def correct_code():
                     ],
                     response_format={"type": "json_object"}
                 )
+
                 result = json.loads(response.choices[0].message.content)
                 logging.info("Código corregido con OpenAI")
+
             except Exception as e:
                 logging.error(f"Error con API de OpenAI: {str(e)}")
                 return jsonify({
                     'success': False,
                     'error': f'Error al conectar con OpenAI: {str(e)}'
-                })
-
-        elif model_choice == 'anthropic' and os.environ.get('ANTHROPIC_API_KEY'):
-            try:
-                # Importar anthropic si es necesario
-                import anthropic
-                from anthropic import Anthropic
-
-                # Inicializar cliente
-                client = Anthropic(api_key=os.environ.get('ANTHROPIC_API_KEY'))
-
-                response = client.messages.create(
-                    model="claude-3-5-sonnet-latest",
-                    max_tokens=4000,
-                    system=f"Eres un experto programador. Tu tarea es corregir el siguiente código en {language} según las instrucciones proporcionadas. Devuelve el código corregido, una lista de cambios realizados y una explicación clara en formato JSON.",
-                    messages=[
-                        {"role": "user", "content": f"CÓDIGO:\n```{language}\n{code}\n```\n\nINSTRUCCIONES:\n{instructions}\n\nResponde en formato JSON con las siguientes claves:\n- correctedCode: el código corregido completo\n- changes: una lista de objetos, cada uno con 'description' y 'lineNumbers'\n- explanation: una explicación detallada de los cambios"}
-                    ],
-                    temperature=0.1
-                )
-
-                # Extraer el JSON de la respuesta de Claude
-                try:
-                    # Primero intentamos ver si toda la respuesta es JSON directamente
-                    result = json.loads(response.content[0].text.strip())
-                except json.JSONDecodeError:
-                    # Si no es JSON válido, buscamos dentro de bloques de código
-                    import re
-                    # Buscar JSON dentro de un bloque de código markdown
-                    json_match = re.search(r'```(?:json)?\s*(.*?)\s*```', response.content[0].text, re.DOTALL)
-                    if json_match:
-                        try:
-                            result = json.loads(json_match.group(1).strip())
-                        except json.JSONDecodeError:
-                            # Si aún falla, creamos una estructura básica con la respuesta completa
-                            result = {
-                                "correctedCode": code,  # Mantener código original
-                                "changes": [{"description": "No se pudieron procesar los cambios correctamente", "lineNumbers": [1]}],
-                                "explanation": "Error al procesar la respuesta de Claude. Respuesta recibida: " + response.content[0].text[:200] + "..."
-                            }
-                    else:
-                        # Si no encontramos bloques JSON, construimos una respuesta informativa
-                        result = {
-                            "correctedCode": code,
-                            "changes": [{"description": "No se encontró formato JSON en la respuesta", "lineNumbers": [1]}],
-                            "explanation": "Claude no respondió en el formato esperado. Intente de nuevo o use otro modelo."
-                        }
-
-                logging.info("Código corregido con Anthropic")
-
-            except Exception as e:
-                logging.error(f"Error con API de Anthropic: {str(e)}")
-                return jsonify({
-                    'success': False,
-                    'error': f'Error al conectar con Anthropic: {str(e)}'
                 }), 500
 
-        elif model_choice == 'gemini' and genai:
+        elif model == 'gemini' and os.environ.get('GEMINI_API_KEY'):
             try:
+                # Usar genai para procesar con Gemini
+                import google.generativeai as genai
+
+                if not hasattr(genai, '_configured') or not genai._configured:
+                    genai.configure(api_key=os.environ.get('GEMINI_API_KEY'))
+
                 gemini_model = genai.GenerativeModel(
                     model_name='gemini-1.5-pro',
                     generation_config={
@@ -1059,42 +1010,61 @@ def correct_code():
                 """
 
                 response = gemini_model.generate_content(prompt)
-                # Extraer la respuesta de Gemini en formato JSON
-                result = extract_json_from_gemini(response.text)
+
+                # Extraer el JSON de la respuesta de Gemini
+                import re
+                json_match = re.search(r'```json(.*?)```', response.text, re.DOTALL)
+                if json_match:
+                    result = json.loads(json_match.group(1).strip())
+                else:
+                    # Intentar extraer cualquier JSON de la respuesta
+                    json_match = re.search(r'{.*}', response.text, re.DOTALL)
+                    if json_match:
+                        result = json.loads(json_match.group(0))
+                    else:
+                        # Fallback a un formato básico
+                        result = {
+                            "correctedCode": code,
+                            "changes": [],
+                            "explanation": "No se pudo procesar correctamente la respuesta del modelo."
+                        }
+
                 logging.info("Código corregido con Gemini")
+
             except Exception as e:
                 logging.error(f"Error con API de Gemini: {str(e)}")
                 return jsonify({
                     'success': False,
                     'error': f'Error al conectar con Gemini: {str(e)}'
-                })
+                }), 500
         else:
             return jsonify({
                 'success': False,
-                'error': f'Modelo {model_choice} no soportado o API no configurada'
-            })
+                'error': f'Modelo {model} no soportado o API no configurada'
+            }), 400
 
         # Verificar que la respuesta contiene los campos necesarios
-        if not result or not result.get('correctedCode'):
+        if not result or 'correctedCode' not in result:
             return jsonify({
                 'success': False,
                 'error': 'La respuesta del modelo no incluye el código corregido'
-            })
+            }), 500
 
+        # Devolver resultado en formato esperado por el frontend
         return jsonify({
             'success': True,
-            'correctedCode': result.get('correctedCode', ''),
+            'corrected_code': result.get('correctedCode', ''),
             'changes': result.get('changes', []),
             'explanation': result.get('explanation', 'No se proporcionó explicación.')
         })
 
     except Exception as e:
-        logging.error(f"Error al procesar la solicitud: {str(e)}")
+        logging.error(f"Error al procesar la solicitud de código: {str(e)}")
         logging.error(traceback.format_exc())
         return jsonify({
             'success': False,
             'error': f'Error al procesar la solicitud: {str(e)}'
-        })
+        }), 500
 
 @app.route('/api_status')
 def api_status():
