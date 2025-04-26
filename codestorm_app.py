@@ -632,6 +632,9 @@ def health_check():
 
 
 
+
+
+
 @app.route('/api/generate', methods=['POST'])
 def generate():
     """Fallback endpoint for content generation."""

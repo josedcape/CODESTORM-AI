@@ -645,10 +645,130 @@ def generate():
             'error': str(e)
         }), 500
 
-@app.route('/code-corrector')
-def code_corrector():
-    """Render the code corrector page."""
-    return render_template('code_corrector.html')
+@app.route('/api/code_corrector', methods=['POST'])
+def correct_code():
+    """API para corregir código utilizando IA."""
+    data = request.json
+    code = data.get('code', '')
+    instructions = data.get('instructions', '')
+    language = data.get('language', 'python')
+    model = data.get('model', 'openai')
+
+    if not code or not instructions:
+        return jsonify({
+            'success': False,
+            'error': 'Código o instrucciones faltantes'
+        })
+
+    try:
+        # Procesar según el modelo elegido
+        result = None
+
+        if model == 'openai' and openai_client:
+            try:
+                response = openai_client.chat.completions.create(
+                    model="gpt-4o",
+                    messages=[
+                        {"role": "system", "content": f"Eres un experto programador. Tu tarea es corregir el siguiente código en {language} según las instrucciones proporcionadas. Devuelve el código corregido, una lista de cambios realizados y una explicación clara."},
+                        {"role": "user", "content": f"CÓDIGO:\n```{language}\n{code}\n```\n\nINSTRUCCIONES:\n{instructions}\n\nResponde en formato JSON con las siguientes claves:\n- correctedCode: el código corregido completo\n- changes: una lista de objetos, cada uno con 'description' y 'lineNumbers'\n- explanation: una explicación detallada de los cambios"}
+                    ],
+                    response_format={"type": "json_object"}
+                )
+                result = json.loads(response.choices[0].message.content)
+                logging.info("Código corregido con OpenAI")
+            except Exception as e:
+                logging.error(f"Error con API de OpenAI: {str(e)}")
+                return jsonify({
+                    'success': False,
+                    'error': f'Error al conectar con OpenAI: {str(e)}'
+                })
+
+        elif model == 'anthropic' and anthropic_client:
+            try:
+                response = anthropic_client.messages.create(
+                    model="claude-3-opus-20240229",
+                    max_tokens=4000,
+                    system=f"Eres un experto programador. Tu tarea es corregir el siguiente código en {language} según las instrucciones proporcionadas. Devuelve el código corregido, una lista de cambios realizados y una explicación clara en formato JSON.",
+                    messages=[
+                        {"role": "user", "content": f"CÓDIGO:\n```{language}\n{code}\n```\n\nINSTRUCCIONES:\n{instructions}\n\nResponde en formato JSON con las siguientes claves:\n- correctedCode: el código corregido completo\n- changes: una lista de objetos, cada uno con 'description' y 'lineNumbers'\n- explanation: una explicación detallada de los cambios"}
+                    ],
+                    temperature=0.1
+                )
+                # Extraer la respuesta de Claude en formato JSON
+                result = extract_json_from_claude(response.content[0].text)
+                logging.info("Código corregido con Anthropic")
+            except Exception as e:
+                logging.error(f"Error con API de Anthropic: {str(e)}")
+                return jsonify({
+                    'success': False,
+                    'error': f'Error al conectar con Anthropic: {str(e)}'
+                })
+
+        elif model == 'gemini' and genai:
+            try:
+                gemini_model = genai.GenerativeModel(
+                    model_name='gemini-1.5-pro',
+                    generation_config={
+                        'temperature': 0.2,
+                        'top_p': 0.9,
+                        'top_k': 40,
+                        'max_output_tokens': 4096,
+                    }
+                )
+
+                prompt = f"""Eres un experto programador. Tu tarea es corregir el siguiente código en {language} según las instrucciones proporcionadas.
+
+                CÓDIGO:
+                ```{language}
+                {code}
+                ```
+
+                INSTRUCCIONES:
+                {instructions}
+
+                Responde en formato JSON con las siguientes claves:
+                - correctedCode: el código corregido completo
+                - changes: una lista de objetos, cada uno con 'description' y 'lineNumbers'
+                - explanation: una explicación detallada de los cambios
+                """
+
+                response = gemini_model.generate_content(prompt)
+                # Extraer la respuesta de Gemini en formato JSON
+                result = extract_json_from_gemini(response.text)
+                logging.info("Código corregido con Gemini")
+            except Exception as e:
+                logging.error(f"Error con API de Gemini: {str(e)}")
+                return jsonify({
+                    'success': False,
+                    'error': f'Error al conectar con Gemini: {str(e)}'
+                })
+        else:
+            return jsonify({
+                'success': False,
+                'error': f'Modelo {model} no soportado o API no configurada'
+            })
+
+        # Verificar que la respuesta contiene los campos necesarios
+        if not result or not result.get('correctedCode'):
+            return jsonify({
+                'success': False,
+                'error': 'La respuesta del modelo no incluye el código corregido'
+            })
+
+        return jsonify({
+            'success': True,
+            'correctedCode': result.get('correctedCode', ''),
+            'changes': result.get('changes', []),
+            'explanation': result.get('explanation', 'No se proporcionó explicación.')
+        })
+
+    except Exception as e:
+        logging.error(f"Error al procesar la solicitud: {str(e)}")
+        logging.error(traceback.format_exc())
+        return jsonify({
+            'success': False,
+            'error': f'Error al procesar la solicitud: {str(e)}'
+        })
 
 @app.route('/api_status')
 def api_status():
