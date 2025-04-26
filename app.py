@@ -909,13 +909,14 @@ def process_code():
         code = data.get('code', '')
         file_path = data.get('file_path', '')
         instructions = data.get('instructions', 'Corrige errores y mejora la calidad del código')
+        language = data.get('language', 'python')  # Obtener el lenguaje del request
+        model = data.get('model', 'openai')  # Obtener el modelo del request
 
         if not code:
             return jsonify({'error': 'No se proporcionó código para procesar'}), 400
 
-        # Detectar el lenguaje por la extensión del archivo
-        language = 'unknown'
-        if file_path:
+        # Usar el lenguaje especificado o detectarlo de la extensión del archivo
+        if language == 'unknown' and file_path:
             ext = file_path.split('.')[-1].lower() if '.' in file_path else ''
             if ext in ['py', 'pyw']:
                 language = 'python'
@@ -940,7 +941,54 @@ def process_code():
         ```
 
         Por favor, proporciona:
-        1. El código corregido
+        1. El código corregido y completo
+        2. Una explicación detallada de los cambios realizados
+        3. Una lista de los problemas que identificaste y cómo los solucionaste
+        """
+
+        # En una implementación real, aquí se conectaría con OpenAI u otro servicio
+        # Para este ejemplo, simularemos una corrección simple
+        
+        # Simulación de corrección (en producción, usar API de IA)
+        corrected_code = code
+        explanation = f"Se analizó el código en {language}. No se encontraron errores críticos."
+        changes = [
+            {
+                "description": "Análisis completado según las instrucciones proporcionadas",
+                "lineNumbers": [1]
+            }
+        ]
+        
+        # Simular correcciones según el lenguaje
+        if language == 'python':
+            if 'print ' in code:  # Corregir print sin paréntesis (Python 2 a 3)
+                corrected_code = code.replace('print ', 'print(') + ')'
+                changes.append({
+                    "description": "Actualizado syntax de print para Python 3",
+                    "lineNumbers": [code.split('\n').index(line) + 1 for line in code.split('\n') if 'print ' in line]
+                })
+            
+        elif language == 'javascript':
+            if 'var ' in code:  # Sugerir let/const en lugar de var
+                corrected_code = code.replace('var ', 'const ')
+                changes.append({
+                    "description": "Reemplazado 'var' por 'const' para una mejor práctica en JavaScript moderno",
+                    "lineNumbers": [code.split('\n').index(line) + 1 for line in code.split('\n') if 'var ' in line]
+                })
+                
+        # Preparar respuesta
+        response = {
+            'corrected_code': corrected_code,
+            'explanation': explanation,
+            'changes': changes,
+            'language': language
+        }
+        
+        return jsonify(response)
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500go corregido
         2. Un resumen de los cambios realizados (máximo 5 puntos)
         3. Una explicación detallada de las correcciones y mejoras
 

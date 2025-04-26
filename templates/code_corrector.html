@@ -490,7 +490,8 @@
             loadPrismLanguage(currentLanguage)
                 .then(() => {
                     // Enviar solicitud al servidor
-                    return fetch('/api/correct-code', {
+                    // Cambiamos a /api/process_code para usar el endpoint existente
+                    return fetch('/api/process_code', {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
@@ -505,25 +506,38 @@
                 })
                 .then(response => {
                     if (!response.ok) {
-                        throw new Error('Error en la respuesta del servidor');
+                        throw new Error('Error en la respuesta del servidor: ' + response.status);
                     }
                     return response.json();
                 })
                 .then(data => {
-                    if (data.success) {
+                    console.log("Respuesta del servidor:", data);
+                    
+                    // Manejar la respuesta según el formato del endpoint /api/process_code
+                    if (data.corrected_code || data.code) {
                         // Actualizar vista de código
-                        correctedCode.textContent = data.correctedCode;
+                        correctedCode.textContent = data.corrected_code || data.code || '';
                         updateCodeHighlighting();
 
-                        // Actualizar vista de cambios
-                        renderChanges(data.changes);
-                        explanationContent.innerHTML = data.explanation;
+                        // Crear estructuras de cambios si no existen
+                        const changes = data.changes || [];
+                        renderChanges(changes);
+                        
+                        // Mostrar explicación
+                        explanationContent.innerHTML = data.explanation || 'Código corregido con éxito.';
 
                         // Mostrar resultado
                         initialMessage.style.display = 'none';
                         correctedCodeContainer.style.display = 'block';
-                    } else {
+                    } else if (data.error) {
                         alert('Error: ' + data.error);
+                    } else {
+                        // Si la respuesta no tiene el formato esperado pero parece válida
+                        correctedCode.textContent = JSON.stringify(data, null, 2);
+                        updateCodeHighlighting();
+                        explanationContent.innerHTML = 'Respuesta recibida en formato inesperado.';
+                        initialMessage.style.display = 'none';
+                        correctedCodeContainer.style.display = 'block';
                     }
                 })
                 .catch(error => {
