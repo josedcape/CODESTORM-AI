@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, jsonify, session
+from flask import Flask, render_template, request, jsonify, session, send_from_directory, send_file
 from flask_cors import CORS
 import os
 import logging
@@ -11,6 +11,7 @@ import traceback
 import time
 import subprocess
 import shutil
+from werkzeug.utils import secure_filename
 
 # Load environment variables with force reload
 load_dotenv(override=True)
@@ -279,52 +280,71 @@ def health_check():
             "timestamp": time.time()
         }), 500
 
+def get_user_workspace(user_id='default'):
+    """Obtiene o crea un espacio de trabajo para el usuario."""
+    workspace_dir = os.path.join(os.getcwd(), 'user_workspaces', user_id)
+    os.makedirs(workspace_dir, exist_ok=True)
+    return workspace_dir
+
 @app.route('/api/files', methods=['GET'])
 def list_files():
-    """API para listar archivos del workspace."""
+    """API para listar archivos del workspace del usuario."""
     try:
         directory = request.args.get('directory', '.')
-
-        # Listar archivos en el directorio solicitado
-        if directory.startswith('/'):
-            directory = directory[1:]
-
-        # Prevenir path traversal
-        if '..' in directory:
-            return jsonify({
-                'success': False,
-                'error': 'Directorio inválido'
-            }), 400
-
+        user_id = request.args.get('user_id', 'default')
+        
+        # Obtener el workspace del usuario
+        user_workspace = get_user_workspace(user_id)
+        
+        # Construir ruta completa
+        if directory == '.':
+            full_directory = user_workspace
+            relative_dir = '.'
+        else:
+            # Limpiar la ruta para evitar path traversal
+            directory = directory.replace('..', '').strip('/')
+            full_directory = os.path.join(user_workspace, directory)
+            relative_dir = directory
+        
         # Verificar que el directorio existe
-        if not os.path.exists(directory) and directory != '.':
-            return jsonify({
-                'success': False,
-                'error': 'Directorio no encontrado'
-            }), 404
-
+        if not os.path.exists(full_directory):
+            # Si no existe pero es la raíz, lo creamos
+            if directory == '.':
+                os.makedirs(full_directory, exist_ok=True)
+            else:
+                return jsonify({
+                    'success': False,
+                    'error': 'Directorio no encontrado'
+                }), 404
+        
         # Listar archivos y carpetas
         files = []
         try:
-            for item in os.listdir(directory if directory != '.' else '.'):
-                item_path = os.path.join(directory, item) if directory != '.' else item
-
+            for item in os.listdir(full_directory):
+                item_path = os.path.join(full_directory, item)
+                relative_path = os.path.join(relative_dir, item) if relative_dir != '.' else item
+                
+                # Extraer extensión del archivo
+                extension = os.path.splitext(item)[1].lower()[1:] if os.path.isfile(item_path) and '.' in item else ''
+                
                 if os.path.isdir(item_path):
                     files.append({
                         'name': item,
-                        'path': item_path,
+                        'path': relative_path,
                         'type': 'directory',
                         'size': 0,
-                        'modified': os.path.getmtime(item_path)
+                        'modified': os.path.getmtime(item_path),
+                        'extension': ''
                     })
                 else:
                     file_size = os.path.getsize(item_path)
                     files.append({
                         'name': item,
-                        'path': item_path,
+                        'path': relative_path,
                         'type': 'file',
                         'size': file_size,
-                        'modified': os.path.getmtime(item_path)
+                        'modified': os.path.getmtime(item_path),
+                        'extension': extension
                     })
         except Exception as e:
             logging.error(f"Error al listar archivos: {str(e)}")
@@ -336,7 +356,7 @@ def list_files():
         return jsonify({
             'success': True,
             'files': files,
-            'current_dir': directory
+            'directory': relative_dir
         })
     except Exception as e:
         logging.error(f"Error en endpoint de archivos: {str(e)}")
@@ -347,38 +367,61 @@ def list_files():
 
 @app.route('/api/files/read', methods=['GET'])
 def read_file():
-    """API para leer el contenido de un archivo."""
+    """API para leer el contenido de un archivo en el workspace del usuario."""
     try:
         file_path = request.args.get('file_path')
+        user_id = request.args.get('user_id', 'default')
+        
         if not file_path:
             return jsonify({
                 'success': False,
                 'error': 'No se proporcionó ruta de archivo'
             }), 400
 
-        # Prevenir path traversal
-        if '..' in file_path:
+        # Obtener el workspace del usuario
+        user_workspace = get_user_workspace(user_id)
+        
+        # Construir ruta completa y limpiar para evitar path traversal
+        file_path = file_path.replace('..', '').strip('/')
+        full_path = os.path.join(user_workspace, file_path)
+        
+        # Verificar que el archivo existe
+        if not os.path.exists(full_path):
             return jsonify({
                 'success': False,
-                'error': 'Ruta de archivo inválida'
+                'error': 'Archivo no encontrado'
+            }), 404
+            
+        if os.path.isdir(full_path):
+            return jsonify({
+                'success': False,
+                'error': 'La ruta especificada es un directorio'
             }), 400
 
-        # Verificar que el archivo existe
-        if not os.path.exists(file_path) or os.path.isdir(file_path):
-            return jsonify({
-                'success': False,
-                'error': 'Archivo no encontrado o es un directorio'
-            }), 404
-
-        # Leer contenido del archivo
+        # Leer contenido del archivo con manejo de errores para archivos binarios
         try:
-            with open(file_path, 'r', encoding='utf-8') as f:
+            # Detectar si es un archivo binario (imágenes, etc.)
+            is_binary = False
+            binary_extensions = ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'zip', 'pdf', 'doc', 'docx', 'xls', 'xlsx']
+            file_ext = os.path.splitext(file_path)[1].lower()[1:] if '.' in file_path else ''
+            
+            if file_ext in binary_extensions:
+                is_binary = True
+                return jsonify({
+                    'success': True,
+                    'is_binary': True,
+                    'file_path': file_path,
+                    'file_url': f'/api/files/download?file_path={file_path}&user_id={user_id}'
+                })
+            
+            with open(full_path, 'r', encoding='utf-8', errors='replace') as f:
                 content = f.read()
 
             return jsonify({
                 'success': True,
                 'content': content,
-                'file_path': file_path
+                'file_path': file_path,
+                'is_binary': False
             })
         except Exception as e:
             logging.error(f"Error al leer archivo: {str(e)}")
@@ -396,7 +439,7 @@ def read_file():
 
 @app.route('/api/files/create', methods=['POST'])
 def create_file():
-    """API para crear un archivo o directorio."""
+    """API para crear un archivo o directorio en el workspace del usuario."""
     try:
         data = request.json
         if not data:
@@ -407,36 +450,61 @@ def create_file():
 
         file_path = data.get('file_path')
         content = data.get('content', '')
-
+        is_directory = data.get('is_directory', False)
+        user_id = data.get('user_id', 'default')
+        
         if not file_path:
             return jsonify({
                 'success': False,
                 'error': 'No se proporcionó ruta de archivo'
             }), 400
 
-        # Prevenir path traversal
-        if '..' in file_path:
+        # Obtener el workspace del usuario
+        user_workspace = get_user_workspace(user_id)
+        
+        # Construir ruta completa y limpiar para evitar path traversal
+        file_path = file_path.replace('..', '').strip('/')
+        full_path = os.path.join(user_workspace, file_path)
+        
+        # Verificar si ya existe
+        if os.path.exists(full_path):
             return jsonify({
                 'success': False,
-                'error': 'Ruta de archivo inválida'
+                'error': f'Ya existe un{"a carpeta" if is_directory else " archivo"} con ese nombre'
             }), 400
 
-        # Crear directorio padre si no existe
-        parent_dir = os.path.dirname(file_path)
-        if parent_dir and not os.path.exists(parent_dir):
-            os.makedirs(parent_dir, exist_ok=True)
+        try:
+            if is_directory:
+                # Crear directorio
+                os.makedirs(full_path, exist_ok=True)
+                message = f'Directorio {file_path} creado exitosamente'
+            else:
+                # Crear directorio padre si no existe
+                parent_dir = os.path.dirname(full_path)
+                if parent_dir and not os.path.exists(parent_dir):
+                    os.makedirs(parent_dir, exist_ok=True)
+                
+                # Crear archivo
+                with open(full_path, 'w', encoding='utf-8') as f:
+                    f.write(content)
+                    
+                message = f'Archivo {file_path} creado exitosamente'
 
-        # Crear archivo
-        with open(file_path, 'w', encoding='utf-8') as f:
-            f.write(content)
-
-        return jsonify({
-            'success': True,
-            'message': f'Archivo {file_path} creado exitosamente'
-        })
+            return jsonify({
+                'success': True,
+                'message': message,
+                'file_path': file_path,
+                'is_directory': is_directory
+            })
+        except Exception as e:
+            logging.error(f"Error al crear archivo/directorio: {str(e)}")
+            return jsonify({
+                'success': False,
+                'error': f'Error al crear: {str(e)}'
+            }), 500
 
     except Exception as e:
-        logging.error(f"Error en endpoint de creación de archivo: {str(e)}")
+        logging.error(f"Error en endpoint de creación: {str(e)}")
         return jsonify({
             'success': False,
             'error': str(e)
@@ -444,7 +512,7 @@ def create_file():
 
 @app.route('/api/files/delete', methods=['DELETE'])
 def delete_file():
-    """API para eliminar un archivo o directorio."""
+    """API para eliminar un archivo o directorio del workspace del usuario."""
     try:
         data = request.json
         if not data:
@@ -454,42 +522,300 @@ def delete_file():
             }), 400
 
         file_path = data.get('file_path')
-
+        user_id = data.get('user_id', 'default')
+        
         if not file_path:
             return jsonify({
                 'success': False,
                 'error': 'No se proporcionó ruta de archivo'
             }), 400
 
-        # Prevenir path traversal
-        if '..' in file_path:
+        # Obtener el workspace del usuario
+        user_workspace = get_user_workspace(user_id)
+        
+        # Construir ruta completa y limpiar para evitar path traversal
+        file_path = file_path.replace('..', '').strip('/')
+        full_path = os.path.join(user_workspace, file_path)
+        
+        # Verificar que el archivo existe
+        if not os.path.exists(full_path):
             return jsonify({
                 'success': False,
-                'error': 'Ruta de archivo inválida'
-            }), 400
+                'error': 'Archivo o directorio no encontrado'
+            }), 404
 
+        try:
+            # Eliminar archivo o directorio
+            if os.path.isdir(full_path):
+                shutil.rmtree(full_path)
+                message = f'Directorio {file_path} eliminado exitosamente'
+            else:
+                os.remove(full_path)
+                message = f'Archivo {file_path} eliminado exitosamente'
+
+            return jsonify({
+                'success': True,
+                'message': message,
+                'file_path': file_path,
+                'is_directory': os.path.isdir(full_path)
+            })
+        except Exception as e:
+            logging.error(f"Error al eliminar: {str(e)}")
+            return jsonify({
+                'success': False,
+                'error': f'Error al eliminar: {str(e)}'
+            }), 500
+
+    except Exception as e:
+        logging.error(f"Error en endpoint de eliminación: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@app.route('/api/files/download', methods=['GET'])
+def download_file():
+    """API para descargar un archivo desde el workspace del usuario."""
+    try:
+        file_path = request.args.get('file_path')
+        user_id = request.args.get('user_id', 'default')
+        
+        if not file_path:
+            return jsonify({
+                'success': False,
+                'error': 'No se proporcionó ruta de archivo'
+            }), 400
+            
+        # Obtener el workspace del usuario
+        user_workspace = get_user_workspace(user_id)
+        
+        # Construir ruta completa y limpiar para evitar path traversal
+        file_path = file_path.replace('..', '').strip('/')
+        full_path = os.path.join(user_workspace, file_path)
+        
         # Verificar que el archivo existe
-        if not os.path.exists(file_path):
+        if not os.path.exists(full_path):
             return jsonify({
                 'success': False,
                 'error': 'Archivo no encontrado'
             }), 404
+            
+        if os.path.isdir(full_path):
+            return jsonify({
+                'success': False,
+                'error': 'La ruta especificada es un directorio. Use api/files/download-dir para descargar directorios.'
+            }), 400
+            
+        # Enviar el archivo para descarga
+        return send_from_directory(
+            os.path.dirname(full_path),
+            os.path.basename(full_path),
+            as_attachment=True
+        )
+        
+    except Exception as e:
+        logging.error(f"Error en descarga de archivo: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
 
-        # Eliminar archivo o directorio
-        if os.path.isdir(file_path):
-            shutil.rmtree(file_path)
-            message = f'Directorio {file_path} eliminado exitosamente'
-        else:
-            os.remove(file_path)
-            message = f'Archivo {file_path} eliminado exitosamente'
+@app.route('/api/files/download-dir', methods=['GET'])
+def download_directory():
+    """API para descargar un directorio como ZIP desde el workspace del usuario."""
+    try:
+        dir_path = request.args.get('dir_path')
+        user_id = request.args.get('user_id', 'default')
+        
+        if not dir_path:
+            return jsonify({
+                'success': False,
+                'error': 'No se proporcionó ruta de directorio'
+            }), 400
+            
+        # Obtener el workspace del usuario
+        user_workspace = get_user_workspace(user_id)
+        
+        # Construir ruta completa y limpiar para evitar path traversal
+        dir_path = dir_path.replace('..', '').strip('/')
+        full_path = os.path.join(user_workspace, dir_path)
+        
+        # Verificar que el directorio existe
+        if not os.path.exists(full_path):
+            return jsonify({
+                'success': False,
+                'error': 'Directorio no encontrado'
+            }), 404
+            
+        if not os.path.isdir(full_path):
+            return jsonify({
+                'success': False,
+                'error': 'La ruta especificada no es un directorio'
+            }), 400
+            
+        # Crear archivo ZIP en memoria
+        import io
+        import zipfile
+        
+        memory_file = io.BytesIO()
+        with zipfile.ZipFile(memory_file, 'w', zipfile.ZIP_DEFLATED) as zipf:
+            # Recorrer el directorio recursivamente
+            for root, dirs, files in os.walk(full_path):
+                for file in files:
+                    file_path = os.path.join(root, file)
+                    arcname = os.path.relpath(file_path, full_path)
+                    zipf.write(file_path, arcname)
+        
+        # Mover el puntero al inicio del archivo
+        memory_file.seek(0)
+        
+        # Crear nombre para el archivo ZIP
+        zip_filename = f"{os.path.basename(dir_path)}.zip"
+        
+        # Devolver el archivo ZIP
+        return send_file(
+            memory_file,
+            mimetype='application/zip',
+            as_attachment=True,
+            download_name=zip_filename
+        )
+        
+    except Exception as e:
+        logging.error(f"Error en descarga de directorio: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
 
+@app.route('/api/files/upload', methods=['POST'])
+def upload_file():
+    """API para subir un archivo al workspace del usuario."""
+    try:
+        user_id = request.form.get('user_id', 'default')
+        directory = request.form.get('directory', '.')
+        
+        if 'file' not in request.files:
+            return jsonify({
+                'success': False,
+                'error': 'No se proporcionó archivo'
+            }), 400
+            
+        uploaded_file = request.files['file']
+        
+        if uploaded_file.filename == '':
+            return jsonify({
+                'success': False,
+                'error': 'Nombre de archivo vacío'
+            }), 400
+            
+        # Obtener el workspace del usuario
+        user_workspace = get_user_workspace(user_id)
+        
+        # Construir ruta destino
+        directory = directory.replace('..', '').strip('/')
+        target_dir = os.path.join(user_workspace, directory)
+        
+        # Crear directorio destino si no existe
+        if not os.path.exists(target_dir):
+            os.makedirs(target_dir, exist_ok=True)
+            
+        # Guardar archivo con nombre seguro
+        filename = secure_filename(uploaded_file.filename)
+        file_path = os.path.join(target_dir, filename)
+        
+        uploaded_file.save(file_path)
+        
+        relative_path = os.path.join(directory, filename) if directory != '.' else filename
+        
         return jsonify({
             'success': True,
-            'message': message
+            'message': f'Archivo {filename} subido exitosamente',
+            'file_path': relative_path
         })
-
+        
     except Exception as e:
-        logging.error(f"Error en endpoint de eliminación de archivo: {str(e)}")
+        logging.error(f"Error en subida de archivo: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@app.route('/api/repo/clone', methods=['POST'])
+def clone_repository():
+    """API para clonar un repositorio Git en el workspace del usuario."""
+    try:
+        data = request.json
+        if not data:
+            return jsonify({
+                'success': False,
+                'error': 'No se proporcionaron datos'
+            }), 400
+            
+        repo_url = data.get('repo_url')
+        user_id = data.get('user_id', 'default')
+        target_dir = data.get('target_dir')
+        
+        if not repo_url:
+            return jsonify({
+                'success': False,
+                'error': 'No se proporcionó URL del repositorio'
+            }), 400
+            
+        # Obtener el workspace del usuario
+        user_workspace = get_user_workspace(user_id)
+        
+        # Si no se especifica directorio destino, usar el nombre del repositorio
+        if not target_dir:
+            # Extraer nombre del repositorio de la URL
+            repo_name = repo_url.split('/')[-1]
+            if repo_name.endswith('.git'):
+                repo_name = repo_name[:-4]
+            target_dir = repo_name
+            
+        # Limpiar ruta destino
+        target_dir = target_dir.replace('..', '').strip('/')
+        full_target_path = os.path.join(user_workspace, target_dir)
+        
+        # Verificar si ya existe
+        if os.path.exists(full_target_path):
+            return jsonify({
+                'success': False,
+                'error': f'Ya existe un directorio con el nombre {target_dir}'
+            }), 400
+            
+        # Instalar git si no está instalado
+        try:
+            subprocess.run(['git', '--version'], check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        except (subprocess.SubprocessError, FileNotFoundError):
+            return jsonify({
+                'success': False,
+                'error': 'Git no está instalado en el sistema'
+            }), 500
+            
+        # Clonar el repositorio
+        try:
+            process = subprocess.run(
+                ['git', 'clone', repo_url, full_target_path],
+                check=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True
+            )
+            
+            return jsonify({
+                'success': True,
+                'message': f'Repositorio clonado exitosamente en {target_dir}',
+                'output': process.stdout,
+                'target_dir': target_dir
+            })
+        except subprocess.CalledProcessError as e:
+            return jsonify({
+                'success': False,
+                'error': f'Error al clonar repositorio: {e.stderr}'
+            }), 500
+            
+    except Exception as e:
+        logging.error(f"Error al clonar repositorio: {str(e)}")
         return jsonify({
             'success': False,
             'error': str(e)
@@ -507,6 +833,7 @@ def process_request():
             }), 400
 
         action = data.get('action', '')
+        user_id = data.get('user_id', 'default')
 
         if action == 'execute_command':
             command = data.get('command', '')
@@ -517,13 +844,16 @@ def process_request():
                 }), 400
 
             try:
-                # Ejecutar comando de forma segura
+                # Ejecutar comando en el workspace del usuario
+                user_workspace = get_user_workspace(user_id)
+                
                 process = subprocess.Popen(
                     command,
                     shell=True,
                     stdout=subprocess.PIPE,
                     stderr=subprocess.PIPE,
-                    text=True
+                    text=True,
+                    cwd=user_workspace
                 )
                 stdout, stderr = process.communicate(timeout=30)
 
@@ -536,7 +866,7 @@ def process_request():
             except subprocess.TimeoutExpired:
                 return jsonify({
                     'success': False,
-                    'error': 'Tiempo de espera agotado'
+                    'error': 'Tiempo de espera agotado (30s)'
                 }), 408
             except Exception as e:
                 return jsonify({
@@ -544,48 +874,54 @@ def process_request():
                     'error': str(e)
                 }), 500
 
-        elif action == 'create_file':
-            file_path = data.get('file_path', '')
-            content = data.get('content', '')
-            is_directory = data.get('is_directory', False)
-
-            if not file_path:
+        elif action == 'extract_zip':
+            # Extraer un archivo ZIP en el workspace del usuario
+            zip_path = data.get('zip_path', '')
+            extract_to = data.get('extract_to', '')
+            
+            if not zip_path:
                 return jsonify({
                     'success': False,
-                    'error': 'No se proporcionó ruta de archivo'
+                    'error': 'No se proporcionó ruta del archivo ZIP'
                 }), 400
-
-            # Prevenir path traversal
-            if '..' in file_path:
+                
+            # Obtener el workspace del usuario
+            user_workspace = get_user_workspace(user_id)
+            
+            # Limpiar rutas
+            zip_path = zip_path.replace('..', '').strip('/')
+            full_zip_path = os.path.join(user_workspace, zip_path)
+            
+            if not os.path.exists(full_zip_path):
                 return jsonify({
                     'success': False,
-                    'error': 'Ruta de archivo inválida'
-                }), 400
-
+                    'error': 'Archivo ZIP no encontrado'
+                }), 404
+                
+            # Determinar ruta de extracción
+            if not extract_to:
+                # Extraer en el mismo directorio que el ZIP
+                extract_dir = os.path.dirname(full_zip_path)
+            else:
+                extract_to = extract_to.replace('..', '').strip('/')
+                extract_dir = os.path.join(user_workspace, extract_to)
+                if not os.path.exists(extract_dir):
+                    os.makedirs(extract_dir, exist_ok=True)
+            
             try:
-                if is_directory:
-                    os.makedirs(file_path, exist_ok=True)
-                    message = f'Directorio {file_path} creado exitosamente'
-                else:
-                    # Crear directorio padre si no existe
-                    parent_dir = os.path.dirname(file_path)
-                    if parent_dir and not os.path.exists(parent_dir):
-                        os.makedirs(parent_dir, exist_ok=True)
-
-                    # Escribir archivo
-                    with open(file_path, 'w', encoding='utf-8') as f:
-                        f.write(content)
-
-                    message = f'Archivo {file_path} creado exitosamente'
-
+                import zipfile
+                with zipfile.ZipFile(full_zip_path, 'r') as zip_ref:
+                    zip_ref.extractall(extract_dir)
+                    
                 return jsonify({
                     'success': True,
-                    'message': message
+                    'message': f'Archivo ZIP extraído exitosamente en {extract_to or os.path.dirname(zip_path)}',
+                    'extract_dir': extract_to or os.path.dirname(zip_path)
                 })
             except Exception as e:
                 return jsonify({
                     'success': False,
-                    'error': str(e)
+                    'error': f'Error al extraer archivo ZIP: {str(e)}'
                 }), 500
 
         else:

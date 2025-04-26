@@ -298,7 +298,7 @@
                     </li>
                 </ul>
                 <div class="ms-auto d-flex align-items-center">
-                    <span id="workspace-info" class="badge bg-primary me-3">Workspace: default</span>
+                    <span id="workspace-info" class="badge bg-primary me-3">Workspace del Usuario</span>
                     <div class="d-flex align-items-center">
                         <span class="status-indicator status-disconnected" id="status-indicator" title="Comprobando estado del servidor..."></span>
                         <span class="small ms-2">Estado del Servidor</span>
@@ -311,7 +311,7 @@
     <div class="container-fluid mt-4 mb-5">
         <div class="d-flex justify-content-between align-items-center mb-3">
             <h1 class="h3 mb-0">
-                <i class="bi bi-folder2-open text-info"></i> Explorador de Archivos
+                <i class="bi bi-folder2-open text-info"></i> Explorador de Archivos del Usuario
             </h1>
             <div class="d-flex">
                 <button id="refresh-btn" class="btn btn-outline-secondary me-2" title="Refrescar archivos">
@@ -491,6 +491,7 @@
             // Variables globales
             let currentPath = '.';
             let currentFileSelected = null;
+            const userId = 'default'; // Podría venir de una sesión o token
 
             // Referencias a elementos DOM
             const filesContainer = document.getElementById('files-container');
@@ -507,13 +508,19 @@
             const confirmDeleteBtn = document.getElementById('confirm-delete-btn');
             const searchInput = document.getElementById('search-input');
             const searchBtn = document.getElementById('search-btn');
+            const statusIndicator = document.getElementById('status-indicator');
+            const uploadFileBtn = document.getElementById('upload-file-btn');
+            const workspaceInfo = document.getElementById('workspace-info');
 
             // Modales
             const createFileModal = new bootstrap.Modal(document.getElementById('createFileModal'));
             const createFolderModal = new bootstrap.Modal(document.getElementById('createFolderModal'));
             const deleteModal = new bootstrap.Modal(document.getElementById('deleteModal'));
 
-            // Cargar archivos iniciales
+            // Verificar estado del servidor
+            checkServerStatus();
+            
+            // Cargar archivos iniciales (directorio del usuario)
             loadFiles(currentPath);
 
             // Event Listeners
@@ -552,8 +559,7 @@
                     return;
                 }
 
-                const folderPath = currentPath === '.' ? folderName : `${currentPath}/${folderName}`;
-                createFolder(folderPath);
+                createFolder(folderName);
                 createFolderModal.hide();
             });
 
@@ -573,25 +579,76 @@
 
             openEditorBtn.addEventListener('click', () => {
                 if (currentFileSelected) {
-                    window.location.href = `/edit_file?path=${encodeURIComponent(currentFileSelected)}`;
+                    window.location.href = `/edit_file?path=${encodeURIComponent(currentFileSelected)}&user_id=${userId}`;
                 }
             });
+
+            // Agregar listener para botón de subir archivo
+            uploadFileBtn.addEventListener('click', () => {
+                // Crear un input de tipo file invisible
+                const fileInput = document.createElement('input');
+                fileInput.type = 'file';
+                fileInput.multiple = true; // Permitir múltiples archivos
+                
+                fileInput.addEventListener('change', (e) => {
+                    if (e.target.files.length > 0) {
+                        uploadFiles(e.target.files);
+                    }
+                });
+                
+                // Disparar click en el input para mostrar diálogo
+                fileInput.click();
+            });
+
+            // Función para verificar estado del servidor
+            function checkServerStatus() {
+                fetch('/api/health')
+                    .then(response => {
+                        if (response.ok) {
+                            statusIndicator.classList.remove('status-disconnected', 'status-connecting');
+                            statusIndicator.classList.add('status-connected');
+                            statusIndicator.title = 'Servidor conectado';
+                            return response.json();
+                        } else {
+                            throw new Error('Error en respuesta del servidor');
+                        }
+                    })
+                    .then(data => {
+                        workspaceInfo.textContent = `Workspace: ${userId}`;
+                    })
+                    .catch(error => {
+                        console.error('Error en verificación de estado:', error);
+                        statusIndicator.classList.remove('status-connected', 'status-connecting');
+                        statusIndicator.classList.add('status-disconnected');
+                        statusIndicator.title = 'Servidor desconectado';
+                    });
+            }
 
             // Funciones de manipulación de archivos
             function loadFiles(path) {
                 currentPath = path;
+                
+                // Actualizar estado de carga
+                statusIndicator.classList.remove('status-connected', 'status-disconnected');
+                statusIndicator.classList.add('status-connecting');
+                statusIndicator.title = 'Cargando...';
 
                 // Actualizar la ruta en la miga de pan
                 updateBreadcrumb(path);
 
-                fetch(`/api/files?directory=${encodeURIComponent(path)}`)
+                fetch(`/api/files?directory=${encodeURIComponent(path)}&user_id=${userId}`)
                     .then(response => {
                         if (!response.ok) {
-                            throw new Error('Network response was not ok');
+                            throw new Error(`Error del servidor: ${response.status}`);
                         }
                         return response.json();
                     })
                     .then(data => {
+                        // Actualizar estado del servidor
+                        statusIndicator.classList.remove('status-connecting', 'status-disconnected');
+                        statusIndicator.classList.add('status-connected');
+                        statusIndicator.title = 'Servidor conectado';
+                        
                         if (data.success) {
                             displayFiles(data.files);
                         } else {
@@ -600,7 +657,23 @@
                     })
                     .catch(error => {
                         console.error('Error:', error);
-                        showNotification('Error al cargar archivos', 'danger');
+                        showNotification('Error al cargar archivos: ' + error.message, 'danger');
+                        
+                        // Actualizar estado del servidor
+                        statusIndicator.classList.remove('status-connecting', 'status-connected');
+                        statusIndicator.classList.add('status-disconnected');
+                        statusIndicator.title = 'Error en conexión con servidor';
+                        
+                        // Mostrar mensaje de error en el contenedor de archivos
+                        filesContainer.innerHTML = `
+                            <div class="p-4 text-center text-danger">
+                                <i class="bi bi-exclamation-triangle" style="font-size: 2rem;"></i>
+                                <p class="mt-2">Error al cargar archivos: ${error.message}</p>
+                                <button class="btn btn-sm btn-outline-primary mt-3" onclick="location.reload()">
+                                    <i class="bi bi-arrow-repeat"></i> Intentar nuevamente
+                                </button>
+                            </div>
+                        `;
                     });
             }
 
@@ -611,7 +684,7 @@
                         <div class="p-4 text-center text-danger">
                             <i class="bi bi-exclamation-triangle" style="font-size: 2rem;"></i>
                             <p class="mt-2">Error en los datos de archivos recibidos</p>
-                            <button class="btn btn-sm btn-outline-primary mt-3" onclick="loadFiles(currentPath)">
+                            <button class="btn btn-sm btn-outline-primary mt-3" onclick="window.location.reload()">
                                 <i class="bi bi-arrow-repeat"></i> Intentar nuevamente
                             </button>
                         </div>
@@ -697,6 +770,7 @@
                     else if (['jpg', 'jpeg', 'png', 'gif', 'svg'].includes(ext)) icon = 'bi-file-earmark-image';
                     else if (['md', 'txt'].includes(ext)) icon = 'bi-file-earmark-text';
                     else if (['json'].includes(ext)) icon = 'bi-file-earmark-code';
+                    else if (['zip', 'tar', 'gz', 'rar'].includes(ext)) icon = 'bi-file-earmark-zip';
 
                     fileElement.innerHTML = `
                         <div class="icon">
@@ -712,6 +786,9 @@
                         <div class="actions">
                             <button class="btn btn-sm btn-action btn-outline-info" title="Editar archivo">
                                 <i class="bi bi-pencil"></i>
+                            </button>
+                            <button class="btn btn-sm btn-action btn-outline-primary download-btn" title="Descargar archivo">
+                                <i class="bi bi-download"></i>
                             </button>
                             <button class="btn btn-sm btn-action btn-outline-danger delete-btn" title="Eliminar archivo">
                                 <i class="bi bi-trash"></i>
@@ -730,7 +807,14 @@
                     const editBtn = fileElement.querySelector('.btn-outline-info');
                     editBtn.addEventListener('click', (e) => {
                         e.stopPropagation();
-                        window.location.href = `/edit_file?path=${encodeURIComponent(file.path)}`;
+                        window.location.href = `/edit_file?path=${encodeURIComponent(file.path)}&user_id=${userId}`;
+                    });
+                    
+                    // Evento para descargar archivo
+                    const downloadBtn = fileElement.querySelector('.download-btn');
+                    downloadBtn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        downloadFile(file.path, file.name);
                     });
 
                     // Evento para eliminar archivo
@@ -743,11 +827,33 @@
                     filesContainer.appendChild(fileElement);
                 });
 
-                // Si no hay archivos, mostrar mensaje
+                // Si no hay archivos, mostrar mensaje específico para el directorio raíz vs. subdirectorios
                 if (directories.length === 0 && regularFiles.length === 0) {
                     const emptyDir = document.createElement('div');
                     emptyDir.className = 'text-center p-4 text-muted';
-                    emptyDir.innerHTML = '<i class="bi bi-inbox" style="font-size: 2rem;"></i><p class="mt-2">Esta carpeta está vacía</p>';
+                    
+                    if (currentPath === '.') {
+                        // Mensaje específico para el workspace vacío
+                        emptyDir.innerHTML = `
+                            <i class="bi bi-folder-plus" style="font-size: 2rem;"></i>
+                            <p class="mt-2">Tu espacio de trabajo está vacío</p>
+                            <div class="mt-3">
+                                <button class="btn btn-sm btn-primary mx-1" onclick="document.getElementById('create-file-btn').click()">
+                                    <i class="bi bi-file-earmark-plus"></i> Crear Archivo
+                                </button>
+                                <button class="btn btn-sm btn-success mx-1" onclick="document.getElementById('create-folder-btn').click()">
+                                    <i class="bi bi-folder-plus"></i> Crear Carpeta
+                                </button>
+                                <button class="btn btn-sm btn-info mx-1" onclick="document.getElementById('upload-file-btn').click()">
+                                    <i class="bi bi-upload"></i> Subir Archivos
+                                </button>
+                            </div>
+                        `;
+                    } else {
+                        // Mensaje para carpetas vacías regulares
+                        emptyDir.innerHTML = '<i class="bi bi-inbox" style="font-size: 2rem;"></i><p class="mt-2">Esta carpeta está vacía</p>';
+                    }
+                    
                     filesContainer.appendChild(emptyDir);
                 }
             }
@@ -758,15 +864,45 @@
                 openEditorBtn.style.display = 'inline-block';
 
                 // Tipos de archivo para previsualización
-                const textExtensions = ['txt', 'md', 'js', 'css', 'html', 'htm', 'py', 'json', 'csv', 'xml', 'yml', 'yaml'];
+                const textExtensions = ['txt', 'md', 'js', 'css', 'html', 'htm', 'py', 'json', 'csv', 'xml', 'yml', 'yaml', 'ts', 'jsx', 'tsx', 'php', 'rb', 'java', 'c', 'cpp', 'h', 'go', 'rs'];
                 const imageExtensions = ['jpg', 'jpeg', 'png', 'gif', 'svg', 'webp', 'bmp'];
+                const zipExtensions = ['zip', 'tar', 'gz', 'rar'];
 
                 if (textExtensions.includes(extension)) {
+                    // Mostrar indicador de carga
+                    filePreview.innerHTML = `
+                        <div class="p-3 text-center">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Cargando...</span>
+                            </div>
+                            <p class="mt-2">Cargando contenido...</p>
+                        </div>
+                    `;
+                    
                     // Previsualizar archivos de texto
-                    fetch(`/api/files/read?file_path=${encodeURIComponent(path)}`)
-                        .then(response => response.json())
+                    fetch(`/api/files/read?file_path=${encodeURIComponent(path)}&user_id=${userId}`)
+                        .then(response => {
+                            if (!response.ok) {
+                                throw new Error(`Error del servidor: ${response.status}`);
+                            }
+                            return response.json();
+                        })
                         .then(data => {
                             if (data.success) {
+                                // Si es un archivo binario, mostrar mensaje
+                                if (data.is_binary) {
+                                    filePreview.innerHTML = `
+                                        <div class="file-preview-placeholder">
+                                            <i class="bi bi-file-earmark-binary"></i>
+                                            <p>Archivo binario - no se puede previsualizar</p>
+                                            <a href="${data.file_url}" class="btn btn-sm btn-primary mt-2" download>
+                                                <i class="bi bi-download"></i> Descargar
+                                            </a>
+                                        </div>
+                                    `;
+                                    return;
+                                }
+                                
                                 // Escapar HTML para mostrar el texto sin formato
                                 const escapedContent = data.content
                                     .replace(/&/g, '&amp;')
@@ -788,7 +924,7 @@
                             filePreview.innerHTML = `
                                 <div class="file-preview-placeholder text-danger">
                                     <i class="bi bi-exclamation-circle"></i>
-                                    <p>Error al cargar el archivo</p>
+                                    <p>Error al cargar el archivo: ${error.message}</p>
                                 </div>
                             `;
                         });
@@ -796,7 +932,23 @@
                     // Previsualizar imágenes
                     filePreview.innerHTML = `
                         <div class="file-preview-image">
-                            <img src="/workspace/${path}" alt="${name}">
+                            <img src="/api/files/download?file_path=${encodeURIComponent(path)}&user_id=${userId}" alt="${name}">
+                        </div>
+                    `;
+                } else if (zipExtensions.includes(extension)) {
+                    // Opciones especiales para archivos ZIP
+                    filePreview.innerHTML = `
+                        <div class="file-preview-placeholder">
+                            <i class="bi bi-file-earmark-zip" style="font-size: 2rem;"></i>
+                            <p>Archivo comprimido: ${name}</p>
+                            <div class="mt-3">
+                                <a href="/api/files/download?file_path=${encodeURIComponent(path)}&user_id=${userId}" class="btn btn-sm btn-primary mx-1" download>
+                                    <i class="bi bi-download"></i> Descargar
+                                </a>
+                                <button class="btn btn-sm btn-success mx-1" onclick="extractZipFile('${path}')">
+                                    <i class="bi bi-folder-symlink"></i> Extraer aquí
+                                </button>
+                            </div>
                         </div>
                     `;
                 } else {
@@ -805,9 +957,11 @@
                         <div class="file-preview-placeholder">
                             <i class="bi bi-file-earmark"></i>
                             <p>Tipo de archivo no soportado para previsualización</p>
-                            <button class="btn btn-sm btn-futuristic mt-2" onclick="window.location.href='/edit_file?path=${encodeURIComponent(path)}'">
-                                Abrir en Editor
-                            </button>
+                            <div class="mt-3">
+                                <a href="/api/files/download?file_path=${encodeURIComponent(path)}&user_id=${userId}" class="btn btn-sm btn-primary" download>
+                                    <i class="bi bi-download"></i> Descargar
+                                </a>
+                            </div>
                         </div>
                     `;
                 }
@@ -819,10 +973,16 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         file_path: path,
-                        content: content
+                        content: content,
+                        user_id: userId
                     })
                 })
-                .then(response => response.json())
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`Error del servidor: ${response.status}`);
+                    }
+                    return response.json();
+                })
                 .then(data => {
                     if (data.success) {
                         showNotification('Archivo creado correctamente', 'success');
@@ -833,22 +993,28 @@
                 })
                 .catch(error => {
                     console.error('Error:', error);
-                    showNotification('Error al crear archivo', 'danger');
+                    showNotification('Error al crear archivo: ' + error.message, 'danger');
                 });
             }
 
-            function createFolder(path) {
-                // En los sistemas de archivos, crear una carpeta vacía a menudo se hace
-                // creando un archivo especial dentro de ella, como .gitkeep
+            function createFolder(folderName) {
+                const folderPath = currentPath === '.' ? folderName : `${currentPath}/${folderName}`;
+                
                 fetch('/api/files/create', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        file_path: path + '/.gitkeep',
-                        content: ''
+                        file_path: folderPath,
+                        is_directory: true,
+                        user_id: userId
                     })
                 })
-                .then(response => response.json())
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`Error del servidor: ${response.status}`);
+                    }
+                    return response.json();
+                })
                 .then(data => {
                     if (data.success) {
                         showNotification('Carpeta creada correctamente', 'success');
@@ -859,48 +1025,38 @@
                 })
                 .catch(error => {
                     console.error('Error:', error);
-                    showNotification('Error al crear carpeta', 'danger');
+                    showNotification('Error al crear carpeta: ' + error.message, 'danger');
                 });
             }
 
             function deleteItem(path) {
-                // First check if path exists and is not empty
                 if (!path) {
                     showNotification('Ruta de archivo inválida', 'danger');
                     return;
                 }
 
                 fetch('/api/files/delete', {
-                    method: 'DELETE',  // Changed from POST to DELETE
+                    method: 'DELETE',
                     headers: {
-                        'Content-Type': 'application/json',
-                        'Accept': 'application/json'  // Explicitly request JSON response
+                        'Content-Type': 'application/json'
                     },
                     body: JSON.stringify({
-                        file_path: path
+                        file_path: path,
+                        user_id: userId
                     })
                 })
                 .then(response => {
                     if (!response.ok) {
-                        // Check specific error status
-                        if (response.status === 405) {
-                            throw new Error('Método no permitido. Contacte al administrador.');
-                        }
                         throw new Error(`Error del servidor: ${response.status}`);
-                    }
-                    // Verify content type before parsing JSON
-                    const contentType = response.headers.get('content-type');
-                    if (!contentType || !contentType.includes('application/json')) {
-                        throw new Error('Respuesta del servidor en formato incorrecto');
                     }
                     return response.json();
                 })
                 .then(data => {
                     if (data.success) {
-                        showNotification('Elemento eliminado correctamente', 'success');
+                        showNotification(data.message || 'Elemento eliminado correctamente', 'success');
                         loadFiles(currentPath);
 
-                        // Clear preview if deleted file was being previewed
+                        // Limpiar vista previa si el archivo eliminado era el que se estaba previsualizando
                         if (currentFileSelected === path) {
                             filePreview.innerHTML = `
                                 <div class="file-preview-placeholder">
@@ -913,14 +1069,126 @@
                             currentFileSelected = null;
                         }
                     } else {
-                        throw new Error(data.error || 'Error al eliminar el elemento');
+                        showNotification('Error: ' + data.error, 'danger');
                     }
                 })
                 .catch(error => {
                     console.error('Error:', error);
-                    showNotification(error.message || 'Error al eliminar', 'danger');
+                    showNotification('Error al eliminar: ' + error.message, 'danger');
                 });
             }
+
+            function downloadFile(path, name) {
+                window.location.href = `/api/files/download?file_path=${encodeURIComponent(path)}&user_id=${userId}`;
+            }
+
+            function uploadFiles(files) {
+                for (let i = 0; i < files.length; i++) {
+                    const file = files[i];
+                    
+                    // Crear FormData para enviar el archivo
+                    const formData = new FormData();
+                    formData.append('file', file);
+                    formData.append('directory', currentPath);
+                    formData.append('user_id', userId);
+                    
+                    // Mostrar notificación de subida
+                    showNotification(`Subiendo ${file.name}...`, 'info');
+                    
+                    fetch('/api/files/upload', {
+                        method: 'POST',
+                        body: formData
+                    })
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error(`Error del servidor: ${response.status}`);
+                        }
+                        return response.json();
+                    })
+                    .then(data => {
+                        if (data.success) {
+                            showNotification(`Archivo ${file.name} subido correctamente`, 'success');
+                            // Recargar lista de archivos solo después de subir el último archivo
+                            if (i === files.length - 1) {
+                                loadFiles(currentPath);
+                            }
+                        } else {
+                            showNotification(`Error al subir ${file.name}: ${data.error}`, 'danger');
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        showNotification(`Error al subir ${file.name}: ${error.message}`, 'danger');
+                    });
+                }
+            }
+
+            // Función para extraer un archivo ZIP
+            window.extractZipFile = function(zipPath) {
+                fetch('/api/process', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        action: 'extract_zip',
+                        zip_path: zipPath,
+                        extract_to: currentPath,
+                        user_id: userId
+                    })
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`Error del servidor: ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    if (data.success) {
+                        showNotification('Archivo ZIP extraído correctamente', 'success');
+                        loadFiles(currentPath);
+                    } else {
+                        showNotification('Error al extraer archivo: ' + data.error, 'danger');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    showNotification('Error al extraer archivo: ' + error.message, 'danger');
+                });
+            };
+
+            // Función para clonar un repositorio
+            window.cloneRepository = function() {
+                const repoUrl = prompt('Introduce la URL del repositorio Git a clonar:');
+                if (!repoUrl) return;
+                
+                showNotification('Clonando repositorio...', 'info');
+                
+                fetch('/api/repo/clone', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        repo_url: repoUrl,
+                        user_id: userId
+                    })
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`Error del servidor: ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    if (data.success) {
+                        showNotification(data.message, 'success');
+                        loadFiles(currentPath);
+                    } else {
+                        showNotification('Error al clonar repositorio: ' + data.error, 'danger');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    showNotification('Error al clonar repositorio: ' + error.message, 'danger');
+                });
+            };
 
             function showDeleteConfirmation(path, type, name) {
                 currentFileSelected = path;
@@ -962,7 +1230,6 @@
                 if (!query) return;
 
                 // Implementar búsqueda simple en el cliente
-                // En una aplicación real, esto debería ser una búsqueda en el servidor
                 const fileItems = document.querySelectorAll('.file-explorer-item');
 
                 let found = false;
@@ -1015,6 +1282,22 @@
                     setTimeout(() => notification.remove(), 300);
                 }, 5000);
             }
+            
+            // Agregar un botón para clonar repositorios en el dropdown
+            const createDropdown = document.getElementById('createDropdown');
+            const dropdownMenu = createDropdown.nextElementSibling;
+            
+            const divider = document.createElement('li');
+            divider.innerHTML = '<hr class="dropdown-divider">';
+            dropdownMenu.appendChild(divider);
+            
+            const cloneRepoItem = document.createElement('li');
+            cloneRepoItem.innerHTML = '<a class="dropdown-item" href="#" id="clone-repo-btn"><i class="bi bi-git me-2"></i>Clonar Repositorio</a>';
+            dropdownMenu.appendChild(cloneRepoItem);
+            
+            document.getElementById('clone-repo-btn').addEventListener('click', () => {
+                window.cloneRepository();
+            });
         });
     </script>
 </body>
