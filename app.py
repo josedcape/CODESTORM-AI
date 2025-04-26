@@ -908,8 +908,8 @@ def process_code():
         data = request.json
         code = data.get('code', '')
         instructions = data.get('instructions', 'Corrige errores y mejora la calidad del código')
-        language = data.get('language', 'python')  # Obtener el lenguaje del request
-        model = data.get('model', 'openai')  # Obtener el modelo del request
+        language = data.get('language', 'python')
+        model = data.get('model', 'openai')
         
         if not code:
             return jsonify({
@@ -927,7 +927,7 @@ def process_code():
                 response = openai_client.chat.completions.create(
                     model="gpt-4o",
                     messages=[
-                        {"role": "system", "content": f"Eres un experto programador. Tu tarea es corregir el siguiente código en {language} según las instrucciones proporcionadas. Devuelve el código corregido, una lista de cambios realizados y una explicación clara."},
+                        {"role": "system", "content": f"Eres un experto programador. Tu tarea es corregir el siguiente código en {language} según las instrucciones proporcionadas. El código resultante debe ser limpio, optimizado y SIN COMENTARIOS explicativos dentro del código. Devuelve el código corregido, una lista de cambios realizados y una explicación clara separada del código."},
                         {"role": "user", "content": f"CÓDIGO:\n```{language}\n{code}\n```\n\nINSTRUCCIONES:\n{instructions}\n\nResponde en formato JSON con las siguientes claves:\n- correctedCode: el código corregido completo\n- changes: una lista de objetos, cada uno con 'description' y 'lineNumbers'\n- explanation: una explicación detallada de los cambios"}
                     ],
                     response_format={"type": "json_object"}

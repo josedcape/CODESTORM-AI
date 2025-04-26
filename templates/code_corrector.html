@@ -511,13 +511,13 @@
                 })
                 .then(data => {
                     console.log("Respuesta del servidor:", data);
-                    
+
                     // Verificar si hay error en la respuesta
                     if (!data.success && data.error) {
                         alert('Error: ' + data.error);
                         return;
                     }
-                    
+
                     // Manejar la respuesta según el formato del endpoint /api/process_code
                     if (data.corrected_code) {
                         // Actualizar vista de código
@@ -527,7 +527,7 @@
                         // Crear estructuras de cambios si no existen
                         const changes = data.changes || [];
                         renderChanges(changes);
-                        
+
                         // Mostrar explicación
                         explanationContent.innerHTML = data.explanation || 'Código corregido con éxito.';
 
