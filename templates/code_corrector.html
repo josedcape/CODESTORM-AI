@@ -529,7 +529,14 @@
                         renderChanges(changes);
 
                         // Mostrar explicación
-                        explanationContent.innerHTML = data.explanation || 'Código corregido con éxito.';
+                        if (data.explanation && typeof data.explanation === 'string') {
+                            explanationContent.innerHTML = data.explanation;
+                        } else if (data.explanation) {
+                            // Si no es una cadena, convertirlo a texto
+                            explanationContent.innerHTML = JSON.stringify(data.explanation, null, 2);
+                        } else {
+                            explanationContent.innerHTML = 'Código corregido con éxito.';
+                        }
 
                         // Mostrar resultado
                         initialMessage.style.display = 'none';

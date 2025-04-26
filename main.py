@@ -103,7 +103,7 @@ def process_code():
         instructions = data.get('instructions', 'Corrige errores y mejora la calidad del código')
         language = data.get('language', 'python')
         model = data.get('model', 'openai')
-        
+
         if not code:
             return jsonify({
                 'success': False,
@@ -122,26 +122,26 @@ def process_code():
                     ],
                     response_format={"type": "json_object"}
                 )
-                
+
                 result = json.loads(response.choices[0].message.content)
                 logging.info("Código corregido con OpenAI")
-                
+
             except Exception as e:
                 logging.error(f"Error con API de OpenAI: {str(e)}")
                 return jsonify({
                     'success': False,
                     'error': f'Error al conectar con OpenAI: {str(e)}'
                 }), 500
-                
+
         elif model == 'anthropic' and anthropic_api_key:
             try:
                 # Importar anthropic si es necesario
                 import anthropic
                 from anthropic import Anthropic
-                
+
                 # Inicializar cliente
                 client = Anthropic(api_key=anthropic_api_key)
-                
+
                 response = client.messages.create(
                     model="claude-3-5-sonnet-latest",
                     max_tokens=4000,
@@ -151,32 +151,51 @@ def process_code():
                     ],
                     temperature=0.1
                 )
-                
+
                 # Extraer la respuesta de Claude en formato JSON
-                import re
-                json_match = re.search(r'```json(.*?)```', response.content[0].text, re.DOTALL)
-                if json_match:
-                    result = json.loads(json_match.group(1).strip())
-                else:
-                    result = json.loads(response.content[0].text)
-                    
+                try:
+                    # Primero intentamos ver si toda la respuesta es JSON directamente
+                    result = json.loads(response.content[0].text.strip())
+                except json.JSONDecodeError:
+                    # Si no es JSON válido, buscamos dentro de bloques de código
+                    import re
+                    # Buscar JSON dentro de un bloque de código markdown
+                    json_match = re.search(r'```(?:json)?\s*(.*?)\s*```', response.content[0].text, re.DOTALL)
+                    if json_match:
+                        try:
+                            result = json.loads(json_match.group(1).strip())
+                        except json.JSONDecodeError:
+                            # Si aún falla, creamos una estructura básica con la respuesta completa
+                            result = {
+                                "correctedCode": code,  # Mantener código original
+                                "changes": [{"description": "No se pudieron procesar los cambios correctamente", "lineNumbers": [1]}],
+                                "explanation": "Error al procesar la respuesta de Claude. Respuesta recibida: " + response.content[0].text[:200] + "..."
+                            }
+                    else:
+                        # Si no encontramos bloques JSON, construimos una respuesta informativa
+                        result = {
+                            "correctedCode": code,
+                            "changes": [{"description": "No se encontró formato JSON en la respuesta", "lineNumbers": [1]}],
+                            "explanation": "Claude no respondió en el formato esperado. Intente de nuevo o use otro modelo."
+                        }
+
                 logging.info("Código corregido con Anthropic")
-                
+
             except Exception as e:
                 logging.error(f"Error con API de Anthropic: {str(e)}")
                 return jsonify({
                     'success': False,
                     'error': f'Error al conectar con Anthropic: {str(e)}'
                 }), 500
-                
+
         elif model == 'gemini' and os.environ.get('GEMINI_API_KEY'):
             try:
                 # Usar genai para procesar con Gemini
                 import google.generativeai as genai
-                
+
                 if not hasattr(genai, '_configured') or not genai._configured:
                     genai.configure(api_key=os.environ.get('GEMINI_API_KEY'))
-                
+
                 gemini_model = genai.GenerativeModel(
                     model_name='gemini-1.5-pro',
                     generation_config={
@@ -204,7 +223,7 @@ def process_code():
                 """
 
                 response = gemini_model.generate_content(prompt)
-                
+
                 # Extraer el JSON de la respuesta de Gemini
                 import re
                 json_match = re.search(r'```json(.*?)```', response.text, re.DOTALL)
@@ -222,9 +241,9 @@ def process_code():
                             "changes": [],
                             "explanation": "No se pudo procesar correctamente la respuesta del modelo."
                         }
-                
+
                 logging.info("Código corregido con Gemini")
-                
+
             except Exception as e:
                 logging.error(f"Error con API de Gemini: {str(e)}")
                 return jsonify({
@@ -297,10 +316,10 @@ def list_files():
     try:
         directory = request.args.get('directory', '.')
         user_id = request.args.get('user_id', 'default')
-        
+
         # Obtener el workspace del usuario
         user_workspace = get_user_workspace(user_id)
-        
+
         # Construir ruta completa
         if directory == '.':
             full_directory = user_workspace
@@ -310,7 +329,7 @@ def list_files():
             directory = directory.replace('..', '').strip('/')
             full_directory = os.path.join(user_workspace, directory)
             relative_dir = directory
-        
+
         # Verificar que el directorio existe
         if not os.path.exists(full_directory):
             # Si no existe pero es la raíz, lo creamos
@@ -321,17 +340,17 @@ def list_files():
                     'success': False,
                     'error': 'Directorio no encontrado'
                 }), 404
-        
+
         # Listar archivos y carpetas
         files = []
         try:
             for item in os.listdir(full_directory):
                 item_path = os.path.join(full_directory, item)
                 relative_path = os.path.join(relative_dir, item) if relative_dir != '.' else item
-                
+
                 # Extraer extensión del archivo
                 extension = os.path.splitext(item)[1].lower()[1:] if os.path.isfile(item_path) and '.' in item else ''
-                
+
                 if os.path.isdir(item_path):
                     files.append({
                         'name': item,
@@ -376,7 +395,7 @@ def read_file():
     try:
         file_path = request.args.get('file_path')
         user_id = request.args.get('user_id', 'default')
-        
+
         if not file_path:
             return jsonify({
                 'success': False,
@@ -385,18 +404,18 @@ def read_file():
 
         # Obtener el workspace del usuario
         user_workspace = get_user_workspace(user_id)
-        
+
         # Construir ruta completa y limpiar para evitar path traversal
         file_path = file_path.replace('..', '').strip('/')
         full_path = os.path.join(user_workspace, file_path)
-        
+
         # Verificar que el archivo existe
         if not os.path.exists(full_path):
             return jsonify({
                 'success': False,
                 'error': 'Archivo no encontrado'
             }), 404
-            
+
         if os.path.isdir(full_path):
             return jsonify({
                 'success': False,
@@ -409,7 +428,7 @@ def read_file():
             is_binary = False
             binary_extensions = ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'zip', 'pdf', 'doc', 'docx', 'xls', 'xlsx']
             file_ext = os.path.splitext(file_path)[1].lower()[1:] if '.' in file_path else ''
-            
+
             if file_ext in binary_extensions:
                 is_binary = True
                 return jsonify({
@@ -418,7 +437,7 @@ def read_file():
                     'file_path': file_path,
                     'file_url': f'/api/files/download?file_path={file_path}&user_id={user_id}'
                 })
-            
+
             with open(full_path, 'r', encoding='utf-8', errors='replace') as f:
                 content = f.read()
 
@@ -457,7 +476,7 @@ def create_file():
         content = data.get('content', '')
         is_directory = data.get('is_directory', False)
         user_id = data.get('user_id', 'default')
-        
+
         if not file_path:
             return jsonify({
                 'success': False,
@@ -466,11 +485,11 @@ def create_file():
 
         # Obtener el workspace del usuario
         user_workspace = get_user_workspace(user_id)
-        
+
         # Construir ruta completa y limpiar para evitar path traversal
         file_path = file_path.replace('..', '').strip('/')
         full_path = os.path.join(user_workspace, file_path)
-        
+
         # Verificar si ya existe
         if os.path.exists(full_path):
             return jsonify({
@@ -488,11 +507,11 @@ def create_file():
                 parent_dir = os.path.dirname(full_path)
                 if parent_dir and not os.path.exists(parent_dir):
                     os.makedirs(parent_dir, exist_ok=True)
-                
+
                 # Crear archivo
                 with open(full_path, 'w', encoding='utf-8') as f:
                     f.write(content)
-                    
+
                 message = f'Archivo {file_path} creado exitosamente'
 
             return jsonify({
@@ -528,7 +547,7 @@ def delete_file():
 
         file_path = data.get('file_path')
         user_id = data.get('user_id', 'default')
-        
+
         if not file_path:
             return jsonify({
                 'success': False,
@@ -537,11 +556,11 @@ def delete_file():
 
         # Obtener el workspace del usuario
         user_workspace = get_user_workspace(user_id)
-        
+
         # Construir ruta completa y limpiar para evitar path traversal
         file_path = file_path.replace('..', '').strip('/')
         full_path = os.path.join(user_workspace, file_path)
-        
+
         # Verificar que el archivo existe
         if not os.path.exists(full_path):
             return jsonify({
@@ -584,40 +603,40 @@ def download_file():
     try:
         file_path = request.args.get('file_path')
         user_id = request.args.get('user_id', 'default')
-        
+
         if not file_path:
             return jsonify({
                 'success': False,
                 'error': 'No se proporcionó ruta de archivo'
             }), 400
-            
+
         # Obtener el workspace del usuario
         user_workspace = get_user_workspace(user_id)
-        
+
         # Construir ruta completa y limpiar para evitar path traversal
         file_path = file_path.replace('..', '').strip('/')
         full_path = os.path.join(user_workspace, file_path)
-        
+
         # Verificar que el archivo existe
         if not os.path.exists(full_path):
             return jsonify({
                 'success': False,
                 'error': 'Archivo no encontrado'
             }), 404
-            
+
         if os.path.isdir(full_path):
             return jsonify({
                 'success': False,
                 'error': 'La ruta especificada es un directorio. Use api/files/download-dir para descargar directorios.'
             }), 400
-            
+
         # Enviar el archivo para descarga
         return send_from_directory(
             os.path.dirname(full_path),
             os.path.basename(full_path),
             as_attachment=True
         )
-        
+
     except Exception as e:
         logging.error(f"Error en descarga de archivo: {str(e)}")
         return jsonify({
@@ -631,37 +650,37 @@ def download_directory():
     try:
         dir_path = request.args.get('dir_path')
         user_id = request.args.get('user_id', 'default')
-        
+
         if not dir_path:
             return jsonify({
                 'success': False,
                 'error': 'No se proporcionó ruta de directorio'
             }), 400
-            
+
         # Obtener el workspace del usuario
         user_workspace = get_user_workspace(user_id)
-        
+
         # Construir ruta completa y limpiar para evitar path traversal
         dir_path = dir_path.replace('..', '').strip('/')
         full_path = os.path.join(user_workspace, dir_path)
-        
+
         # Verificar que el directorio existe
         if not os.path.exists(full_path):
             return jsonify({
                 'success': False,
                 'error': 'Directorio no encontrado'
             }), 404
-            
+
         if not os.path.isdir(full_path):
             return jsonify({
                 'success': False,
                 'error': 'La ruta especificada no es un directorio'
             }), 400
-            
+
         # Crear archivo ZIP en memoria
         import io
         import zipfile
-        
+
         memory_file = io.BytesIO()
         with zipfile.ZipFile(memory_file, 'w', zipfile.ZIP_DEFLATED) as zipf:
             # Recorrer el directorio recursivamente
@@ -670,13 +689,13 @@ def download_directory():
                     file_path = os.path.join(root, file)
                     arcname = os.path.relpath(file_path, full_path)
                     zipf.write(file_path, arcname)
-        
+
         # Mover el puntero al inicio del archivo
         memory_file.seek(0)
-        
+
         # Crear nombre para el archivo ZIP
         zip_filename = f"{os.path.basename(dir_path)}.zip"
-        
+
         # Devolver el archivo ZIP
         return send_file(
             memory_file,
@@ -684,7 +703,7 @@ def download_directory():
             as_attachment=True,
             download_name=zip_filename
         )
-        
+
     except Exception as e:
         logging.error(f"Error en descarga de directorio: {str(e)}")
         return jsonify({
@@ -698,46 +717,46 @@ def upload_file():
     try:
         user_id = request.form.get('user_id', 'default')
         directory = request.form.get('directory', '.')
-        
+
         if 'file' not in request.files:
             return jsonify({
                 'success': False,
                 'error': 'No se proporcionó archivo'
             }), 400
-            
+
         uploaded_file = request.files['file']
-        
+
         if uploaded_file.filename == '':
             return jsonify({
                 'success': False,
                 'error': 'Nombre de archivo vacío'
             }), 400
-            
+
         # Obtener el workspace del usuario
         user_workspace = get_user_workspace(user_id)
-        
+
         # Construir ruta destino
         directory = directory.replace('..', '').strip('/')
         target_dir = os.path.join(user_workspace, directory)
-        
+
         # Crear directorio destino si no existe
         if not os.path.exists(target_dir):
             os.makedirs(target_dir, exist_ok=True)
-            
+
         # Guardar archivo con nombre seguro
         filename = secure_filename(uploaded_file.filename)
         file_path = os.path.join(target_dir, filename)
-        
+
         uploaded_file.save(file_path)
-        
+
         relative_path = os.path.join(directory, filename) if directory != '.' else filename
-        
+
         return jsonify({
             'success': True,
             'message': f'Archivo {filename} subido exitosamente',
             'file_path': relative_path
         })
-        
+
     except Exception as e:
         logging.error(f"Error en subida de archivo: {str(e)}")
         return jsonify({
@@ -755,20 +774,20 @@ def clone_repository():
                 'success': False,
                 'error': 'No se proporcionaron datos'
             }), 400
-            
+
         repo_url = data.get('repo_url')
         user_id = data.get('user_id', 'default')
         target_dir = data.get('target_dir')
-        
+
         if not repo_url:
             return jsonify({
                 'success': False,
                 'error': 'No se proporcionó URL del repositorio'
             }), 400
-            
+
         # Obtener el workspace del usuario
         user_workspace = get_user_workspace(user_id)
-        
+
         # Si no se especifica directorio destino, usar el nombre del repositorio
         if not target_dir:
             # Extraer nombre del repositorio de la URL
@@ -776,21 +795,21 @@ def clone_repository():
             if repo_name.endswith('.git'):
                 repo_name = repo_name[:-4]
             target_dir = repo_name
-            
+
         # Limpiar ruta destino
         target_dir = target_dir.replace('..', '').strip('/')
         full_target_path = os.path.join(user_workspace, target_dir)
-        
+
         # Verificar si ya existe
         if os.path.exists(full_target_path):
             return jsonify({
                 'success': False,
                 'error': f'Ya existe un directorio con el nombre {target_dir}'
             }), 400
-            
+
         # Crear directorio padre si no existe
         os.makedirs(os.path.dirname(full_target_path), exist_ok=True)
-            
+
         # Instalar git si no está instalado
         try:
             subprocess.run(['git', '--version'], check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
@@ -799,7 +818,7 @@ def clone_repository():
                 'success': False,
                 'error': 'Git no está instalado en el sistema'
             }), 500
-            
+
         # Clonar el repositorio con manejo de errores mejorado
         try:
             process = subprocess.run(
@@ -808,16 +827,16 @@ def clone_repository():
                 stderr=subprocess.PIPE,
                 text=True
             )
-            
+
             # Verificar si hay error en la salida de error de git
             if process.returncode != 0:
                 return jsonify({
                     'success': False,
                     'error': f'Error al clonar repositorio: {process.stderr}'
                 }), 500
-            
+
             logging.info(f"Repositorio clonado exitosamente: {repo_url} -> {full_target_path}")
-            
+
             return jsonify({
                 'success': True,
                 'message': f'Repositorio clonado exitosamente en {target_dir}',
@@ -830,7 +849,7 @@ def clone_repository():
                 'success': False,
                 'error': f'Error al clonar repositorio: {str(e)}'
             }), 500
-            
+
     except Exception as e:
         logging.error(f"Error al clonar repositorio: {str(e)}")
         logging.error(traceback.format_exc())  # Añadir traza completa para mejor depuración
@@ -851,259 +870,7 @@ def process_request():
             }), 400
 
         action = data.get('action', '')
-        user_id = data.get('user_id', 'default')
-
-        if action == 'execute_command':
-            command = data.get('command', '')
-            if not command:
-                return jsonify({
-                    'success': False,
-                    'error': 'No se proporcionó comando'
-                }), 400
-
-            try:
-                # Ejecutar comando en el workspace del usuario
-                user_workspace = get_user_workspace(user_id)
-                
-                process = subprocess.Popen(
-                    command,
-                    shell=True,
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE,
-                    text=True,
-                    cwd=user_workspace
-                )
-                stdout, stderr = process.communicate(timeout=30)
-
-                return jsonify({
-                    'success': True,
-                    'stdout': stdout,
-                    'stderr': stderr,
-                    'status': process.returncode
-                })
-            except subprocess.TimeoutExpired:
-                return jsonify({
-                    'success': False,
-                    'error': 'Tiempo de espera agotado (30s)'
-                }), 408
-            except Exception as e:
-                return jsonify({
-                    'success': False,
-                    'error': str(e)
-                }), 500
-
-        elif action == 'extract_zip':
-            # Extraer un archivo ZIP en el workspace del usuario
-            zip_path = data.get('zip_path', '')
-            extract_to = data.get('extract_to', '')
-            
-            if not zip_path:
-                return jsonify({
-                    'success': False,
-                    'error': 'No se proporcionó ruta del archivo ZIP'
-                }), 400
-                
-            # Obtener el workspace del usuario
-            user_workspace = get_user_workspace(user_id)
-            
-            # Limpiar rutas
-            zip_path = zip_path.replace('..', '').strip('/')
-            full_zip_path = os.path.join(user_workspace, zip_path)
-            
-            if not os.path.exists(full_zip_path):
-                return jsonify({
-                    'success': False,
-                    'error': 'Archivo ZIP no encontrado'
-                }), 404
-                
-            # Determinar ruta de extracción
-            if not extract_to:
-                # Extraer en el mismo directorio que el ZIP
-                extract_dir = os.path.dirname(full_zip_path)
-            else:
-                extract_to = extract_to.replace('..', '').strip('/')
-                extract_dir = os.path.join(user_workspace, extract_to)
-                if not os.path.exists(extract_dir):
-                    os.makedirs(extract_dir, exist_ok=True)
-            
-            try:
-                import zipfile
-                with zipfile.ZipFile(full_zip_path, 'r') as zip_ref:
-                    zip_ref.extractall(extract_dir)
-                    
-                return jsonify({
-                    'success': True,
-                    'message': f'Archivo ZIP extraído exitosamente en {extract_to or os.path.dirname(zip_path)}',
-                    'extract_dir': extract_to or os.path.dirname(zip_path)
-                })
-            except Exception as e:
-                return jsonify({
-                    'success': False,
-                    'error': f'Error al extraer archivo ZIP: {str(e)}'
-                }), 500
-
-        else:
-            return jsonify({
-                'success': False,
-                'error': f'Acción desconocida: {action}'
-            }), 400
-
-    except Exception as e:
-        logging.error(f"Error en endpoint de procesamiento: {str(e)}")
-        return jsonify({
-            'success': False,
-            'error': str(e)
-        }), 500
-
-@app.route('/api/chat', methods=['POST'])
-def handle_chat():
-    """Process chat messages using the selected model."""
-    try:
-        data = request.json
-        user_message = data.get('message', '')
-        agent_id = data.get('agent_id', 'architect')
-        model = data.get('model', 'openai')
-        context = data.get('context', [])
-
-        if not user_message:
-            return jsonify({'error': 'No message provided'}), 400
-
-        # Configuración de prompts según el agente seleccionado
-        agent_prompts = {
-            'developer': "Eres un Agente de Desarrollo experto en optimización y edición de código en tiempo real. Tu objetivo es ayudar con tareas de programación, desde corrección de errores hasta implementación de funcionalidades completas.",
-            'architect': "Eres un Agente de Arquitectura especializado en diseñar arquitecturas escalables y optimizadas. Ayudas en decisiones sobre estructura de código, patrones de diseño y selección de tecnologías.",
-            'advanced': "Eres un Especialista Avanzado experto en soluciones complejas e integraciones avanzadas. Puedes asesorar sobre tecnologías emergentes y soluciones sofisticadas.",
-            'general': "Eres un Asistente General con conocimientos amplios de desarrollo de software y buenas prácticas."
-        }
-
-        # Seleccionar prompt adecuado según el agente o usar prompt por defecto
-        system_prompt = agent_prompts.get(agent_id, "Eres un asistente especializado en desarrollo de software.")
-
-        response = ""
-        logging.info(f"Procesando mensaje con modelo: {model}")
-
-        # Generar respuesta con OpenAI
-        if model == 'openai' and openai_client:
-            try:
-                messages = [{"role": "system", "content": system_prompt}]
-
-                # Añadir mensajes de contexto previo
-                for msg in context:
-                    if isinstance(msg, dict) and 'role' in msg and 'content' in msg:
-                        if msg['role'] in ['user', 'assistant', 'system']:
-                            messages.append({
-                                "role": msg['role'],
-                                "content": msg['content']
-                            })
-
-                # Añadir mensaje actual
-                messages.append({"role": "user", "content": user_message})
-
-                completion = openai_client.chat.completions.create(
-                    model="gpt-4o",
-                    messages=messages,
-                    temperature=0.7
-                )
-                response = completion.choices[0].message.content
-                logging.info("Respuesta generada con OpenAI")
-            except Exception as e:
-                logging.error(f"Error with OpenAI API: {str(e)}")
-                response = f"Error al conectar con OpenAI: {str(e)}"
-
-        # Generar respuesta con Gemini
-        elif model == 'gemini' and gemini_api_key:
-            try:
-                try:
-                    import google.generativeai as genai
-                except ImportError:
-                    # Si el módulo no está instalado, intentamos instalarlo
-                    logging.warning("Módulo google.generativeai no encontrado, intentando instalarlo...")
-                    import subprocess
-                    subprocess.check_call(["pip", "install", "google-generativeai"])
-                    import google.generativeai as genai
-
-                # Configurar el modelo con opciones de generación
-                gemini_model = genai.GenerativeModel(
-                    model_name='gemini-1.5-pro',
-                    generation_config={
-                        'temperature': 0.7,
-                        'top_p': 0.9,
-                        'top_k': 40,
-                        'max_output_tokens': 2048,
-                    }
-                )
-
-                # Construir prompt con contexto
-                # Formato de mensajes específico para mejor comprensión por parte de Gemini
-                prompt = system_prompt + "\n\n"
-                for msg in context:
-                    if isinstance(msg, dict) and 'role' in msg and 'content' in msg:
-                        role_prefix = "Usuario: " if msg['role'] == 'user' else "Asistente: "
-                        prompt += role_prefix + msg['content'] + "\n\n"
-
-                prompt += "Usuario: " + user_message + "\n\n" + "Asistente (responde usando markdown con código formateado):"
-
-                logging.debug(f"Enviando prompt a Gemini: {prompt[:200]}...")
-                gemini_response = gemini_model.generate_content(prompt)
-                response = gemini_response.text
-                logging.info(f"Respuesta generada con Gemini: {response[:100]}...")
-            except ImportError as ie:
-                logging.error(f"Error al importar módulos para Gemini: {str(ie)}")
-                response = f"Error: No se pudo importar el módulo google.generativeai. Por favor, ejecuta 'pip install google-generativeai' e inténtalo de nuevo."
-            except Exception as e:
-                logging.error(f"Error with Gemini API: {str(e)}")
-                logging.error(traceback.format_exc())
-                response = f"Error al conectar con Gemini: {str(e)}"
-
-        # Generar respuesta con Anthropic
-        elif model == 'anthropic' and anthropic_api_key:
-            try:
-                try:
-                    import anthropic
-                except ImportError:
-                    # Si el módulo no está instalado, lo instalamos
-                    logging.warning("Módulo anthropic no encontrado, instalándolo...")
-                    import subprocess
-                    subprocess.check_call(["pip", "install", "anthropic"])
-                    import anthropic
-
-                # Inicializar el cliente con la clave API
-                client = anthropic.Anthropic(api_key=anthropic_api_key)
-
-                # Preparar mensajes con formato de Anthropic
-                messages = []
-
-                # Añadir mensajes de contexto
-                for msg in context:
-                    if isinstance(msg, dict) and 'role' in msg and 'content' in msg:
-                        if msg['role'] in ['user', 'assistant']:
-                            messages.append({
-                                "role": msg['role'],
-                                "content": msg['content']
-                            })
-
-                # Añadir mensaje actual
-                messages.append({"role": "user", "content": user_message})
-
-                # Asegurar que al menos hay un mensaje del usuario
-                if not messages:
-                    messages.append({"role": "user", "content": user_message})
-
-                # Realizar la llamada a la API de Anthropic con manejo de errores mejorado
-                try:
-                    completion = client.messages.create(
-                        model="claude-3-5-sonnet-latest",
-                        system=system_prompt,
-                        messages=messages,
-                        max_tokens=2000,
-                        temperature=0.7
-                    )
-
-                    # Verificar si la respuesta tiene contenido
-                    if completion.content and len(completion.content) > 0:
-                        response = completion.content[0].text
-                        # Formatear la respuesta para usar markdown
-                        response = response.replace("```", "\n```\n").replace("`", " ` ")
+        user_id = data.get('user_", "\n```\n").replace("`", " ` ")
                         logging.info("Respuesta generada con Anthropic")
                     else:
                         response = "No se recibió respuesta de Anthropic. Por favor, intenta de nuevo."
@@ -1177,7 +944,7 @@ def correct_code():
     code = data.get('code', '')
     instructions = data.get('instructions', '')
     language = data.get('language', 'python')
-    model = data.get('model', 'openai')
+    model_choice = data.get('model', 'openai')
 
     if not code or not instructions:
         return jsonify({
@@ -1189,7 +956,7 @@ def correct_code():
         # Procesar según el modelo elegido
         result = None
 
-        if model == 'openai' and openai_client:
+        if model_choice == 'openai' and openai_client:
             try:
                 response = openai_client.chat.completions.create(
                     model="gpt-4o",
@@ -1208,10 +975,17 @@ def correct_code():
                     'error': f'Error al conectar con OpenAI: {str(e)}'
                 })
 
-        elif model == 'anthropic' and anthropic_client:
+        elif model_choice == 'anthropic' and os.environ.get('ANTHROPIC_API_KEY'):
             try:
-                response = anthropic_client.messages.create(
-                    model="claude-3-opus-20240229",
+                # Importar anthropic si es necesario
+                import anthropic
+                from anthropic import Anthropic
+
+                # Inicializar cliente
+                client = Anthropic(api_key=os.environ.get('ANTHROPIC_API_KEY'))
+
+                response = client.messages.create(
+                    model="claude-3-5-sonnet-latest",
                     max_tokens=4000,
                     system=f"Eres un experto programador. Tu tarea es corregir el siguiente código en {language} según las instrucciones proporcionadas. Devuelve el código corregido, una lista de cambios realizados y una explicación clara en formato JSON.",
                     messages=[
@@ -1219,17 +993,44 @@ def correct_code():
                     ],
                     temperature=0.1
                 )
-                # Extraer la respuesta de Claude en formato JSON
-                result = extract_json_from_claude(response.content[0].text)
+
+                # Extraer el JSON de la respuesta de Claude
+                try:
+                    # Primero intentamos ver si toda la respuesta es JSON directamente
+                    result = json.loads(response.content[0].text.strip())
+                except json.JSONDecodeError:
+                    # Si no es JSON válido, buscamos dentro de bloques de código
+                    import re
+                    # Buscar JSON dentro de un bloque de código markdown
+                    json_match = re.search(r'```(?:json)?\s*(.*?)\s*```', response.content[0].text, re.DOTALL)
+                    if json_match:
+                        try:
+                            result = json.loads(json_match.group(1).strip())
+                        except json.JSONDecodeError:
+                            # Si aún falla, creamos una estructura básica con la respuesta completa
+                            result = {
+                                "correctedCode": code,  # Mantener código original
+                                "changes": [{"description": "No se pudieron procesar los cambios correctamente", "lineNumbers": [1]}],
+                                "explanation": "Error al procesar la respuesta de Claude. Respuesta recibida: " + response.content[0].text[:200] + "..."
+                            }
+                    else:
+                        # Si no encontramos bloques JSON, construimos una respuesta informativa
+                        result = {
+                            "correctedCode": code,
+                            "changes": [{"description": "No se encontró formato JSON en la respuesta", "lineNumbers": [1]}],
+                            "explanation": "Claude no respondió en el formato esperado. Intente de nuevo o use otro modelo."
+                        }
+
                 logging.info("Código corregido con Anthropic")
+
             except Exception as e:
                 logging.error(f"Error con API de Anthropic: {str(e)}")
                 return jsonify({
                     'success': False,
                     'error': f'Error al conectar con Anthropic: {str(e)}'
-                })
+                }), 500
 
-        elif model == 'gemini' and genai:
+        elif model_choice == 'gemini' and genai:
             try:
                 gemini_model = genai.GenerativeModel(
                     model_name='gemini-1.5-pro',
@@ -1270,7 +1071,7 @@ def correct_code():
         else:
             return jsonify({
                 'success': False,
-                'error': f'Modelo {model} no soportado o API no configurada'
+                'error': f'Modelo {model_choice} no soportado o API no configurada'
             })
 
         # Verificar que la respuesta contiene los campos necesarios
@@ -1319,5 +1120,25 @@ def api_status():
         'message': 'Visita esta URL para verificar el estado de las APIs'
     })
 
-if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000, debug=True)
+def extract_json_from_gemini(text):
+    """Extrae JSON de una respuesta de Gemini."""
+    import re
+    json_match = re.search(r'```json(.*?)```', text, re.DOTALL)
+    if json_match:
+        try:
+            return json.loads(json_match.group(1).strip())
+        except json.JSONDecodeError:
+            return {"correctedCode": "", "changes": [], "explanation": "Error al procesar la respuesta JSON de Gemini."}
+    else:
+        return {"correctedCode": "", "changes": [], "explanation": "No se encontró JSON en la respuesta de Gemini."}
+
+
+def extract_json_from_claude(text):
+    """Extrae JSON de una respuesta de Claude."""
+    import re
+    try:
+        # Primero intentamos ver si toda la respuesta es JSON directamente
+        return json.loads(text.strip())
+    except json.JSONDecodeError:
+        # Si no es JSON válido, buscamos dentro de bloques de código
+        json_match = re.search(r'```json\s*(.*?)\s*
