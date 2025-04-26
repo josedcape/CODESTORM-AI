@@ -4,20 +4,20 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CODESTORM - Previsualización</title>
-    
+
     <!-- Bootstrap CSS -->
     <link href="https://cdn.replit.com/agent/bootstrap-agent-dark-theme.min.css" rel="stylesheet">
-    
+
     <!-- Bootstrap Icons -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
-    
+
     <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-    
+
     <!-- CSS Personalizado -->
     <link href="{{ url_for('static', filename='css/styles.css') }}" rel="stylesheet">
     <link href="{{ url_for('static', filename='css/futuristic.css') }}" rel="stylesheet">
-    
+
     <style>
         body, html {
             height: 100%;
@@ -25,7 +25,7 @@
             padding: 0;
             overflow: hidden;
         }
-        
+
         .iframe-container {
             position: relative;
             width: 100%;
@@ -35,14 +35,14 @@
             border-radius: 8px;
             transition: all 0.3s ease;
         }
-        
+
         .preview-frame {
             width: 100%;
             height: 100%;
             border: none;
             background-color: #fff;
         }
-        
+
         .device-controls {
             display: flex;
             justify-content: flex-start;
@@ -54,21 +54,21 @@
             scrollbar-width: thin;
             -webkit-overflow-scrolling: touch;
         }
-        
+
         .device-controls::-webkit-scrollbar {
             height: 6px;
         }
-        
+
         .device-controls::-webkit-scrollbar-track {
             background: rgba(8, 27, 41, 0.5);
             border-radius: 3px;
         }
-        
+
         .device-controls::-webkit-scrollbar-thumb {
             background-color: var(--primary-blue);
             border-radius: 3px;
         }
-        
+
         .device-button {
             background-color: rgba(8, 27, 41, 0.7);
             color: var(--text-light);
@@ -82,17 +82,17 @@
             align-items: center;
             flex-shrink: 0;
         }
-        
+
         .device-button.active {
             background-color: var(--primary-blue);
             color: white;
             box-shadow: 0 0 10px var(--glow-color);
         }
-        
+
         .device-button i {
             margin-right: 8px;
         }
-        
+
         /* Indicadores de tamaño */
         .size-indicator {
             position: absolute;
@@ -104,6 +104,21 @@
             border-radius: 4px;
             font-size: 12px;
             z-index: 100;
+        }
+
+        @media (max-width: 768px) {
+            body {
+                padding-bottom: 80px;
+            }
+
+            .container-fluid {
+                margin-bottom: 100px;
+            }
+
+            .mobile-optimized {
+                contain: layout style;
+                content-visibility: auto;
+            }
         }
     </style>
 </head>
@@ -157,7 +172,7 @@
                                 <i class="bi bi-phone"></i> Móvil
                             </button>
                         </div>
-                        
+
                         <div class="iframe-container" id="iframe-container">
                             <div class="size-indicator" id="size-indicator">1200 x 800</div>
                             <iframe id="preview-frame" class="preview-frame" srcdoc="<html><body><div style='display: flex; justify-content: center; align-items: center; height: 100vh; flex-direction: column; font-family: sans-serif; color: #333;'><h2>Esperando contenido...</h2><p>El contenido HTML se mostrará aquí</p></div></body></html>"></iframe>
@@ -174,11 +189,11 @@
             const previewFrame = document.getElementById('preview-frame');
             const deviceButtons = document.querySelectorAll('.device-button');
             const sizeIndicator = document.getElementById('size-indicator');
-            
+
             // Función para cambiar el tamaño según el dispositivo
             function resizePreview(device) {
                 let width, height;
-                
+
                 switch(device) {
                     case 'desktop':
                         width = '100%';
@@ -198,33 +213,33 @@
                         iframeContainer.style.margin = '0 auto';
                         break;
                 }
-                
+
                 // Actualizar indicador de tamaño
                 sizeIndicator.textContent = width === '100%' ? 
                     `${iframeContainer.offsetWidth} x ${iframeContainer.offsetHeight}` : 
                     `${width} x ${height}`;
             }
-            
+
             // Inicializar con tamaño de escritorio
             resizePreview('desktop');
-            
+
             // Añadir eventos a los botones de dispositivo
             deviceButtons.forEach(button => {
                 button.addEventListener('click', function() {
                     deviceButtons.forEach(btn => btn.classList.remove('active'));
                     this.classList.add('active');
-                    
+
                     const device = this.getAttribute('data-device');
                     resizePreview(device);
                 });
             });
-            
+
             // Obtener HTML de la sesión si existe
             const sessionHtml = sessionStorage.getItem('previewHtml');
             if (sessionHtml) {
                 previewFrame.srcdoc = sessionHtml;
             }
-            
+
             // Función para recibir mensajes con HTML
             window.addEventListener('message', function(event) {
                 if (event.data && event.data.type === 'preview-html') {
@@ -232,7 +247,7 @@
                     sessionStorage.setItem('previewHtml', event.data.html);
                 }
             });
-            
+
             // Actualizar indicador de tamaño al cambiar el tamaño de la ventana
             window.addEventListener('resize', function() {
                 const activeDevice = document.querySelector('.device-button.active').getAttribute('data-device');
@@ -256,7 +271,7 @@
         padding: 0;
         overflow: hidden;
     }
-    
+
     .iframe-container {
         position: relative;
         width: 100%;
@@ -266,14 +281,14 @@
         border-radius: 8px;
         transition: all 0.3s ease;
     }
-    
+
     .preview-frame {
         width: 100%;
         height: 100%;
         border: none;
         background-color: #fff;
     }
-    
+
     .device-controls {
         display: flex;
         justify-content: center;
@@ -281,7 +296,7 @@
         background: linear-gradient(90deg, var(--darker-blue) 0%, var(--dark-blue) 100%);
         border-radius: 8px 8px 0 0;
     }
-    
+
     .device-button {
         background-color: rgba(8, 27, 41, 0.7);
         color: var(--text-light);
@@ -294,17 +309,17 @@
         display: flex;
         align-items: center;
     }
-    
+
     .device-button.active {
         background-color: var(--primary-blue);
         color: white;
         box-shadow: 0 0 10px var(--glow-color);
     }
-    
+
     .device-button i {
         margin-right: 8px;
     }
-    
+
     /* Indicadores de tamaño */
     .size-indicator {
         position: absolute;
@@ -317,12 +332,12 @@
         font-size: 12px;
         z-index: 100;
     }
-    
+
     /* Área para cargar código */
     .code-input-area {
         margin-bottom: 15px;
     }
-    
+
     .code-editor {
         width: 100%;
         height: 200px;
@@ -334,13 +349,13 @@
         border-radius: 4px;
         padding: 10px;
     }
-    
+
     .code-controls {
         display: flex;
         justify-content: space-between;
         margin-top: 10px;
     }
-    
+
     .animation-controls {
         position: absolute;
         bottom: 10px;
@@ -352,7 +367,7 @@
         display: flex;
         align-items: center;
     }
-    
+
     .animation-controls button {
         background: none;
         border: none;
@@ -362,20 +377,20 @@
         margin: 0 5px;
         padding: 5px;
     }
-    
+
     .animation-controls button:hover {
         color: var(--accent-gold);
     }
-    
+
     .file-upload-container {
         margin-bottom: 15px;
     }
-    
+
     .file-upload-btn {
         position: relative;
         overflow: hidden;
     }
-    
+
     .file-upload-btn input[type=file] {
         position: absolute;
         top: 0;
@@ -385,7 +400,7 @@
         opacity: 0;
         cursor: pointer;
     }
-    
+
     .preview-error {
         color: #ff5252;
         background-color: rgba(255, 82, 82, 0.1);
@@ -393,6 +408,21 @@
         padding: 10px;
         margin-top: 10px;
         border-radius: 0 4px 4px 0;
+    }
+
+    @media (max-width: 768px) {
+        body {
+            padding-bottom: 80px;
+        }
+
+        .container-fluid {
+            margin-bottom: 100px;
+        }
+
+        .mobile-optimized {
+            contain: layout style;
+            content-visibility: auto;
+        }
     }
 </style>
 {% endblock %}
@@ -438,13 +468,13 @@
                     </div>
                 </div>
             </div>
-            
+
             <!-- Área para código (oculta por defecto) -->
             <div class="code-input-area" id="code-input-area" style="display: none;">
                 <textarea id="code-editor" class="code-editor" placeholder="Pega tu código HTML/CSS aquí"></textarea>
                 <div id="preview-error" class="preview-error" style="display: none;"></div>
             </div>
-            
+
             <!-- Controles de dispositivo -->
             <div class="device-controls">
                 <button class="device-button active" data-device="desktop">
@@ -463,7 +493,7 @@
                     <i class="bi bi-phone-flip"></i> Móvil Pequeño
                 </button>
             </div>
-            
+
             <!-- Contenedor del iframe -->
             <div class="iframe-container" id="iframe-container">
                 <div class="size-indicator" id="size-indicator">1200 x 800</div>
@@ -500,16 +530,16 @@
         const fileUpload = document.getElementById('file-upload');
         const pasteCodeBtn = document.getElementById('paste-code-btn');
         const previewError = document.getElementById('preview-error');
-        
+
         // Controles de animación
         const pauseAnimationBtn = document.getElementById('pause-animation-btn');
         const playAnimationBtn = document.getElementById('play-animation-btn');
         const restartAnimationBtn = document.getElementById('restart-animation-btn');
-        
+
         // Función para cambiar el tamaño según el dispositivo
         function resizePreview(device) {
             let width, height;
-            
+
             switch(device) {
                 case 'desktop':
                     width = '100%';
@@ -541,38 +571,38 @@
                     iframeContainer.style.margin = '0 auto';
                     break;
             }
-            
+
             // Actualizar indicador de tamaño
             sizeIndicator.textContent = width === '100%' ? 
                 `${iframeContainer.offsetWidth} x ${iframeContainer.offsetHeight}` : 
                 `${width} x ${height}`;
         }
-        
+
         // Inicializar con tamaño de escritorio
         resizePreview('desktop');
-        
+
         // Añadir eventos a los botones de dispositivo
         deviceButtons.forEach(button => {
             button.addEventListener('click', function() {
                 deviceButtons.forEach(btn => btn.classList.remove('active'));
                 this.classList.add('active');
-                
+
                 const device = this.getAttribute('data-device');
                 resizePreview(device);
             });
         });
-        
+
         // Cargar archivo HTML
         fileUpload.addEventListener('change', function(e) {
             const file = e.target.files[0];
             if (!file) return;
-            
+
             // Verificar si es un archivo HTML
             if (!file.name.match(/\.(html|htm)$/i)) {
                 showError('Solo se permiten archivos HTML.');
                 return;
             }
-            
+
             const reader = new FileReader();
             reader.onload = function(e) {
                 codeEditor.value = e.target.result;
@@ -581,12 +611,12 @@
             };
             reader.readAsText(file);
         });
-        
+
         // Mostrar área de código al hacer clic en Pegar código
         pasteCodeBtn.addEventListener('click', function() {
             codeInputArea.style.display = 'block';
             codeEditor.focus();
-            
+
             // Intentar pegar desde el portapapeles (requiere permisos)
             try {
                 navigator.clipboard.readText()
@@ -600,16 +630,16 @@
                 console.log('Portapapeles no disponible automáticamente. Por favor pega manualmente.');
             }
         });
-        
+
         // Renderizar código HTML
         renderBtn.addEventListener('click', function() {
             const htmlCode = codeEditor.value.trim();
-            
+
             if (!htmlCode) {
                 showError('Por favor ingresa código HTML para previsualizar.');
                 return;
             }
-            
+
             // Validación básica
             if (!htmlCode.includes('<html') && !htmlCode.includes('<!DOCTYPE')) {
                 // Si no es HTML completo, envolverlo automáticamente
@@ -635,13 +665,13 @@
                 renderHtml(htmlCode);
             }
         });
-        
+
         // Función para renderizar HTML
         function renderHtml(html) {
             try {
                 // Guardar en sessionStorage
                 sessionStorage.setItem('previewHtml', html);
-                
+
                 // Actualizar iframe
                 previewFrame.srcdoc = html;
                 hideError();
@@ -649,25 +679,25 @@
                 showError(`Error al renderizar: ${e.message}`);
             }
         }
-        
+
         // Función para mostrar error
         function showError(message) {
             previewError.textContent = message;
             previewError.style.display = 'block';
         }
-        
+
         // Función para ocultar error
         function hideError() {
             previewError.style.display = 'none';
         }
-        
+
         // Limpiar todo
         clearBtn.addEventListener('click', function() {
             codeEditor.value = '';
             previewFrame.srcdoc = `<html><body><div style='display: flex; justify-content: center; align-items: center; height: 100vh; flex-direction: column; font-family: sans-serif; color: #333; background-color: #f5f5f5;'><h2>Esperando contenido...</h2><p>Carga un archivo HTML o pega tu código para previsualizar</p></div></body></html>`;
             hideError();
         });
-        
+
         // Controles de animación
         pauseAnimationBtn.addEventListener('click', function() {
             const frame = previewFrame.contentWindow.document;
@@ -675,37 +705,37 @@
             styleElement.id = 'animation-pause';
             styleElement.textContent = '* { animation-play-state: paused !important; transition: none !important; }';
             frame.head.appendChild(styleElement);
-            
+
             pauseAnimationBtn.style.display = 'none';
             playAnimationBtn.style.display = 'inline-block';
         });
-        
+
         playAnimationBtn.addEventListener('click', function() {
             const frame = previewFrame.contentWindow.document;
             const pauseStyle = frame.getElementById('animation-pause');
             if (pauseStyle) {
                 pauseStyle.remove();
             }
-            
+
             playAnimationBtn.style.display = 'none';
             pauseAnimationBtn.style.display = 'inline-block';
         });
-        
+
         restartAnimationBtn.addEventListener('click', function() {
             // Guardar el HTML actual
             const currentHtml = previewFrame.srcdoc;
-            
+
             // Recargar el iframe
             previewFrame.srcdoc = '';
             setTimeout(() => {
                 previewFrame.srcdoc = currentHtml;
-                
+
                 // Asegurarse que las animaciones estén reproduciéndose
                 playAnimationBtn.style.display = 'none';
                 pauseAnimationBtn.style.display = 'inline-block';
             }, 50);
         });
-        
+
         // Verificar si hay HTML guardado en sessionStorage
         const savedHtml = sessionStorage.getItem('previewHtml');
         if (savedHtml) {
@@ -713,7 +743,7 @@
             codeInputArea.style.display = 'block';
             previewFrame.srcdoc = savedHtml;
         }
-        
+
         // Actualizar indicador de tamaño al cambiar el tamaño de la ventana
         window.addEventListener('resize', function() {
             const activeDevice = document.querySelector('.device-button.active').getAttribute('data-device');
@@ -721,25 +751,25 @@
                 sizeIndicator.textContent = `${iframeContainer.offsetWidth} x ${iframeContainer.offsetHeight}`;
             }
         });
-        
+
         // Arrastrar y soltar archivos
         iframeContainer.addEventListener('dragover', function(e) {
             e.preventDefault();
             e.stopPropagation();
             iframeContainer.style.border = '2px dashed #4e73df';
         });
-        
+
         iframeContainer.addEventListener('dragleave', function(e) {
             e.preventDefault();
             e.stopPropagation();
             iframeContainer.style.border = 'none';
         });
-        
+
         iframeContainer.addEventListener('drop', function(e) {
             e.preventDefault();
             e.stopPropagation();
             iframeContainer.style.border = 'none';
-            
+
             const files = e.dataTransfer.files;
             if (files.length > 0) {
                 const file = files[0];

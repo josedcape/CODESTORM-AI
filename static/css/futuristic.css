@@ -489,6 +489,15 @@ body {
 
 /* Media Queries for responsive design */
 @media (max-width: 768px) {
+    html, body {
+        height: auto;
+        overflow-y: auto !important;
+    }
+    
+    .content-container {
+        padding-bottom: 80px;
+    }
+    
     .card-futuristic {
         margin-bottom: 15px;
     }
