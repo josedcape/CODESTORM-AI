@@ -89,6 +89,11 @@ def code_corrector():
     """Render the code corrector page."""
     return render_template('code_corrector.html')
 
+@app.route('/preview')
+def preview():
+    """Render the HTML preview page."""
+    return render_template('preview.html')
+
 @app.route('/api/process_code', methods=['POST'])
 def process_code():
     """Process code for corrections and improvements."""
