@@ -10,7 +10,7 @@ deploymentTarget = "autoscale"
 run = ["sh", "-c", "python main_completo.py"]
 
 [workflows]
-runButton = "Run CODESTORM"
+runButton = "Run App"
 
 [[workflows.workflow]]
 name = "Project"
@@ -78,6 +78,15 @@ args = "echo \"GEMINI_API_KEY: ${GEMINI_API_KEY:0:5}...\""
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "echo \"Recuerda configurar tus claves API en el panel de Secrets\""
+
+[[workflows.workflow]]
+name = "Run App"
+author = 42013161
+mode = "sequential"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "python main.py"
 
 [[ports]]
 localPort = 5000
