@@ -1178,6 +1178,11 @@ def preview():
     """Render the preview page."""
     return render_template('preview.html')
 
+@app.route('/terminal')
+def terminal():
+    """Render the terminal page."""
+    return render_template('terminal.html')
+
 @app.route('/api/preview', methods=['POST'])
 def generate_preview():
     """Generate a preview of HTML content."""
