@@ -24,7 +24,13 @@ logging.basicConfig(
 # Initialize Flask app
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.environ.get("SESSION_SECRET", os.urandom(24).hex())
-socketio = SocketIO(app, cors_allowed_origins="*")
+socketio = SocketIO(app, 
+                    cors_allowed_origins="*",
+                    async_mode='eventlet',
+                    logger=True,
+                    engineio_logger=True,
+                    ping_timeout=60,
+                    ping_interval=25)
 
 # Security: List of allowed commands with regex patterns
 ALLOWED_COMMANDS = {
@@ -290,6 +296,10 @@ if __name__ == '__main__':
     observer_thread = threading.Thread(target=start_observer)
     observer_thread.daemon = True
     observer_thread.start()
+    
+    # Configurar eventlet para Socket.IO
+    import eventlet
+    eventlet.monkey_patch()
     
     # Start Flask-SocketIO app
     socketio.run(app, host='0.0.0.0', port=5000, debug=True, use_reloader=False)

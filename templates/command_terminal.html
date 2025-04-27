@@ -292,8 +292,14 @@
             let commandHistory = [];
             let historyIndex = -1;
             
-            // Connect to WebSocket server
-            const socket = io();
+            // Connect to WebSocket server with better configuration
+            const socket = io({
+                transports: ['websocket', 'polling'],
+                reconnection: true,
+                reconnectionAttempts: 5,
+                reconnectionDelay: 1000,
+                timeout: 20000
+            });
             
             // Socket connection event handlers
             socket.on('connect', function() {
@@ -313,6 +319,27 @@
                 statusIndicator.classList.remove('status-connected');
                 statusIndicator.classList.add('status-disconnected');
                 statusIndicator.title = 'Desconectado';
+            });
+            
+            socket.on('reconnect', function(attemptNumber) {
+                console.log('Reconnected to WebSocket server after ' + attemptNumber + ' attempts');
+                addTerminalLine('Sistema: Reconectado al servidor', 'console-success');
+                statusIndicator.classList.remove('status-disconnected');
+                statusIndicator.classList.add('status-connected');
+                statusIndicator.title = 'Conectado';
+                
+                // Reload directory contents after reconnect
+                loadDirectoryContents(currentDirectory);
+            });
+            
+            socket.on('reconnect_attempt', function(attemptNumber) {
+                console.log('Attempting to reconnect: ' + attemptNumber);
+                addTerminalLine('Sistema: Intentando reconectar... (' + attemptNumber + ')', 'console-warning');
+            });
+            
+            socket.on('reconnect_error', function(error) {
+                console.error('Reconnection error:', error);
+                addTerminalLine('Sistema: Error al reconectar', 'console-error');
             });
             
             // Handle command results
