@@ -17,3 +17,4 @@ pygithub==2.6.1
 requests==2.32.3
 email-validator==2.2.0
 numpy==2.2.5
+watchdog==3.0.0

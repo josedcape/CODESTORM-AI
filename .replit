@@ -10,7 +10,7 @@ deploymentTarget = "autoscale"
 run = ["sh", "-c", "python main_completo.py"]
 
 [workflows]
-runButton = "Run App"
+runButton = "Run Command Processor"
 
 [[workflows.workflow]]
 name = "Project"
@@ -87,6 +87,15 @@ mode = "sequential"
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "python main.py"
+
+[[workflows.workflow]]
+name = "Run Command Processor"
+author = 42013161
+mode = "sequential"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "python command_processor.py"
 
 [[ports]]
 localPort = 5000
