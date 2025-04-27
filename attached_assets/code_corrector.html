@@ -1,0 +1,802 @@
+{% extends "base.html" %}
+
+{% block title %}CODESTORM - Corrector de Código{% endblock %}
+
+{% block extra_css %}
+<!-- Prism.js para resaltado de sintaxis -->
+<link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet" />
+<style>
+    /* Estilos específicos para corrector de código */
+    .code-correction-container {
+        border-radius: 8px;
+        overflow: hidden;
+        height: calc(100vh - 150px);
+        display: flex;
+        flex-direction: column;
+    }
+    
+    .code-editor-pane, .correction-result-pane {
+        background-color: var(--bg-tertiary);
+        border: 1px solid var(--accent-primary);
+        border-radius: 8px;
+        overflow: hidden;
+        height: 100%;
+    }
+    
+    /* Mejoras para dispositivos móviles */
+    @media (max-width: 767.98px) {
+        .code-correction-container {
+            height: auto;
+        }
+        
+        .code-editor-pane, .correction-result-pane {
+            height: auto;
+            min-height: 400px;
+            margin-bottom: 1.5rem;
+        }
+        
+        .code-editor-body, .correction-result-body {
+            height: auto;
+            min-height: 350px;
+        }
+        
+        .code-textarea {
+            height: 250px;
+        }
+        
+        .instructions-textarea {
+            height: 100px;
+        }
+    }
+    
+    .code-editor-header, .correction-result-header {
+        background-color: var(--bg-secondary);
+        border-bottom: 1px solid var(--accent-primary);
+        color: var(--text-primary);
+        padding: 0.75rem 1rem;
+        font-weight: 500;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    
+    .fullscreen-btn {
+        background: none;
+        border: none;
+        cursor: pointer;
+        color: var(--text-secondary);
+        font-size: 1rem;
+        padding: 0.25rem;
+        transition: color 0.3s;
+        margin-left: 0.5rem;
+    }
+    
+    .fullscreen-btn:hover {
+        color: var(--accent-primary);
+    }
+    
+    .editor-fullscreen {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        z-index: 1050;
+        background-color: var(--bg-primary);
+        overflow: auto;
+    }
+    
+    .editor-fullscreen .code-textarea {
+        height: calc(100vh - 120px);
+    }
+    
+    .code-editor-body, .correction-result-body {
+        padding: 1rem;
+        overflow-y: auto;
+        height: calc(100% - 50px);
+    }
+    
+    .code-textarea {
+        width: 100%;
+        height: 500px;
+        background-color: var(--bg-tertiary);
+        color: var(--text-primary);
+        border: 1px solid var(--accent-primary);
+        border-radius: 4px;
+        font-family: 'JetBrains Mono', monospace;
+        padding: 0.75rem;
+        resize: vertical;
+        overflow-y: auto;
+        white-space: pre;
+        tab-size: 4;
+    }
+    
+    .instructions-textarea {
+        width: 100%;
+        height: 120px;
+        background-color: var(--bg-tertiary);
+        color: var(--text-primary);
+        border: 1px solid var(--accent-primary);
+        border-radius: 4px;
+        padding: 0.75rem;
+        resize: vertical;
+        margin-bottom: 1rem;
+    }
+    
+    .language-selector {
+        background-color: var(--bg-tertiary);
+        color: var(--text-primary);
+        border: 1px solid var(--accent-primary);
+        border-radius: 4px;
+        padding: 0.5rem;
+        margin-bottom: 1rem;
+    }
+    
+    .changes-container {
+        border-left: 2px solid var(--accent-primary);
+        padding-left: 1rem;
+        margin-bottom: 1.5rem;
+    }
+    
+    .change-description {
+        font-weight: 500;
+        color: var(--text-primary);
+    }
+    
+    .change-lines {
+        font-size: 0.85rem;
+        color: var(--text-secondary);
+    }
+    
+    .view-toggle-buttons {
+        display: flex;
+        gap: 0.5rem;
+    }
+    
+    /* Mejoras adicionales para móviles */
+    @media (max-width: 575.98px) {
+        .view-toggle-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+        }
+        
+        .d-flex.justify-content-end {
+            flex-wrap: wrap;
+            gap: 0.5rem;
+        }
+        
+        #copy-button, #apply-button, #send-to-assistant-button {
+            margin-bottom: 0.5rem;
+            padding: 0.375rem 0.75rem;
+            font-size: 0.875rem;
+            flex: 1 1 auto;
+            min-width: 120px;
+        }
+    }
+    
+    .view-toggle-btn {
+        background-color: var(--bg-tertiary);
+        color: var(--text-secondary);
+        border: 1px solid var(--accent-primary);
+        border-radius: 4px;
+        padding: 0.25rem 0.75rem;
+        font-size: 0.85rem;
+        cursor: pointer;
+        transition: all var(--transition-fast);
+    }
+    
+    .view-toggle-btn:hover, .view-toggle-btn.active {
+        background-color: var(--accent-primary);
+        color: var(--bg-primary);
+    }
+    
+    .diff-line {
+        display: block;
+        margin: 0;
+        padding: 0 5px;
+        font-family: 'JetBrains Mono', monospace;
+    }
+    
+    .diff-line-add {
+        background-color: rgba(40, 167, 69, 0.2);
+    }
+    
+    .diff-line-remove {
+        background-color: rgba(220, 53, 69, 0.2);
+    }
+    
+    .diff-line-context {
+        color: var(--text-secondary);
+    }
+    
+    .loading-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(10, 25, 47, 0.8);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 1000;
+        visibility: hidden;
+        opacity: 0;
+        transition: opacity 0.3s, visibility 0s 0.3s;
+    }
+    
+    .loading-overlay.active {
+        visibility: visible;
+        opacity: 1;
+        transition: opacity 0.3s;
+    }
+    
+    .loading-spinner {
+        width: 50px;
+        height: 50px;
+        border: 5px solid var(--accent-primary);
+        border-top-color: var(--accent-secondary);
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+    }
+    
+    @keyframes spin {
+        to { transform: rotate(360deg); }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="content-container">
+    <!-- Título y descripción -->
+    <div class="mb-4">
+        <h2 class="mb-2"><i class="fa-solid fa-code me-2"></i>Corrector de Código</h2>
+        <p class="text-muted">Mejora y optimiza tu código con asistencia inteligente de IA. Proporciona instrucciones específicas para obtener correcciones precisas.</p>
+    </div>
+    
+    <div class="row">
+        <!-- Panel editor de código -->
+        <div class="col-lg-6">
+            <div class="code-editor-pane">
+                <div class="code-editor-header">
+                    <span>Código a corregir</span>
+                    <div class="dropdown">
+                        <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" id="languageDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="fa-solid fa-code me-1"></i> Lenguaje
+                        </button>
+                        <ul class="dropdown-menu" aria-labelledby="languageDropdown">
+                            <li><a class="dropdown-item" href="#" data-language="python">Python</a></li>
+                            <li><a class="dropdown-item" href="#" data-language="javascript">JavaScript</a></li>
+                            <li><a class="dropdown-item" href="#" data-language="html">HTML</a></li>
+                            <li><a class="dropdown-item" href="#" data-language="css">CSS</a></li>
+                            <li><a class="dropdown-item" href="#" data-language="java">Java</a></li>
+                            <li><a class="dropdown-item" href="#" data-language="cpp">C++</a></li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="code-editor-body">
+                    <div class="mb-3">
+                        <label for="instructions" class="form-label">Instrucciones para la corrección:</label>
+                        <textarea id="instructions" class="instructions-textarea" placeholder="Describe qué correcciones necesitas en el código. Por ejemplo: 'Corrige el manejo de errores y optimiza el rendimiento'"></textarea>
+                    </div>
+                    
+                    <!-- Selector de modelo de IA -->
+                    <div class="mb-3">
+                        <label for="model-select" class="form-label">Modelo de IA:</label>
+                        <select id="model-select" class="form-select">
+                            <option value="openai" selected>OpenAI (GPT-4o)</option>
+                            <option value="anthropic">Anthropic (Claude)</option>
+                            <option value="gemini">Google (Gemini)</option>
+                        </select>
+                        <small class="text-muted">Selecciona el modelo que deseas utilizar para la corrección de código.</small>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <label for="code-input" class="form-label mb-0">Código a corregir:</label>
+                            <span class="text-muted code-stats">
+                                <span id="line-count">0</span> líneas | <span id="char-count">0</span> caracteres
+                                <span id="size-warning" class="text-warning" style="display: none;"><i class="fa-solid fa-triangle-exclamation"></i> Código extenso</span>
+                            </span>
+                        </div>
+                        <div class="position-relative">
+                            <textarea id="code-input" class="code-textarea" placeholder="Ingresa aquí tu código para revisión (hasta 2000 líneas)..."></textarea>
+                            <button class="fullscreen-btn editor-fullscreen-btn" title="Editar en pantalla completa">
+                                <i class="fa-solid fa-expand"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="d-flex justify-content-end">
+                        <button id="clear-button" class="btn btn-outline-secondary me-2">
+                            <i class="fa-solid fa-eraser me-1"></i> Limpiar
+                        </button>
+                        <button id="correct-button" class="btn btn-primary">
+                            <i class="fa-solid fa-wand-magic-sparkles me-1"></i> Corregir código
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Panel de resultados -->
+        <div class="col-lg-6 mt-4 mt-lg-0">
+            <div class="correction-result-pane">
+                <div class="correction-result-header">
+                    <span>Resultado de la corrección</span>
+                    <div class="view-toggle-buttons">
+                        <button class="view-toggle-btn active" data-view="code">
+                            <i class="fa-solid fa-code me-1"></i> Ver código
+                        </button>
+                        <button class="view-toggle-btn" data-view="changes">
+                            <i class="fa-solid fa-list-check me-1"></i> Ver cambios
+                        </button>
+                    </div>
+                </div>
+                <div class="correction-result-body position-relative">
+                    <!-- Overlay de carga -->
+                    <div class="loading-overlay" id="loading-overlay">
+                        <div class="text-center">
+                            <div class="loading-spinner mb-3"></div>
+                            <p class="text-light">Procesando código...</p>
+                        </div>
+                    </div>
+                    
+                    <!-- Vista de código corregido -->
+                    <div id="code-view" class="view-content">
+                        <div id="initial-message" class="text-center py-5">
+                            <i class="fa-solid fa-code text-muted mb-3" style="font-size: 3rem;"></i>
+                            <h4 class="text-muted">Esperando código para corregir</h4>
+                            <p class="text-muted">Ingresa tu código y las instrucciones de corrección para comenzar.</p>
+                        </div>
+                        
+                        <div id="corrected-code-container" style="display: none;">
+                            <div class="code-result-wrapper position-relative">
+                                <pre class="language-python" style="max-height: 500px; overflow: auto;"><code id="corrected-code"></code></pre>
+                                <button class="fullscreen-btn code-fullscreen-btn" title="Ver en pantalla completa">
+                                    <i class="fa-solid fa-expand"></i>
+                                </button>
+                            </div>
+                            <div class="d-flex justify-content-end mt-3">
+                                <button id="copy-button" class="btn btn-sm btn-outline-secondary me-2">
+                                    <i class="fa-regular fa-copy me-1"></i> Copiar
+                                </button>
+                                <button id="apply-button" class="btn btn-sm btn-primary me-2">
+                                    <i class="fa-solid fa-check me-1"></i> Aplicar cambios
+                                </button>
+                                <button id="download-button" class="btn btn-sm btn-outline-primary me-2">
+                                    <i class="fa-solid fa-download me-1"></i> Descargar
+                                </button>
+                                <button id="send-to-assistant-button" class="btn btn-sm btn-accent">
+                                    <i class="fa-solid fa-robot me-1"></i> Enviar al asistente
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Vista de cambios realizados -->
+                    <div id="changes-view" class="view-content" style="display: none;">
+                        <h5 class="mb-3">Cambios realizados:</h5>
+                        <div id="changes-list">
+                            <!-- Los cambios se insertarán aquí dinámicamente -->
+                        </div>
+                        
+                        <h5 class="mt-4 mb-3">Explicación:</h5>
+                        <div id="explanation-content" class="p-3 border border-1 rounded">
+                            <!-- La explicación se insertará aquí dinámicamente -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-python.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-javascript.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-css.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-markup.min.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        let currentLanguage = 'python';
+        
+        // Elementos del DOM
+        const codeInput = document.getElementById('code-input');
+        const instructionsInput = document.getElementById('instructions');
+        const correctButton = document.getElementById('correct-button');
+        const clearButton = document.getElementById('clear-button');
+        const copyButton = document.getElementById('copy-button');
+        const applyButton = document.getElementById('apply-button');
+        const downloadButton = document.getElementById('download-button');
+        const languageDropdown = document.getElementById('languageDropdown');
+        const loadingOverlay = document.getElementById('loading-overlay');
+        const initialMessage = document.getElementById('initial-message');
+        const correctedCodeContainer = document.getElementById('corrected-code-container');
+        const correctedCode = document.getElementById('corrected-code');
+        const changesView = document.getElementById('changes-view');
+        const codeView = document.getElementById('code-view');
+        const changesList = document.getElementById('changes-list');
+        const explanationContent = document.getElementById('explanation-content');
+        const lineCountElement = document.getElementById('line-count');
+        const charCountElement = document.getElementById('char-count');
+        const editorFullscreenBtn = document.querySelector('.editor-fullscreen-btn');
+        const codeFullscreenBtn = document.querySelector('.code-fullscreen-btn');
+        
+        // Cambiar entre vistas (código/cambios)
+        document.querySelectorAll('.view-toggle-btn').forEach(button => {
+            button.addEventListener('click', function() {
+                const view = this.getAttribute('data-view');
+                
+                // Actualizar botones
+                document.querySelectorAll('.view-toggle-btn').forEach(btn => {
+                    btn.classList.remove('active');
+                });
+                this.classList.add('active');
+                
+                // Mostrar la vista correspondiente
+                if (view === 'code') {
+                    codeView.style.display = 'block';
+                    changesView.style.display = 'none';
+                } else {
+                    codeView.style.display = 'none';
+                    changesView.style.display = 'block';
+                }
+            });
+        });
+        
+        // Selección de lenguaje
+        document.querySelectorAll('[data-language]').forEach(item => {
+            item.addEventListener('click', function(e) {
+                e.preventDefault();
+                currentLanguage = this.getAttribute('data-language');
+                languageDropdown.textContent = currentLanguage;
+                
+                // Actualizar el resaltado de sintaxis
+                correctedCode.className = `language-${currentLanguage}`;
+                Prism.highlightElement(correctedCode);
+            });
+        });
+        
+        // Botón para corregir código
+        correctButton.addEventListener('click', async function() {
+            const code = codeInput.value.trim();
+            const instructions = instructionsInput.value.trim();
+            const selectedModel = document.getElementById('model-select').value;
+            
+            if (!code) {
+                alert('Por favor ingresa código para corregir.');
+                return;
+            }
+            
+            if (!instructions) {
+                alert('Por favor ingresa instrucciones para la corrección.');
+                return;
+            }
+            
+            // Verificar si el código es demasiado extenso
+            const lines = code.split('\n').length;
+            if (lines > 2000) {
+                alert('El código excede el límite de 2000 líneas. Por favor, reduce su tamaño.');
+                return;
+            }
+            
+            // Mostrar overlay de carga
+            loadingOverlay.classList.add('active');
+            
+            try {
+                // Procesar el código con la API real
+                const result = await processCode(code, instructions, currentLanguage, selectedModel);
+                
+                // Verificar si hubo algún error
+                if (result.error) {
+                    alert(`Error: ${result.message}`);
+                }
+                
+                // Actualizar vista de código
+                correctedCode.textContent = result.correctedCode;
+                correctedCode.className = `language-${currentLanguage}`;
+                Prism.highlightElement(correctedCode);
+                
+                // Actualizar vista de cambios
+                renderChanges(result.changes);
+                explanationContent.innerHTML = result.explanation.replace(/\n/g, '<br>');
+                
+                // Mostrar resultado
+                initialMessage.style.display = 'none';
+                correctedCodeContainer.style.display = 'block';
+            } catch (error) {
+                console.error('Error al procesar la solicitud:', error);
+                alert(`Error: ${error.message || 'Ocurrió un error desconocido'}`);
+            } finally {
+                // Ocultar overlay de carga
+                loadingOverlay.classList.remove('active');
+            }
+        });
+        
+        // Botón para limpiar
+        clearButton.addEventListener('click', function() {
+            codeInput.value = '';
+            instructionsInput.value = '';
+        });
+        
+        // Botón para copiar código corregido
+        copyButton.addEventListener('click', function() {
+            navigator.clipboard.writeText(correctedCode.textContent)
+                .then(() => {
+                    // Cambiar temporalmente el texto del botón para indicar éxito
+                    const originalText = this.innerHTML;
+                    this.innerHTML = '<i class="fa-solid fa-check me-1"></i> Copiado!';
+                    setTimeout(() => {
+                        this.innerHTML = originalText;
+                    }, 2000);
+                })
+                .catch(err => {
+                    console.error('Error al copiar:', err);
+                    alert('No se pudo copiar el código.');
+                });
+        });
+        
+        // Botón para aplicar cambios
+        applyButton.addEventListener('click', function() {
+            codeInput.value = correctedCode.textContent;
+            alert('Cambios aplicados al editor.');
+        });
+        
+        // Botón para enviar al asistente
+        const sendToAssistantButton = document.getElementById('send-to-assistant-button');
+        if (sendToAssistantButton) {
+            sendToAssistantButton.addEventListener('click', function() {
+                const code = correctedCode.textContent;
+                const instructions = instructionsInput.value.trim();
+                
+                if (!code) {
+                    alert('No hay código para enviar al asistente.');
+                    return;
+                }
+                
+                // Crear un mensaje para el asistente
+                const message = `Por favor, ayúdame con este código en ${currentLanguage}:\n\n\`\`\`${currentLanguage}\n${code}\n\`\`\`\n\nInstrucciones adicionales: ${instructions || 'Revisar y optimizar el código.'}`;
+                
+                // Redirigir a la página de chat con el mensaje como parámetro
+                const encodedMessage = encodeURIComponent(message);
+                window.location.href = `/chat?message=${encodedMessage}`;
+            });
+        }
+        
+        // Botón para descargar código corregido
+        if (downloadButton) {
+            downloadButton.addEventListener('click', function() {
+                const code = correctedCode.textContent;
+                
+                if (!code) {
+                    alert('No hay código para descargar.');
+                    return;
+                }
+                
+                // Crear un blob con el código
+                const blob = new Blob([code], { type: 'text/plain' });
+                const url = URL.createObjectURL(blob);
+                
+                // Crear un elemento de enlace para la descarga
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `codigo_corregido.${getFileExtension(currentLanguage)}`;
+                document.body.appendChild(a);
+                a.click();
+                
+                // Limpiar
+                setTimeout(() => {
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                }, 0);
+            });
+        }
+        
+        // Funcionalidad de pantalla completa para el editor
+        if (editorFullscreenBtn) {
+            editorFullscreenBtn.addEventListener('click', function() {
+                const editorPane = document.querySelector('.code-editor-pane');
+                
+                if (editorPane.classList.contains('editor-fullscreen')) {
+                    editorPane.classList.remove('editor-fullscreen');
+                    this.innerHTML = '<i class="fa-solid fa-expand"></i>';
+                } else {
+                    editorPane.classList.add('editor-fullscreen');
+                    this.innerHTML = '<i class="fa-solid fa-compress"></i>';
+                }
+            });
+        }
+        
+        // Funcionalidad de pantalla completa para el código corregido
+        if (codeFullscreenBtn) {
+            codeFullscreenBtn.addEventListener('click', function() {
+                const resultPane = document.querySelector('.correction-result-pane');
+                
+                if (resultPane.classList.contains('editor-fullscreen')) {
+                    resultPane.classList.remove('editor-fullscreen');
+                    this.innerHTML = '<i class="fa-solid fa-expand"></i>';
+                } else {
+                    resultPane.classList.add('editor-fullscreen');
+                    this.innerHTML = '<i class="fa-solid fa-compress"></i>';
+                }
+            });
+        }
+        
+        // Función para obtener la extensión de archivo basada en el lenguaje
+        function getFileExtension(language) {
+            const extensions = {
+                'python': 'py',
+                'javascript': 'js',
+                'html': 'html',
+                'css': 'css',
+                'java': 'java',
+                'cpp': 'cpp'
+            };
+            
+            return extensions[language] || 'txt';
+        }
+        
+        // Actualizar contador de líneas y caracteres
+        if (codeInput) {
+            codeInput.addEventListener('input', updateCodeStats);
+            
+            function updateCodeStats() {
+                const code = codeInput.value;
+                const lines = code ? code.split('\n').length : 0;
+                const chars = code.length;
+                const sizeWarning = document.getElementById('size-warning');
+                
+                lineCountElement.textContent = lines;
+                charCountElement.textContent = chars;
+                
+                // Alerta visual si el código es muy extenso
+                if (lines > 500) {
+                    charCountElement.classList.add('text-warning');
+                    if (sizeWarning) sizeWarning.style.display = 'inline';
+                } else {
+                    charCountElement.classList.remove('text-warning');
+                    if (sizeWarning) sizeWarning.style.display = 'none';
+                }
+                
+                // Deshabilitar el botón si el código es extremadamente grande
+                if (lines > 2000) {
+                    correctButton.disabled = true;
+                    correctButton.title = "El código es demasiado extenso (máximo 2000 líneas)";
+                } else {
+                    correctButton.disabled = false;
+                    correctButton.title = "";
+                }
+            }
+            
+            // Inicializar contador
+            updateCodeStats();
+        }
+        
+        // Función para renderizar los cambios en la vista de cambios
+        function renderChanges(changes) {
+            // Limpiar lista actual
+            changesList.innerHTML = '';
+            
+            // Renderizar cada cambio
+            if (changes && changes.length > 0) {
+                changes.forEach((change, index) => {
+                    const changeElement = document.createElement('div');
+                    changeElement.className = 'changes-container';
+                    changeElement.innerHTML = `
+                        <p class="change-description">${index + 1}. ${change.description}</p>
+                        ${change.lineNumbers ? `<p class="change-lines">Líneas: ${change.lineNumbers.join(', ')}</p>` : ''}
+                    `;
+                    changesList.appendChild(changeElement);
+                });
+            } else {
+                changesList.innerHTML = '<p class="text-muted fst-italic">No se especificaron cambios detallados.</p>';
+            }
+        }
+        
+        // Función para procesar el código usando la API real
+        async function processCode(code, instructions, language, model) {
+            // Mostrar el overlay de carga
+            loadingOverlay.classList.add('active');
+            
+            try {
+                // Preparar los datos para enviar al servidor
+                const requestData = {
+                    code: code,
+                    instructions: instructions,
+                    file_path: `example.${getFileExtension(language)}`,
+                    model: model
+                };
+                
+                // Realizar la solicitud a la API
+                const response = await fetch('/api/process_code', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(requestData)
+                });
+                
+                // Verificar si la respuesta es exitosa
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    throw new Error(`Error en la API: ${response.status} - ${errorText}`);
+                }
+                
+                // Parsear la respuesta
+                const result = await response.json();
+                
+                // Transformar la respuesta para adaptarla a la estructura esperada
+                return {
+                    correctedCode: result.corrected_code || code,
+                    changes: result.summary ? result.summary.map((item, index) => {
+                        return {
+                            description: item,
+                            lineNumbers: [] // La API no proporciona números de línea específicos
+                        };
+                    }) : [],
+                    explanation: result.explanation || "No se proporcionó una explicación detallada."
+                };
+            } catch (error) {
+                console.error('Error al procesar el código:', error);
+                // Devolver un objeto de error que podamos manejar
+                return {
+                    error: true,
+                    message: error.message,
+                    correctedCode: code, // Devolver el código original
+                    changes: [{
+                        description: "Error al procesar el código",
+                        lineNumbers: []
+                    }],
+                    explanation: `Ocurrió un error al procesar el código: ${error.message}`
+                };
+            } finally {
+                // Ocultar overlay de carga sin importar el resultado
+                loadingOverlay.classList.remove('active');
+            }
+        }
+        
+        // Función simple para "mejorar" el código (solo para demostración)
+        function improveCode(code, language) {
+            // En producción, esto sería el resultado real de la IA
+            if (language === 'python') {
+                // Simulamos mejoras para Python
+                return `# Código optimizado y corregido
+import os
+from typing import List, Dict, Optional
+
+def process_data(file_path: str) -> Optional[Dict]:
+    """Procesa datos desde un archivo de manera segura.
+    
+    Args:
+        file_path: Ruta al archivo a procesar
+        
+    Returns:
+        Diccionario con los datos procesados o None si hay error
+    """
+    try:
+        if not os.path.exists(file_path):
+            print(f"El archivo {file_path} no existe")
+            return None
+            
+        # Procesamiento de datos mejorado
+        result = {}
+        with open(file_path, 'r') as file:
+            for line in file:
+                key, value = line.strip().split(':', 1)
+                result[key.strip()] = value.strip()
+                
+        return result
+    except Exception as e:
+        print(f"Error procesando {file_path}: {e}")
+        return None`;
+            } else {
+                // Por defecto, devolvemos una versión "mejorada" genérica
+                return code + `\n\n// Código optimizado y con mejor manejo de errores\n// Se implementaron buenas prácticas según las instrucciones`;
+            }
+        }
+    });
+</script>
+{% endblock %}
