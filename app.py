@@ -745,213 +745,30 @@ def handle_chat_internal(data):
 
                 for msg in formatted_context:
                     prefix = "Usuario: " if msg['role'] == 'user' else "Asistente: "
-                    full_prompt += prefix + msg['content'] + "\n\n"
-
-                full_prompt += "Usuario: " + user_message + "\n\nAsistente:"
-
-                gemini_response = model.generate_content(full_prompt)
-                response = gemini_response.text
-                logging.debug(f"Respuesta generada con Gemini: {response[:100]}...")
-            except Exception as e:
-                logging.error(f"Error with Gemini API: {str(e)}")
-                logging.error(traceback.format_exc())
-                response = f"Lo siento, hubo un error al procesar tu solicitud con Gemini: {str(e)}"
-
-        else:
-            # Usar OpenAI como valor predeterminado
-            try:
-                logging.info("Intentando generar respuesta con OpenAI")
-
-                client = openai.OpenAI()  # Usa la API key configurada globalmente
-                messages = [{"role": "system", "content": agent_prompt}]
-
-                # Añadir mensajes de contexto
-                for msg in formatted_context:
-                    messages.append({"role": msg['role'], "content": msg['content']})
-
-                # Añadir el mensaje actual del usuario
-                messages.append({"role": "user", "content": user_message})
-
-                completion = client.chat.completions.create(
-                    model="gpt-4o",
-                    messages=messages,
-                    temperature=0.7,
-                    max_tokens=2000
-                )
-
-                response = completion.choices[0].message.content
-                logging.debug(f"Respuesta generada con OpenAI: {response[:100]}...")
-            except Exception as e:
-                logging.error(f"Error with OpenAI API: {str(e)}")
-                logging.error(traceback.format_exc())
-                response = f"Lo siento, hubo un error al procesar tu solicitud con OpenAI: {str(e)}"
-
-        # En modo colaborativo, añadir perspectivas de otros agentes
-        if collaborative_mode and agent_id:
-            other_agents = {
-                'developer': {
-                    'name': 'Agente de Desarrollo',
-                    'topics': ['código', 'programación', 'implementación', 'bug', 'error', 'función', 'método']
-                },
-                'architect': {
-                    'name': 'Agente de Arquitectura',
-                    'topics': ['arquitectura', 'diseño', 'estructura', 'patrón', 'componente', 'sistema', 'servicio']
-                },
-                'advanced': {
-                    'name': 'Agente Avanzado',
-                    'topics': ['integración', 'optimización', 'rendimiento', 'escalabilidad', 'tecnología', 'avanzado']
-                }
-            }
-
-            # Detectar temas relacionados con otros agentes
-            potential_agents = []
-            for other_id, info in other_agents.items():
-                if other_id != agent_id:  # No sugerir el agente actual
-                    for topic in info['topics']:
-                        if topic.lower() in user_message.lower():
-                            potential_agents.append(other_id)
-                            break
-
-            # Añadir sugerencias de otros agentes
-            if potential_agents:
-                response += "\n\n---\n"
-                response += "**Nota:** Para esta consulta, también podrías consultar a:\n"
-
-                for agent_id in set(potential_agents):  # Eliminar duplicados
-                    response += f"- El {other_agents[agent_id]['name']}, para obtener más información sobre aspectos de {', '.join(other_agents[agent_id]['topics'][:3])}\n"
-
-        return {'response': response}
-
-    except Exception as e:
-        logging.error(f"Error general en handle_chat_internal: {str(e)}")
-        logging.error(traceback.format_exc())
-        return {
-            'error': str(e),
-            'response': f"Error inesperado al procesar tu mensaje: {str(e)}"
-        }
-
-# Función para monitorear cambios en archivos
-def watch_workspace_files():
-    """Monitor changes to files in workspaces and notify clients."""
-    # Implementación simplificada - en producción debería usar inotify o similar
-    logging.info("File watcher started")
-    # En una implementación real, aquí habría un bucle para monitorear cambios
-
-@app.route('/')
-def index():
-    """Render the main page."""
-    try:
-        return render_template('index.html')
-    except Exception as e:
-        logging.error(f"Error rendering index: {str(e)}")
-        return str(e), 500
-
-@app.route('/chat')
-def chat():
-    """Render the chat page with specialized agents."""
-    return render_template('chat.html')
-
-@app.route('/files')
-def files():
-    """File explorer view."""
-    return render_template('files.html')
-
-@app.route('/edit/<path:file_path>')
-def edit_file(file_path):
-    """Edit a file."""
-    try:
-        # Get the user workspace
-        user_id = session.get('user_id', 'default')
-        workspace_path = get_user_workspace(user_id)
-
-        # Determine the target file
-        # Make sure we don't escape the workspace
-        file_path = file_path.replace('..', '')  # Basic path traversal protection
-        target_file = (workspace_path / file_path).resolve()
-
-        if not str(target_file).startswith(str(workspace_path.resolve())):
-            return jsonify({'error': 'Access denied: Cannot access files outside workspace'}), 403
-
-        if not target_file.exists():
-            return jsonify({'error': 'File not found'}), 404
-
-        if target_file.is_dir():
-            return jsonify({'error': 'Cannot edit a directory'}), 400
-
-        # Read file content
-        with open(target_file, 'r') as f:
-            content = f.read()
-
-        # Determine file type for syntax highlighting
-        file_type = get_file_type(target_file.name)
-        file_size = target_file.stat().st_size
-
-        return render_template('editor.html',
-                             file_path=file_path,
-                             file_name=target_file.name,
-                             file_content=content,
-                             file_type=file_type,
-                             file_size=file_size)
-    except Exception as e:
-        logging.error(f"Error editing file: {str(e)}")
-        return jsonify({'error': str(e)}), 500
-
-@app.route('/code_corrector')
-def code_corrector():
-    """Render the code corrector page."""
-    return render_template('code_corrector.html')
-
-@app.route('/api/process_code', methods=['POST'])
-def process_code():
-    """Process code for corrections and improvements."""
-    try:
-        data = request.json
-        code = data.get('code', '')
-        instructions = data.get('instructions', 'Corrige errores y mejora la calidad del código')
-        language = data.get('language', 'python')
-        model = data.get('model', 'openai')
-        
-        if not code:
-            return jsonify({
-                'success': False,
-                'error': 'No se proporcionó código para procesar'
-            }), 400
-
-        # Configurar el prompt según el modelo elegido
-        result = None
-        
-        # Verificar qué modelo usar
-        if model == 'openai' and openai_client:
-            try:
-                # Usar OpenAI para corregir el código
-                response = openai_client.chat.completions.create(
-                    model="gpt-4o",
-                    messages=[
-                        {"role": "system", "content": f"Eres un experto programador. Tu tarea es corregir el siguiente código en {language} según las instrucciones proporcionadas. El código resultante debe ser limpio, optimizado y SIN COMENTARIOS explicativos dentro del código. Devuelve el código corregido, una lista de cambios realizados y una explicación clara separada del código."},
-                        {"role": "user", "content": f"CÓDIGO:\n```{language}\n{code}\n```\n\nINSTRUCCIONES:\n{instructions}\n\nResponde en formato JSON con las siguientes claves:\n- correctedCode: el código corregido completo\n- changes: una lista de objetos, cada uno con 'description' y 'lineNumbers'\n- explanation: una explicación detallada de los cambios"}
+                    full_prompt += prefix + msg['content'] +{language}\n{code}\n```\n\nINSTRUCCIONES:\n{instructions}\n\nResponde en formato JSON con las siguientes claves:\n- correctedCode: el código corregido completo\n- changes: una lista de objetos, cada uno con 'description' y 'lineNumbers'\n- explanation: una explicación detallada de los cambios"}
                     ],
                     response_format={"type": "json_object"}
                 )
-                
+
                 result = json.loads(response.choices[0].message.content)
                 logging.info("Código corregido con OpenAI")
-                
+
             except Exception as e:
                 logging.error(f"Error con API de OpenAI: {str(e)}")
                 return jsonify({
                     'success': False,
                     'error': f'Error al conectar con OpenAI: {str(e)}'
                 }), 500
-                
+
         elif model == 'anthropic' and os.environ.get('ANTHROPIC_API_KEY'):
             try:
                 # Importar anthropic si es necesario
                 import anthropic
                 from anthropic import Anthropic
-                
+
                 # Inicializar cliente
                 client = Anthropic(api_key=os.environ.get('ANTHROPIC_API_KEY'))
-                
+
                 response = client.messages.create(
                     model="claude-3-5-sonnet-latest",
                     max_tokens=4000,
@@ -961,7 +778,7 @@ def process_code():
                     ],
                     temperature=0.1
                 )
-                
+
                 # Extraer el JSON de la respuesta de Claude
                 import re
                 json_match = re.search(r'```json(.*?)```', response.content[0].text, re.DOTALL)
@@ -969,24 +786,24 @@ def process_code():
                     result = json.loads(json_match.group(1).strip())
                 else:
                     result = json.loads(response.content[0].text)
-                    
+
                 logging.info("Código corregido con Anthropic")
-                
+
             except Exception as e:
                 logging.error(f"Error con API de Anthropic: {str(e)}")
                 return jsonify({
                     'success': False,
                     'error': f'Error al conectar con Anthropic: {str(e)}'
                 }), 500
-                
+
         elif model == 'gemini' and os.environ.get('GEMINI_API_KEY'):
             try:
                 # Usar genai para procesar con Gemini
                 import google.generativeai as genai
-                
+
                 if not hasattr(genai, '_configured') or not genai._configured:
                     genai.configure(api_key=os.environ.get('GEMINI_API_KEY'))
-                
+
                 gemini_model = genai.GenerativeModel(
                     model_name='gemini-1.5-pro',
                     generation_config={
@@ -1014,7 +831,7 @@ def process_code():
                 """
 
                 response = gemini_model.generate_content(prompt)
-                
+
                 # Extraer el JSON de la respuesta de Gemini
                 import re
                 json_match = re.search(r'```json(.*?)```', response.text, re.DOTALL)
@@ -1032,9 +849,9 @@ def process_code():
                             "changes": [],
                             "explanation": "No se pudo procesar correctamente la respuesta del modelo."
                         }
-                
+
                 logging.info("Código corregido con Gemini")
-                
+
             except Exception as e:
                 logging.error(f"Error con API de Gemini: {str(e)}")
                 return jsonify({
@@ -1068,7 +885,23 @@ def process_code():
         return jsonify({
             'success': False,
             'error': f'Error al procesar la solicitud: {str(e)}'
-        }), 500 mejoras siguiendo estas instrucciones:
+        }), 500
+
+@app.route('/api/process_code_old', methods=['POST'])
+def process_code_old():
+    """Process code for corrections and improvements using older method."""
+    try:
+        data = request.json
+        code = data.get('code', '')
+        instructions = data.get('instructions', 'Corrige errores y mejora la calidad del código')
+        language = data.get('language', 'python')
+
+        if not code:
+            return jsonify({'error': 'No code provided'}), 400
+
+        prompt = f"""Corrige y mejora el siguiente código {language} para que funcione correctamente y tenga mejores prácticas.  El código debe estar optimizado y con comentarios útiles para explicar el código corregido.
+
+        Instrucciones de corrección y mejoras:
         {instructions}
 
         Código original:
@@ -1078,53 +911,6 @@ def process_code():
 
         Por favor, proporciona:
         1. El código corregido y completo
-        2. Una explicación detallada de los cambios realizados
-        3. Una lista de los problemas que identificaste y cómo los solucionaste
-        """
-
-        # En una implementación real, aquí se conectaría con OpenAI u otro servicio
-        # Para este ejemplo, simularemos una corrección simple
-        
-        # Simulación de corrección (en producción, usar API de IA)
-        corrected_code = code
-        explanation = f"Se analizó el código en {language}. No se encontraron errores críticos."
-        changes = [
-            {
-                "description": "Análisis completado según las instrucciones proporcionadas",
-                "lineNumbers": [1]
-            }
-        ]
-        
-        # Simular correcciones según el lenguaje
-        if language == 'python':
-            if 'print ' in code:  # Corregir print sin paréntesis (Python 2 a 3)
-                corrected_code = code.replace('print ', 'print(') + ')'
-                changes.append({
-                    "description": "Actualizado syntax de print para Python 3",
-                    "lineNumbers": [code.split('\n').index(line) + 1 for line in code.split('\n') if 'print ' in line]
-                })
-            
-        elif language == 'javascript':
-            if 'var ' in code:  # Sugerir let/const en lugar de var
-                corrected_code = code.replace('var ', 'const ')
-                changes.append({
-                    "description": "Reemplazado 'var' por 'const' para una mejor práctica en JavaScript moderno",
-                    "lineNumbers": [code.split('\n').index(line) + 1 for line in code.split('\n') if 'var ' in line]
-                })
-                
-        # Preparar respuesta
-        response = {
-            'corrected_code': corrected_code,
-            'explanation': explanation,
-            'changes': changes,
-            'language': language
-        }
-        
-        return jsonify(response)
-    except Exception as e:
-        import traceback
-        traceback.print_exc()
-        return jsonify({'error': str(e)}), 500go corregido
         2. Un resumen de los cambios realizados (máximo 5 puntos)
         3. Una explicación detallada de las correcciones y mejoras
 
@@ -1744,3 +1530,7 @@ if __name__ == '__main__':
     except Exception as e:
         logging.critical(f"Error fatal al iniciar el servidor: {str(e)}")
         logging.critical(traceback.format_exc())
+
+@app.route('/terminal')
+def terminal():
+    return render_template('terminal.html')
