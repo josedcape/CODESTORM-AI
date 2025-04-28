@@ -10,7 +10,7 @@ deploymentTarget = "autoscale"
 run = ["sh", "-c", "python main_completo.py"]
 
 [workflows]
-runButton = "Run Terminal AI"
+runButton = "Run Terminal App"
 
 [[workflows.workflow]]
 name = "Project"
@@ -112,6 +112,19 @@ args = "python main.py"
 
 [[workflows.workflow]]
 name = "Run Terminal AI"
+author = 42021489
+mode = "sequential"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "pip install -r requirements.txt"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "python main.py"
+
+[[workflows.workflow]]
+name = "Run Terminal App"
 author = 42021489
 mode = "sequential"
 

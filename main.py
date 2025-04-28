@@ -74,7 +74,10 @@ if openai_api_key:
 
 @app.route('/')
 def index():
-    """Render the main page."""
+    """Render the main page or redirect to terminal."""
+    # Para simplificar, también podemos redireccionar directamente a la terminal
+    # Descomenta la siguiente línea para redireccionar directamente
+    # return redirect('/terminal')
     return render_template('index.html')
 
 @app.route('/chat')
@@ -99,12 +102,7 @@ def preview():
 
 @app.route('/terminal')
 def terminal():
-    """Render the terminal page."""
-    return render_template('terminal.html')
-
-@app.route('/monaco_terminal')
-def monaco_terminal():
-    """Render the advanced Monaco terminal with AI assistant."""
+    """Render the Monaco terminal page."""
     # Asegurarse de que las rutas estén creadas
     os.makedirs('user_workspaces/default', exist_ok=True)
     # README inicial si está vacío
@@ -114,6 +112,12 @@ def monaco_terminal():
             f.write('# Workspace\n\nEste es tu espacio de trabajo. Usa comandos o instrucciones en lenguaje natural para crear y modificar archivos.\n\nEjemplos:\n- "crea una carpeta llamada proyectos"\n- "mkdir proyectos"\n- "touch archivo.txt"')
     
     return render_template('monaco_terminal.html')
+
+# Ruta alternativa para la terminal Monaco (mantenemos para compatibilidad)
+@app.route('/monaco_terminal')
+def monaco_terminal():
+    """Redirect to terminal."""
+    return redirect('/terminal')
 
 @app.route('/api/process_code', methods=['POST'])
 def process_code_endpoint():
