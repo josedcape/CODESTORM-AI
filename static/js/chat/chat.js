@@ -362,9 +362,16 @@ async function sendMessage() {
             });
 
             // Añadir mensaje del agente al chat
-            addAgentMessage(data.response, window.app.chat.activeAgent);
+            addAgentMessage(data.response, data.agent || window.app.chat.activeAgent);
         } else if (data.error) {
             addSystemMessage(`Error: ${data.error}`);
+            
+            // Sugerir probar otro modelo si hay error de API
+            if (data.error.includes("API") || data.error.includes("OpenAI") || 
+                data.error.includes("Anthropic") || data.error.includes("Gemini")) {
+                
+                addSystemMessage(`Sugerencia: Prueba con otro modelo de IA desde el menú de selección o verifica la configuración de la API.`);
+            }
         } else {
             addSystemMessage("El servidor respondió pero no envió ningún mensaje");
         }

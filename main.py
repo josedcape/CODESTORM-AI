@@ -102,23 +102,149 @@ def api_chat():
         data = request.json
         user_message = data.get('message', '')
         agent_id = data.get('agent_id', 'general')
-        model = data.get('model', 'gemini')
+        model_choice = data.get('model', 'gemini')
         context = data.get('context', [])
         
         if not user_message:
             return jsonify({'error': 'No se proporcionó un mensaje'}), 400
-            
-        # Procesamiento básico para demostración
-        response = f"Respuesta del agente '{agent_id}' usando modelo '{model}': He recibido tu mensaje '{user_message}'"
+        
+        # Configurar prompts específicos según el agente seleccionado
+        agent_prompts = {
+            'developer': "Eres un Agente de Desarrollo experto en optimización y edición de código en tiempo real. Tu objetivo es ayudar a los usuarios con tareas de programación, desde la corrección de errores hasta la implementación de funcionalidades completas.",
+            'architect': "Eres un Agente de Arquitectura especializado en diseñar arquitecturas escalables y optimizadas. Ayudas a los usuarios a tomar decisiones sobre la estructura del código, patrones de diseño y selección de tecnologías.",
+            'advanced': "Eres un Agente Avanzado de Software con experiencia en integraciones complejas y funcionalidades avanzadas. Puedes asesorar sobre tecnologías emergentes, optimización de rendimiento y soluciones a problemas técnicos sofisticados.",
+            'general': "Eres un asistente de desarrollo de software experto y útil. Respondes preguntas y ayudas con tareas de programación de manera clara y concisa."
+        }
+        
+        system_prompt = agent_prompts.get(agent_id, agent_prompts['general'])
+        
+        # Preprocesar contexto para dar formato consistente
+        formatted_context = []
+        for msg in context:
+            role = msg.get('role', 'user')
+            if role not in ['user', 'assistant', 'system']:
+                role = 'user'
+            formatted_context.append({
+                "role": role,
+                "content": msg.get('content', '')
+            })
+        
+        response = ""
+        
+        # Usar el modelo seleccionado para generar la respuesta
+        if model_choice == 'openai' and openai_client:
+            try:
+                messages = [{"role": "system", "content": system_prompt}]
+                
+                # Añadir mensajes de contexto
+                for msg in formatted_context:
+                    messages.append({"role": msg['role'], "content": msg['content']})
+                
+                # Añadir el mensaje actual del usuario
+                messages.append({"role": "user", "content": user_message})
+                
+                completion = openai_client.chat.completions.create(
+                    model="gpt-4o",
+                    messages=messages,
+                    temperature=0.7,
+                    max_tokens=2000
+                )
+                
+                response = completion.choices[0].message.content
+                logging.info(f"Respuesta generada con OpenAI: {response[:100]}...")
+                
+            except Exception as e:
+                logging.error(f"Error con API de OpenAI: {str(e)}")
+                return jsonify({
+                    'error': f"Error con OpenAI: {str(e)}",
+                    'agent': agent_id,
+                    'model': model_choice
+                }), 500
+                
+        elif model_choice == 'anthropic' and anthropic_api_key:
+            try:
+                # Importar anthropic si es necesario
+                import anthropic
+                from anthropic import Anthropic
+                
+                # Inicializar cliente
+                client = Anthropic(api_key=anthropic_api_key)
+                
+                messages = [{"role": "system", "content": system_prompt}]
+                
+                # Añadir mensajes de contexto
+                for msg in formatted_context:
+                    messages.append({"role": msg['role'], "content": msg['content']})
+                
+                # Añadir el mensaje actual del usuario
+                messages.append({"role": "user", "content": user_message})
+                
+                completion = client.messages.create(
+                    model="claude-3-5-sonnet-latest",
+                    messages=messages,
+                    max_tokens=2000,
+                    temperature=0.7
+                )
+                
+                response = completion.content[0].text
+                logging.info(f"Respuesta generada con Anthropic: {response[:100]}...")
+                
+            except Exception as e:
+                logging.error(f"Error con API de Anthropic: {str(e)}")
+                return jsonify({
+                    'error': f"Error con Anthropic: {str(e)}",
+                    'agent': agent_id,
+                    'model': model_choice
+                }), 500
+                
+        elif model_choice == 'gemini' and gemini_api_key:
+            try:
+                import google.generativeai as genai
+                
+                if not hasattr(genai, '_configured') or not genai._configured:
+                    genai.configure(api_key=gemini_api_key)
+                
+                model = genai.GenerativeModel('gemini-1.5-pro')
+                
+                # Construir el prompt con contexto
+                full_prompt = system_prompt + "\n\n"
+                
+                # Añadir el contexto de la conversación
+                for msg in formatted_context:
+                    role_prefix = "Usuario: " if msg['role'] == 'user' else "Asistente: "
+                    full_prompt += role_prefix + msg['content'] + "\n\n"
+                
+                # Añadir el mensaje actual
+                full_prompt += "Usuario: " + user_message + "\n\nAsistente: "
+                
+                # Generar respuesta
+                gemini_response = model.generate_content(full_prompt)
+                response = gemini_response.text
+                logging.info(f"Respuesta generada con Gemini: {response[:100]}...")
+                
+            except Exception as e:
+                logging.error(f"Error con API de Gemini: {str(e)}")
+                return jsonify({
+                    'error': f"Error con Gemini: {str(e)}",
+                    'agent': agent_id,
+                    'model': model_choice
+                }), 500
+        else:
+            # Si ningún modelo está disponible o no se ha seleccionado uno válido
+            return jsonify({
+                'error': f"Modelo {model_choice} no soportado o API no configurada",
+                'agent': agent_id,
+                'model': model_choice
+            }), 400
         
         # Registrar la petición para depuración
-        logging.info(f"Mensaje procesado: {user_message} por agente {agent_id}")
+        logging.info(f"Mensaje procesado: {user_message} por agente {agent_id} usando {model_choice}")
         
         # Devolver respuesta
         return jsonify({
             'response': response,
             'agent': agent_id,
-            'model': model
+            'model': model_choice
         })
     except Exception as e:
         logging.error(f"Error en API de chat: {str(e)}")
