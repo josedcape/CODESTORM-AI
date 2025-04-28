@@ -211,6 +211,7 @@ def execute_command(command, workspace_path):
             'output': f"Error: {str(e)}",
             'status': -1
         }
+        }
 
 def process_natural_language(text, model, workspace_path):
     """
@@ -248,12 +249,13 @@ def process_natural_language(text, model, workspace_path):
                 'error': f"Modelo {model} no disponible o API key no configurada."
             }
     
-    except Exception as e:
+    except Exception aexcept Exception as e:
         logging.error(f"Error procesando lenguaje natural: {str(e)}")
         logging.error(traceback.format_exc())
         return {
             'success': False,
             'error': f"Error al procesar la instrucción: {str(e)}"
+        }e)}"
         }
 
 def simple_nl_to_command(text):

@@ -1160,3 +1160,208 @@
     </script>
 </body>
 </html>
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>XTerm Terminal | CODESTORM</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm@5.1.0/css/xterm.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/xterm@5.1.0/lib/xterm.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xterm-addon-fit@0.7.0/lib/xterm-addon-fit.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            height: 100vh;
+            background: linear-gradient(90deg, #091428 0%, #0A2149 100%);
+            color: #fff;
+        }
+        
+        .terminal-container {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            padding: 10px;
+            box-sizing: border-box;
+        }
+        
+        .terminal-header {
+            padding: 5px 10px;
+            background-color: rgba(0, 0, 0, 0.3);
+            border-top-left-radius: 5px;
+            border-top-right-radius: 5px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .terminal-header h1 {
+            font-size: 18px;
+            margin: 0;
+        }
+        
+        #terminal {
+            flex-grow: 1;
+            background-color: rgba(0, 0, 0, 0.7);
+            border-bottom-left-radius: 5px;
+            border-bottom-right-radius: 5px;
+            padding: 10px;
+            overflow: hidden;
+        }
+        
+        .terminal-buttons {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .terminal-button {
+            background-color: #1E3A8A;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 3px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        
+        .terminal-button:hover {
+            background-color: #2563EB;
+        }
+    </style>
+</head>
+<body>
+    <div class="terminal-container">
+        <div class="terminal-header">
+            <h1>XTerm Terminal</h1>
+            <div class="terminal-buttons">
+                <button class="terminal-button" id="clearButton">Limpiar</button>
+                <button class="terminal-button" id="homeButton">Inicio</button>
+            </div>
+        </div>
+        <div id="terminal"></div>
+    </div>
+
+    <script>
+        // Inicializar terminal
+        const term = new Terminal({
+            cursorBlink: true,
+            fontFamily: 'monospace',
+            fontSize: 14,
+            theme: {
+                background: '#0a0a0a',
+                foreground: '#f0f0f0',
+                cursor: '#ffffff',
+                selection: 'rgba(255, 255, 255, 0.3)',
+                black: '#000000',
+                red: '#e06c75',
+                green: '#98c379',
+                yellow: '#e5c07b',
+                blue: '#61afef',
+                magenta: '#c678dd',
+                cyan: '#56b6c2',
+                white: '#dcdfe4'
+            }
+        });
+        
+        // Cargar addon para ajustar tamaño
+        const fitAddon = new FitAddon.FitAddon();
+        term.loadAddon(fitAddon);
+        
+        // Abrir terminal en el contenedor
+        term.open(document.getElementById('terminal'));
+        fitAddon.fit();
+        
+        // Ajustar terminal al cambiar tamaño de ventana
+        window.addEventListener('resize', () => {
+            fitAddon.fit();
+        });
+        
+        // Buffer para almacenar entrada del usuario
+        let commandBuffer = '';
+        const prompt = '\r\n\x1b[32mcodestorm\x1b[37m@\x1b[34mterminal\x1b[0m:\x1b[36m~\x1b[0m$ ';
+        
+        // Mostrar mensaje de bienvenida
+        term.write('¡Bienvenido a XTerm Terminal de CODESTORM!\r\n');
+        term.write('Escribe comandos para interactuar con el sistema.\r\n');
+        term.write(prompt);
+        
+        // Manejar eventos de teclado
+        term.onKey(({ key, domEvent }) => {
+            const printable = !domEvent.altKey && !domEvent.ctrlKey && !domEvent.metaKey;
+            
+            if (domEvent.keyCode === 13) { // Enter
+                // Procesar comando
+                processCommand(commandBuffer);
+                commandBuffer = '';
+            } else if (domEvent.keyCode === 8) { // Backspace
+                // Eliminar último carácter
+                if (commandBuffer.length > 0) {
+                    commandBuffer = commandBuffer.slice(0, -1);
+                    term.write('\b \b');
+                }
+            } else if (printable) {
+                // Agregar carácter al buffer y mostrar
+                commandBuffer += key;
+                term.write(key);
+            }
+        });
+        
+        // Procesar comandos
+        function processCommand(command) {
+            term.write('\r\n');
+            
+            if (command.trim() === '') {
+                term.write(prompt);
+                return;
+            }
+            
+            if (command === 'clear') {
+                term.clear();
+                term.write(prompt);
+                return;
+            }
+            
+            // Enviar comando al servidor
+            fetch('/api/xterm/execute', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ command: command }),
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    if (data.stdout) {
+                        term.write(data.stdout);
+                    }
+                    if (data.stderr) {
+                        term.write('\x1b[31m' + data.stderr + '\x1b[0m');
+                    }
+                } else {
+                    term.write('\x1b[31mError: ' + data.error + '\x1b[0m\r\n');
+                }
+                term.write(prompt);
+            })
+            .catch(error => {
+                term.write('\x1b[31mError de conexión: ' + error.message + '\x1b[0m\r\n');
+                term.write(prompt);
+            });
+        }
+        
+        // Configurar botones
+        document.getElementById('clearButton').addEventListener('click', () => {
+            term.clear();
+            term.write(prompt);
+        });
+        
+        document.getElementById('homeButton').addEventListener('click', () => {
+            window.location.href = '/';
+        });
+    </script>
+</body>
+</html>
+

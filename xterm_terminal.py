@@ -7,67 +7,76 @@ import uuid
 import logging
 import subprocess
 from pathlib import Path
-from flask import request, jsonify
+from flask import Blueprint, render_template, request, jsonify
 from flask_socketio import emit, join_room, leave_room
+import traceback
 
-def init_xterm_terminal(app, socketio):
-    """Inicializa las rutas y eventos para la terminal xterm.js."""
-    # Rutas de usuario
+xterm_bp = Blueprint('xterm', __name__)
+
+@xterm_bp.route('/xterm')
+def xterm_terminal():
+    """Render the XTerm terminal page."""
+    # Asegurarse de que las rutas estén creadas
+    os.makedirs('user_workspaces/default', exist_ok=True)
+
+    # README inicial si está vacío
+    readme_path = Path('user_workspaces/default/README.md')
+    if not readme_path.exists():
+        with open(readme_path, 'w') as f:
+            f.write('# Workspace\n\nEste es tu espacio de trabajo colaborativo. Usa comandos o instrucciones en lenguaje natural para crear y modificar archivos.\n\nEjemplos:\n- "crea una carpeta llamada proyectos"\n- "mkdir proyectos"\n- "touch archivo.txt"')
+
+    return render_template('xterm_terminal.html')
+
+@xterm_bp.route('/api/xterm/execute', methods=['POST'])
+def execute_xterm_command():
+    """Execute a command in the terminal."""
+    try:
+        data = request.json
+        command = data.get('command', '')
+
+        if not command:
+            return jsonify({
+                'success': False,
+                'error': 'No se proporcionó comando'
+            }), 400
+
+        # Obtener directorio de trabajo
+        workspace_dir = os.path.join(os.getcwd(), 'user_workspaces/default')
+        os.makedirs(workspace_dir, exist_ok=True)
+
+        # Ejecutar comando
+        process = subprocess.Popen(
+            command,
+            shell=True,
+            cwd=workspace_dir,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True
+        )
+
+        stdout, stderr = process.communicate()
+
+        return jsonify({
+            'success': True,
+            'stdout': stdout,
+            'stderr': stderr,
+            'exitCode': process.returncode
+        })
+
+    except Exception as e:
+        logging.error(f"Error ejecutando comando XTerm: {str(e)}")
+        logging.error(traceback.format_exc())
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+
+def init_xterm_blueprint(app, socketio):
+    """Registra el blueprint en la aplicación Flask."""
+    app.register_blueprint(xterm_bp, url_prefix='/xterm')
+
     user_workspaces = {}
-
-    @app.route('/xterm_terminal')
-    def xterm_terminal():
-        """Renderiza la página de la terminal xterm.js."""
-        # Asegurarse de que las rutas estén creadas
-        os.makedirs('user_workspaces/default', exist_ok=True)
-
-        # README inicial si está vacío
-        readme_path = Path('user_workspaces/default/README.md')
-        if not readme_path.exists():
-            with open(readme_path, 'w') as f:
-                f.write('# Workspace\n\nEste es tu espacio de trabajo colaborativo. Usa comandos o instrucciones en lenguaje natural para crear y modificar archivos.\n\nEjemplos:\n- "crea una carpeta llamada proyectos"\n- "mkdir proyectos"\n- "touch archivo.txt"')
-
-        return app.render_template('xterm_terminal.html')
-
-    @app.route('/preview')
-    def preview_file():
-        """Renderiza una vista previa del archivo especificado o una página por defecto."""
-        file_path = request.args.get('file', '')
-
-        if file_path:
-            try:
-                full_path = Path('user_workspaces/default') / file_path
-                if full_path.exists() and full_path.is_file():
-                    if full_path.suffix.lower() in ['.html', '.htm']:
-                        with open(full_path, 'r') as f:
-                            content = f.read()
-                        return content
-                    else:
-                        return f"<pre>{full_path.read_text()}</pre>"
-                else:
-                    return "<h1>Archivo no encontrado</h1>"
-            except Exception as e:
-                return f"<h1>Error</h1><p>{str(e)}</p>"
-
-        # Página por defecto
-        return """
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <title>Vista Previa</title>
-            <style>
-                body { font-family: Arial, sans-serif; padding: 20px; }
-                .preview-info { text-align: center; color: #666; }
-            </style>
-        </head>
-        <body>
-            <div class="preview-info">
-                <h1>Vista Previa</h1>
-                <p>Selecciona un archivo HTML para ver su vista previa aquí.</p>
-            </div>
-        </body>
-        </html>
-        """
 
     def get_user_workspace(user_id):
         """Obtiene la ruta del workspace del usuario."""
@@ -125,7 +134,7 @@ def init_xterm_terminal(app, socketio):
                 current_dir = workspace_path / directory
 
             # Ejecutar comando en esa ruta
-            logging.debug(f"Ejecutando comando: '{command}'") # Added logging here
+            logging.debug(f"Ejecutando comando: '{command}'")
             process = subprocess.Popen(
                 command,
                 shell=True,
@@ -163,40 +172,6 @@ def init_xterm_terminal(app, socketio):
                 'output': f"Error: {str(e)}"
             }, room=request.sid)
 
-    # Ruta para la API REST para ejecutar comandos
-    @app.route('/execute-command', methods=['POST'])
-    def execute_command():
-        """Ejecuta un comando en el servidor desde una solicitud HTTP."""
-        try:
-            command = request.json.get('command')
-            if not command:
-                return jsonify({
-                    'success': False,
-                    'error': 'No se proporcionó ningún comando'
-                }), 400
-
-            # Ejecutar el comando en el servidor
-            logging.debug(f"Ejecutando comando (HTTP): '{command}'") # Added logging here
-            process = subprocess.run(
-                command, 
-                shell=True, 
-                capture_output=True, 
-                text=True,
-                cwd=os.path.join(os.getcwd(), 'user_workspaces/default')
-            )
-
-            return jsonify({
-                'success': process.returncode == 0,
-                'stdout': process.stdout,
-                'stderr': process.stderr
-            }), 200
-
-        except Exception as e:
-            logging.error(f"Error al ejecutar comando vía HTTP: {str(e)}")
-            return jsonify({
-                'success': False,
-                'error': str(e)
-            }), 500
 
     @socketio.on('natural_language')
     def handle_natural_language(data):
@@ -268,7 +243,7 @@ def init_xterm_terminal(app, socketio):
             else:
                 current_dir = workspace_path / directory
 
-            logging.debug(f"Ejecutando comando (Lenguaje natural): '{command}'") # Added logging here
+            logging.debug(f"Ejecutando comando (Lenguaje natural): '{command}'")
             process = subprocess.Popen(
                 command,
                 shell=True,
@@ -375,3 +350,4 @@ def init_xterm_terminal(app, socketio):
 
     # Registrar eventos adicionales que se necesiten
     logging.info("Terminal xterm.js y colaboración en tiempo real inicializados")
+    logging.info("XTerm terminal blueprint registered successfully")
