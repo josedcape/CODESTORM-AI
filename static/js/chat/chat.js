@@ -17,6 +17,9 @@ window.app.chat.apiEndpoints = {
     files: '/api/files'
 };
 
+// Asegurarse de que los endpoints estén definidos y accesibles
+console.log("API Endpoints configurados:", window.app.chat.apiEndpoints);
+
 // Configuración del módulo de chat
 window.app.chat = {
     context: [], // Historial de mensajes para mantener contexto

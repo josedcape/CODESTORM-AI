@@ -94,6 +94,35 @@ def index():
 def chat():
     """Render the chat page with specialized agents."""
     return render_template('chat.html')
+    
+@app.route('/api/chat', methods=['POST'])
+def api_chat():
+    """API endpoint para manejar solicitudes de chat."""
+    try:
+        data = request.json
+        user_message = data.get('message', '')
+        agent_id = data.get('agent_id', 'general')
+        model = data.get('model', 'gemini')
+        context = data.get('context', [])
+        
+        if not user_message:
+            return jsonify({'error': 'No se proporcionó un mensaje'}), 400
+            
+        # Procesamiento básico para demostración
+        response = f"Respuesta del agente '{agent_id}' usando modelo '{model}': He recibido tu mensaje '{user_message}'"
+        
+        # Registrar la petición para depuración
+        logging.info(f"Mensaje procesado: {user_message} por agente {agent_id}")
+        
+        # Devolver respuesta
+        return jsonify({
+            'response': response,
+            'agent': agent_id,
+            'model': model
+        })
+    except Exception as e:
+        logging.error(f"Error en API de chat: {str(e)}")
+        return jsonify({'error': str(e)}), 500
 
 @app.route('/files')
 def files():
