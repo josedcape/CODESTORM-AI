@@ -32,6 +32,9 @@ socketio = SocketIO(app, cors_allowed_origins="*")  # Inicializar Socket.IO
 # Initialize intelligent terminal
 init_terminal(app, socketio)
 
+# Debug flag for more detailed errors
+app.debug = True
+
 # Set session secret
 app.secret_key = os.environ.get("SESSION_SECRET", os.urandom(24).hex())
 
@@ -961,3 +964,10 @@ def extract_json_from_claude(text):
                 return {"correctedCode": "", "changes": [], "explanation": "Error al procesar la respuesta JSON de Claude."}
         else:
             return {"correctedCode": "", "changes": [], "explanation": "No se encontró JSON en la respuesta de Claude."}
+
+if __name__ == "__main__":
+    # Create workspaces directory if it doesn't exist
+    os.makedirs('user_workspaces/default', exist_ok=True)
+    
+    # Run the app
+    socketio.run(app, host='0.0.0.0', port=5000, debug=True, allow_unsafe_werkzeug=True)
