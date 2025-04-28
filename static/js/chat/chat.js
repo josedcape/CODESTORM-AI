@@ -21,7 +21,7 @@ window.app.chat.apiEndpoints = {
 console.log("API Endpoints configurados:", window.app.chat.apiEndpoints);
 
 // Configuración del módulo de chat
-window.app.chat = {
+let chatConfig = { // Changed to let chatConfig
     context: [], // Historial de mensajes para mantener contexto
     chatMessageId: 0, // Contador de ID para mensajes
     activeModel: 'gemini', // Modelo predeterminado
@@ -85,6 +85,8 @@ window.app.chat = {
     }
 };
 
+window.app.chat = chatConfig; // Assign chatConfig to window.app.chat
+
 /**
  * Inicializa el chat y configura los manejadores de eventos
  */
@@ -100,6 +102,22 @@ function initializeChat() {
 
     // Inicializar características avanzadas
     setupDocumentFeatures();
+    //Load highlight.js
+    loadHighlightJS();
+}
+
+
+function loadHighlightJS() {
+    const script = document.createElement('script');
+    script.src = 'https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js';
+    script.async = true;
+    document.head.appendChild(script);
+    script.onload = () => {
+        silentLog('highlight.js loaded successfully');
+    }
+    script.onerror = () => {
+        silentLog('Error loading highlight.js');
+    }
 }
 
 /**
