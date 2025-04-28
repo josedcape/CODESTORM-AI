@@ -83,10 +83,12 @@ if openai_api_key:
 @app.route('/')
 def index():
     """Render the main page or redirect to terminal."""
-    # Para simplificar, también podemos redireccionar directamente a la terminal
-    # Descomenta la siguiente línea para redireccionar directamente
-    # return redirect('/terminal')
-    return render_template('index.html')
+    try:
+        return render_template('index.html')
+    except Exception as e:
+        # En caso de error, redirigir a la terminal
+        logging.error(f"Error al renderizar index.html: {str(e)}")
+        return redirect('/terminal')
 
 @app.route('/chat')
 def chat():
