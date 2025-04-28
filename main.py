@@ -91,8 +91,13 @@ def code_corrector():
 
 @app.route('/preview')
 def preview():
-    """Render the HTML preview page."""
+    """Render the preview page."""
     return render_template('preview.html')
+
+@app.route('/terminal')
+def terminal():
+    """Render the terminal page."""
+    return render_template('terminal.html')
 
 @app.route('/api/process_code', methods=['POST'])
 def process_code_endpoint():
@@ -863,17 +868,7 @@ def process_request():
     """API para procesar solicitudes genéricas."""
     try:
         data = request.json
-        if not data:
-            return jsonify({
-                'success': False,
-                'error': 'No se proporcionaron datos'
-            }), 400
-
-        action = data.get('action', '')
-        user_id = data.get('user_id', 'default')
-
-        try:
-            response = re.sub(r'```([a-zA-Z0-9]+)?\s*', r'```\1\n', response)
+        if not([a-zA-Z0-9]+)?\s*', r'```\1\n', response)
             response = re.sub(r'\s*```', r'\n```', response)
 
             # Asegurar que los títulos tengan espacio después del #
@@ -963,4 +958,4 @@ def extract_json_from_claude(text):
         return json.loads(text.strip())
     except json.JSONDecodeError:
         # Si no es JSON válido, buscamos dentro de bloques de código
-        json_match = re.search(r'```json\s*(.*?)\s*```', response, re.DOTALL)
+        json_match = re.search(r'```json\s*(.*?)\s*
