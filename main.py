@@ -12,6 +12,8 @@ import time
 import subprocess
 import shutil
 from werkzeug.utils import secure_filename
+from flask_socketio import SocketIO
+from intelligent_terminal import init_terminal
 
 # Load environment variables with force reload
 load_dotenv(override=True)
@@ -25,6 +27,7 @@ logging.basicConfig(
 # Initialize Flask app
 app = Flask(__name__)
 CORS(app)  # Enable CORS for all routes
+socketio = SocketIO(app, cors_allowed_origins="*")  # Inicializar Socket.IO
 
 # Set session secret
 app.secret_key = os.environ.get("SESSION_SECRET", os.urandom(24).hex())
@@ -98,6 +101,11 @@ def preview():
 def terminal():
     """Render the terminal page."""
     return render_template('terminal.html')
+
+@app.route('/monaco_terminal')
+def monaco_terminal():
+    """Render the advanced Monaco terminal with AI assistant."""
+    return render_template('monaco_terminal.html')
 
 @app.route('/api/process_code', methods=['POST'])
 def process_code_endpoint():
@@ -1169,5 +1177,9 @@ def extract_json_from_claude(text):
             }
 
 
+# Inicializar el terminal inteligente
+init_terminal(app, socketio)
+
 if __name__ == '__main__':
-    app.run(debug=True)
+    # Usar socketio.run en lugar de app.run para habilitar WebSockets
+    socketio.run(app, host='0.0.0.0', port=5000, debug=True, allow_unsafe_werkzeug=True)
