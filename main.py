@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, jsonify, session, send_from_directory, send_file
+from flask import Flask, render_template, request, jsonify, session, send_from_directory, send_file, redirect
 from flask_cors import CORS
 import os
 import logging
@@ -853,21 +853,82 @@ def clone_repository():
                 text=True
             )
 
+            # Verificar si hay error en la salida de error de git
             if process.returncode != 0:
                 return jsonify({
                     'success': False,
-                    'error': f'Error al ejecutar comando: {process.stderr}'
+                    'error': f'Error al clonar repositorio: {process.stderr}'
                 }), 500
 
-            # Procesamos la salida del comando como respuesta
-json(.*?)```', text, re.DOTALL)
-    if json_match:
-        try:
-            return json.loads(json_match.group(1).strip())
-        except json.JSONDecodeError:
-            return {"correctedCode": "", "changes": [], "explanation": "Error al procesar la respuesta JSON de Gemini."}
-    else:
-        return {"correctedCode": "", "changes": [], "explanation": "No se encontró JSON en la respuesta de Gemini."}
+            logging.info(f"Repositorio clonado exitosamente: {repo_url} -> {full_target_path}")
+
+            return jsonify({
+                'success': True,
+                'message': f'Repositorio clonado exitosamente en {target_dir}',
+                'output': process.stdout,
+                'target_dir': target_dir
+            })
+        except Exception as e:
+            logging.error(f"Error al ejecutar git clone: {str(e)}")
+            return jsonify({
+                'success': False,
+                'error': f'Error al clonar repositorio: {str(e)}'
+            }), 500
+
+    except Exception as e:
+        logging.error(f"Error al clonar repositorio: {str(e)}")
+        logging.error(traceback.format_exc())  # Añadir traza completa para mejor depuración
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@app.route('/api/process', methods=['POST'])
+def process_request():
+    """API para procesar solicitudes genéricas."""
+    try:
+        data = request.json
+        if not data:
+            return jsonify({
+                'success': False,
+                'error': 'No se proporcionaron datos'
+            }), 400
+
+        # Process the request data here
+        # Example: Format code blocks in response
+        # response = re.sub(r'```([a-zA-Z0-9]+)?\s*', r'```\1\n', response)
+
+        return jsonify({'success': True, 'response': 'Processed successfully'})
+    except Exception as e:
+        logging.error(f"Error in process_request: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@app.route('/api_status')
+def api_status():
+    """Muestra el estado de las claves API configuradas."""
+    openai_key = os.environ.get('OPENAI_API_KEY', 'No configurada')
+    anthropic_key = os.environ.get('ANTHROPIC_API_KEY', 'No configurada')
+    gemini_key = os.environ.get('GEMINI_API_KEY', 'No configurada')
+
+    # Ocultar la mayoría de los caracteres para seguridad
+    if openai_key != 'No configurada':
+        openai_key = openai_key[:5] + "..." + openai_key[-5:] if len(openai_key) > 10 else "***configurada***"
+
+    if anthropic_key != 'No configurada':
+        anthropic_key = anthropic_key[:5] + "..." + anthropic_key[-5:] if len(anthropic_key) > 10 else "***configurada***"
+
+    if gemini_key != 'No configurada':
+        gemini_key = gemini_key[:5] + "..." + gemini_key[-5:] if len(gemini_key) > 10 else "***configurada***"
+
+    return jsonify({
+        'openai': openai_key,
+        'anthropic': anthropic_key,
+        'gemini': gemini_key,
+        'message': 'Visita esta URL para verificar el estado de las APIs'
+    })
 
 def extract_json_from_gemini(text):
     """Extrae JSON de una respuesta de Gemini."""
@@ -889,4 +950,11 @@ def extract_json_from_claude(text):
         return json.loads(text.strip())
     except json.JSONDecodeError:
         # Si no es JSON válido, buscamos dentro de bloques de código
-        json_match = re.search(r'```json\s*(.*?)\s*
+        json_match = re.search(r'```json\s*(.*?)\s*```', text, re.DOTALL)
+        if json_match:
+            try:
+                return json.loads(json_match.group(1).strip())
+            except json.JSONDecodeError:
+                return {"correctedCode": "", "changes": [], "explanation": "Error al procesar la respuesta JSON de Claude."}
+        else:
+            return {"correctedCode": "", "changes": [], "explanation": "No se encontró JSON en la respuesta de Claude."}
