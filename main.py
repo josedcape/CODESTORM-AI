@@ -862,14 +862,57 @@ def clone_repository():
             )
 
             # Verificar si hay error en la salida de error de git
-            if process.return([a-zA-Z0-9]+)?\s*', r'```\1\n', response)
-        response = re.sub(r'\s*```', r'\n```', response)
+            if process.returncode != 0:
+                return jsonify({
+                    'success': False,
+                    'error': f'Error al clonar repositorio: {process.stderr}'
+                }), 500
 
-        # Asegurar que los títulos tengan espacio después del #
-        response = re.sub(r'(^|\n)#([^#\s])', r'\1# \2', response)
+            logging.info(f"Repositorio clonado exitosamente: {repo_url} -> {full_target_path}")
 
-        # Asegurar que las listas tengan formato adecuado
-        response = re.sub(r'(^|\n)(-|\d+\.) ([^\s])', r'\1\2 \3', response)
+            return jsonify({
+                'success': True,
+                'message': f'Repositorio clonado exitosamente en {target_dir}',
+                'output': process.stdout,
+                'target_dir': target_dir
+            })
+        except Exception as e:
+            logging.error(f"Error al ejecutar git clone: {str(e)}")
+            return jsonify({
+                'success': False,
+                'error': f'Error al clonar repositorio: {str(e)}'
+            }), 500
+
+    except Exception as e:
+        logging.error(f"Error al clonar repositorio: {str(e)}")
+        logging.error(traceback.format_exc())  # Añadir traza completa para mejor depuración
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@app.route('/api/process', methods=['POST'])
+def process_request():
+    """API para procesar solicitudes genéricas."""
+    try:
+        data = request.json
+        if not data:
+            return jsonify({
+                'success': False,
+                'error': 'No se proporcionaron datos'
+            }), 400
+
+        # Formatear la respuesta si existe
+        response = data.get('response', '')
+        if response:
+            response = re.sub(r'```([a-zA-Z0-9]+)?\s*', r'```\1\n', response)
+            response = re.sub(r'\s*```', r'\n```', response)
+
+            # Asegurar que los títulos tengan espacio después del #
+            response = re.sub(r'(^|\n)#([^#\s])', r'\1# \2', response)
+
+            # Asegurar que las listas tengan formato adecuado
+            response = re.sub(r'(^|\n)(-|\d+\.) ([^\s])', r'\1\2 \3', response)
 
         return jsonify({'response': response})
     except Exception as e:
@@ -879,7 +922,6 @@ def clone_repository():
             'error': str(e),
             'response': f"Error inesperado: {str(e)}"
         }), 500
-
 
 @app.route('/api_status')
 def api_status():
@@ -924,4 +966,11 @@ def extract_json_from_claude(text):
         return json.loads(text.strip())
     except json.JSONDecodeError:
         # Si no es JSON válido, buscamos dentro de bloques de código
-        json_match = re.search(r'```json\s*(.*?)\s*
+        json_match = re.search(r'```json\s*(.*?)\s*```', text, re.DOTALL)
+        if json_match:
+            try:
+                return json.loads(json_match.group(1).strip())
+            except json.JSONDecodeError:
+                return {"correctedCode": "", "changes": [], "explanation": "Error al procesar la respuesta JSON de Claude."}
+        else:
+            return {"correctedCode": "", "changes": [], "explanation": "No se encontró JSON en la respuesta de Claude."}
