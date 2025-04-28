@@ -862,14 +862,14 @@ def clone_repository():
             )
 
             # Verificar si hay error en la salida de error de git
-([a-zA-Z0-9]+)?\s*', r'```\1\n', response)
-            response = re.sub(r'\s*```', r'\n```', response)
+            if process.return([a-zA-Z0-9]+)?\s*', r'```\1\n', response)
+        response = re.sub(r'\s*```', r'\n```', response)
 
-            # Asegurar que los títulos tengan espacio después del #
-            response = re.sub(r'(^|\n)#([^#\s])', r'\1# \2', response)
+        # Asegurar que los títulos tengan espacio después del #
+        response = re.sub(r'(^|\n)#([^#\s])', r'\1# \2', response)
 
-            # Asegurar que las listas tengan formato adecuado
-            response = re.sub(r'(^|\n)(-|\d+\.) ([^\s])', r'\1\2 \3', response)
+        # Asegurar que las listas tengan formato adecuado
+        response = re.sub(r'(^|\n)(-|\d+\.) ([^\s])', r'\1\2 \3', response)
 
         return jsonify({'response': response})
     except Exception as e:
