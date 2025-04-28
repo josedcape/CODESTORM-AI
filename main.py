@@ -859,19 +859,15 @@ def clone_repository():
                     'error': f'Error al ejecutar comando: {process.stderr}'
                 }), 500
 
-            # Dar formato a la respuesta
-            response = re.sub(r'```\s*([a-\1\n', response)
-            response = re.sub(r'\s*```', r'\n```', response)
-
-            # Asegurar que los títulos tengan espacio después del #
-            response = re.sub(r'^#(\S+)', r'# \1', response, flags=re.MULTILINE)
+            # Procesamos la salida del comando como respuesta
+            stdout_response = process.stdout
 
             logging.info(f"Repositorio clonado exitosamente: {repo_url} -> {full_target_path}")
 
             return jsonify({
                 'success': True,
                 'message': f'Repositorio clonado exitosamente en {target_dir}',
-                'output': response, #Usamos la respuesta formateada
+                'output': stdout_response,
                 'target_dir': target_dir
             })
         except Exception as e:
