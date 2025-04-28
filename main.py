@@ -855,14 +855,19 @@ def clone_repository():
         # Clonar el repositorio con manejo de errores mejorado
         try:
             process = subprocess.run(
-                ([a-zA-Z0-9]+)?\s*', r'```\1\n', response)
-            response = re.sub(r'\s*```', r'\n```', response)
+                ['git', 'clone', repo_url, full_target_path],
+                check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE
+            )
 
-            # Asegurar que los títulos tengan espacio después del #
-            response = re.sub(r'(^|\n)#([^#\s])', r'\1# \2', response)
+            return jsonify({
+                'success': True,
+                '\1\n', response)
+        response = re.sub(r'\s*```', r'\n```', response)
+        # Asegurar que los títulos tengan espacio después del #
+        response = re.sub(r'(^|\n)#([^#\s])', r'\1# \2', response)
 
-            # Asegurar que las listas tengan formato adecuado
-            response = re.sub(r'(^|\n)(-|\d+\.) ([^\s])', r'\1\2 \3', response)
+        # Asegurar que las listas tengan formato adecuado
+        response = re.sub(r'(^|\n)(-|\d+\.) ([^\s])', r'\1\2 \3', response)
 
         return jsonify({'response': response})
     except Exception as e:
@@ -916,11 +921,4 @@ def extract_json_from_claude(text):
         return json.loads(text.strip())
     except json.JSONDecodeError:
         # Si no es JSON válido, buscamos dentro de bloques de código
-        json_match = re.search(r'```json\s*(.*?)\s*```', text, re.DOTALL)
-        if json_match:
-            try:
-                return json.loads(json_match.group(1).strip())
-            except json.JSONDecodeError:
-                return {"correctedCode": "", "changes": [], "explanation": "Error al procesar la respuesta JSON de Claude."}
-        else:
-            return {"correctedCode": "", "changes": [], "explanation": "No se encontró JSON en la respuesta de Claude."}
+        json_match = re.search(r'```json\s*(.*?)\s*
