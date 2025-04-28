@@ -10,6 +10,8 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.36.1/min/vs/loader.min.js"></script>
+    <!-- Socket.IO debe cargarse antes de cualquier script que lo use -->
+    <script src="https://cdn.socket.io/4.6.0/socket.io.min.js"></script>
     
     <style>
         :root {
@@ -350,7 +352,6 @@
     <div class="notifications" id="notifications-container"></div>
     
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="https://cdn.socket.io/4.6.0/socket.io.min.js"></script>
     
     <script>
         document.addEventListener('DOMContentLoaded', function() {
@@ -374,9 +375,15 @@
             const explorerContainer = document.getElementById('explorer-container');
             
             // Inicializar Monaco Editor
-            require.config({ paths: { 'vs': 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.36.1/min/vs' } });
-            require(['vs/editor/editor.main'], function() {
-                editor = monaco.editor.create(document.getElementById('monaco-editor-container'), {
+            if (typeof require !== 'undefined') {
+                require.config({ 
+                    paths: { 'vs': 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.36.1/min/vs' },
+                    // Evitar cargas duplicadas
+                    ignoreDuplicateModules: ["vs/editor/editor.main"]
+                });
+                
+                require(['vs/editor/editor.main'], function() {
+                    editor = monaco.editor.create(document.getElementById('monaco-editor-container'), {
                     value: '// Terminal Inteligente de Codestorm\n// Escribe comandos bash o instrucciones en lenguaje natural\n\n',
                     language: 'plaintext',
                     theme: 'vs-dark',
@@ -390,22 +397,35 @@
                 });
                 
                 // Una vez inicializado el editor, conectar WebSocket
-                initializeWebSocket();
-                
-                // Cargar el explorador de archivos
-                loadDirectoryContents(currentDirectory);
-            });
+                    initializeWebSocket();
+                    
+                    // Cargar el explorador de archivos
+                    loadDirectoryContents(currentDirectory);
+                });
+            } else {
+                console.error('Require.js no está disponible');
+                document.getElementById('monaco-editor-container').innerHTML = '<div class="p-3 text-danger">Error al cargar el editor de código</div>';
+            }
             
             // Inicializar conexión WebSocket
             function initializeWebSocket() {
                 updateConnectionStatus('connecting');
                 
-                socket = io({
-                    transports: ['websocket'],
-                    reconnection: true,
-                    reconnectionAttempts: 5,
-                    reconnectionDelay: 1000
-                });
+                try {
+                    // Verificar que io esté definido
+                    if (typeof io === 'undefined') {
+                        console.error('Socket.IO no está cargado correctamente');
+                        appendToTerminal('\n[Error] Error de conexión: Socket.IO no está disponible\n', 'error');
+                        updateConnectionStatus('disconnected');
+                        return;
+                    }
+                    
+                    socket = io({
+                        transports: ['websocket', 'polling'],
+                        reconnection: true,
+                        reconnectionAttempts: 5,
+                        reconnectionDelay: 1000
+                    });
                 
                 socket.on('connect', function() {
                     console.log('Conectado al servidor WebSocket');
@@ -516,6 +536,12 @@
                     console.error('Error de WebSocket:', error);
                     appendToTerminal('\n[Error] ' + error + '\n', 'error');
                 });
+                
+                } catch (e) {
+                    console.error('Error al inicializar WebSocket:', e);
+                    appendToTerminal('\n[Error] Error al inicializar la conexión: ' + e.message + '\n', 'error');
+                    updateConnectionStatus('disconnected');
+                }
             }
             
             // Actualizar estado de conexión
@@ -598,6 +624,14 @@
                 
                 // Mostrar el comando en el terminal
                 appendToTerminal('\n$ ' + input + '\n', 'command');
+                
+                // Verificar si el socket está inicializado
+                if (!socket || !socket.connected) {
+                    appendToTerminal('\n[Error] No hay conexión con el servidor. Intentando reconectar...\n', 'error');
+                    // Intentar inicializar de nuevo
+                    initializeWebSocket();
+                    return;
+                }
                 
                 // Determinar si es comando bash o lenguaje natural
                 const isBashCommand = /^[a-z]+(?: -[a-zA-Z]+)* |^cd |^ls |^mkdir |^rm |^touch |^cp |^mv |^echo |^cat |^grep |^find |^git /i.test(input);
