@@ -179,10 +179,15 @@ def execute_command(command, workspace_path):
         # Establecer un timeout razonable (30 segundos)
         stdout, stderr = process.communicate(timeout=30)
         
-        # Emitir eventos de sistema de archivos si corresponde
-        if re.match(r'(mkdir|touch|rm|cp|mv)', command):
-            # Dejar que el sistema detecte los cambios al recargar el directorio
-            pass
+        # Emitir eventos de sistema de archivos si el comando los modifica
+        if re.match(r'(mkdir|touch|rm|cp|mv|git|echo)', command):
+            # Enviar evento para alertar que hubo modificaciones en el sistema de archivos
+            # El cliente recargará el explorador de archivos
+            emit('file_system_changed', {
+                'command': command,
+                'workspace_path': workspace_path,
+                'timestamp': time.time()
+            })
         
         return {
             'success': process.returncode == 0,

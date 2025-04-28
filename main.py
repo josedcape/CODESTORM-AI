@@ -105,6 +105,14 @@ def terminal():
 @app.route('/monaco_terminal')
 def monaco_terminal():
     """Render the advanced Monaco terminal with AI assistant."""
+    # Asegurarse de que las rutas estén creadas
+    os.makedirs('user_workspaces/default', exist_ok=True)
+    # README inicial si está vacío
+    readme_path = os.path.join('user_workspaces/default', 'README.md')
+    if not os.path.exists(readme_path):
+        with open(readme_path, 'w') as f:
+            f.write('# Workspace\n\nEste es tu espacio de trabajo. Usa comandos o instrucciones en lenguaje natural para crear y modificar archivos.\n\nEjemplos:\n- "crea una carpeta llamada proyectos"\n- "mkdir proyectos"\n- "touch archivo.txt"')
+    
     return render_template('monaco_terminal.html')
 
 @app.route('/api/process_code', methods=['POST'])
