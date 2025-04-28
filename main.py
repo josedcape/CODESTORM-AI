@@ -853,19 +853,25 @@ def clone_repository():
                 text=True
             )
 
-            # Verificar si hay error en la salida de error de git
             if process.returncode != 0:
                 return jsonify({
                     'success': False,
-                    'error': f'Error al clonar repositorio: {process.stderr}'
+                    'error': f'Error al ejecutar comando: {process.stderr}'
                 }), 500
+
+            # Dar formato a la respuesta
+            response = re.sub(r'```\s*([a-\1\n', response)
+            response = re.sub(r'\s*```', r'\n```', response)
+
+            # Asegurar que los títulos tengan espacio después del #
+            response = re.sub(r'^#(\S+)', r'# \1', response, flags=re.MULTILINE)
 
             logging.info(f"Repositorio clonado exitosamente: {repo_url} -> {full_target_path}")
 
             return jsonify({
                 'success': True,
                 'message': f'Repositorio clonado exitosamente en {target_dir}',
-                'output': process.stdout,
+                'output': response, #Usamos la respuesta formateada
                 'target_dir': target_dir
             })
         except Exception as e:
@@ -903,21 +909,4 @@ def extract_json_from_claude(text):
         return json.loads(text.strip())
     except json.JSONDecodeError:
         # Si no es JSON válido, buscamos dentro de bloques de código
-        json_match = re.search(r'```json\s*(.*?)\s*```', text, re.DOTALL)
-        if json_match:
-            try:
-                return json.loads(json_match.group(1).strip())
-            except json.JSONDecodeError:
-                # Si aún falla, creamos una estructura básica con la respuesta completa
-                return {
-                    "correctedCode": "",
-                    "changes": [],
-                    "explanation": "Error al procesar la respuesta JSON de Claude. Respuesta recibida: " + text[:200] + "..."
-                }
-        else:
-            # Si no encontramos bloques JSON, construimos una respuesta informativa
-            return {
-                "correctedCode": "",
-                "changes": [],
-                "explanation": "Claude no respondió en el formato esperado. Intente de nuevo o use otro modelo."
-            }
+        json_match = re.search(r'```json\s*(.*?)\s*
