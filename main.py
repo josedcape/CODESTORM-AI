@@ -868,7 +868,16 @@ def process_request():
     """API para procesar solicitudes genéricas."""
     try:
         data = request.json
-        if not([a-zA-Z0-9]+)?\s*', r'```\1\n', response)
+        if not data:
+            return jsonify({
+                'success': False,
+                'error': 'No se proporcionaron datos'
+            }), 400
+            
+        # Formatear la respuesta si existe
+        response = data.get('response', '')
+        if response:
+            response = re.sub(r'```([a-zA-Z0-9]+)?\s*', r'```\1\n', response)
             response = re.sub(r'\s*```', r'\n```', response)
 
             # Asegurar que los títulos tengan espacio después del #
