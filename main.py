@@ -857,7 +857,36 @@ def clone_repository():
             if process.returncode != 0:
                 return jsonify({
                     'success': False,
-                    'error':json(.*?)```', text, re.DOTALL)
+                    'error': f'Error al clonar repositorio: {process.stderr}'
+                }), 500
+
+            logging.info(f"Repositorio clonado exitosamente: {repo_url} -> {full_target_path}")
+
+            return jsonify({
+                'success': True,
+                'message': f'Repositorio clonado exitosamente en {target_dir}',
+                'output': process.stdout,
+                'target_dir': target_dir
+            })
+        except Exception as e:
+            logging.error(f"Error al ejecutar git clone: {str(e)}")
+            return jsonify({
+                'success': False,
+                'error': f'Error al clonar repositorio: {str(e)}'
+            }), 500
+
+    except Exception as e:
+        logging.error(f"Error al clonar repositorio: {str(e)}")
+        logging.error(traceback.format_exc())  # Añadir traza completa para mejor depuración
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+def extract_json_from_gemini(text):
+    """Extrae JSON de una respuesta de Gemini."""
+    import re
+    json_match = re.search(r'```json(.*?)```', text, re.DOTALL)
     if json_match:
         try:
             return json.loads(json_match.group(1).strip())
@@ -874,4 +903,21 @@ def extract_json_from_claude(text):
         return json.loads(text.strip())
     except json.JSONDecodeError:
         # Si no es JSON válido, buscamos dentro de bloques de código
-        json_match = re.search(r'```json\s*(.*?)\s*
+        json_match = re.search(r'```json\s*(.*?)\s*```', text, re.DOTALL)
+        if json_match:
+            try:
+                return json.loads(json_match.group(1).strip())
+            except json.JSONDecodeError:
+                # Si aún falla, creamos una estructura básica con la respuesta completa
+                return {
+                    "correctedCode": "",
+                    "changes": [],
+                    "explanation": "Error al procesar la respuesta JSON de Claude. Respuesta recibida: " + text[:200] + "..."
+                }
+        else:
+            # Si no encontramos bloques JSON, construimos una respuesta informativa
+            return {
+                "correctedCode": "",
+                "changes": [],
+                "explanation": "Claude no respondió en el formato esperado. Intente de nuevo o use otro modelo."
+            }
