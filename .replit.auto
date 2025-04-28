@@ -1,0 +1,35 @@
+
+# Configuración automática para Codestorm Terminal
+run = "python main.py"
+modules = ["web", "python-3.11", "nodejs-20"]
+
+# Entorno y paquetes
+[nix]
+channel = "stable-24_05"
+packages = ["glibcLocales", "iana-etc", "openssl", "postgresql"]
+
+# Configuración de linters
+[env]
+PYTHON_LINTER = "pylint"
+JS_LINTER = "eslint"
+
+# Configuración de despliegue
+[deployment]
+deploymentTarget = "autoscale"
+run = ["sh", "-c", "python main.py"]
+
+# Configuración de flujos de trabajo
+[workflows]
+runButton = "Run Terminal App"
+
+[[workflows.workflow]]
+name = "Run Terminal App"
+mode = "sequential"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "pip install -r requirements.txt"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "python main.py"

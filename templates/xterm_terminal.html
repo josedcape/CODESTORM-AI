@@ -1,0 +1,1108 @@
+
+<!DOCTYPE html>
+<html lang="es" data-bs-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Terminal Avanzada - Codestorm</title>
+    
+    <!-- Bootstrap y CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+    
+    <!-- xterm.js y dependencias -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm@5.4.0/css/xterm.min.css" />
+    <script src="https://cdn.jsdelivr.net/npm/xterm@5.4.0/lib/xterm.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xterm-addon-fit@0.8.0/lib/xterm-addon-fit.min.js"></script>
+    
+    <!-- Socket.IO -->
+    <script src="https://cdn.socket.io/4.6.0/socket.io.min.js"></script>
+    
+    <!-- Yjs para colaboración en tiempo real -->
+    <script src="https://cdn.jsdelivr.net/npm/yjs@13.6.10/dist/yjs.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/y-websocket@1.5.1/dist/y-websocket.min.js"></script>
+    
+    <style>
+        :root {
+            --darker-blue: #091428;
+            --dark-blue: #0A2149;
+            --medium-blue: #1E88E5;
+            --light-blue: #4CB9FF;
+            --highlight-color: #ffc107;
+            --dark-background: #121212;
+            --card-background: #1a1a1a;
+            --card-header: #212529;
+            --text-primary: #e9ecef;
+            --text-secondary: #adb5bd;
+        }
+        
+        body {
+            background-color: var(--dark-background);
+            color: var(--text-primary);
+            font-family: 'Arial', sans-serif;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            margin: 0;
+            padding: 0;
+        }
+        
+        .navbar-futuristic {
+            background: linear-gradient(90deg, var(--darker-blue) 0%, var(--dark-blue) 100%);
+            box-shadow: 0 2px 15px rgba(0, 100, 255, 0.2);
+            border-bottom: 1px solid var(--medium-blue);
+        }
+        
+        .main-container {
+            display: flex;
+            flex-direction: column;
+            height: calc(100vh - 56px);
+        }
+        
+        .workspace-container {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+        
+        .explorer-panel {
+            width: 280px;
+            background-color: var(--card-background);
+            border-right: 1px solid rgba(78, 115, 223, 0.2);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        
+        .explorer-header {
+            padding: 10px;
+            background-color: var(--card-header);
+            border-bottom: 1px solid rgba(78, 115, 223, 0.2);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .explorer-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 10px;
+        }
+        
+        .file-item {
+            display: flex;
+            align-items: center;
+            padding: 5px;
+            cursor: pointer;
+            border-radius: 4px;
+            margin-bottom: 2px;
+        }
+        
+        .file-item:hover {
+            background-color: rgba(30, 136, 229, 0.1);
+        }
+        
+        .file-item .icon {
+            margin-right: 8px;
+        }
+        
+        .directory {
+            color: var(--highlight-color);
+        }
+        
+        .folder-content {
+            margin-left: 20px;
+        }
+        
+        .terminal-panel {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        
+        .terminal-header {
+            padding: 10px;
+            background-color: var(--card-header);
+            border-bottom: 1px solid rgba(78, 115, 223, 0.2);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .terminal-content {
+            flex: 1;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+
+        .terminal-container {
+            flex: 1;
+            overflow: hidden;
+            padding: 10px;
+            background-color: #000;
+        }
+        
+        .input-container {
+            padding: 10px;
+            background-color: var(--card-background);
+            display: flex;
+            border-top: 1px solid rgba(78, 115, 223, 0.2);
+        }
+        
+        .terminal-input {
+            flex: 1;
+            background-color: rgba(255, 255, 255, 0.1);
+            border: none;
+            border-radius: 4px;
+            color: var(--text-primary);
+            padding: 8px 12px;
+            margin-right: 8px;
+        }
+        
+        .terminal-input:focus {
+            outline: none;
+            box-shadow: 0 0 0 2px rgba(78, 115, 223, 0.4);
+        }
+        
+        .model-selector {
+            padding: 8px;
+            background-color: rgba(255, 255, 255, 0.1);
+            color: var(--text-primary);
+            border: none;
+            border-radius: 4px;
+            margin-right: 8px;
+        }
+        
+        .model-selector:focus {
+            outline: none;
+        }
+        
+        .send-button {
+            background-color: var(--medium-blue);
+            color: white;
+            border: none;
+            border-radius: 4px;
+            padding: 8px 16px;
+            cursor: pointer;
+        }
+        
+        .send-button:hover {
+            background-color: var(--light-blue);
+        }
+        
+        .status-indicator {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+        
+        .status-connected {
+            background-color: #28a745;
+        }
+        
+        .status-disconnected {
+            background-color: #dc3545;
+        }
+        
+        .status-connecting {
+            background-color: #ffc107;
+            animation: pulse 1.5s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { opacity: 0.6; }
+            50% { opacity: 1; }
+            100% { opacity: 0.6; }
+        }
+        
+        .folder-toggle {
+            cursor: pointer;
+            width: 16px;
+            display: inline-block;
+            text-align: center;
+            margin-right: 5px;
+        }
+        
+        .command-type {
+            background-color: rgba(78, 115, 223, 0.2);
+            color: var(--light-blue);
+            font-size: 0.8rem;
+            padding: 2px 4px;
+            border-radius: 3px;
+            margin-left: 5px;
+        }
+        
+        .notifications {
+            position: fixed;
+            top: 70px;
+            right: 20px;
+            width: 350px;
+            z-index: 1050;
+        }
+        
+        .notification {
+            padding: 15px;
+            margin-bottom: 10px;
+            border-radius: 5px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            animation: slideIn 0.3s, fadeOut 0.5s 4.5s;
+            opacity: 0;
+            animation-fill-mode: forwards;
+        }
+        
+        .notification-success {
+            background-color: rgba(40, 167, 69, 0.9);
+            color: white;
+        }
+        
+        .notification-error {
+            background-color: rgba(220, 53, 69, 0.9);
+            color: white;
+        }
+        
+        .notification-info {
+            background-color: rgba(23, 162, 184, 0.9);
+            color: white;
+        }
+        
+        @keyframes slideIn {
+            0% { transform: translateX(100%); opacity: 0; }
+            100% { transform: translateX(0); opacity: 1; }
+        }
+        
+        @keyframes fadeOut {
+            0% { opacity: 1; }
+            100% { opacity: 0; display: none; }
+        }
+        
+        /* Usuarios colaborando */
+        .collaborators {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            z-index: 100;
+            display: flex;
+            gap: 5px;
+        }
+        
+        .collaborator {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            background-color: var(--medium-blue);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+        }
+        
+        /* Preview en tiempo real */
+        .preview-container {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            width: 300px;
+            height: 200px;
+            background-color: var(--card-background);
+            border: 1px solid var(--card-header);
+            border-radius: 5px;
+            overflow: hidden;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+            z-index: 1000;
+            display: none;
+        }
+        
+        .preview-header {
+            padding: 5px 10px;
+            background-color: var(--card-header);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: move;
+        }
+        
+        .preview-content {
+            height: calc(100% - 30px);
+            overflow: hidden;
+        }
+        
+        .preview-iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+            background-color: white;
+        }
+        
+        /* Auto-completado */
+        .autocomplete {
+            position: absolute;
+            background-color: var(--card-background);
+            border: 1px solid var(--medium-blue);
+            border-radius: 4px;
+            max-height: 200px;
+            overflow-y: auto;
+            z-index: 1000;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+        }
+        
+        .autocomplete-item {
+            padding: 5px 10px;
+            cursor: pointer;
+        }
+        
+        .autocomplete-item:hover,
+        .autocomplete-item.selected {
+            background-color: rgba(30, 136, 229, 0.2);
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-futuristic">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="/">
+                <i class="bi bi-braces"></i> Codestorm Assistant
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav">
+                    <li class="nav-item">
+                        <a class="nav-link" href="/"><i class="bi bi-house"></i> Inicio</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/chat"><i class="bi bi-chat-dots"></i> Asistente IA</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/files"><i class="bi bi-folder2-open"></i> Explorador</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link active" href="/xterm_terminal"><i class="bi bi-terminal"></i> Terminal Avanzada</a>
+                    </li>
+                </ul>
+                <div class="ms-auto d-flex align-items-center">
+                    <div class="d-flex align-items-center me-3">
+                        <span class="status-indicator status-disconnected" id="status-indicator"></span>
+                        <span id="connection-status">Desconectado</span>
+                    </div>
+                    <div class="dropdown">
+                        <button class="btn btn-sm btn-outline-light dropdown-toggle" type="button" id="terminalActions" data-bs-toggle="dropdown" aria-expanded="false">
+                            Acciones
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="terminalActions">
+                            <li><a class="dropdown-item" href="#" id="clear-terminal-btn"><i class="bi bi-trash"></i> Limpiar Terminal</a></li>
+                            <li><a class="dropdown-item" href="#" id="toggle-preview-btn"><i class="bi bi-eye"></i> Mostrar/Ocultar Preview</a></li>
+                            <li><a class="dropdown-item" href="#" id="share-session-btn"><i class="bi bi-share"></i> Compartir Sesión</a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item" href="#" id="settings-btn"><i class="bi bi-gear"></i> Configuración</a></li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </nav>
+    
+    <div class="main-container">
+        <div class="workspace-container">
+            <div class="explorer-panel">
+                <div class="explorer-header">
+                    <h5 class="mb-0"><i class="bi bi-folder2-open"></i> Explorador</h5>
+                    <button class="btn btn-sm btn-outline-secondary" id="refresh-explorer-btn">
+                        <i class="bi bi-arrow-clockwise"></i>
+                    </button>
+                </div>
+                <div class="explorer-content" id="explorer-container">
+                    <div class="text-center p-3">
+                        <div class="spinner-border spinner-border-sm text-primary" role="status">
+                            <span class="visually-hidden">Cargando...</span>
+                        </div>
+                        <p class="mt-2 text-muted">Cargando archivos...</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="terminal-panel">
+                <div class="terminal-header">
+                    <h5 class="mb-0"><i class="bi bi-terminal"></i> Terminal Avanzada (xterm.js)</h5>
+                    <div class="d-flex align-items-center">
+                        <div class="me-3" id="collaborators-count">
+                            <i class="bi bi-people"></i> <span>1</span> online
+                        </div>
+                        <span id="cwd-display">./</span>
+                    </div>
+                </div>
+                <div class="terminal-content">
+                    <!-- Contenedor para usuarios colaborando -->
+                    <div class="collaborators" id="collaborators-container">
+                        <div class="collaborator" style="background-color: #1E88E5;">U</div>
+                    </div>
+                    
+                    <!-- Terminal xterm.js -->
+                    <div id="terminal-container" class="terminal-container"></div>
+                    
+                    <div class="input-container">
+                        <select class="model-selector" id="model-selector">
+                            <option value="openai">OpenAI</option>
+                            <option value="anthropic">Anthropic</option>
+                            <option value="gemini">Gemini</option>
+                        </select>
+                        <input type="text" class="terminal-input" id="terminal-input" 
+                               placeholder="Ingresa un comando o instrucción en lenguaje natural...">
+                        <button class="send-button" id="send-button">
+                            <i class="bi bi-send"></i>
+                        </button>
+                    </div>
+                    
+                    <!-- Preview en tiempo real (oculto por defecto) -->
+                    <div class="preview-container" id="preview-container">
+                        <div class="preview-header" id="preview-header">
+                            <span>Vista previa en tiempo real</span>
+                            <button class="btn btn-sm btn-close" id="close-preview-btn"></button>
+                        </div>
+                        <div class="preview-content">
+                            <iframe id="preview-iframe" class="preview-iframe" src="about:blank"></iframe>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="notifications" id="notifications-container"></div>
+    
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Inicialización del terminal xterm.js
+            const terminal = new Terminal({
+                cursorBlink: true,
+                theme: {
+                    background: '#000',
+                    foreground: '#FFF',
+                    cursor: '#F0F',
+                    selection: 'rgba(30, 136, 229, 0.3)',
+                    black: '#000000',
+                    red: '#C51E14',
+                    green: '#1DC121',
+                    yellow: '#C7C329',
+                    blue: '#0A2FC4',
+                    magenta: '#C839C5',
+                    cyan: '#20C5C6',
+                    white: '#C7C7C7',
+                    brightBlack: '#686868',
+                    brightRed: '#FD6F6B',
+                    brightGreen: '#67F86F',
+                    brightYellow: '#FFFA72',
+                    brightBlue: '#6A76FB',
+                    brightMagenta: '#FD7CFC',
+                    brightCyan: '#68FDFE',
+                    brightWhite: '#FFFFFF'
+                }
+            });
+            
+            // Addon para ajustar automáticamente el tamaño
+            const fitAddon = new FitAddon.FitAddon();
+            terminal.loadAddon(fitAddon);
+            
+            // Montar el terminal en el contenedor
+            terminal.open(document.getElementById('terminal-container'));
+            fitAddon.fit();
+            
+            // Ajustar tamaño al cambiar la ventana
+            window.addEventListener('resize', () => {
+                fitAddon.fit();
+            });
+            
+            // Variables globales
+            let socket;
+            let isConnected = false;
+            let currentDirectory = '.';
+            const userId = Math.random().toString(36).substring(2, 8);
+            let username = 'Usuario';
+            let collaborators = new Map();
+            let ydoc;
+            let yWebsocket;
+            
+            // Referencias a elementos DOM
+            const terminalInput = document.getElementById('terminal-input');
+            const sendButton = document.getElementById('send-button');
+            const modelSelector = document.getElementById('model-selector');
+            const statusIndicator = document.getElementById('status-indicator');
+            const connectionStatus = document.getElementById('connection-status');
+            const cwdDisplay = document.getElementById('cwd-display');
+            const clearTerminalBtn = document.getElementById('clear-terminal-btn');
+            const refreshExplorerBtn = document.getElementById('refresh-explorer-btn');
+            const explorerContainer = document.getElementById('explorer-container');
+            const previewContainer = document.getElementById('preview-container');
+            const togglePreviewBtn = document.getElementById('toggle-preview-btn');
+            const closePreviewBtn = document.getElementById('close-preview-btn');
+            const previewIframe = document.getElementById('preview-iframe');
+            const shareSessionBtn = document.getElementById('share-session-btn');
+            const collaboratorsContainer = document.getElementById('collaborators-container');
+            const collaboratorsCount = document.getElementById('collaborators-count').querySelector('span');
+            
+            // Inicializar Yjs para colaboración en tiempo real
+            function initYjs() {
+                ydoc = new Y.Doc();
+                
+                // Mapa para almacenar información de los usuarios
+                const yUsers = ydoc.getMap('users');
+                
+                // Texto compartido para sincronizar el historial del terminal
+                const yTerminalHistory = ydoc.getText('terminal-history');
+                
+                // Conectar mediante WebSocket
+                yWebsocket = new WebsocketProvider(
+                    'wss://' + window.location.host + '/yjs-ws',
+                    'codestorm-terminal-' + Math.random().toString(36).substring(2, 7),
+                    ydoc
+                );
+                
+                // Cuando nos conectamos, añadir este usuario
+                yWebsocket.on('status', event => {
+                    if (event.status === 'connected') {
+                        // Añadir este usuario
+                        yUsers.set(userId, {
+                            id: userId,
+                            name: username,
+                            color: getRandomColor(),
+                            active: true,
+                            lastActive: new Date().toISOString()
+                        });
+                        
+                        updateCollaborators();
+                    }
+                });
+                
+                // Observar cambios en los usuarios conectados
+                yUsers.observe(event => {
+                    updateCollaborators();
+                });
+                
+                // Observar cambios en el historial del terminal
+                yTerminalHistory.observe(event => {
+                    // Actualizar terminal solo si es otro usuario quien envió el cambio
+                    if (event.transaction.origin !== userId) {
+                        const newText = event.changes.delta.reduce((acc, change) => {
+                            if (change.insert) return acc + change.insert;
+                            return acc;
+                        }, '');
+                        
+                        if (newText) {
+                            terminal.write(newText);
+                        }
+                    }
+                });
+            }
+            
+            // Actualizar la lista de colaboradores en la UI
+            function updateCollaborators() {
+                if (!ydoc) return;
+                
+                const yUsers = ydoc.getMap('users');
+                collaborators.clear();
+                
+                yUsers.forEach((userInfo, userId) => {
+                    if (userInfo.active) {
+                        collaborators.set(userId, userInfo);
+                    }
+                });
+                
+                // Actualizar contador
+                collaboratorsCount.textContent = collaborators.size;
+                
+                // Actualizar avatares
+                collaboratorsContainer.innerHTML = '';
+                collaborators.forEach(user => {
+                    const avatar = document.createElement('div');
+                    avatar.className = 'collaborator';
+                    avatar.style.backgroundColor = user.color;
+                    avatar.textContent = user.name.charAt(0).toUpperCase();
+                    avatar.title = user.name;
+                    collaboratorsContainer.appendChild(avatar);
+                });
+            }
+            
+            // Obtener un color aleatorio para usuario
+            function getRandomColor() {
+                const colors = [
+                    '#1E88E5', '#43A047', '#E53935', '#9C27B0', 
+                    '#FF5722', '#00ACC1', '#3949AB', '#7CB342'
+                ];
+                return colors[Math.floor(Math.random() * colors.length)];
+            }
+            
+            // Inicializar Socket.IO
+            function initializeWebSocket() {
+                updateConnectionStatus('connecting');
+                
+                try {
+                    socket = io({
+                        transports: ['websocket', 'polling'],
+                        reconnection: true,
+                        reconnectionAttempts: 5,
+                        reconnectionDelay: 1000
+                    });
+                    
+                    socket.on('connect', function() {
+                        console.log('Conectado al servidor WebSocket');
+                        isConnected = true;
+                        updateConnectionStatus('connected');
+                        
+                        // Mensaje de bienvenida
+                        terminal.write('\r\n\x1b[32m¡Bienvenido a la Terminal Avanzada de Codestorm!\x1b[0m\r\n');
+                        terminal.write('Puedes ejecutar comandos bash o usar lenguaje natural.\r\n\r\n');
+                        
+                        // Cargar directorio actual
+                        loadDirectoryContents(currentDirectory);
+                        
+                        // Configurar preview inicial
+                        updatePreviewIframe('/');
+                    });
+                    
+                    socket.on('disconnect', function() {
+                        console.log('Desconectado del servidor WebSocket');
+                        isConnected = false;
+                        updateConnectionStatus('disconnected');
+                        terminal.write('\r\n\x1b[31mDesconectado del servidor. Intentando reconectar...\x1b[0m\r\n');
+                    });
+                    
+                    socket.on('command_result', function(data) {
+                        console.log('Resultado del comando recibido:', data);
+                        
+                        // Mostrar resultado en el terminal
+                        if (data.success) {
+                            terminal.write('\r\n' + data.output + '\r\n');
+                            
+                            // Si hay un ydoc activo, añadir al historial compartido
+                            if (ydoc) {
+                                const yTerminalHistory = ydoc.getText('terminal-history');
+                                yTerminalHistory.insert(yTerminalHistory.length, '\r\n' + data.output + '\r\n');
+                            }
+                            
+                            // Actualizar el explorador si el comando afecta a archivos
+                            if (shouldRefreshExplorer(data.command)) {
+                                setTimeout(() => loadDirectoryContents(currentDirectory), 500);
+                            }
+                            
+                            // Actualizar preview en ciertos comandos
+                            if (data.command.includes('touch') || data.command.includes('echo') || 
+                                data.command.includes('cat') || data.command.includes('npm')) {
+                                updatePreviewIframe('/preview');
+                            }
+                            
+                            // Actualizar directorio actual si es comando cd
+                            if (data.command.startsWith('cd ')) {
+                                updateCurrentDirectory(data);
+                            }
+                        } else {
+                            terminal.write('\r\n\x1b[31mError: ' + data.stderr + '\x1b[0m\r\n');
+                        }
+                    });
+                    
+                    socket.on('directory_contents', function(data) {
+                        console.log('Contenido del directorio recibido:', data);
+                        
+                        if (data.success) {
+                            updateExplorer(data.path, data.contents);
+                        } else {
+                            showNotification('Error al cargar archivos: ' + data.error, 'error');
+                        }
+                    });
+                    
+                    socket.on('file_change', function(data) {
+                        console.log('Cambio en archivos detectado:', data);
+                        showNotification(data.message, 'info');
+                        loadDirectoryContents(currentDirectory);
+                        
+                        // Actualizar preview si se ha modificado un archivo
+                        updatePreviewIframe('/preview');
+                    });
+                    
+                    socket.on('error', function(error) {
+                        console.error('Error de WebSocket:', error);
+                        terminal.write('\r\n\x1b[31mError: ' + error + '\x1b[0m\r\n');
+                    });
+                    
+                } catch (e) {
+                    console.error('Error al inicializar WebSocket:', e);
+                    terminal.write('\r\n\x1b[31mError al inicializar la conexión: ' + e.message + '\x1b[0m\r\n');
+                    updateConnectionStatus('disconnected');
+                }
+            }
+            
+            // Determinar si un comando debería actualizar el explorador
+            function shouldRefreshExplorer(command) {
+                const refreshCommands = ['mkdir', 'touch', 'rm', 'cp', 'mv', 'git', 'echo', 'npm'];
+                return refreshCommands.some(cmd => command.startsWith(cmd));
+            }
+            
+            // Actualizar estado de conexión
+            function updateConnectionStatus(status) {
+                statusIndicator.classList.remove('status-connected', 'status-disconnected', 'status-connecting');
+                
+                switch (status) {
+                    case 'connected':
+                        statusIndicator.classList.add('status-connected');
+                        connectionStatus.textContent = 'Conectado';
+                        break;
+                        
+                    case 'disconnected':
+                        statusIndicator.classList.add('status-disconnected');
+                        connectionStatus.textContent = 'Desconectado';
+                        break;
+                        
+                    case 'connecting':
+                        statusIndicator.classList.add('status-connecting');
+                        connectionStatus.textContent = 'Conectando...';
+                        break;
+                }
+            }
+            
+            // Manejar envío de comandos
+            function handleInput() {
+                const input = terminalInput.value.trim();
+                if (!input) return;
+                
+                // Mostrar el comando en el terminal
+                terminal.write('\r\n\x1b[33m$ ' + input + '\x1b[0m\r\n');
+                
+                // Si hay un ydoc activo, añadir al historial compartido
+                if (ydoc) {
+                    const yTerminalHistory = ydoc.getText('terminal-history');
+                    yTerminalHistory.insert(yTerminalHistory.length, '\r\n\x1b[33m$ ' + input + '\x1b[0m\r\n');
+                }
+                
+                // Verificar si el socket está inicializado
+                if (!socket || !socket.connected) {
+                    terminal.write('\r\n\x1b[31mNo hay conexión con el servidor. Intentando reconectar...\x1b[0m\r\n');
+                    initializeWebSocket();
+                    return;
+                }
+                
+                // Determinar si es comando bash o lenguaje natural
+                const isBashCommand = /^[a-z]+(?: -[a-zA-Z]+)* |^cd |^ls |^mkdir |^rm |^touch |^cp |^mv |^echo |^cat |^grep |^find |^git /i.test(input);
+                
+                if (isBashCommand) {
+                    // Enviar comando bash
+                    socket.emit('bash_command', {
+                        command: input,
+                        user_id: userId,
+                        directory: currentDirectory
+                    });
+                } else {
+                    // Enviar como lenguaje natural
+                    const modelValue = document.getElementById('model-selector').value;
+                    socket.emit('natural_language', {
+                        text: input,
+                        model: modelValue,
+                        user_id: userId,
+                        directory: currentDirectory
+                    });
+                }
+                
+                // Limpiar el input
+                terminalInput.value = '';
+            }
+            
+            // Cargar contenidos del directorio
+            function loadDirectoryContents(path) {
+                if (!isConnected) {
+                    showNotification('No hay conexión con el servidor', 'error');
+                    return;
+                }
+                
+                explorerContainer.innerHTML = `
+                    <div class="text-center p-3">
+                        <div class="spinner-border spinner-border-sm text-primary" role="status">
+                            <span class="visually-hidden">Cargando...</span>
+                        </div>
+                        <p class="mt-2 text-muted">Cargando archivos...</p>
+                    </div>
+                `;
+                
+                socket.emit('list_directory', {
+                    path: path,
+                    user_id: userId
+                });
+            }
+            
+            // Actualizar el explorador de archivos
+            function updateExplorer(path, contents) {
+                currentDirectory = path;
+                cwdDisplay.textContent = path === '.' ? './' : path;
+                
+                // Ordenar: primero directorios, luego archivos
+                const sortedContents = [...contents].sort((a, b) => {
+                    if (a.is_directory && !b.is_directory) return -1;
+                    if (!a.is_directory && b.is_directory) return 1;
+                    return a.name.localeCompare(b.name);
+                });
+                
+                // Limpiar explorador
+                explorerContainer.innerHTML = '';
+                
+                // Añadir opción para subir un nivel si no estamos en la raíz
+                if (path !== '.') {
+                    const parentDir = path.split('/').slice(0, -1).join('/') || '.';
+                    const upItem = document.createElement('div');
+                    upItem.className = 'file-item';
+                    upItem.innerHTML = `<i class="bi bi-arrow-up-circle icon"></i> ..`;
+                    upItem.addEventListener('click', () => loadDirectoryContents(parentDir));
+                    explorerContainer.appendChild(upItem);
+                }
+                
+                // Mostrar directorios y archivos
+                if (sortedContents.length > 0) {
+                    sortedContents.forEach(item => {
+                        const fileItem = document.createElement('div');
+                        fileItem.className = 'file-item';
+                        
+                        let icon = 'bi-file-earmark';
+                        if (item.is_directory) {
+                            icon = 'bi-folder-fill directory';
+                        } else {
+                            // Determinar icono basado en extensión
+                            const ext = item.name.split('.').pop().toLowerCase();
+                            if (['js', 'ts'].includes(ext)) icon = 'bi-filetype-js';
+                            else if (['html', 'htm'].includes(ext)) icon = 'bi-filetype-html';
+                            else if (['css'].includes(ext)) icon = 'bi-filetype-css';
+                            else if (['py'].includes(ext)) icon = 'bi-filetype-py';
+                            else if (['json'].includes(ext)) icon = 'bi-filetype-json';
+                            else if (['md'].includes(ext)) icon = 'bi-filetype-md';
+                            else if (['jpg', 'jpeg', 'png', 'gif'].includes(ext)) icon = 'bi-file-earmark-image';
+                        }
+                        
+                        fileItem.innerHTML = `<i class="bi ${icon} icon"></i> ${item.name}`;
+                        
+                        if (item.is_directory) {
+                            fileItem.addEventListener('click', () => {
+                                const newPath = path === '.' ? item.name : `${path}/${item.name}`;
+                                loadDirectoryContents(newPath);
+                            });
+                        } else {
+                            // Para archivos, sugerir cómo verlos
+                            fileItem.addEventListener('click', () => {
+                                const filePath = path === '.' ? item.name : `${path}/${item.name}`;
+                                terminal.write(`\r\n\x1b[36m[Info] Seleccionado: ${filePath}\x1b[0m\r\n`);
+                                terminal.write(`\x1b[36mSugerencia: Para ver el contenido puedes usar "cat ${filePath}"\x1b[0m\r\n`);
+                                
+                                // Si es HTML, actualizar el preview
+                                if (filePath.endsWith('.html')) {
+                                    updatePreviewIframe(`/preview?file=${filePath}`);
+                                    if (previewContainer.style.display !== 'block') {
+                                        togglePreview();
+                                    }
+                                }
+                            });
+                        }
+                        
+                        explorerContainer.appendChild(fileItem);
+                    });
+                } else {
+                    // Directorio vacío
+                    const emptyDir = document.createElement('div');
+                    emptyDir.className = 'text-center p-3';
+                    emptyDir.innerHTML = `
+                        <i class="bi bi-folder-x" style="font-size: 2rem; opacity: 0.5;"></i>
+                        <p class="mt-2 text-muted">Directorio vacío</p>
+                    `;
+                    explorerContainer.appendChild(emptyDir);
+                }
+            }
+            
+            // Actualizar directorio actual basado en comando cd
+            function updateCurrentDirectory(commandResult) {
+                if (commandResult.success) {
+                    // Extraer nueva ruta del comando cd
+                    const cdCommand = commandResult.command;
+                    const targetPath = cdCommand.substring(3).trim();
+                    
+                    // Manejar rutas relativas y absolutas
+                    if (targetPath.startsWith('/')) {
+                        currentDirectory = targetPath.slice(1); // Eliminar / inicial
+                    } else if (targetPath === '..') {
+                        // Subir un nivel
+                        currentDirectory = currentDirectory.split('/').slice(0, -1).join('/') || '.';
+                    } else if (targetPath === '.') {
+                        // Mantener igual
+                    } else if (targetPath === '~') {
+                        // Ir a home
+                        currentDirectory = '.';
+                    } else {
+                        // Ruta relativa
+                        currentDirectory = currentDirectory === '.' ? 
+                            targetPath : `${currentDirectory}/${targetPath}`;
+                    }
+                    
+                    // Actualizar interfaz
+                    cwdDisplay.textContent = currentDirectory === '.' ? './' : currentDirectory;
+                    
+                    // Cargar contenido del nuevo directorio
+                    loadDirectoryContents(currentDirectory);
+                }
+            }
+            
+            // Mostrar notificaciones en pantalla
+            function showNotification(message, type = 'info') {
+                const notificationsContainer = document.getElementById('notifications-container');
+                const notification = document.createElement('div');
+                notification.className = `notification notification-${type}`;
+                notification.textContent = message;
+                
+                notificationsContainer.appendChild(notification);
+                
+                // Eliminar después de 5 segundos
+                setTimeout(() => {
+                    notification.remove();
+                }, 5000);
+            }
+            
+            // Actualizar el iframe de preview
+            function updatePreviewIframe(src) {
+                // Evitar problemas de seguridad añadiendo la URL base
+                if (!src.startsWith('http')) {
+                    if (!src.startsWith('/')) src = '/' + src;
+                    src = window.location.origin + src;
+                }
+                
+                previewIframe.src = src;
+            }
+            
+            // Mostrar/ocultar el preview
+            function togglePreview() {
+                if (previewContainer.style.display === 'block') {
+                    previewContainer.style.display = 'none';
+                } else {
+                    previewContainer.style.display = 'block';
+                    updatePreviewIframe('/preview');
+                }
+            }
+            
+            // Hacer el preview arrastrable
+            function makeDraggable(element, handle) {
+                let pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
+                
+                handle.onmousedown = dragMouseDown;
+                
+                function dragMouseDown(e) {
+                    e.preventDefault();
+                    pos3 = e.clientX;
+                    pos4 = e.clientY;
+                    document.onmouseup = closeDragElement;
+                    document.onmousemove = elementDrag;
+                }
+                
+                function elementDrag(e) {
+                    e.preventDefault();
+                    pos1 = pos3 - e.clientX;
+                    pos2 = pos4 - e.clientY;
+                    pos3 = e.clientX;
+                    pos4 = e.clientY;
+                    
+                    // Limitar dentro de la ventana
+                    const newTop = element.offsetTop - pos2;
+                    const newLeft = element.offsetLeft - pos1;
+                    
+                    if (newTop >= 0 && newTop + element.offsetHeight <= window.innerHeight) {
+                        element.style.top = newTop + "px";
+                    }
+                    
+                    if (newLeft >= 0 && newLeft + element.offsetWidth <= window.innerWidth) {
+                        element.style.left = newLeft + "px";
+                    }
+                }
+                
+                function closeDragElement() {
+                    document.onmouseup = null;
+                    document.onmousemove = null;
+                }
+            }
+            
+            // Compartir la sesión actual
+            function shareSession() {
+                if (!ydoc) {
+                    initYjs();
+                    showNotification('Sesión de colaboración iniciada', 'success');
+                }
+                
+                // Generar enlace para compartir
+                const shareUrl = window.location.href + '?session=' + yWebsocket.roomname;
+                
+                // Copiar al portapapeles
+                navigator.clipboard.writeText(shareUrl).then(() => {
+                    showNotification('Enlace de colaboración copiado al portapapeles', 'success');
+                }).catch(err => {
+                    console.error('Error al copiar enlace:', err);
+                    showNotification('No se pudo copiar el enlace: ' + shareUrl, 'info');
+                });
+            }
+            
+            // Event listeners
+            terminalInput.addEventListener('keydown', function(event) {
+                if (event.key === 'Enter') {
+                    handleInput();
+                }
+            });
+            
+            sendButton.addEventListener('click', handleInput);
+            
+            clearTerminalBtn.addEventListener('click', function() {
+                terminal.clear();
+            });
+            
+            refreshExplorerBtn.addEventListener('click', function() {
+                loadDirectoryContents(currentDirectory);
+            });
+            
+            togglePreviewBtn.addEventListener('click', togglePreview);
+            
+            closePreviewBtn.addEventListener('click', function() {
+                previewContainer.style.display = 'none';
+            });
+            
+            shareSessionBtn.addEventListener('click', shareSession);
+            
+            // Hacer preview arrastrable
+            makeDraggable(previewContainer, document.getElementById('preview-header'));
+            
+            // Inicializar
+            initializeWebSocket();
+            
+            // Comprobar si hay un parámetro de sesión para unirse
+            const urlParams = new URLSearchParams(window.location.search);
+            const sessionParam = urlParams.get('session');
+            if (sessionParam) {
+                // Unirse a la sesión existente
+                username = prompt('Ingresa tu nombre para la sesión colaborativa:') || 'Usuario';
+                initYjs();
+                showNotification('Te has unido a una sesión colaborativa', 'success');
+            }
+            
+            // Enfocar input al iniciar
+            setTimeout(() => {
+                terminalInput.focus();
+            }, 500);
+            
+            // Configurar terminal xterm para capturar entrada del usuario
+            terminal.onData(data => {
+                // Si se presiona Ctrl+C, manejar
+                if (data.charCodeAt(0) === 3) {
+                    terminal.write('^C\r\n$ ');
+                    return;
+                }
+                
+                // Para otros datos, simplemente mostrar
+                terminal.write(data);
+            });
+        });
+    </script>
+</body>
+</html>
