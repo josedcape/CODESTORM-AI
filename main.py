@@ -14,7 +14,7 @@ import shutil
 from werkzeug.utils import secure_filename
 from flask_socketio import SocketIO
 from intelligent_terminal import init_terminal
-from xterm import init_xterm_blueprint # Assuming this is where the xterm blueprint is defined
+from xterm_terminal import init_xterm_blueprint # Import from xterm_terminal.py file
 
 
 # Load environment variables with force reload
