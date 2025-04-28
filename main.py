@@ -853,24 +853,36 @@ def clone_repository():
                 text=True
             )
 
+            # Verificar si hay error en la salida de error de git
             if process.returncode != 0:
-                return\s*([a-zA-Z0-9]+)?\s*', r'```\1\n', response)
-            response = re.sub(r'\s*```', r'\n```', response)
+                return jsonify({
+                    'success': False,
+                    'error': f'Error al clonar repositorio: {process.stderr}'
+                }), 500
 
-            # Asegurar que los títulos tengan espacio después del #
-            response = re.sub(r'(^|\n)#([^#\s])', r'\1# \2', response)
+            logging.info(f"Repositorio clonado exitosamente: {repo_url} -> {full_target_path}")
 
-            # Asegurar que las listas tengan formato adecuado
-            response = re.sub(r'(^|\n)(-|\d+\.) ([^\s])', r'\1\2 \3', response)
+            return jsonify({
+                'success': True,
+                'message': f'Repositorio clonado exitosamente en {target_dir}',
+                'output': process.stdout,
+                'target_dir': target_dir
+            })
+        except Exception as e:
+            logging.error(f"Error al ejecutar git clone: {str(e)}")
+            return jsonify({
+                'success': False,
+                'error': f'Error al clonar repositorio: {str(e)}'
+            }), 500
 
-        return jsonify({'response': response})
     except Exception as e:
-        logging.error(f"Error in handle_chat: {str(e)}")
-        logging.error(traceback.format_exc())
+        logging.error(f"Error al clonar repositorio: {str(e)}")
+        logging.error(traceback.format_exc())  # Añadir traza completa para mejor depuración
         return jsonify({
-            'error': str(e),
-            'response': f"Error inesperado: {str(e)}"
+            'success': False,
+            'error': str(e)
         }), 500
+
 
 @app.route('/api/generate', methods=['POST'])
 def generate():
@@ -944,4 +956,21 @@ def extract_json_from_claude(text):
         return json.loads(text.strip())
     except json.JSONDecodeError:
         # Si no es JSON válido, buscamos dentro de bloques de código
-        json_match = re.search(r'```json\s*(.*?)\s*
+        json_match = re.search(r'```json\s*(.*?)\s*```', text, re.DOTALL)
+        if json_match:
+            try:
+                return json.loads(json_match.group(1).strip())
+            except json.JSONDecodeError:
+                # Si aún falla, creamos una estructura básica con la respuesta completa
+                return {
+                    "correctedCode": "",
+                    "changes": [],
+                    "explanation": "Error al procesar la respuesta JSON de Claude. Respuesta recibida: " + text[:200] + "..."
+                }
+        else:
+            # Si no encontramos bloques JSON, construimos una respuesta informativa
+            return {
+                "correctedCode": "",
+                "changes": [],
+                "explanation": "Claude no respondió en el formato esperado. Intente de nuevo o use otro modelo."
+            }
