@@ -7,6 +7,7 @@
 // Namespace principal para la aplicación
 window.app = window.app || {};
 window.app.chat = window.app.chat || {};
+window.app.chat = window.app.chat || {};
 window.app.chat.apiEndpoints = {
     chat: '/api/chat',
     fallback: '/api/generate',
