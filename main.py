@@ -866,8 +866,7 @@ def clone_repository():
 @app.route('/api/process', methods=['POST'])
 def process_request():
     """API para procesar solicitudes genéricas."""
-    try:
-        data = request.json
+    trydata = request.json
         if not data:
             return jsonify({
                 'success': False,
@@ -985,3 +984,7 @@ def extract_json_from_claude(text):
                 "changes": [],
                 "explanation": "Claude no respondió en el formato esperado. Intente de nuevo o use otro modelo."
             }
+
+
+if __name__ == '__main__':
+    app.run(debug=True)
