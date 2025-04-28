@@ -34,6 +34,7 @@
             --card-header: #212529;
             --text-primary: #e9ecef;
             --text-secondary: #adb5bd;
+            --mobile-breakpoint: 768px;
         }
         
         body {
@@ -45,6 +46,7 @@
             flex-direction: column;
             margin: 0;
             padding: 0;
+            overflow-x: hidden;
         }
         
         .navbar-futuristic {
@@ -128,6 +130,7 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
+            flex-wrap: wrap;
         }
         
         .terminal-content {
@@ -136,6 +139,40 @@
             display: flex;
             flex-direction: column;
             position: relative;
+        }
+        
+        /* Estilos específicos para móvil */
+        @media screen and (max-width: var(--mobile-breakpoint)) {
+            .terminal-header {
+                padding: 8px;
+            }
+            
+            .terminal-header h5 {
+                font-size: 1rem;
+                margin-bottom: 5px;
+                width: 100%;
+            }
+            
+            .explorer-panel {
+                width: 100%;
+                max-height: 200px;
+                position: relative;
+                z-index: 100;
+            }
+            
+            .workspace-container {
+                flex-direction: column;
+            }
+            
+            .dropdown-menu {
+                max-width: 100%;
+                overflow-x: auto;
+            }
+            
+            .dropdown-item {
+                padding: 8px 12px;
+                font-size: 0.9rem;
+            }
         }
 
         .terminal-container {
@@ -150,6 +187,7 @@
             background-color: var(--card-background);
             display: flex;
             border-top: 1px solid rgba(78, 115, 223, 0.2);
+            flex-wrap: wrap;
         }
         
         .terminal-input {
@@ -160,6 +198,7 @@
             color: var(--text-primary);
             padding: 8px 12px;
             margin-right: 8px;
+            min-width: 0; /* Permite que el input se encoja correctamente */
         }
         
         .terminal-input:focus {
@@ -174,6 +213,35 @@
             border: none;
             border-radius: 4px;
             margin-right: 8px;
+        }
+        
+        /* Estilos móviles para la entrada de comandos */
+        @media screen and (max-width: var(--mobile-breakpoint)) {
+            .input-container {
+                padding: 8px;
+            }
+            
+            .model-selector-container {
+                display: flex;
+                width: 100%;
+                margin-bottom: 8px;
+            }
+            
+            .model-selector {
+                flex: 1;
+                margin-right: 5px;
+                font-size: 0.9rem;
+                padding: 6px;
+            }
+            
+            .terminal-input {
+                font-size: 0.9rem;
+                padding: 8px;
+            }
+            
+            .send-button {
+                padding: 8px 12px;
+            }
         }
         
         .model-selector:focus {
@@ -277,6 +345,59 @@
         @keyframes fadeOut {
             0% { opacity: 1; }
             100% { opacity: 0; display: none; }
+        }
+        
+        /* Estilos para el panel de control móvil */
+        .mobile-control-bar {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background-color: var(--dark-blue);
+            padding: 10px;
+            display: flex;
+            justify-content: space-around;
+            z-index: 1000;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .mobile-control-btn {
+            background-color: var(--medium-blue);
+            color: white;
+            border: none;
+            border-radius: 4px;
+            padding: 8px 12px;
+            font-size: 0.9rem;
+        }
+        
+        .mobile-control-btn:active {
+            background-color: var(--light-blue);
+        }
+        
+        /* Ajustes adicionales para móvil */
+        @media screen and (max-width: var(--mobile-breakpoint)) {
+            .mobile-control-bar {
+                display: flex;
+            }
+            
+            .main-container {
+                padding-bottom: 60px; /* Espacio para la barra de control móvil */
+            }
+            
+            .input-container {
+                flex-direction: column;
+            }
+            
+            .model-selector {
+                width: 100%;
+                margin-bottom: 8px;
+                margin-right: 0;
+            }
+            
+            .dropdown-menu {
+                width: 100%;
+                max-width: 300px;
+            }
         }
         
         /* Usuarios colaborando */
@@ -408,9 +529,47 @@
         </div>
     </nav>
     
+    <!-- Barra de control móvil -->
+    <div class="mobile-control-bar d-none">
+        <button id="toggle-explorer-btn" class="mobile-control-btn">
+            <i class="bi bi-folder2-open"></i> Explorador
+        </button>
+        <button id="mobile-terminal-options-btn" class="mobile-control-btn" data-bs-toggle="modal" data-bs-target="#mobileOptionsModal">
+            <i class="bi bi-gear-fill"></i> Opciones
+        </button>
+    </div>
+    
+    <!-- Modal de opciones para móvil -->
+    <div class="modal fade" id="mobileOptionsModal" tabindex="-1" aria-labelledby="mobileOptionsModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content bg-dark text-light">
+                <div class="modal-header border-secondary">
+                    <h5 class="modal-title" id="mobileOptionsModalLabel">Opciones de Terminal</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="list-group list-group-flush bg-dark">
+                        <button class="list-group-item list-group-item-action bg-dark text-light mobile-option" id="mobile-clear-terminal">
+                            <i class="bi bi-trash me-2"></i> Limpiar Terminal
+                        </button>
+                        <button class="list-group-item list-group-item-action bg-dark text-light mobile-option" id="mobile-toggle-preview">
+                            <i class="bi bi-eye me-2"></i> Mostrar/Ocultar Preview
+                        </button>
+                        <button class="list-group-item list-group-item-action bg-dark text-light mobile-option" id="mobile-share-session">
+                            <i class="bi bi-share me-2"></i> Compartir Sesión
+                        </button>
+                        <button class="list-group-item list-group-item-action bg-dark text-light mobile-option" id="mobile-settings">
+                            <i class="bi bi-gear me-2"></i> Configuración
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
     <div class="main-container">
         <div class="workspace-container">
-            <div class="explorer-panel">
+            <div class="explorer-panel" id="explorer-panel">
                 <div class="explorer-header">
                     <h5 class="mb-0"><i class="bi bi-folder2-open"></i> Explorador</h5>
                     <button class="btn btn-sm btn-outline-secondary" id="refresh-explorer-btn">
@@ -484,6 +643,12 @@
     
     <script>
         document.addEventListener('DOMContentLoaded', function() {
+            // Detectar si es dispositivo móvil
+            const isMobile = window.innerWidth <= 768;
+            if (isMobile) {
+                document.querySelector('.mobile-control-bar').classList.remove('d-none');
+            }
+            
             // Inicialización del terminal xterm.js
             const terminal = new Terminal({
                 cursorBlink: true,
@@ -1139,6 +1304,84 @@
                 initYjs();
                 showNotification('Te has unido a una sesión colaborativa', 'success');
             }
+            
+            // Gestión de la interfaz móvil
+            const toggleExplorerBtn = document.getElementById('toggle-explorer-btn');
+            const explorerPanel = document.getElementById('explorer-panel');
+            
+            if (toggleExplorerBtn) {
+                toggleExplorerBtn.addEventListener('click', function() {
+                    if (explorerPanel.style.display === 'none') {
+                        explorerPanel.style.display = 'flex';
+                    } else {
+                        explorerPanel.style.display = 'none';
+                    }
+                });
+            }
+            
+            // En móviles, ocultar el explorador inicialmente
+            if (window.innerWidth <= 768) {
+                if (explorerPanel) explorerPanel.style.display = 'none';
+            }
+            
+            // Manejadores de eventos para opciones móviles
+            document.getElementById('mobile-clear-terminal')?.addEventListener('click', function() {
+                terminal.clear();
+                $('#mobileOptionsModal').modal('hide');
+            });
+            
+            document.getElementById('mobile-toggle-preview')?.addEventListener('click', function() {
+                togglePreview();
+                $('#mobileOptionsModal').modal('hide');
+            });
+            
+            document.getElementById('mobile-share-session')?.addEventListener('click', function() {
+                shareSession();
+                $('#mobileOptionsModal').modal('hide');
+            });
+            
+            document.getElementById('mobile-settings')?.addEventListener('click', function() {
+                // Implementación pendiente
+                showNotification('Configuración avanzada no disponible', 'info');
+                $('#mobileOptionsModal').modal('hide');
+            });
+            
+            // Reorganizar elementos en la interfaz para móvil
+            function reorganizeForMobile() {
+                if (window.innerWidth <= 768) {
+                    // Crear contenedor para selectores
+                    if (!document.querySelector('.model-selector-container')) {
+                        const modelSelectorContainer = document.createElement('div');
+                        modelSelectorContainer.className = 'model-selector-container';
+                        
+                        // Mover selectores al contenedor
+                        const modelSelector = document.getElementById('model-selector');
+                        const commandMethod = document.getElementById('command-method');
+                        
+                        if (modelSelector && commandMethod) {
+                            const inputContainer = document.querySelector('.input-container');
+                            modelSelectorContainer.appendChild(modelSelector);
+                            modelSelectorContainer.appendChild(commandMethod);
+                            
+                            inputContainer.insertBefore(modelSelectorContainer, inputContainer.firstChild);
+                        }
+                    }
+                }
+            }
+            
+            // Ejecutar reorganización al cargar
+            reorganizeForMobile();
+            
+            // Ajustar cuando cambia el tamaño de la ventana
+            window.addEventListener('resize', function() {
+                if (window.innerWidth <= 768) {
+                    document.querySelector('.mobile-control-bar')?.classList.remove('d-none');
+                    reorganizeForMobile();
+                } else {
+                    document.querySelector('.mobile-control-bar')?.classList.add('d-none');
+                    if (explorerPanel) explorerPanel.style.display = 'flex';
+                }
+            });
             
             // Enfocar input al iniciar
             setTimeout(() => {
