@@ -1,0 +1,140 @@
+Instrucción para el Asistente:
+Backend (Flask): Crear una ruta que reciba los comandos de la terminal y los ejecute en el servidor.
+
+Instalación de dependencias necesarias: En el backend, necesitas instalar dependencias como subprocess para ejecutar comandos en el servidor. Si aún no lo has hecho, instálalo:
+
+bash
+Copiar
+pip install subprocess
+Ejecutar comandos de la terminal: Agrega la funcionalidad en Flask para ejecutar comandos en el servidor cuando el usuario los escriba en la terminal. Aquí un ejemplo básico de cómo ejecutar un comando de creación de archivo y una instalación de dependencias.
+
+Código Flask (app.py):
+
+python
+Copiar
+import subprocess
+from flask import Flask, request, jsonify
+
+app = Flask(__name__)
+
+@app.route('/execute-command', methods=['POST'])
+def execute_command():
+    command = request.json.get('command')  # Recibe el comando desde el frontend
+    try:
+        # Ejecutar el comando en el servidor
+        result = subprocess.run(command, shell=True, capture_output=True, text=True)
+        return jsonify({
+            'stdout': result.stdout,
+            'stderr': result.stderr
+        }), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 400
+
+if __name__ == "__main__":
+    app.run(debug=True)
+Explicación:
+
+Este código crea un endpoint /execute-command que acepta solicitudes POST. El comando que el usuario escribe en la terminal es enviado como JSON al servidor, y luego se ejecuta en el backend usando subprocess.
+
+La salida (stdout) y los errores (stderr) se devuelven al frontend para que el usuario vea los resultados.
+
+Conexión con la Terminal: Utiliza WebSockets o AJAX en el frontend para enviar el comando a Flask y recibir los resultados en tiempo real.
+
+Instrucción para el Asistente:
+Asegúrate de que el frontend de CodeStorm (donde está la terminal) envíe los comandos al backend de Flask mediante una solicitud HTTP (usando fetch o axios).
+
+Frontend (JavaScript):
+
+javascript
+Copiar
+async function ejecutarComando() {
+    const command = document.getElementById("commandInput").value;  // El comando que el usuario escribe
+    const response = await fetch('/execute-command', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ command })
+    });
+    const data = await response.json();
+    document.getElementById("output").textContent = data.stdout || data.stderr;
+}
+2. Instalación Automática de Dependencias
+Para que el asistente instale dependencias automáticamente cuando el usuario crea un proyecto, debes hacer que CodeStorm detecte el tipo de proyecto y ejecute el gestor de dependencias correspondiente (por ejemplo, npm install para proyectos Node.js o pip install para proyectos Python).
+
+Instrucción para el Asistente:
+Backend (Flask):
+
+Detectar tipo de proyecto: Según los archivos que se encuentran en el directorio (por ejemplo, package.json para Node.js o requirements.txt para Python), el backend puede decidir qué gestor de dependencias usar.
+
+Código Flask:
+
+python
+Copiar
+import os
+import subprocess
+
+def instalar_dependencias(path):
+    if os.path.exists(os.path.join(path, 'package.json')):
+        return subprocess.run(['npm', 'install'], cwd=path)
+    elif os.path.exists(os.path.join(path, 'requirements.txt')):
+        return subprocess.run(['pip', 'install', '-r', 'requirements.txt'], cwd=path)
+    else:
+        return "No se encontró un archivo de dependencias."
+Explicación: Este código examina el directorio del proyecto y, si encuentra un package.json (para proyectos Node.js), ejecuta npm install. Si encuentra un requirements.txt (para proyectos Python), ejecuta pip install.
+
+Frontend (JavaScript): Cuando el usuario cree un proyecto nuevo (por ejemplo, con un comando de la terminal), puedes agregar lógica para que, después de crear el proyecto, el asistente ejecute este proceso automáticamente.
+
+javascript
+Copiar
+async function instalarDependencias() {
+    const path = '/ruta/del/proyecto';  // La ruta del proyecto donde se encuentra el archivo de dependencias
+    const response = await fetch('/install-dependencies', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ path })
+    });
+    const data = await response.json();
+    document.getElementById("output").textContent = data.message || data.error;
+}
+3. Creación de Proyectos y Archivos de Configuración
+Para que CodeStorm cree automáticamente los archivos y carpetas necesarios para un proyecto nuevo, debes instruir a tu asistente para que se encargue de crear estos archivos de configuración (por ejemplo, package.json o requirements.txt).
+
+Instrucción para el Asistente:
+Backend (Flask): Cuando el usuario escriba un comando para crear un nuevo proyecto, el backend debería generar los archivos de configuración adecuados.
+
+Código Flask:
+
+python
+Copiar
+import os
+
+def crear_proyecto(tipo_proyecto, ruta_proyecto):
+    if tipo_proyecto == "nodejs":
+        # Crea la estructura de directorios y el archivo package.json
+        os.makedirs(ruta_proyecto, exist_ok=True)
+        with open(os.path.join(ruta_proyecto, 'package.json'), 'w') as f:
+            f.write('{"name": "mi-proyecto", "version": "1.0.0"}')
+    elif tipo_proyecto == "python":
+        # Crea la estructura de directorios y el archivo requirements.txt
+        os.makedirs(ruta_proyecto, exist_ok=True)
+        with open(os.path.join(ruta_proyecto, 'requirements.txt'), 'w') as f:
+            f.write('flask')
+Explicación: Cuando el usuario solicita la creación de un nuevo proyecto, el backend crea la estructura de directorios y los archivos necesarios (por ejemplo, package.json para Node.js o requirements.txt para Python).
+
+Instrucción para el Asistente:
+Cuando el usuario crea un nuevo proyecto desde la terminal, invoca la función crear_proyecto() para configurar automáticamente los archivos y dependencias.
+
+4. Finalización del Proceso
+Una vez que tengas el sistema de ejecución de comandos y la instalación de dependencias configurados, puedes integrar estas funcionalidades en la terminal de CodeStorm para permitir que los usuarios interactúen con el sistema de manera más fluida y productiva.
+
+Instrucción para el Asistente:
+Asegúrate de que el sistema esté integrado con las siguientes funcionalidades:
+
+Ejecutar comandos de terminal de forma segura.
+
+Detectar y gestionar dependencias automáticamente.
+
+Crear proyectos automáticamente con la configuración básica.
