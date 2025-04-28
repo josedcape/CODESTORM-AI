@@ -901,6 +901,18 @@ def extract_json_from_gemini(text):
     else:
         return {"correctedCode": "", "changes": [], "explanation": "No se encontró JSON en la respuesta de Gemini."}
 
+def extract_json_from_gemini(text):
+    """Extrae JSON de una respuesta de Gemini."""
+    import re
+    json_match = re.search(r'```json(.*?)```', text, re.DOTALL)
+    if json_match:
+        try:
+            return json.loads(json_match.group(1).strip())
+        except json.JSONDecodeError:
+            return {"correctedCode": "", "changes": [], "explanation": "Error al procesar la respuesta JSON de Gemini."}
+    else:
+        return {"correctedCode": "", "changes": [], "explanation": "No se encontró JSON en la respuesta de Gemini."}
+
 def extract_json_from_claude(text):
     """Extrae JSON de una respuesta de Claude."""
     import re
@@ -909,4 +921,21 @@ def extract_json_from_claude(text):
         return json.loads(text.strip())
     except json.JSONDecodeError:
         # Si no es JSON válido, buscamos dentro de bloques de código
-        json_match = re.search(r'```json\s*(.*?)\s*
+        json_match = re.search(r'```json\s*(.*?)\s*```', text, re.DOTALL)
+        if json_match:
+            try:
+                return json.loads(json_match.group(1).strip())
+            except json.JSONDecodeError:
+                # Si aún falla, creamos una estructura básica con la respuesta completa
+                return {
+                    "correctedCode": "",
+                    "changes": [],
+                    "explanation": "Error al procesar la respuesta JSON de Claude. Respuesta recibida: " + text[:200] + "..."
+                }
+        else:
+            # Si no encontramos bloques JSON, construimos una respuesta informativa
+            return {
+                "correctedCode": "",
+                "changes": [],
+                "explanation": "Claude no respondió en el formato esperado. Intente de nuevo o use otro modelo."
+            }
