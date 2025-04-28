@@ -853,7 +853,8 @@ def clone_repository():
                 text=True
             )
 
-            ([a-zA-Z0-9]+)?\s*', r'```\1\n', response)
+            if process.returncode != 0:
+                return\s*([a-zA-Z0-9]+)?\s*', r'```\1\n', response)
             response = re.sub(r'\s*```', r'\n```', response)
 
             # Asegurar que los títulos tengan espacio después del #
