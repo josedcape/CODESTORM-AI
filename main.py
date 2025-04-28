@@ -862,7 +862,7 @@ def clone_repository():
             )
 
             # Verificar si hay error en la salida de error de git
-            if process.returncode != 0:
+if process.returncode != 0:
                 return jsonify({
                     'success': False,
                     'error': f'Error al clonar repositorio: {process.stderr}'
@@ -984,3 +984,6 @@ def extract_json_from_claude(text):
                 "changes": [],
                 "explanation": "Claude no respondió en el formato esperado. Intente de nuevo o use otro modelo."
             }
+
+if __name__ == '__main__':
+    socketio.run(app, debug=True)
