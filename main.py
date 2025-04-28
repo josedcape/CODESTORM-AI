@@ -872,19 +872,16 @@ def process_request():
         action = data.get('action', '')
         user_id = data.get('user_id', 'default')
         
-        # Aquí inicia el resto del código que fue eliminado
+        try:
+            # Aquí va el código principal
+            pass
         except Exception as api_error:
             logging.error(f"Error en la llamada a la API de Anthropic: {str(api_error)}")
             logging.error(traceback.format_exc())
             response = f"Error al procesar la solicitud con Anthropic: {str(api_error)}"
-
-        except Exception as e:
-            logging.error(f"Error with Anthropic API: {str(e)}")
-            logging.error(traceback.format_exc())
-            response = f"Error al conectar con Anthropic: {str(e)}"
-
+            
         # Si no hay modelo disponible
-        else:
+        if not model:
             response = "Lo siento, no hay un modelo de IA configurado disponible. Por favor, verifica las API keys en la configuración."
             logging.warning(f"No hay modelo disponible para: {model}")
 
