@@ -1536,6 +1536,4 @@ if __name__ == '__main__':
         logging.critical(f"Error fatal al iniciar el servidor: {str(e)}")
         logging.critical(traceback.format_exc())
 
-@app.route('/terminal')
-def terminal():
-    return render_template('terminal.html')
+# La función terminal ya está definida anteriormente en el archivo

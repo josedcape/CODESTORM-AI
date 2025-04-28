@@ -1,4 +1,3 @@
-
 """
 Backend para el soporte de la terminal xterm.js y colaboración en tiempo real.
 """
@@ -15,26 +14,26 @@ def init_xterm_terminal(app, socketio):
     """Inicializa las rutas y eventos para la terminal xterm.js."""
     # Rutas de usuario
     user_workspaces = {}
-    
+
     @app.route('/xterm_terminal')
     def xterm_terminal():
         """Renderiza la página de la terminal xterm.js."""
         # Asegurarse de que las rutas estén creadas
         os.makedirs('user_workspaces/default', exist_ok=True)
-        
+
         # README inicial si está vacío
         readme_path = Path('user_workspaces/default/README.md')
         if not readme_path.exists():
             with open(readme_path, 'w') as f:
                 f.write('# Workspace\n\nEste es tu espacio de trabajo colaborativo. Usa comandos o instrucciones en lenguaje natural para crear y modificar archivos.\n\nEjemplos:\n- "crea una carpeta llamada proyectos"\n- "mkdir proyectos"\n- "touch archivo.txt"')
-        
+
         return app.render_template('xterm_terminal.html')
-    
+
     @app.route('/preview')
     def preview_file():
         """Renderiza una vista previa del archivo especificado o una página por defecto."""
         file_path = request.args.get('file', '')
-        
+
         if file_path:
             try:
                 full_path = Path('user_workspaces/default') / file_path
@@ -49,7 +48,7 @@ def init_xterm_terminal(app, socketio):
                     return "<h1>Archivo no encontrado</h1>"
             except Exception as e:
                 return f"<h1>Error</h1><p>{str(e)}</p>"
-        
+
         # Página por defecto
         return """
         <!DOCTYPE html>
@@ -69,27 +68,27 @@ def init_xterm_terminal(app, socketio):
         </body>
         </html>
         """
-    
+
     def get_user_workspace(user_id):
         """Obtiene la ruta del workspace del usuario."""
         if user_id not in user_workspaces:
             user_workspaces[user_id] = Path('user_workspaces') / (user_id or 'default')
             os.makedirs(user_workspaces[user_id], exist_ok=True)
-        
+
         return user_workspaces[user_id]
-    
+
     @socketio.on('connect')
     def handle_connect():
         """Maneja la conexión de un cliente."""
         client_id = request.sid
         logging.info(f"Cliente conectado: {client_id}")
-    
+
     @socketio.on('disconnect')
     def handle_disconnect():
         """Maneja la desconexión de un cliente."""
         client_id = request.sid
         logging.info(f"Cliente desconectado: {client_id}")
-    
+
     @socketio.on('join_room')
     def handle_join(data):
         """Maneja la unión a una sala."""
@@ -98,14 +97,14 @@ def init_xterm_terminal(app, socketio):
             join_room(room)
             emit('room_joined', {'success': True, 'room': room}, room=request.sid)
             logging.info(f"Cliente {request.sid} unido a la sala {room}")
-    
+
     @socketio.on('bash_command')
     def handle_bash_command(data):
         """Ejecuta un comando bash y devuelve el resultado."""
         command = data.get('command', '')
         user_id = data.get('user_id', 'default')
         directory = data.get('directory', '.')
-        
+
         if not command:
             emit('command_result', {
                 'success': False,
@@ -114,18 +113,19 @@ def init_xterm_terminal(app, socketio):
                 'output': 'No se proporcionó ningún comando'
             }, room=request.sid)
             return
-        
+
         try:
             # Obtener workspace del usuario
             workspace_path = get_user_workspace(user_id)
-            
+
             # Construir ruta completa para el directorio actual
             if directory == '.':
                 current_dir = workspace_path
             else:
                 current_dir = workspace_path / directory
-            
+
             # Ejecutar comando en esa ruta
+            logging.debug(f"Ejecutando comando: '{command}'") # Added logging here
             process = subprocess.Popen(
                 command,
                 shell=True,
@@ -134,9 +134,9 @@ def init_xterm_terminal(app, socketio):
                 stderr=subprocess.PIPE,
                 text=True
             )
-            
+
             stdout, stderr = process.communicate()
-            
+
             # Emitir resultado
             emit('command_result', {
                 'success': process.returncode == 0,
@@ -145,7 +145,7 @@ def init_xterm_terminal(app, socketio):
                 'stderr': stderr,
                 'output': stdout if process.returncode == 0 else stderr
             }, room=request.sid)
-            
+
             # Detectar cambios en archivos para notificar a todos los clientes
             if process.returncode == 0 and any(cmd in command for cmd in ['mkdir', 'touch', 'rm', 'cp', 'mv', 'echo']):
                 emit('file_change', {
@@ -153,7 +153,7 @@ def init_xterm_terminal(app, socketio):
                     'message': f'Comando ejecutado: {command}',
                     'command': command
                 }, broadcast=True)
-            
+
         except Exception as e:
             logging.error(f"Error al ejecutar comando: {str(e)}")
             emit('command_result', {
@@ -162,7 +162,7 @@ def init_xterm_terminal(app, socketio):
                 'stderr': str(e),
                 'output': f"Error: {str(e)}"
             }, room=request.sid)
-    
+
     # Ruta para la API REST para ejecutar comandos
     @app.route('/execute-command', methods=['POST'])
     def execute_command():
@@ -174,8 +174,9 @@ def init_xterm_terminal(app, socketio):
                     'success': False,
                     'error': 'No se proporcionó ningún comando'
                 }), 400
-                
+
             # Ejecutar el comando en el servidor
+            logging.debug(f"Ejecutando comando (HTTP): '{command}'") # Added logging here
             process = subprocess.run(
                 command, 
                 shell=True, 
@@ -183,20 +184,20 @@ def init_xterm_terminal(app, socketio):
                 text=True,
                 cwd=os.path.join(os.getcwd(), 'user_workspaces/default')
             )
-            
+
             return jsonify({
                 'success': process.returncode == 0,
                 'stdout': process.stdout,
                 'stderr': process.stderr
             }), 200
-            
+
         except Exception as e:
             logging.error(f"Error al ejecutar comando vía HTTP: {str(e)}")
             return jsonify({
                 'success': False,
                 'error': str(e)
             }), 500
-    
+
     @socketio.on('natural_language')
     def handle_natural_language(data):
         """Procesa instrucciones en lenguaje natural."""
@@ -204,7 +205,7 @@ def init_xterm_terminal(app, socketio):
         user_id = data.get('user_id', 'default')
         model = data.get('model', 'openai')
         directory = data.get('directory', '.')
-        
+
         if not text:
             emit('command_result', {
                 'success': False,
@@ -213,12 +214,12 @@ def init_xterm_terminal(app, socketio):
                 'output': 'No se proporcionó ningún texto'
             }, room=request.sid)
             return
-        
+
         try:
             # Aquí procesaríamos el lenguaje natural con algún modelo de IA
             # Por ahora, vamos a usar algunas reglas simples
             command = ""
-            
+
             # Mapa de comandos comunes
             command_map = {
                 "listar": "ls -la",
@@ -233,7 +234,7 @@ def init_xterm_terminal(app, socketio):
                 "mostrar contenido": "cat ",
                 "leer archivo": "cat ",
             }
-            
+
             # Buscar coincidencias
             for key, cmd in command_map.items():
                 if key in text.lower():
@@ -247,7 +248,7 @@ def init_xterm_terminal(app, socketio):
                                     command += parts[i + 1]
                                     break
                     break
-            
+
             if not command:
                 # Si no hay coincidencia exacta, devolver mensaje informativo
                 emit('command_result', {
@@ -257,16 +258,17 @@ def init_xterm_terminal(app, socketio):
                     'output': f"No pude procesar: '{text}'. Prueba con instrucciones más específicas como 'crear archivo test.txt' o usa comandos bash directamente."
                 }, room=request.sid)
                 return
-            
+
             # Ejecutar el comando generado
             workspace_path = get_user_workspace(user_id)
-            
+
             # Construir ruta completa para el directorio actual
             if directory == '.':
                 current_dir = workspace_path
             else:
                 current_dir = workspace_path / directory
-            
+
+            logging.debug(f"Ejecutando comando (Lenguaje natural): '{command}'") # Added logging here
             process = subprocess.Popen(
                 command,
                 shell=True,
@@ -275,9 +277,9 @@ def init_xterm_terminal(app, socketio):
                 stderr=subprocess.PIPE,
                 text=True
             )
-            
+
             stdout, stderr = process.communicate()
-            
+
             # Emitir resultado
             emit('command_result', {
                 'success': process.returncode == 0,
@@ -286,7 +288,7 @@ def init_xterm_terminal(app, socketio):
                 'stderr': stderr,
                 'output': f"Instrucción: '{text}'\nComando ejecutado: {command}\n\n{stdout if process.returncode == 0 else stderr}"
             }, room=request.sid)
-            
+
         except Exception as e:
             logging.error(f"Error al procesar lenguaje natural: {str(e)}")
             emit('command_result', {
@@ -295,23 +297,23 @@ def init_xterm_terminal(app, socketio):
                 'stderr': str(e),
                 'output': f"Error al procesar: {str(e)}"
             }, room=request.sid)
-    
+
     @socketio.on('list_directory')
     def handle_list_directory(data):
         """Lista los contenidos de un directorio."""
         path = data.get('path', '.')
         user_id = data.get('user_id', 'default')
-        
+
         try:
             # Obtener workspace del usuario
             workspace_path = get_user_workspace(user_id)
-            
+
             # Construir ruta completa
             if path == '.':
                 target_dir = workspace_path
             else:
                 target_dir = workspace_path / path
-            
+
             # Verificar que exista
             if not target_dir.exists():
                 emit('directory_contents', {
@@ -319,7 +321,7 @@ def init_xterm_terminal(app, socketio):
                     'error': 'Directorio no encontrado'
                 }, room=request.sid)
                 return
-            
+
             # Listar archivos y directorios
             contents = []
             for item in os.listdir(target_dir):
@@ -330,20 +332,20 @@ def init_xterm_terminal(app, socketio):
                     'size': os.path.getsize(item_path) if item_path.is_file() else 0,
                     'modified': os.path.getmtime(item_path)
                 })
-            
+
             emit('directory_contents', {
                 'success': True,
                 'path': path,
                 'contents': contents
             }, room=request.sid)
-            
+
         except Exception as e:
             logging.error(f"Error al listar directorio: {str(e)}")
             emit('directory_contents', {
                 'success': False,
                 'error': str(e)
             }, room=request.sid)
-    
+
     # Configurar servidor WebSocket para Yjs
     @socketio.on('yjs')
     def handle_yjs(data):
@@ -352,10 +354,10 @@ def init_xterm_terminal(app, socketio):
         room = data.get('room')
         action = data.get('action')
         payload = data.get('payload')
-        
+
         if not room:
             return
-        
+
         # Unirse a la sala si es join
         if action == 'join':
             join_room(room)
@@ -364,12 +366,12 @@ def init_xterm_terminal(app, socketio):
                 'room': room
             }, room=request.sid)
             return
-        
+
         # Reenviar el mensaje a todos en la sala excepto al emisor
         emit('yjs', {
             'action': action,
             'payload': payload
         }, room=room, skip_sid=request.sid)
-    
+
     # Registrar eventos adicionales que se necesiten
     logging.info("Terminal xterm.js y colaboración en tiempo real inicializados")
