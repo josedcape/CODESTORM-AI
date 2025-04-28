@@ -14,6 +14,8 @@ import shutil
 from werkzeug.utils import secure_filename
 from flask_socketio import SocketIO
 from intelligent_terminal import init_terminal
+from xterm import init_xterm_blueprint # Assuming this is where the xterm blueprint is defined
+
 
 # Load environment variables with force reload
 load_dotenv(override=True)
@@ -32,8 +34,8 @@ socketio = SocketIO(app, cors_allowed_origins="*")  # Inicializar Socket.IO
 # Initialize intelligent terminal
 init_terminal(app, socketio)
 
-# Debug flag for more detailed errors
-app.debug = True
+# Initialize xterm terminal
+init_xterm_blueprint(app, socketio)
 
 # Set session secret
 app.secret_key = os.environ.get("SESSION_SECRET", os.urandom(24).hex())
@@ -859,50 +861,7 @@ def clone_repository():
                 text=True
             )
 
-            # Verificar si hay error en la salida de error de git
-            if process.returncode != 0:
-                return jsonify({
-                    'success': False,
-                    'error': f'Error al clonar repositorio: {process.stderr}'
-                }), 500
-
-            logging.info(f"Repositorio clonado exitosamente: {repo_url} -> {full_target_path}")
-
-            return jsonify({
-                'success': True,
-                'message': f'Repositorio clonado exitosamente en {target_dir}',
-                'output': process.stdout,
-                'target_dir': target_dir
-            })
-        except Exception as e:
-            logging.error(f"Error al ejecutar git clone: {str(e)}")
-            return jsonify({
-                'success': False,
-                'error': f'Error al clonar repositorio: {str(e)}'
-            }), 500
-
-    except Exception as e:
-        logging.error(f"Error al clonar repositorio: {str(e)}")
-        logging.error(traceback.format_exc())  # Añadir traza completa para mejor depuración
-        return jsonify({
-            'success': False,
-            'error': str(e)
-        }), 500
-
-@app.route('/api/process', methods=['POST'])
-def process_request():
-    """API para procesar solicitudes genéricas."""
-    try:
-        data = request.json
-        if not data:
-            return jsonify({
-                'success': False,
-                'error': 'No se proporcionaron datos'
-            }), 400
-
-        # Process the request data here
-        # Example: Format code blocks in response
-        # response = re.sub(r'```([a-zA-Z0-9]+)?\s*', r'```\1\n', response)
+            # Verificar si hay error en la salida de([a-zA-Z0-9]+)?\s*', r'```\1\n', response)
 
         return jsonify({'success': True, 'response': 'Processed successfully'})
     except Exception as e:
@@ -956,18 +915,4 @@ def extract_json_from_claude(text):
         return json.loads(text.strip())
     except json.JSONDecodeError:
         # Si no es JSON válido, buscamos dentro de bloques de código
-        json_match = re.search(r'```json\s*(.*?)\s*```', text, re.DOTALL)
-        if json_match:
-            try:
-                return json.loads(json_match.group(1).strip())
-            except json.JSONDecodeError:
-                return {"correctedCode": "", "changes": [], "explanation": "Error al procesar la respuesta JSON de Claude."}
-        else:
-            return {"correctedCode": "", "changes": [], "explanation": "No se encontró JSON en la respuesta de Claude."}
-
-if __name__ == "__main__":
-    # Create workspaces directory if it doesn't exist
-    os.makedirs('user_workspaces/default', exist_ok=True)
-    
-    # Run the app
-    socketio.run(app, host='0.0.0.0', port=5000, debug=True, allow_unsafe_werkzeug=True)
+        json_match = re.search(r'```json\s*(.*?)\s*
