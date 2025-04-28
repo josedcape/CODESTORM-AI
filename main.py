@@ -60,7 +60,7 @@ else:
 if gemini_api_key:
     try:
         import google.generativeai as genai
-        genai.configure(api_key=gemini_api_key)
+        google.generativeai.configure(api_key=gemini_api_key)
         logging.info(f"Gemini API key configurada: {gemini_api_key[:5]}...{gemini_api_key[-5:]}")
     except ImportError as ie:
         logging.error(f"Error al importar módulos para Gemini: {str(ie)}")
@@ -856,18 +856,63 @@ def clone_repository():
         try:
             process = subprocess.run(
                 ['git', 'clone', repo_url, full_target_path],
-                check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True
             )
+
+            # Verificar si hay error en la salida de error de git
+            if process.returncode != 0:
+                return jsonify({
+                    'success': False,
+                    'error': f'Error al clonar repositorio: {process.stderr}'
+                }), 500
+
+            logging.info(f"Repositorio clonado exitosamente: {repo_url} -> {full_target_path}")
 
             return jsonify({
                 'success': True,
-                '\1\n', response)
-        response = re.sub(r'\s*```', r'\n```', response)
-        # Asegurar que los títulos tengan espacio después del #
-        response = re.sub(r'(^|\n)#([^#\s])', r'\1# \2', response)
+                'message': f'Repositorio clonado exitosamente en {target_dir}',
+                'output': process.stdout,
+                'target_dir': target_dir
+            })
+        except Exception as e:
+            logging.error(f"Error al ejecutar git clone: {str(e)}")
+            return jsonify({
+                'success': False,
+                'error': f'Error al clonar repositorio: {str(e)}'
+            }), 500
 
-        # Asegurar que las listas tengan formato adecuado
-        response = re.sub(r'(^|\n)(-|\d+\.) ([^\s])', r'\1\2 \3', response)
+    except Exception as e:
+        logging.error(f"Error al clonar repositorio: {str(e)}")
+        logging.error(traceback.format_exc())  # Añadir traza completa para mejor depuración
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@app.route('/api/process', methods=['POST'])
+def process_request():
+    """API para procesar solicitudes genéricas."""
+    try:
+        data = request.json
+        if not data:
+            return jsonify({
+                'success': False,
+                'error': 'No se proporcionaron datos'
+            }), 400
+
+        # Formatear la respuesta si existe
+        response = data.get('response', '')
+        if response:
+            response = re.sub(r'```([a-zA-Z0-9]+)?\s*', r'```\1\n', response)
+            response = re.sub(r'\s*```', r'\n```', response)
+
+            # Asegurar que los títulos tengan espacio después del #
+            response = re.sub(r'(^|\n)#([^#\s])', r'\1# \2', response)
+
+            # Asegurar que las listas tengan formato adecuado
+            response = re.sub(r'(^|\n)(-|\d+\.) ([^\s])', r'\1\2 \3', response)
 
         return jsonify({'response': response})
     except Exception as e:
@@ -921,4 +966,21 @@ def extract_json_from_claude(text):
         return json.loads(text.strip())
     except json.JSONDecodeError:
         # Si no es JSON válido, buscamos dentro de bloques de código
-        json_match = re.search(r'```json\s*(.*?)\s*
+        json_match = re.search(r'```json\s*(.*?)\s*```', text, re.DOTALL)
+        if json_match:
+            try:
+                return json.loads(json_match.group(1).strip())
+            except json.JSONDecodeError:
+                # Si aún falla, creamos una estructura básica con la respuesta completa
+                return {
+                    "correctedCode": "",
+                    "changes": [],
+                    "explanation": "Error al procesar la respuesta JSON de Claude. Respuesta recibida: " + text[:200] + "..."
+                }
+        else:
+            # Si no encontramos bloques JSON, construimos una respuesta informativa
+            return {
+                "correctedCode": "",
+                "changes": [],
+                "explanation": "Claude no respondió en el formato esperado. Intente de nuevo o use otro modelo."
+            }
