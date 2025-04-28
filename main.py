@@ -875,7 +875,9 @@ def process_request():
             }), 400
 
         # Formatear la respuesta si existe
-        response = data.get('response([a-zA-Z0-9]+)?\s*', r'```\1\n', response)
+        response = data.get('response', '')
+        if response:
+            response = re.sub(r'```([a-zA-Z0-9]+)?\s*', r'```\1\n', response)
             response = re.sub(r'\s*```', r'\n```', response)
 
             # Asegurar que los títulos tengan espacio después del #
