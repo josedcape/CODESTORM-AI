@@ -209,21 +209,30 @@ def init_xterm_blueprint(app, socketio):
                 "copiar": "cp ",
                 "mostrar contenido": "cat ",
                 "leer archivo": "cat ",
+                "crea un proyecto": "mkdir proyecto && echo '# Mi Proyecto\n\nEste es un nuevo proyecto creado desde la terminal.' > proyecto/README.md",
             }
 
-            # Buscar coincidencias
-            for key, cmd in command_map.items():
-                if key in text.lower():
-                    command = cmd
-                    # Extraer nombres si es necesario
-                    if cmd in ["mkdir ", "touch ", "rm ", "mv ", "cp ", "cat "]:
-                        parts = text.split()
-                        for i, part in enumerate(parts):
-                            if part.lower() in ["llamada", "llamado", "nombre"]:
-                                if i + 1 < len(parts):
-                                    command += parts[i + 1]
-                                    break
-                    break
+            # Buscar coincidencias exactas primero
+            if text.lower() in command_map:
+                command = command_map[text.lower()]
+            else:
+                # Buscar coincidencias parciales
+                for key, cmd in command_map.items():
+                    if key in text.lower():
+                        command = cmd
+                        # Extraer nombres si es necesario
+                        if cmd in ["mkdir ", "touch ", "rm ", "mv ", "cp ", "cat "]:
+                            parts = text.split()
+                            for i, part in enumerate(parts):
+                                if part.lower() in ["llamada", "llamado", "nombre"]:
+                                    if i + 1 < len(parts):
+                                        command += parts[i + 1]
+                                        break
+                            # Si no se encontró un nombre específico y hay palabras después del comando
+                            if command == cmd and len(parts) > 1:
+                                # Usar la última palabra como nombre predeterminado
+                                command += parts[-1]
+                        break
 
             if not command:
                 # Si no hay coincidencia exacta, devolver mensaje informativo
