@@ -853,11 +853,105 @@ def clone_repository():
                 text=True
             )
 
+
+@app.route('/api/repo/clone', methods=['POST'])
+def clone_repository():
+    """API para clonar un repositorio Git en el workspace del usuario."""
+    try:
+        data = request.json
+        if not data:
+            return jsonify({
+                'success': False,
+                'error': 'No se proporcionaron datos'
+            }), 400
+
+        repo_url = data.get('repo_url')
+        user_id = data.get('user_id', 'default')
+        target_dir = data.get('target_dir')
+
+        if not repo_url:
+            return jsonify({
+                'success': False,
+                'error': 'No se proporcionó URL del repositorio'
+            }), 400
+
+        # Obtener el workspace del usuario
+        user_workspace = get_user_workspace(user_id)
+
+        # Si no se especifica directorio destino, usar el nombre del repositorio
+        if not target_dir:
+            # Extraer nombre del repositorio de la URL
+            repo_name = repo_url.split('/')[-1]
+            if repo_name.endswith('.git'):
+                repo_name = repo_name[:-4]
+            target_dir = repo_name
+
+        # Limpiar ruta destino
+        target_dir = target_dir.replace('..', '').strip('/')
+        full_target_path = os.path.join(user_workspace, target_dir)
+
+        # Verificar si ya existe
+        if os.path.exists(full_target_path):
+            return jsonify({
+                'success': False,
+                'error': f'Ya existe un directorio con el nombre {target_dir}'
+            }), 400
+
+        # Crear directorio padre si no existe
+        os.makedirs(os.path.dirname(full_target_path), exist_ok=True)
+
+        # Instalar git si no está instalado
+        try:
+            subprocess.run(['git', '--version'], check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        except (subprocess.SubprocessError, FileNotFoundError):
+            return jsonify({
+                'success': False,
+                'error': 'Git no está instalado en el sistema'
+            }), 500
+
+        # Clonar el repositorio con manejo de errores mejorado
+        try:
+            process = subprocess.run(
+                ['git', 'clone', repo_url, full_target_path],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True
+            )
+
             # Verificar si hay error en la salida de error de git
             if process.returncode != 0:
                 return jsonify({
                     'success': False,
-                    json(.*?)```', text, re.DOTALL)
+                    'error': f'Error al clonar repositorio: {process.stderr}'
+                }), 500
+
+            logging.info(f"Repositorio clonado exitosamente: {repo_url} -> {full_target_path}")
+
+            return jsonify({
+                'success': True,
+                'message': f'Repositorio clonado exitosamente en {target_dir}',
+                'output': process.stdout,
+                'target_dir': target_dir
+            })
+        except Exception as e:
+            logging.error(f"Error al ejecutar git clone: {str(e)}")
+            return jsonify({
+                'success': False,
+                'error': f'Error al clonar repositorio: {str(e)}'
+            }), 500
+
+    except Exception as e:
+        logging.error(f"Error al clonar repositorio: {str(e)}")
+        logging.error(traceback.format_exc())  # Añadir traza completa para mejor depuración
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+def extract_json_from_gemini(text):
+    """Extrae JSON de una respuesta de Gemini."""
+    import re
+    json_match = re.search(r'```json(.*?)```', text, re.DOTALL)
     if json_match:
         try:
             return json.loads(json_match.group(1).strip())
@@ -865,7 +959,6 @@ def clone_repository():
             return {"correctedCode": "", "changes": [], "explanation": "Error al procesar la respuesta JSON de Gemini."}
     else:
         return {"correctedCode": "", "changes": [], "explanation": "No se encontró JSON en la respuesta de Gemini."}
-
 
 def extract_json_from_claude(text):
     """Extrae JSON de una respuesta de Claude."""
@@ -875,4 +968,21 @@ def extract_json_from_claude(text):
         return json.loads(text.strip())
     except json.JSONDecodeError:
         # Si no es JSON válido, buscamos dentro de bloques de código
-        json_match = re.search(r'```json\s*(.*?)\s*
+        json_match = re.search(r'```json\s*(.*?)\s*```', text, re.DOTALL)
+        if json_match:
+            try:
+                return json.loads(json_match.group(1).strip())
+            except json.JSONDecodeError:
+                # Si aún falla, creamos una estructura básica con la respuesta completa
+                return {
+                    "correctedCode": "",
+                    "changes": [],
+                    "explanation": "Error al procesar la respuesta JSON de Claude. Respuesta recibida: " + text[:200] + "..."
+                }
+        else:
+            # Si no encontramos bloques JSON, construimos una respuesta informativa
+            return {
+                "correctedCode": "",
+                "changes": [],
+                "explanation": "Claude no respondió en el formato esperado. Intente de nuevo o use otro modelo."
+            }
