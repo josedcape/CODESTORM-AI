@@ -452,6 +452,10 @@
                             <option value="anthropic">Anthropic</option>
                             <option value="gemini">Gemini</option>
                         </select>
+                        <select class="model-selector" id="command-method" style="max-width: 100px;">
+                            <option value="websocket">WebSocket</option>
+                            <option value="rest">REST API</option>
+                        </select>
                         <input type="text" class="terminal-input" id="terminal-input" 
                                placeholder="Ingresa un comando o instrucción en lenguaje natural...">
                         <button class="send-button" id="send-button">
@@ -812,6 +816,38 @@
                 terminalInput.value = '';
             }
             
+            // Función alternativa para ejecutar comandos vía API REST
+            async function executeCommandViaREST(command) {
+                try {
+                    terminal.write('\r\n\x1b[33mEjecutando vía API REST: ' + command + '\x1b[0m\r\n');
+                    
+                    const response = await fetch('/execute-command', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ command })
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        terminal.write('\r\n' + data.stdout + '\r\n');
+                    } else {
+                        terminal.write('\r\n\x1b[31mError: ' + data.stderr + '\x1b[0m\r\n');
+                    }
+                    
+                    // Actualizar explorador si el comando afecta archivos
+                    if (shouldRefreshExplorer(command)) {
+                        setTimeout(() => loadDirectoryContents(currentDirectory), 500);
+                    }
+                    
+                } catch (error) {
+                    console.error('Error al ejecutar comando vía REST:', error);
+                    terminal.write('\r\n\x1b[31mError: ' + error.message + '\x1b[0m\r\n');
+                }
+            }
+            
             // Cargar contenidos del directorio
             function loadDirectoryContents(path) {
                 if (!isConnected) {
@@ -1048,11 +1084,29 @@
             // Event listeners
             terminalInput.addEventListener('keydown', function(event) {
                 if (event.key === 'Enter') {
-                    handleInput();
+                    const methodSelector = document.getElementById('command-method');
+                    const method = methodSelector.value;
+                    
+                    if (method === 'rest') {
+                        executeCommandViaREST(terminalInput.value.trim());
+                        terminalInput.value = '';
+                    } else {
+                        handleInput();
+                    }
                 }
             });
             
-            sendButton.addEventListener('click', handleInput);
+            sendButton.addEventListener('click', function() {
+                const methodSelector = document.getElementById('command-method');
+                const method = methodSelector.value;
+                
+                if (method === 'rest') {
+                    executeCommandViaREST(terminalInput.value.trim());
+                    terminalInput.value = '';
+                } else {
+                    handleInput();
+                }
+            });
             
             clearTerminalBtn.addEventListener('click', function() {
                 terminal.clear();

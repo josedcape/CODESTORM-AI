@@ -163,6 +163,40 @@ def init_xterm_terminal(app, socketio):
                 'output': f"Error: {str(e)}"
             }, room=request.sid)
     
+    # Ruta para la API REST para ejecutar comandos
+    @app.route('/execute-command', methods=['POST'])
+    def execute_command():
+        """Ejecuta un comando en el servidor desde una solicitud HTTP."""
+        try:
+            command = request.json.get('command')
+            if not command:
+                return jsonify({
+                    'success': False,
+                    'error': 'No se proporcionó ningún comando'
+                }), 400
+                
+            # Ejecutar el comando en el servidor
+            process = subprocess.run(
+                command, 
+                shell=True, 
+                capture_output=True, 
+                text=True,
+                cwd=os.path.join(os.getcwd(), 'user_workspaces/default')
+            )
+            
+            return jsonify({
+                'success': process.returncode == 0,
+                'stdout': process.stdout,
+                'stderr': process.stderr
+            }), 200
+            
+        except Exception as e:
+            logging.error(f"Error al ejecutar comando vía HTTP: {str(e)}")
+            return jsonify({
+                'success': False,
+                'error': str(e)
+            }), 500
+    
     @socketio.on('natural_language')
     def handle_natural_language(data):
         """Procesa instrucciones en lenguaje natural."""
