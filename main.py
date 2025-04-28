@@ -916,4 +916,11 @@ def extract_json_from_claude(text):
         return json.loads(text.strip())
     except json.JSONDecodeError:
         # Si no es JSON válido, buscamos dentro de bloques de código
-        json_match = re.search(r'```json\s*(.*?)\s*
+        json_match = re.search(r'```json\s*(.*?)\s*```', text, re.DOTALL)
+        if json_match:
+            try:
+                return json.loads(json_match.group(1).strip())
+            except json.JSONDecodeError:
+                return {"correctedCode": "", "changes": [], "explanation": "Error al procesar la respuesta JSON de Claude."}
+        else:
+            return {"correctedCode": "", "changes": [], "explanation": "No se encontró JSON en la respuesta de Claude."}
