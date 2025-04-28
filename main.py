@@ -29,6 +29,9 @@ app = Flask(__name__)
 CORS(app)  # Enable CORS for all routes
 socketio = SocketIO(app, cors_allowed_origins="*")  # Inicializar Socket.IO
 
+# Initialize intelligent terminal
+init_terminal(app, socketio)
+
 # Set session secret
 app.secret_key = os.environ.get("SESSION_SECRET", os.urandom(24).hex())
 
