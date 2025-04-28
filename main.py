@@ -284,6 +284,12 @@ def xterm_terminal_route():
     # En lugar de redireccionar, renderizamos la plantilla directamente
     return render_template('xterm_terminal.html')
 
+# Ruta adicional para asegurar compatibilidad con solicitudes a /xterm/xterm_terminal
+@app.route('/xterm/xterm_terminal')
+def xterm_terminal_alt():
+    """Ruta alternativa para acceder a la terminal XTerm."""
+    return render_template('xterm_terminal.html')
+
 # Ruta alternativa para la terminal Monaco (mantenemos para compatibilidad)
 @app.route('/monaco_terminal')
 def monaco_terminal():

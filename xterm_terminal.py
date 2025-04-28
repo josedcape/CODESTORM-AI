@@ -75,6 +75,7 @@ def execute_xterm_command():
 def init_xterm_blueprint(app, socketio):
     """Registra el blueprint en la aplicación Flask."""
     app.register_blueprint(xterm_bp, url_prefix='/xterm')
+    # Registrar manejadores de eventos SocketIO después de inicializar el blueprint
 
     user_workspaces = {}
 
