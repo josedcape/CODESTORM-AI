@@ -866,7 +866,8 @@ def clone_repository():
 @app.route('/api/process', methods=['POST'])
 def process_request():
     """API para procesar solicitudes genéricas."""
-    trydata = request.json
+    try:
+        data = request.json
         if not data:
             return jsonify({
                 'success': False,
