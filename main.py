@@ -967,4 +967,4 @@ def extract_json_from_claude(text):
         return json.loads(text.strip())
     except json.JSONDecodeError:
         # Si no es JSON válido, buscamos dentro de bloques de código
-        json_match = re.search(r'```json\s*(.*?)\s*
+        json_match = re.search(r'```json\s*(.*?)\s*```', response, re.DOTALL)
