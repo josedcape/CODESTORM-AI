@@ -120,6 +120,11 @@ def terminal():
             f.write('# Workspace\n\nEste es tu espacio de trabajo. Usa comandos o instrucciones en lenguaje natural para crear y modificar archivos.\n\nEjemplos:\n- "crea una carpeta llamada proyectos"\n- "mkdir proyectos"\n- "touch archivo.txt"')
 
     return render_template('monaco_terminal.html')
+    
+@app.route('/xterm_terminal')
+def xterm_terminal_route():
+    """Redirect to xterm terminal."""
+    return redirect('/xterm')
 
 # Ruta alternativa para la terminal Monaco (mantenemos para compatibilidad)
 @app.route('/monaco_terminal')
