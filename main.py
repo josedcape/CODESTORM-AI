@@ -123,8 +123,9 @@ def terminal():
     
 @app.route('/xterm_terminal')
 def xterm_terminal_route():
-    """Redirect to xterm terminal."""
-    return redirect('/xterm')
+    """Render the XTerm terminal page directly."""
+    # En lugar de redireccionar, renderizamos la plantilla directamente
+    return render_template('xterm_terminal.html')
 
 # Ruta alternativa para la terminal Monaco (mantenemos para compatibilidad)
 @app.route('/monaco_terminal')
