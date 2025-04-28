@@ -885,12 +885,150 @@ def handle_chat():
                 'success': False,
                 'error': 'No se proporcionó mensaje'
             }), 400
-            
+        
+        # Configurar los prompts de cada agente
+        agent_prompts = {
+            'developer': "Eres un Desarrollador Experto especializado en programación y resolución de problemas técnicos. Proporcionas soluciones de código claras y eficientes, con explicaciones detalladas. Responde en español de forma profesional pero accesible.",
+            'architect': "Eres un Arquitecto de Software especializado en diseño de sistemas y patrones arquitectónicos. Ofreces recomendaciones sobre estructura de proyectos, tecnologías y mejores prácticas. Responde en español de forma profesional pero accesible.",
+            'advanced': "Eres un Especialista Avanzado con amplio conocimiento en tecnologías emergentes y soluciones complejas. Ayudas con integraciones sofisticadas y problemas técnicos avanzados. Responde en español de forma profesional pero accesible.",
+            'general': "Eres un Asistente General preparado para ayudar con cualquier consulta de desarrollo. Ofreces explicaciones claras y soluciones prácticas. Responde en español de forma profesional pero accesible."
+        }
+        
+        # Obtener el prompt según el agente
+        agent_prompt = agent_prompts.get(agent_id, agent_prompts['general'])
+        
+        # Obtener nombre amigable del agente para la respuesta
+        agent_names = {
+            'developer': "Desarrollador Experto",
+            'architect': "Arquitecto de Software",
+            'advanced': "Especialista Avanzado",
+            'general': "Asistente General"
+        }
+        agent_name = agent_names.get(agent_id, "Asistente")
+
+        # Formatear el contexto para los modelos
+        formatted_context = []
+        for msg in context:
+            role = msg.get('role', 'user')
+            if role not in ['user', 'assistant', 'system']:
+                role = 'user'
+            formatted_context.append({
+                "role": role,
+                "content": msg.get('content', '')
+            })
+
         # Generar respuesta usando el modelo seleccionado
         response = ""
+
+        # Usar Anthropic Claude
+        if model_choice == 'anthropic' and os.environ.get('ANTHROPIC_API_KEY'):
+            try:
+                import anthropic
+                from anthropic import Anthropic
+                
+                client = Anthropic(api_key=os.environ.get('ANTHROPIC_API_KEY'))
+                
+                # Preparar mensajes para Claude
+                messages = [{"role": "system", "content": agent_prompt}]
+                
+                # Añadir mensajes de contexto
+                for msg in formatted_context:
+                    messages.append({"role": msg['role'], "content": msg['content']})
+                
+                # Añadir el mensaje actual del usuario
+                messages.append({"role": "user", "content": user_message})
+                
+                completion = client.messages.create(
+                    model="claude-3-5-sonnet-latest",
+                    max_tokens=2000,
+                    temperature=0.7,
+                    messages=messages
+                )
+                
+                response = completion.content[0].text
+                logging.info(f"Respuesta generada con Anthropic Claude")
+            except Exception as e:
+                logging.error(f"Error con API de Anthropic: {str(e)}")
+                logging.error(traceback.format_exc())
+                return jsonify({
+                    'success': False,
+                    'error': f"Error al conectar con Anthropic: {str(e)}",
+                    'response': f"Lo siento, hubo un problema al conectar con el modelo Claude. Por favor, intenta con otro modelo o más tarde."
+                }), 500
         
-        # Por ahora, una respuesta simple para verificar que funciona
-        response = f"He recibido tu mensaje: '{user_message}'. Estoy procesándolo como el agente {agent_id} usando el modelo {model_choice}."
+        # Usar Google Gemini
+        elif model_choice == 'gemini' and os.environ.get('GEMINI_API_KEY'):
+            try:
+                import google.generativeai as genai
+                
+                genai.configure(api_key=os.environ.get('GEMINI_API_KEY'))
+                model = genai.GenerativeModel('gemini-1.5-pro')
+                
+                # Construir el prompt con contexto
+                full_prompt = f"{agent_prompt}\n\n"
+                
+                # Añadir mensajes de contexto
+                for msg in formatted_context:
+                    prefix = "Usuario: " if msg['role'] == 'user' else f"{agent_name}: "
+                    full_prompt += prefix + msg['content'] + "\n\n"
+                
+                # Añadir mensaje actual
+                full_prompt += f"Usuario: {user_message}\n\n{agent_name}:"
+                
+                generation = model.generate_content(full_prompt)
+                response = generation.text
+                logging.info(f"Respuesta generada con Google Gemini")
+            except Exception as e:
+                logging.error(f"Error con API de Gemini: {str(e)}")
+                logging.error(traceback.format_exc())
+                return jsonify({
+                    'success': False,
+                    'error': f"Error al conectar con Gemini: {str(e)}",
+                    'response': f"Lo siento, hubo un problema al conectar con el modelo Gemini. Por favor, intenta con otro modelo o más tarde."
+                }), 500
+        
+        # Usar OpenAI (modelo por defecto)
+        else:
+            try:
+                if not openai_client:
+                    # Inicializar cliente si no existe
+                    openai.api_key = os.environ.get('OPENAI_API_KEY')
+                    
+                # Preparar mensajes para OpenAI
+                messages = [{"role": "system", "content": agent_prompt}]
+                
+                # Añadir mensajes de contexto
+                for msg in formatted_context:
+                    messages.append({"role": msg['role'], "content": msg['content']})
+                
+                # Añadir el mensaje actual del usuario
+                messages.append({"role": "user", "content": user_message})
+                
+                completion = openai_client.chat.completions.create(
+                    model="gpt-4o",
+                    messages=messages,
+                    temperature=0.7,
+                    max_tokens=2000
+                )
+                
+                response = completion.choices[0].message.content
+                logging.info(f"Respuesta generada con OpenAI GPT-4o")
+            except Exception as e:
+                logging.error(f"Error con API de OpenAI: {str(e)}")
+                logging.error(traceback.format_exc())
+                return jsonify({
+                    'success': False, 
+                    'error': f"Error al conectar con OpenAI: {str(e)}",
+                    'response': f"Lo siento, hubo un problema al conectar con el modelo OpenAI. Por favor, intenta con otro modelo o más tarde."
+                }), 500
+        
+        # Si llegamos aquí y no tenemos respuesta, proporcionar un mensaje de error
+        if not response:
+            return jsonify({
+                'success': False,
+                'error': "No se pudo generar una respuesta con el modelo seleccionado",
+                'response': "Lo siento, no se pudo obtener una respuesta del modelo seleccionado. Por favor, verifica que las claves API estén configuradas correctamente."
+            }), 500
         
         return jsonify({
             'success': True,
@@ -902,6 +1040,7 @@ def handle_chat():
         logging.error(f"Error en handle_chat: {str(e)}")
         logging.error(traceback.format_exc())
         return jsonify({
+            'success': False,
             'error': str(e),
             'response': f"Error inesperado: {str(e)}"
         }), 500
