@@ -942,6 +942,7 @@ def process_code():
         instructions = data.get('instructions', 'Corrige errores y mejora la calidad del código')
         language = data.get('language', 'python')
         model = data.get('model', 'openai')
+        agent_id = data.get('agent_id', 'developer')
         
         if not code:
             return jsonify({
