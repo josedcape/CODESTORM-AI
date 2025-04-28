@@ -862,7 +862,7 @@ def clone_repository():
             )
 
             # Verificar si hay error en la salida de error de git
-if process.returncode != 0:
+            if process.returncode != 0:
                 return jsonify({
                     'success': False,
                     'error': f'Error al clonar repositorio: {process.stderr}'
