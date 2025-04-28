@@ -745,7 +745,17 @@ def handle_chat_internal(data):
 
                 for msg in formatted_context:
                     prefix = "Usuario: " if msg['role'] == 'user' else "Asistente: "
-                    full_prompt += prefix + msg['content'] + f"\n```{language}\n{code}\n```\n\nINSTRUCCIONES:\n{instructions}\n\nResponde en formato JSON con las siguientes claves:\n- correctedCode: el código corregido completo\n- changes: una lista de objetos, cada uno con 'description' y 'lineNumbers'\n- explanation: una explicación detallada de los cambios"
+                    full_prompt += prefix + msg['content']
+                
+                # Añadir instrucciones para corrección de código al prompt
+                full_prompt += f"\n```{language}\n{code}\n```\n\nINSTRUCCIONES:\n{instructions}\n\nResponde en formato JSON con las siguientes claves:\n- correctedCode: el código corregido completo\n- changes: una lista de objetos, cada uno con 'description' y 'lineNumbers'\n- explanation: una explicación detallada de los cambios"
+                
+                # Configurar y hacer la llamada a la API
+                response = client.chat.completions.create(
+                    model="gpt-4o",
+                    messages=[
+                        {"role": "system", "content": "Eres un experto programador especializado en corregir código."},
+                        {"role": "user", "content": full_prompt}
                     ],
                     response_format={"type": "json_object"}
                 )
