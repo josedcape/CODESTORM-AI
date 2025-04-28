@@ -1,15 +1,26 @@
 // WebSocket client for real-time file updates
 document.addEventListener('DOMContentLoaded', function() {
-    // Check if SocketIO is available
-    if (typeof io === 'undefined') {
-        // Load Socket.IO client library if not already loaded
-        const script = document.createElement('script');
-        script.src = 'https://cdn.socket.io/4.6.1/socket.io.min.js';
-        script.onload = initializeSocket;
-        document.head.appendChild(script);
-    } else {
-        initializeSocket();
-    }
+    // Wait a short moment to ensure Socket.IO is fully loaded
+    setTimeout(function() {
+        // Check if SocketIO is available
+        if (typeof io === 'undefined') {
+            console.error('Socket.IO not loaded, attempting to load it now');
+            // Load Socket.IO client library if not already loaded
+            const script = document.createElement('script');
+            script.src = 'https://cdn.socket.io/4.6.1/socket.io.min.js';
+            script.onload = function() {
+                console.log('Socket.IO loaded successfully');
+                initializeSocket();
+            };
+            script.onerror = function() {
+                console.error('Failed to load Socket.IO');
+            };
+            document.head.appendChild(script);
+        } else {
+            console.log('Socket.IO already loaded');
+            initializeSocket();
+        }
+    }, 100); // Small delay to ensure dependencies are loaded
     
     function initializeSocket() {
         // Connect to Socket.IO server with more resilient configuration
