@@ -11,7 +11,9 @@ window.app.chat.apiEndpoints = {
     chat: '/api/chat',
     fallback: '/api/generate',
     health: '/api/health',
-    processCode: '/api/process_code'
+    processCode: '/api/process_code',
+    execute: '/api/execute_command',
+    files: '/api/files'
 };
 
 // Configuración del módulo de chat

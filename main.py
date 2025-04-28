@@ -863,6 +863,49 @@ def clone_repository():
             'error': str(e)
         }), 500
 
+@app.route('/api/chat', methods=['POST'])
+def handle_chat():
+    """API para chat con agentes especializados."""
+    try:
+        data = request.json
+        if not data:
+            return jsonify({
+                'success': False,
+                'error': 'No se proporcionaron datos'
+            }), 400
+            
+        # Obtener información del mensaje
+        user_message = data.get('message', '')
+        agent_id = data.get('agent_id', 'default')
+        model_choice = data.get('model', 'openai')
+        context = data.get('context', [])
+        
+        if not user_message:
+            return jsonify({
+                'success': False,
+                'error': 'No se proporcionó mensaje'
+            }), 400
+            
+        # Generar respuesta usando el modelo seleccionado
+        response = ""
+        
+        # Por ahora, una respuesta simple para verificar que funciona
+        response = f"He recibido tu mensaje: '{user_message}'. Estoy procesándolo como el agente {agent_id} usando el modelo {model_choice}."
+        
+        return jsonify({
+            'success': True,
+            'response': response,
+            'agent_id': agent_id,
+            'model': model_choice
+        })
+    except Exception as e:
+        logging.error(f"Error en handle_chat: {str(e)}")
+        logging.error(traceback.format_exc())
+        return jsonify({
+            'error': str(e),
+            'response': f"Error inesperado: {str(e)}"
+        }), 500
+
 @app.route('/api/process', methods=['POST'])
 def process_request():
     """API para procesar solicitudes genéricas."""
