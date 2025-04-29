@@ -182,12 +182,19 @@
             background-color: #000;
         }
         
-        .input-container {
+        .input-container, .assistant-container {
             padding: 10px;
             background-color: var(--card-background);
             display: flex;
             border-top: 1px solid rgba(78, 115, 223, 0.2);
             flex-wrap: wrap;
+        }
+        
+        .assistant-container {
+            border-bottom: none;
+            border-top: 1px solid rgba(78, 115, 223, 0.2);
+            flex-direction: column;
+            padding-bottom: 5px;
         }
         
         .terminal-input {
@@ -605,6 +612,26 @@
                     <!-- Terminal xterm.js -->
                     <div id="terminal-container" class="terminal-container"></div>
                     
+                    <!-- Panel del Asistente en Lenguaje Natural -->
+                    <div class="assistant-container mb-2">
+                        <div class="d-flex align-items-center mb-1">
+                            <span class="me-2"><i class="bi bi-robot"></i> Asistente:</span>
+                            <select class="model-selector" id="assistant-model-selector">
+                                <option value="openai">OpenAI (GPT-4o)</option>
+                                <option value="anthropic">Anthropic (Claude)</option>
+                                <option value="gemini">Google (Gemini)</option>
+                            </select>
+                        </div>
+                        <div class="d-flex">
+                            <input type="text" class="terminal-input" id="assistant-input" 
+                                   placeholder="Escribe tu instrucción en lenguaje natural...">
+                            <button class="send-button" id="assistant-send-button">
+                                <i class="bi bi-magic"></i>
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Panel de Terminal (Existente) -->
                     <div class="input-container">
                         <select class="model-selector" id="model-selector">
                             <option value="openai">OpenAI</option>
@@ -1246,7 +1273,81 @@
                 });
             }
             
-            // Event listeners
+            // Referencia al campo de asistente y botón
+            const assistantInput = document.getElementById('assistant-input');
+            const assistantSendButton = document.getElementById('assistant-send-button');
+            const assistantModelSelector = document.getElementById('assistant-model-selector');
+            
+            // Función para procesar instrucción con el asistente y convertirla en comando
+            function processAssistantInput() {
+                const instruction = assistantInput.value.trim();
+                if (!instruction) return;
+                
+                // Mostrar que el asistente está procesando
+                terminal.write('\r\n\x1b[36m[Asistente] Procesando: ' + instruction + '\x1b[0m\r\n');
+                
+                // Obtener el modelo seleccionado
+                const model = assistantModelSelector.value;
+                
+                // Enviar la instrucción para procesamiento
+                if (!socket || !socket.connected) {
+                    terminal.write('\r\n\x1b[31mNo hay conexión con el servidor. Intentando reconectar...\x1b[0m\r\n');
+                    initializeWebSocket();
+                    return;
+                }
+                
+                // Emitir evento para procesar instrucción con modelo especificado
+                socket.emit('process_instruction', {
+                    instruction: instruction,
+                    model: model,
+                    user_id: userId,
+                    directory: currentDirectory
+                });
+                
+                // Limpiar el campo del asistente
+                assistantInput.value = '';
+            }
+            
+            // Manejar respuesta del asistente (respuesta del servidor)
+            socket.on('instruction_result', function(data) {
+                console.log('Resultado del procesamiento:', data);
+                
+                if (data.success) {
+                    // Mostrar el comando generado
+                    terminal.write('\r\n\x1b[32m[Asistente] Comando generado: ' + data.command + '\x1b[0m\r\n');
+                    
+                    // Auto-ejecutar el comando insertándolo en el campo de terminal
+                    terminalInput.value = data.command;
+                    
+                    // Si hay una explicación, mostrarla
+                    if (data.explanation) {
+                        terminal.write('\r\n\x1b[36m[Asistente] ' + data.explanation + '\x1b[0m\r\n');
+                    }
+                    
+                    // Ejecutar el comando automáticamente si está permitido
+                    if (data.auto_execute) {
+                        // Pequeña pausa para visualizar el comando antes de ejecutarlo
+                        setTimeout(() => {
+                            handleInput();
+                        }, 300);
+                    }
+                } else {
+                    terminal.write('\r\n\x1b[31m[Asistente] Error: ' + (data.error || 'No se pudo procesar la instrucción') + '\x1b[0m\r\n');
+                }
+            });
+            
+            // Event listeners para el asistente
+            assistantInput.addEventListener('keydown', function(event) {
+                if (event.key === 'Enter') {
+                    processAssistantInput();
+                }
+            });
+            
+            assistantSendButton.addEventListener('click', function() {
+                processAssistantInput();
+            });
+            
+            // Event listeners para terminal original
             terminalInput.addEventListener('keydown', function(event) {
                 if (event.key === 'Enter') {
                     const methodSelector = document.getElementById('command-method');
