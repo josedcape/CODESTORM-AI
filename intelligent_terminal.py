@@ -324,11 +324,10 @@ Debes responder en formato JSON con los siguientes campos:
                 'success': False,
                 'error': "La respuesta del modelo no contiene un comando válido"
             }
-            
+
         # Asegurar que auto_execute tenga un valor booleano por defecto si no existe
         if 'auto_execute' not in result:
-            result['auto_execute'] = True  # Por defecto, ejecutar automáticamente válido."
-            }
+            result['auto_execute'] = True  # Por defecto, ejecutar automáticamente
 
         # Sanitizar y validar el comando resultante
         command = result.get('command', '').strip()
