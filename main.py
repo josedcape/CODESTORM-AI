@@ -169,7 +169,7 @@ def session_info():
 
     return jsonify({
         'user_id': user_id,
-        'workspace': str(workspace.relative_to(os.getcwd())) if hasattr(workspace, 'relative_to') else str(workspace),
+        'workspace': str(workspace),  # Just return the path as a string without trying to make it relative
         'status': 'active'
     })
 
@@ -326,7 +326,7 @@ def handle_chat_internal(request_data):
                 # Make sure Gemini is configured properly
                 if not hasattr(genai, '_configured') or not genai._configured:
                     genai.configure(api_key=gemini_api_key)
-                
+
                 model = genai.GenerativeModel('gemini-1.5-pro')
 
                 full_prompt = system_prompt + "\n\n"
@@ -343,7 +343,7 @@ def handle_chat_internal(request_data):
 
             except Exception as e:
                 logging.error(f"Error con API de Gemini: {str(e)}")
-                
+
                 # Fallback to a more graceful response
                 return {
                     'response': f"Lo siento, hubo un problema con el servicio de IA. Por favor intenta nuevamente o selecciona un modelo diferente. Error: {str(e)}",
@@ -1332,6 +1332,12 @@ def handle_user_message(data):
         logging.error(f"Error en Socket.IO user_message: {str(e)}")
         logging.error(traceback.format_exc())
         emit('error', {'message': str(e)})
+
+def get_user_workspace(user_id='default'):
+    """Obtener o crear un directorio de trabajo para el usuario."""
+    workspace_path = Path("./user_workspaces") / user_id
+    workspace_path.mkdir(parents=True, exist_ok=True)
+    return workspace_path
 
 if __name__ == '__main__':
     try:
