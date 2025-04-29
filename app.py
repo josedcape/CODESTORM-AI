@@ -1420,6 +1420,43 @@ def process_command():
             'error': str(e)
         }), 500
 
+@app.route('/api/process', methods=['POST'])
+def process_command():
+    """Process commands from the terminal interface."""
+    try:
+        data = request.json
+        if not data:
+            return jsonify({
+                'success': False,
+                'error': 'No data provided'
+            }), 400
+            
+        command = data.get('command', '')
+        
+        if not command:
+            return jsonify({
+                'success': False,
+                'error': 'No command provided'
+            }), 400
+            
+        # Execute the command using subprocess
+        result = execute_command_internal(command)
+        
+        return jsonify({
+            'success': result.get('success', False),
+            'output': result.get('stdout', '') + (result.get('stderr', '') if result.get('stderr') else ''),
+            'status': result.get('status', 1),
+            'command': command
+        })
+        
+    except Exception as e:
+        logging.error(f"Error processing command: {str(e)}")
+        logging.error(traceback.format_exc())
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
 @app.route('/api/health', methods=['GET'])
 def health_check():
     """Check the health status of the application."""
