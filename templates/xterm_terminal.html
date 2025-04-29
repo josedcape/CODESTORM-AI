@@ -852,6 +852,9 @@
                         isConnected = true;
                         updateConnectionStatus('connected');
                         
+                        // Inicializar manejadores de eventos
+                        initializeSocketHandlers();
+                        
                         // Mensaje de bienvenida
                         terminal.write('\r\n\x1b[32m¡Bienvenido a la Terminal Avanzada de Codestorm!\x1b[0m\r\n');
                         terminal.write('Puedes ejecutar comandos bash o usar lenguaje natural.\r\n\r\n');
@@ -1308,33 +1311,42 @@
                 assistantInput.value = '';
             }
             
-            // Manejar respuesta del asistente (respuesta del servidor)
-            socket.on('instruction_result', function(data) {
-                console.log('Resultado del procesamiento:', data);
-                
-                if (data.success) {
-                    // Mostrar el comando generado
-                    terminal.write('\r\n\x1b[32m[Asistente] Comando generado: ' + data.command + '\x1b[0m\r\n');
-                    
-                    // Auto-ejecutar el comando insertándolo en el campo de terminal
-                    terminalInput.value = data.command;
-                    
-                    // Si hay una explicación, mostrarla
-                    if (data.explanation) {
-                        terminal.write('\r\n\x1b[36m[Asistente] ' + data.explanation + '\x1b[0m\r\n');
-                    }
-                    
-                    // Ejecutar el comando automáticamente si está permitido
-                    if (data.auto_execute) {
-                        // Pequeña pausa para visualizar el comando antes de ejecutarlo
-                        setTimeout(() => {
-                            handleInput();
-                        }, 300);
-                    }
-                } else {
-                    terminal.write('\r\n\x1b[31m[Asistente] Error: ' + (data.error || 'No se pudo procesar la instrucción') + '\x1b[0m\r\n');
+            // Inicializar Socket.IO y configurar manejadores de eventos
+            function initializeSocketHandlers() {
+                // Verificar que socket esté inicializado
+                if (!socket || !socket.connected) {
+                    console.error('Socket no inicializado o no conectado');
+                    return;
                 }
-            });
+                
+                // Manejar respuesta del asistente (respuesta del servidor)
+                socket.on('instruction_result', function(data) {
+                    console.log('Resultado del procesamiento:', data);
+                    
+                    if (data.success) {
+                        // Mostrar el comando generado
+                        terminal.write('\r\n\x1b[32m[Asistente] Comando generado: ' + data.command + '\x1b[0m\r\n');
+                        
+                        // Auto-ejecutar el comando insertándolo en el campo de terminal
+                        terminalInput.value = data.command;
+                        
+                        // Si hay una explicación, mostrarla
+                        if (data.explanation) {
+                            terminal.write('\r\n\x1b[36m[Asistente] ' + data.explanation + '\x1b[0m\r\n');
+                        }
+                        
+                        // Ejecutar el comando automáticamente si está permitido
+                        if (data.auto_execute) {
+                            // Pequeña pausa para visualizar el comando antes de ejecutarlo
+                            setTimeout(() => {
+                                handleInput();
+                            }, 300);
+                        }
+                    } else {
+                        terminal.write('\r\n\x1b[31m[Asistente] Error: ' + (data.error || 'No se pudo procesar la instrucción') + '\x1b[0m\r\n');
+                    }
+                });
+            }
             
             // Event listeners para el asistente
             assistantInput.addEventListener('keydown', function(event) {
