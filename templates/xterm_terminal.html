@@ -88,6 +88,27 @@
 
                 indicator.className = 'status-indicator';
 
+            // Conectado al servidor WebSocket
+            socket.on('connect', function() {
+                updateStatusIndicator(true);
+                console.log('Conectado al servidor WebSocket');
+                writeToTerminal('\r\n\x1b[32mConectado al servidor\x1b[0m\r\n');
+                writeToTerminal('\r\nBienvenido a la Terminal Avanzada de Codestorm.\r\n');
+                writeToTerminal('Puedes escribir comandos directamente o usar lenguaje natural.\r\n');
+                writeToTerminal('Ejemplo: "crea una carpeta llamada proyectos" o "!mkdir proyectos"\r\n\r\n');
+                writeToTerminal('$ ');
+
+                // Cargar archivos iniciales
+                loadFiles();
+            });
+
+            // Observador de cambios configurado para el explorador
+            document.addEventListener('files_updated', function(e) {
+                console.log("Detectado cambio en explorador", e.detail);
+                loadFiles(e.detail?.directory || currentDirectory);
+            });
+
+
                 switch (status) {
                     case 'connected':
                         indicator.classList.add('status-connected');

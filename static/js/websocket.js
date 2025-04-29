@@ -189,8 +189,28 @@ document.addEventListener('DOMContentLoaded', function() {
             refreshFileExplorer();
         });
 
-        // Expose refresh function globally
-        window.refreshFileExplorer = refreshFileExplorer;
+        // Expose refresh function globally with enhanced functionality
+        window.refreshFileExplorer = function() {
+            console.log("Actualizando explorador de archivos...");
+            refreshFileExplorer();
+            
+            // Emitir evento para componentes que escuchan eventos de actualización
+            document.dispatchEvent(new CustomEvent('files_updated', {
+                detail: { refreshed: true, timestamp: Date.now() }
+            }));
+            
+            // Si estamos en un iframe, notificar al padre
+            if (window.parent && window.parent !== window) {
+                try {
+                    window.parent.postMessage({
+                        type: 'explorer_refresh',
+                        timestamp: Date.now()
+                    }, '*');
+                } catch (e) {
+                    console.warn("No se pudo notificar al padre:", e);
+                }
+            }
+        };
     }
 
     // Function to refresh file explorer

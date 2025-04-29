@@ -1431,7 +1431,13 @@ def process_command():
                 'error': 'No data provided'
             }), 400
             
+        # Aceptar tanto 'command' como 'instruction'
         command = data.get('command', '')
+        instruction = data.get('instruction', '')
+        
+        # Si se proporciona instrucción pero no comando, usar la instrucción
+        if not command and instruction:
+            command = instruction
         
         if not command:
             return jsonify({
@@ -1439,14 +1445,19 @@ def process_command():
                 'error': 'No command provided'
             }), 400
             
-        # Execute the command using subprocess
+        # Execute the command using our existing function
         result = execute_command_internal(command)
+        
+        # Para comandos que modifican archivos, actualizar explorador
+        file_modify_cmds = ['mkdir', 'touch', 'rm', 'mv', 'cp', 'echo', 'cat', 'git', 'npm', 'pip']
+        should_refresh = any(cmd in command.split()[0] for cmd in file_modify_cmds)
         
         return jsonify({
             'success': result.get('success', False),
             'output': result.get('stdout', '') + (result.get('stderr', '') if result.get('stderr') else ''),
             'status': result.get('status', 1),
-            'command': command
+            'command': command,
+            'refresh_explorer': should_refresh
         })
         
     except Exception as e:

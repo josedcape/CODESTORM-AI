@@ -313,17 +313,35 @@ document.addEventListener('DOMContentLoaded', function() {
             // Mostrar resultado en la interfaz
             displayCommandOutput(command, output, error, exitCode);
 
+            // Lista ampliada de comandos que modifican archivos
+            const fileModifyingCommands = [
+                'mkdir', 'touch', 'rm', 'mv', 'cp', 'echo', 'cat', 
+                'npm init', 'git init', 'nano', 'vim', 'vi', 
+                'wget', 'curl', 'unzip', 'tar', 'npm install',
+                'pip install', 'python -m pip', 'npm i', 'yarn add'
+            ];
+            
             // Si es un comando que podría cambiar archivos, actualizar explorador
-            if (command.includes('mkdir') ||
-                command.includes('touch') ||
-                command.includes('rm') ||
-                command.includes('mv') ||
-                command.includes('cp') ||
-                command.includes('echo') ||
-                command.includes('npm init') ||
-                command.includes('git init')) {
-
-                setTimeout(() => loadFiles(currentDirectory), 500);
+            const shouldRefresh = fileModifyingCommands.some(cmd => command.includes(cmd));
+            if (shouldRefresh) {
+                // Notificar al sistema que los archivos cambiaron
+                console.log("Detectado cambio en explorador");
+                
+                // Actualizar con múltiples métodos para mayor compatibilidad
+                setTimeout(() => {
+                    // Método 1: Usando loadFiles
+                    loadFiles(currentDirectory);
+                    
+                    // Método 2: Usando refreshFileExplorer global
+                    if (window.refreshFileExplorer && typeof window.refreshFileExplorer === 'function') {
+                        window.refreshFileExplorer();
+                    }
+                    
+                    // Método 3: Emitir evento para que otros componentes respondan
+                    document.dispatchEvent(new CustomEvent('files_updated', {
+                        detail: { directory: currentDirectory }
+                    }));
+                }, 500);
             }
 
             // Si es un comando cd, actualizar directorio actual
