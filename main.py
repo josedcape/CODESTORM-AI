@@ -1058,5 +1058,62 @@ def process_natural_language_to_command(text):
     return text
 
 
+#Manejadores de eventos SocketIO para xterm
+@socketio.on('connect')
+def handle_connect():
+    """Maneja la conexión de un cliente."""
+    client_id = request.sid
+    app.logger.info(f"Cliente conectado: {client_id}")
+
+@socketio.on('execute_command')
+def handle_execute_command(data):
+    """Ejecuta un comando y devuelve el resultado."""
+    command = data.get('command', '')
+    terminal_id = data.get('terminal_id', '')
+    user_id = data.get('user_id', 'default')
+
+    if not command:
+        emit('command_result', {
+            'success': False,
+            'terminal_id': terminal_id,
+            'output': 'No se proporcionó ningún comando'
+        })
+        return
+
+    try:
+        # Obtener workspace del usuario
+        workspace_path = os.path.join('user_workspaces', user_id)
+        os.makedirs(workspace_path, exist_ok=True)
+
+        # Ejecutar comando
+        process = subprocess.Popen(
+            command,
+            shell=True,
+            cwd=workspace_path,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True
+        )
+
+        stdout, stderr = process.communicate()
+
+        # Emitir resultado
+        emit('command_result', {
+            'success': process.returncode == 0,
+            'terminal_id': terminal_id,
+            'command': command,
+            'output': stdout if process.returncode == 0 else stderr
+        })
+
+    except Exception as e:
+        app.logger.error(f"Error al ejecutar comando: {str(e)}")
+        emit('command_result', {
+            'success': False,
+            'terminal_id': terminal_id,
+            'command': command,
+            'output': f"Error: {str(e)}"
+        })
+
 if __name__ == '__main__':
-    socketio.run(app, host='0.0.0.0', port=5000, debug=True)
+    port = int(os.environ.get('PORT', 5000))
+    socketio.run(app, host='0.0.0.0', port=port, debug=True)

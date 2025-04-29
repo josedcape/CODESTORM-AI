@@ -13,7 +13,7 @@ import traceback
 
 xterm_bp = Blueprint('xterm', __name__)
 
-@xterm_bp.route('/xterm')
+@xterm_bp.route('/xterm_terminal')
 def xterm_terminal():
     """Render the XTerm terminal page."""
     # Asegurarse de que las rutas estén creadas
@@ -74,7 +74,7 @@ def execute_xterm_command():
 
 def init_xterm_blueprint(app, socketio):
     """Registra el blueprint en la aplicación Flask."""
-    app.register_blueprint(xterm_bp, url_prefix='/xterm')
+    app.register_blueprint(xterm_bp, url_prefix='')
     # Registrar manejadores de eventos SocketIO después de inicializar el blueprint
 
     user_workspaces = {}

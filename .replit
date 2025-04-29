@@ -10,7 +10,7 @@ deploymentTarget = "autoscale"
 run = ["sh", "-c", "python main_completo.py"]
 
 [workflows]
-runButton = "Run Simple"
+runButton = "Run XTerm"
 
 [[workflows.workflow]]
 name = "Project"
@@ -184,6 +184,15 @@ args = "python main.py"
 [[workflows.workflow]]
 name = "Run Simple"
 author = 42061016
+mode = "sequential"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "python main.py"
+
+[[workflows.workflow]]
+name = "Run XTerm"
+author = 42063887
 mode = "sequential"
 
 [[workflows.workflow.tasks]]
