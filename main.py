@@ -1,3 +1,5 @@
+# Código Optimizado de CODESTORM Assistant
+
 from flask import Flask, render_template, request, jsonify, session, redirect, send_file
 from flask_cors import CORS
 from flask_socketio import SocketIO, emit
@@ -7,48 +9,28 @@ import json
 from dotenv import load_dotenv
 import openai
 import google.generativeai as genai
-
-# Add this near the top of your main.py or app.py file, after other imports
-from flask import jsonify, session
-import uuid
-
-# Add this route to handle session requests
-@app.route('/api/session')
-def get_session():
-    """Returns the current session information"""
-    # Generate a user ID if one doesn't exist
-    if 'user_id' not in session:
-        session['user_id'] = str(uuid.uuid4())
-    
-    # Set a default workspace if none exists
-    if 'workspace' not in session:
-        session['workspace'] = 'default'
-    
-    return jsonify({
-        'user_id': session.get('user_id'),
-        'workspace': session.get('workspace')
-    })
-
 import subprocess
 import time
 import shutil
 from pathlib import Path
 import traceback
+import re
+import threading
 
-
-# Configure logging
+# Configurar logging
 logging.basicConfig(level=logging.DEBUG,
                    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
-# Load environment variables
+# Cargar variables de entorno
 load_dotenv()
 
-# Initialize Flask app
+# Inicializar app Flask
 app = Flask(__name__)
 CORS(app)
-socketio = SocketIO(app, cors_allowed_origins="*", async_mode='threading', ping_timeout=60, ping_interval=25, logger=True, engineio_logger=True)
+socketio = SocketIO(app, cors_allowed_origins="*", async_mode='threading', 
+                   ping_timeout=60, ping_interval=25, logger=True, engineio_logger=True)
 
-# Configure API keys
+# Configurar claves API
 openai_api_key = os.getenv('OPENAI_API_KEY')
 anthropic_api_key = os.getenv('ANTHROPIC_API_KEY')
 gemini_api_key = os.getenv('GEMINI_API_KEY')
@@ -70,13 +52,13 @@ class FileSystemManager:
         self.socketio = socketio
 
     def get_user_workspace(self, user_id='default'):
-        """Get or create a workspace directory for the user."""
+        """Obtener o crear un directorio de trabajo para el usuario."""
         workspace_path = Path("./user_workspaces") / user_id
         workspace_path.mkdir(parents=True, exist_ok=True)
         return workspace_path
 
     def notify_terminals(self, user_id, data, exclude_terminal=None):
-        """Notify all terminals of a user about command execution."""
+        """Notificar a todas las terminales de un usuario sobre la ejecución de comandos."""
         self.socketio.emit('command_result', data, room=user_id)
 
     def execute_command(self, command, user_id='default', notify=True, terminal_id=None):
@@ -138,37 +120,150 @@ class FileSystemManager:
                 'command': command
             }
 
-@app.route('/')
-def index():
-    return render_template('index.html')
 
-@app.route('/chat')
-def chat():
-    """Render the chat page with specialized agents."""
-    return render_template('chat.html')
+def get_user_workspace(user_id='default'):
+    """Obtiene o crea un espacio de trabajo para el usuario."""
+    workspace_dir = os.path.join(os.getcwd(), 'user_workspaces', user_id)
+    os.makedirs(workspace_dir, exist_ok=True)
+    return workspace_dir
 
-@app.route('/api/chat', methods=['POST'])
-def api_chat():
-    """API endpoint para manejar solicitudes de chat."""
+
+def process_natural_language_to_command(text):
+    """Convierte lenguaje natural a comandos de terminal."""
+    # Mapeo simple para comandos comunes
+    command_map = {
+        "listar": "ls -la",
+        "mostrar archivos": "ls -la",
+        "mostrar directorio": "ls -la",
+        "ver archivos": "ls -la",
+        "archivos": "ls -la",
+        "dir": "ls -la",
+        "fecha": "date",
+        "hora": "date +%H:%M:%S",
+        "calendario": "cal",
+        "quien soy": "whoami",
+        "donde estoy": "pwd",
+        "limpiar": "clear",
+        "sistema": "uname -a",
+        "memoria": "free -h",
+        "espacio": "df -h",
+        "procesos": "ps aux"
+    }
+
+    text_lower = text.lower()
+
+    # Verificar coincidencias exactas primero
+    for key, cmd in command_map.items():
+        if key in text_lower:
+            return cmd
+
+    # Si no hay coincidencia directa, usar patrones
+    if "crear" in text_lower and "carpeta" in text_lower:
+        folder_name = text_lower.split("carpeta")[-1].strip()
+        if folder_name:
+            return f"mkdir -p {folder_name}"
+
+    elif "crear" in text_lower and "archivo" in text_lower:
+        file_name = text_lower.split("archivo")[-1].strip()
+        if file_name:
+            return f"touch {file_name}"
+
+    elif "eliminar" in text_lower or "borrar" in text_lower:
+        target = text_lower.replace("eliminar", "").replace("borrar", "").strip()
+        if target:
+            return f"rm -rf {target}"
+
+    # Comando por defecto si no hay coincidencias
+    return text
+
+
+def watch_workspace_files():
+    """Observa cambios en los archivos del workspace y notifica a los clientes."""
     try:
-        data = request.get_json(force=True, silent=True)
+        # Intentar importar watchdog
+        from watchdog.observers import Observer
+        from watchdog.events import FileSystemEventHandler
 
-        if not data:
-            logging.warning("No se recibieron datos JSON válidos")
-            return jsonify({
-                'error': 'Invalid JSON data',
-                'response': 'Error: Los datos enviados no son JSON válido'
-            }), 400
+        class WorkspaceHandler(FileSystemEventHandler):
+            def on_any_event(self, event):
+                try:
+                    # Ignorar archivos temporales y ocultos
+                    if event.src_path.endswith('~') or '/.' in event.src_path:
+                        return
 
-        logging.debug(f"Datos recibidos: {json.dumps(data)}")
+                    # Determinar el tipo de evento
+                    event_type = 'modified'
+                    if event.event_type == 'created':
+                        event_type = 'create'
+                    elif event.event_type == 'deleted':
+                        event_type = 'delete'
+                    elif event.event_type == 'moved':
+                        event_type = 'move'
 
-        user_message = data.get('message')
-        agent_id = data.get('agent_id', 'general')
-        model_choice = data.get('model', 'gemini')
-        context = data.get('context', [])
+                    # Obtener la ruta relativa
+                    workspace_dir = os.path.abspath('./user_workspaces')
+                    rel_path = os.path.relpath(event.src_path, workspace_dir)
+
+                    # Determinar el usuario basado en la ruta
+                    parts = rel_path.split(os.sep)
+                    user_id = parts[0] if len(parts) > 0 else 'default'
+
+                    # Notificar a los clientes
+                    socketio.emit('file_change', {
+                        'type': event_type,
+                        'file': {'path': rel_path},
+                        'user_id': user_id,
+                        'timestamp': time.time()
+                    }, room=user_id)
+
+                    # Notificación genérica de actualización
+                    socketio.emit('file_sync', {
+                        'refresh': True,
+                        'user_id': user_id,
+                        'timestamp': time.time()
+                    }, room=user_id)
+
+                    logging.debug(f"Cambio detectado: {event_type} - {rel_path}")
+
+                except Exception as e:
+                    logging.error(f"Error en manejador de eventos de archivos: {str(e)}")
+
+        # Crear directorio de workspaces si no existe
+        workspace_dir = os.path.abspath('./user_workspaces')
+        os.makedirs(workspace_dir, exist_ok=True)
+
+        # Configurar observador
+        event_handler = WorkspaceHandler()
+        observer = Observer()
+        observer.schedule(event_handler, workspace_dir, recursive=True)
+        observer.start()
+
+        logging.info(f"Observador de archivos iniciado para: {workspace_dir}")
+
+        # Mantener el hilo activo
+        try:
+            while True:
+                time.sleep(1)
+        except KeyboardInterrupt:
+            observer.stop()
+        observer.join()
+
+    except ImportError:
+        logging.warning("No se pudo importar watchdog. El observador de archivos no estará disponible.")
+    except Exception as e:
+        logging.error(f"Error en observador de archivos: {str(e)}")
+
+
+def handle_chat_internal(request_data):
+    """Procesa solicitudes de chat y devuelve respuestas."""
+    try:
+        user_message = request_data.get('message', '')
+        agent_id = request_data.get('agent_id', 'general')
+        model_choice = request_data.get('model', 'gemini')
+        context = request_data.get('context', [])
 
         if not user_message:
-            return jsonify({'error': 'No se proporcionó un mensaje'}), 400
+            return {'error': 'No se proporcionó un mensaje', 'response': None}
 
         # Configurar prompts específicos según el agente seleccionado
         agent_prompts = {
@@ -190,8 +285,6 @@ def api_chat():
                 "role": role,
                 "content": msg.get('content', '')
             })
-
-        response = ""
 
         # Usar el modelo seleccionado para generar la respuesta
         if model_choice == 'openai' and openai_api_key:
@@ -215,24 +308,22 @@ def api_chat():
                 response = completion.choices[0].message.content
                 logging.info(f"Respuesta generada con OpenAI: {response[:100]}...")
 
+                return {'response': response, 'error': None}
+
             except Exception as e:
                 logging.error(f"Error con API de OpenAI: {str(e)}")
-                return jsonify({
-                    'error': f"Error con OpenAI: {str(e)}",
-                    'agent': agent_id,
-                    'model': model_choice
-                }), 500
+                return {'error': f"Error con OpenAI: {str(e)}", 'response': None}
 
         elif model_choice == 'anthropic' and anthropic_api_key:
             try:
-                # Importar anthropic si es necesario
+                # Importar anthropic
                 import anthropic
                 from anthropic import Anthropic
 
                 # Inicializar cliente
                 client = Anthropic(api_key=anthropic_api_key)
 
-                messages = [{"role": "system", "content": system_prompt}]
+                messages = []
 
                 # Añadir mensajes de contexto
                 for msg in formatted_context:
@@ -245,23 +336,21 @@ def api_chat():
                     model="claude-3-5-sonnet-latest",
                     messages=messages,
                     max_tokens=2000,
-                    temperature=0.7
+                    temperature=0.7,
+                    system=system_prompt
                 )
 
                 response = completion.content[0].text
                 logging.info(f"Respuesta generada con Anthropic: {response[:100]}...")
 
+                return {'response': response, 'error': None}
+
             except Exception as e:
                 logging.error(f"Error con API de Anthropic: {str(e)}")
-                return jsonify({
-                    'error': f"Error con Anthropic: {str(e)}",
-                    'agent': agent_id,
-                    'model': model_choice
-                }), 500
+                return {'error': f"Error con Anthropic: {str(e)}", 'response': None}
 
         elif model_choice == 'gemini' and gemini_api_key:
             try:
-
                 model = genai.GenerativeModel('gemini-1.5-pro')
 
                 # Construir el prompt con contexto
@@ -280,48 +369,88 @@ def api_chat():
                 response = gemini_response.text
                 logging.info(f"Respuesta generada con Gemini: {response[:100]}...")
 
+                return {'response': response, 'error': None}
+
             except Exception as e:
                 logging.error(f"Error con API de Gemini: {str(e)}")
-                return jsonify({
-                    'error': f"Error con Gemini: {str(e)}",
-                    'agent': agent_id,
-                    'model': model_choice
-                }), 500
+                return {'error': f"Error con Gemini: {str(e)}", 'response': None}
         else:
             # Si ningún modelo está disponible o no se ha seleccionado uno válido
+            return {'error': f"Modelo {model_choice} no soportado o API no configurada", 'response': None}
+
+    except Exception as e:
+        logging.error(f"Error general en handle_chat_internal: {str(e)}")
+        return {'error': str(e), 'response': None}
+
+
+# Rutas de la aplicación
+@app.route('/')
+def index():
+    return render_template('index.html')
+
+
+@app.route('/chat')
+def chat():
+    """Render the chat page with specialized agents."""
+    return render_template('chat.html')
+
+
+@app.route('/api/chat', methods=['POST'])
+def api_chat():
+    """API endpoint para manejar solicitudes de chat."""
+    try:
+        data = request.get_json(force=True, silent=True)
+
+        if not data:
+            logging.warning("No se recibieron datos JSON válidos")
             return jsonify({
-                'error': f"Modelo {model_choice} no soportado o API no configurada",
-                'agent': agent_id,
-                'model': model_choice
+                'error': 'Invalid JSON data',
+                'response': 'Error: Los datos enviados no son JSON válido'
             }), 400
 
+        logging.debug(f"Datos recibidos: {json.dumps(data)}")
+
+        # Procesar el mensaje con la función interna
+        result = handle_chat_internal(data)
+
+        if result.get('error'):
+            return jsonify({
+                'error': result['error'],
+                'agent': data.get('agent_id', 'general'),
+                'model': data.get('model', 'gemini')
+            }), 500
+
         # Registrar la petición para depuración
-        logging.info(f"Mensaje procesado: {user_message} por agente {agent_id} usando {model_choice}")
+        logging.info(f"Mensaje procesado: {data.get('message', '')} por agente {data.get('agent_id', 'general')} usando {data.get('model', 'gemini')}")
 
         # Devolver respuesta
         return jsonify({
-            'response': response,
-            'agent': agent_id,
-            'model': model_choice
+            'response': result['response'],
+            'agent': data.get('agent_id', 'general'),
+            'model': data.get('model', 'gemini')
         })
     except Exception as e:
         logging.error(f"Error en API de chat: {str(e)}")
         return jsonify({'error': str(e)}), 500
+
 
 @app.route('/files')
 def files():
     """Render the files explorer page."""
     return render_template('files.html')
 
+
 @app.route('/code_corrector')
 def code_corrector():
     """Render the code corrector page."""
     return render_template('code_corrector.html')
 
+
 @app.route('/preview')
 def preview():
     """Render the preview page."""
     return render_template('preview.html')
+
 
 @app.route('/terminal')
 def terminal():
@@ -336,23 +465,24 @@ def terminal():
 
     return render_template('monaco_terminal.html')
 
+
 @app.route('/xterm_terminal')
 def xterm_terminal_route():
     """Render the XTerm terminal page directly."""
-    # En lugar de redireccionar, renderizamos la plantilla directamente
     return render_template('xterm_terminal.html')
 
-# Ruta adicional para asegurar compatibilidad con solicitudes a /xterm/xterm_terminal
+
 @app.route('/xterm/xterm_terminal')
 def xterm_terminal_alt():
     """Ruta alternativa para acceder a la terminal XTerm."""
     return render_template('xterm_terminal.html')
 
-# Ruta alternativa para la terminal Monaco (mantenemos para compatibilidad)
+
 @app.route('/monaco_terminal')
 def monaco_terminal():
     """Redirect to terminal."""
     return redirect('/terminal')
+
 
 @app.route('/api/process_code', methods=['POST'])
 def process_code_endpoint():
@@ -363,6 +493,16 @@ def process_code_endpoint():
         instructions = data.get('instructions', 'Corrige errores y mejora la calidad del código')
         language = data.get('language', 'python')
         model = data.get('model', 'openai')
+        auto_fix = data.get('auto_fix', False)
+
+        # Si es corrección automática, ajustar las instrucciones para el modelo
+        if auto_fix:
+            # Añadir prefijo de corrección automática para que el modelo sepa el contexto
+            auto_instructions = "MODO CORRECCIÓN AUTOMÁTICA: "
+            if instructions == 'Corrige errores y mejora la calidad del código':
+                instructions = auto_instructions + "Corrige automáticamente errores de sintaxis, optimiza el código y mejora la calidad siguiendo las mejores prácticas. Enfócate en corregir errores sin cambiar la lógica principal."
+            else:
+                instructions = auto_instructions + instructions
 
         if not code:
             return jsonify({
@@ -395,7 +535,7 @@ def process_code_endpoint():
 
         elif model == 'anthropic' and anthropic_api_key:
             try:
-                # Importar anthropic si es necesario
+                # Importar anthropic
                 import anthropic
                 from anthropic import Anthropic
 
@@ -418,8 +558,6 @@ def process_code_endpoint():
                     result = json.loads(response.content[0].text.strip())
                 except json.JSONDecodeError:
                     # Si no es JSON válido, buscamos dentro de bloques de código
-                    import re
-                    # Buscar JSON dentro de un bloque de código markdown
                     json_match = re.search(r'```(?:json)?\s*(.*?)\s*```', response.content[0].text, re.DOTALL)
                     if json_match:
                         try:
@@ -451,7 +589,6 @@ def process_code_endpoint():
         elif model == 'gemini' and gemini_api_key:
             try:
                 # Usar genai para procesar con Gemini
-
                 gemini_model = genai.GenerativeModel(
                     model_name='gemini-1.5-pro',
                     generation_config={
@@ -481,7 +618,6 @@ def process_code_endpoint():
                 response = gemini_model.generate_content(prompt)
 
                 # Extraer el JSON de la respuesta de Gemini
-                import re
                 json_match = re.search(r'```json(.*?)```', response.text, re.DOTALL)
                 if json_match:
                     result = json.loads(json_match.group(1).strip())
@@ -535,6 +671,7 @@ def process_code_endpoint():
             'error': f'Error al procesar la solicitud: {str(e)}'
         }), 500
 
+
 @app.route('/api/process_natural', methods=['POST'])
 def process_natural_command():
     """Process natural language input and return corresponding command."""
@@ -551,15 +688,10 @@ def process_natural_command():
 
         command = process_natural_language_to_command(text)
 
-        # Si se generó un comando, verificamos si es un comando que modifica archivos
         if command:
-            # Lista de comandos que modifican el sistema de archivos
             file_modifying_commands = ['mkdir', 'touch', 'rm', 'cp', 'mv', 'ls']
-
-            # Verificar si el comando es uno que modifica archivos
             is_file_command = any(cmd in command for cmd in file_modifying_commands)
 
-            # Ejecutar el comando real en el sistema
             try:
                 workspace_dir = get_user_workspace(user_id)
                 current_dir = os.getcwd()
@@ -577,20 +709,19 @@ def process_natural_command():
 
                 command_output = result.stdout if result.returncode == 0 else result.stderr
                 command_success = result.returncode == 0
+
             except Exception as cmd_error:
                 logging.error(f"Error al ejecutar comando: {str(cmd_error)}")
                 command_output = f"Error: {str(cmd_error)}"
                 command_success = False
 
-            # Si es un comando de archivos, enviar notificación por WebSocket
             if is_file_command:
-                # Determinar el tipo de cambio
                 change_type = 'unknown'
                 file_path = ''
 
                 if 'mkdir' in command:
                     change_type = 'create'
-                    file_path = command.split('mkdir ')[1].strip()
+                    file_path = command.split('mkdir ')[1].strip().replace('-p', '').strip()
                 elif 'touch' in command:
                     change_type = 'create'
                     file_path = command.split('touch ')[1].strip()
@@ -600,22 +731,18 @@ def process_natural_command():
                     if len(parts) > 1:
                         file_path = parts[1].replace('-rf', '').strip()
 
-                # Enviar múltiples notificaciones para garantizar la actualización
                 try:
-                    # Notificación específica del cambio
                     socketio.emit('file_change', {
                         'type': change_type,
                         'file': {'path': file_path},
                         'timestamp': time.time()
                     }, broadcast=True)
 
-                    # Notificación genérica de actualización
                     socketio.emit('file_sync', {
                         'refresh': True,
                         'timestamp': time.time()
                     }, broadcast=True)
 
-                    # Notificación para terminales
                     socketio.emit('file_command', {
                         'command': command,
                         'type': change_type,
@@ -623,7 +750,6 @@ def process_natural_command():
                         'timestamp': time.time()
                     }, broadcast=True)
 
-                    # Notificación de comando ejecutado
                     socketio.emit('command_executed', {
                         'command': command,
                         'output': command_output,
@@ -654,6 +780,7 @@ def process_natural_command():
             'success': False,
             'error': str(e)
         }), 500
+
 
 @app.route('/api/process_instructions', methods=['POST'])
 def process_instructions():
@@ -690,17 +817,17 @@ def process_instructions():
                 "espacio": "df -h",
                 "procesos": "ps aux"
             }
-            
+
             instruction_lower = instruction.lower()
             terminal_command = None
             missing_info = None
-            
+
             # Check for exact matches first
             for key, cmd in command_map.items():
                 if key in instruction_lower:
                     terminal_command = cmd
                     break
-                    
+
             # If no direct match, use pattern matching
             if not terminal_command:
                 if "crear" in instruction_lower and "carpeta" in instruction_lower:
@@ -709,29 +836,29 @@ def process_instructions():
                         missing_info = "Falta especificar el nombre de la carpeta"
                     else:
                         terminal_command = f"mkdir -p {folder_name}"
-                
+
                 elif "crear" in instruction_lower and "archivo" in instruction_lower:
                     file_name = instruction_lower.split("archivo")[-1].strip()
                     if not file_name:
                         missing_info = "Falta especificar el nombre del archivo"
                     else:
                         terminal_command = f"touch {file_name}"
-                
+
                 elif "eliminar" in instruction_lower or "borrar" in instruction_lower:
                     target = instruction_lower.replace("eliminar", "").replace("borrar", "").strip()
                     if not target:
                         missing_info = "Falta especificar qué elemento eliminar"
                     else:
                         terminal_command = f"rm -rf {target}"
-                
+
                 else:
                     # Default command if nothing else matches
                     terminal_command = "echo 'Comando no reconocido'"
-            
+
             # Log the generated command
             if terminal_command:
                 logging.info(f"Instrucción: '{instruction}' → Comando: '{terminal_command}'")
-            
+
             # Return just the command or with additional context
             if missing_info:
                 return jsonify({
@@ -746,7 +873,7 @@ def process_instructions():
                     'original_instruction': instruction,
                     'model_used': model_choice
                 })
-                
+
         except Exception as e:
             logging.error(f"Error generating command: {str(e)}")
             return jsonify({'error': f"Error generating command: {str(e)}"}), 500
@@ -755,6 +882,13 @@ def process_instructions():
         logging.error(f"Error processing instructions: {str(e)}")
         logging.error(traceback.format_exc())
         return jsonify({'error': str(e)}), 500
+
+
+@app.route('/constructor', methods=['GET'])
+def constructor():
+    """Render the task constructor page."""
+    return render_template('constructor.html')
+
 
 @app.route('/api/health', methods=['GET'])
 def health_check():
@@ -781,11 +915,6 @@ def health_check():
             "timestamp": time.time()
         }), 500
 
-def get_user_workspace(user_id='default'):
-    """Obtiene o crea un espacio de trabajo para el usuario."""
-    workspace_dir = os.path.join(os.getcwd(), 'user_workspaces', user_id)
-    os.makedirs(workspace_dir, exist_ok=True)
-    return workspace_dir
 
 @app.route('/api/files', methods=['GET'])
 def list_files():
@@ -866,6 +995,7 @@ def list_files():
             'error': str(e)
         }), 500
 
+
 @app.route('/api/files/read', methods=['GET'])
 def read_file():
     """API para leer el contenido de un archivo en el workspace del usuario."""
@@ -937,6 +1067,7 @@ def read_file():
             'success': False,
             'error': str(e)
         }), 500
+
 
 @app.route('/api/files/create', methods=['POST'])
 def create_file():
@@ -1011,6 +1142,7 @@ def create_file():
             'error': str(e)
         }), 500
 
+
 @app.route('/api/files/delete', methods=['DELETE'])
 def delete_file():
     """API para eliminar un archivo o directorio del workspace del usuario."""
@@ -1074,6 +1206,7 @@ def delete_file():
             'error': str(e)
         }), 500
 
+
 @app.route('/api/files/download', methods=['GET'])
 def download_file():
     """API para descargar un archivo desde el workspace del usuario."""
@@ -1111,6 +1244,83 @@ def download_file():
         }), 500
 
 
+@app.route('/api/constructor/generate', methods=['POST'])
+def generate_project():
+    """API endpoint para iniciar la generación de un proyecto."""
+    try:
+        data = request.json
+        description = data.get('description', '')
+
+        if not description:
+            return jsonify({
+                'success': False,
+                'error': 'Se requiere una descripción del proyecto'
+            }), 400
+
+        # En una implementación real, aquí iniciaría el proceso con los agentes de IA
+        # Para este ejemplo, devolvemos una respuesta simulada
+
+        return jsonify({
+            'success': True,
+            'message': 'Generación de proyecto iniciada',
+            'project_id': f"proj_{int(time.time())}",
+            'estimated_time': '5-10 minutos'
+        })
+
+    except Exception as e:
+        logging.error(f"Error al generar proyecto: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+
+@app.route('/api/constructor/status/<project_id>', methods=['GET'])
+def project_status(project_id):
+    """API endpoint para consultar el estado de un proyecto."""
+    try:
+        # En una implementación real, consultaría el estado del proyecto en una base de datos
+        # Para este ejemplo, devolvemos un estado simulado
+
+        return jsonify({
+            'success': True,
+            'project_id': project_id,
+            'status': 'in_progress',
+            'progress': 45,
+            'current_stage': 'Generación de código',
+            'next_stage': 'Pruebas y optimización'
+        })
+
+    except Exception as e:
+        logging.error(f"Error al consultar estado del proyecto: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+
+@app.route('/api/constructor/download/<project_id>', methods=['GET'])
+def download_project(project_id):
+    """API endpoint para descargar un proyecto generado."""
+    try:
+        # En una implementación real, prepararía los archivos del proyecto para descargar
+        # Para este ejemplo, simulamos la generación de un archivo zip
+
+        return jsonify({
+            'success': True,
+            'project_id': project_id,
+            'download_url': f"/api/download/{project_id}.zip",
+            'expires_in': '24 horas'
+        })
+
+    except Exception as e:
+        logging.error(f"Error al preparar descarga del proyecto: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+
 @app.route('/api_status')
 def api_status():
     """Muestra el estado de las claves API configuradas."""
@@ -1135,11 +1345,14 @@ def api_status():
         'message': 'Visita esta URL para verificar el estado de las APIs'
     })
 
+
+# Manejadores de eventos SocketIO
 @socketio.on('connect')
 def handle_connect():
     """Manejar conexión de cliente Socket.IO."""
     logging.info(f"Cliente Socket.IO conectado: {request.sid}")
     emit('server_info', {'status': 'connected', 'sid': request.sid})
+
 
 @socketio.on('execute_command')
 def handle_execute_command(data):
@@ -1176,71 +1389,6 @@ def handle_execute_command(data):
         'command': command
     }, room=user_id)
 
-def process_natural_language_to_command(text):
-    #  This is a placeholder.  A more robust implementation would be needed here.
-    return text
-
-
-#Manejadores de eventos SocketIO para xterm
-@socketio.on('connect')
-def handle_connect():
-    """Maneja la conexión de un cliente."""
-    client_id = request.sid
-    app.logger.info(f"Cliente conectado: {client_id}")
-
-@socketio.on('execute_command')
-def handle_execute_command(data):
-    """Ejecuta un comando y devuelve el resultado."""
-    command = data.get('command', '')
-    terminal_id = data.get('terminal_id', '')
-    user_id = data.get('user_id', 'default')
-
-    if not command:
-        emit('command_result', {
-            'success': False,
-            'terminal_id': terminal_id,
-            'output': 'No se proporcionó ningún comando'
-        })
-        return
-
-    try:
-        # Obtener workspace del usuario
-        workspace_path = os.path.join('user_workspaces', user_id)
-        os.makedirs(workspace_path, exist_ok=True)
-
-        # Ejecutar comando
-        process = subprocess.Popen(
-            command,
-            shell=True,
-            cwd=workspace_path,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=True
-        )
-
-        stdout, stderr = process.communicate()
-
-        # Emitir resultado
-        emit('command_result', {
-            'success': process.returncode == 0,
-            'terminal_id': terminal_id,
-            'command': command,
-            'output': stdout if process.returncode == 0 else stderr
-        })
-
-    except Exception as e:
-        app.logger.error(f"Error al ejecutar comando: {str(e)}")
-        emit('command_result', {
-            'success': False,
-            'terminal_id': terminal_id,
-            'command': command,
-            'output': f"Error: {str(e)}"
-        })
-
-def handle_chat_internal(request_data):
-    # This function is a placeholder and should contain the existing chat handling logic.  It's not included in the provided original code
-    # so a basic placeholder will be used instead.  In a real implementation, this function will process the chat request and return a response.
-    return {'response': 'This is a placeholder response from handle_chat_internal', 'error': None}
 
 @socketio.on('user_message')
 def handle_user_message(data):
@@ -1315,6 +1463,7 @@ def handle_user_message(data):
         logging.error(traceback.format_exc())
         emit('error', {'message': str(e)})
 
+
 if __name__ == '__main__':
     try:
         logging.info("Iniciando servidor CODESTORM Assistant...")
@@ -1333,7 +1482,6 @@ if __name__ == '__main__':
 
         # Intentar iniciar el hilo de observación de archivos si existe la función
         try:
-            import threading
             if 'watch_workspace_files' in globals():
                 file_watcher_thread = threading.Thread(target=watch_workspace_files, daemon=True)
                 file_watcher_thread.start()
