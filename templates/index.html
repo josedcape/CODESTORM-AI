@@ -599,6 +599,49 @@
                     showNotification('Error al crear carpeta', 'danger');
                 });
             });
+
+
+            // Function to refresh file explorer
+            function refreshFileExplorer() {
+                console.log("Refrescando explorador de archivos...");
+                // Si tienes un explorador de archivos, actualízalo aquí
+                // Por ejemplo, podrías volver a cargar los archivos desde el servidor:
+                fetch('/api/files?directory=.')
+                    .then(response => response.json())
+                    .then(data => {
+                        console.log("Archivos actualizados:", data);
+                        // Actualizar UI del explorador si existe
+                        const fileExplorer = document.getElementById('file-explorer');
+                        if (fileExplorer) {
+                            // Actualizar lista de archivos
+                            updateFileExplorerUI(data);
+                        }
+                    })
+                    .catch(error => console.error("Error al refrescar archivos:", error));
+            }
+
+            // Función auxiliar para actualizar la UI del explorador
+            function updateFileExplorerUI(data) {
+                const fileExplorer = document.getElementById('file-explorer');
+                if (!fileExplorer) return;
+
+                // Limpiar contenido actual
+                fileExplorer.innerHTML = '';
+
+                // Agregar archivos a la lista
+                if (data && data.files && data.files.length > 0) {
+                    data.files.forEach(file => {
+                        const fileItem = document.createElement('div');
+                        fileItem.className = 'file-item';
+                        fileItem.innerHTML = `<i class="bi ${file.type === 'directory' ? 'bi-folder' : 'bi-file'}"></i> ${file.name}`;
+                        fileExplorer.appendChild(fileItem);
+                    });
+                } else {
+                    fileExplorer.innerHTML = '<div class="no-files">No hay archivos</div>';
+                }
+            }
+
+
         });
     </script>
 </body>
