@@ -51,10 +51,21 @@
     // Exponer al ámbito global
     window.commandAssistant = commandAssistant;
 
+    // Inicializar solo si estamos en una página que usa el asistente
+    const initAssistant = () => {
+        // Verificar si la página actual necesita el asistente
+        if (document.querySelector('[data-needs-assistant]') || 
+            document.getElementById('floating-assistant-container')) {
+            commandAssistant.init();
+        } else {
+            console.log('Esta página no requiere el asistente de comandos');
+        }
+    };
+    
     // Inicializar cuando el DOM esté listo
     if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', () => commandAssistant.init());
+        document.addEventListener('DOMContentLoaded', initAssistant);
     } else {
-        commandAssistant.init();
+        initAssistant();
     }
 })();

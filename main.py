@@ -7,6 +7,28 @@ import json
 from dotenv import load_dotenv
 import openai
 import google.generativeai as genai
+
+# Add this near the top of your main.py or app.py file, after other imports
+from flask import jsonify, session
+import uuid
+
+# Add this route to handle session requests
+@app.route('/api/session')
+def get_session():
+    """Returns the current session information"""
+    # Generate a user ID if one doesn't exist
+    if 'user_id' not in session:
+        session['user_id'] = str(uuid.uuid4())
+    
+    # Set a default workspace if none exists
+    if 'workspace' not in session:
+        session['workspace'] = 'default'
+    
+    return jsonify({
+        'user_id': session.get('user_id'),
+        'workspace': session.get('workspace')
+    })
+
 import subprocess
 import time
 import shutil

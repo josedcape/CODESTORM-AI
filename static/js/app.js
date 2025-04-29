@@ -41,7 +41,12 @@ document.addEventListener('DOMContentLoaded', function() {
         initSession: function() {
             // Get session info or initialize a new one
             fetch('/api/session')
-                .then(response => response.json())
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`Server returned ${response.status}: ${response.statusText}`);
+                    }
+                    return response.json();
+                })
                 .then(data => {
                     this.userId = data.user_id;
                     this.workspace = data.workspace;
@@ -51,34 +56,51 @@ document.addEventListener('DOMContentLoaded', function() {
                     }
                     
                     // Update file explorer after session initialization
-                    this.updateFileExplorer();
+                    if (typeof this.updateFileExplorer === 'function') {
+                        this.updateFileExplorer();
+                    }
                 })
                 .catch(error => {
                     console.error('Error initializing session:', error);
+                    // Continue with default values if the session API fails
+                    this.userId = 'default';
+                    this.workspace = 'default';
                 });
         },
         
         bindEvents: function() {
             // Execute button
-            this.elements.executeBtn.addEventListener('click', () => this.processInstruction());
+            if (this.elements.executeBtn) {
+                this.elements.executeBtn.addEventListener('click', () => this.processInstruction());
+            }
             
             // Clear button
-            this.elements.clearBtn.addEventListener('click', () => this.clearTerminal());
+            if (this.elements.clearBtn) {
+                this.elements.clearBtn.addEventListener('click', () => this.clearTerminal());
+            }
             
             // Refresh button
-            this.elements.refreshBtn.addEventListener('click', () => this.updateFileExplorer());
+            if (this.elements.refreshBtn) {
+                this.elements.refreshBtn.addEventListener('click', () => this.updateFileExplorer());
+            }
             
             // Command history navigation
-            this.elements.previousBtn.addEventListener('click', () => this.navigateHistory(-1));
-            this.elements.nextBtn.addEventListener('click', () => this.navigateHistory(1));
+            if (this.elements.previousBtn) {
+                this.elements.previousBtn.addEventListener('click', () => this.navigateHistory(-1));
+            }
+            if (this.elements.nextBtn) {
+                this.elements.nextBtn.addEventListener('click', () => this.navigateHistory(1));
+            }
             
             // Enter key in textarea
-            this.elements.instructionInput.addEventListener('keydown', (e) => {
-                if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
-                    e.preventDefault();
-                    this.processInstruction();
-                }
-            });
+            if (this.elements.instructionInput) {
+                this.elements.instructionInput.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+                        e.preventDefault();
+                        this.processInstruction();
+                    }
+                });
+            }
         },
         
         checkServerStatus: function() {

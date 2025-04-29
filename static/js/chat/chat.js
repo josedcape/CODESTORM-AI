@@ -992,9 +992,27 @@ function addMessageToChat(sender, content, timestamp = null) {
 
 // Inicializar el chat cuando el DOM esté listo
 document.addEventListener('DOMContentLoaded', function() {
+    // Asegurarse de que el objeto app.chat existe
+    if (!window.app) window.app = {};
+    if (!window.app.chat) window.app.chat = {};
+    
+    // Inicializar configuración básica si no existe
+    if (!window.app.chat.availableAgents) window.app.chat.availableAgents = {};
+    if (!window.app.chat.availableModels) window.app.chat.availableModels = {};
+    if (!window.app.chat.elements) window.app.chat.elements = {};
+    if (!window.app.chat.context) window.app.chat.context = [];
+    
     window.app.chat.chatMessageId = 0;  // Reiniciar contador de mensajes
-    initializeChat();
-
-    // Añadir mensaje de bienvenida del sistema
-    addSystemMessage('¡Bienvenido a Codestorm Assistant! Selecciona un modelo y agente para comenzar.');
+    
+    try {
+        // Solo inicializar si estamos en la página de chat
+        if (document.getElementById('chat-container') || 
+            document.getElementById('messages-container')) {
+            initializeChat();
+            // Añadir mensaje de bienvenida del sistema
+            addSystemMessage('¡Bienvenido a Codestorm Assistant! Selecciona un modelo y agente para comenzar.');
+        }
+    } catch (e) {
+        console.error('Error during chat initialization:', e);
+    }
 });
