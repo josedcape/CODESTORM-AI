@@ -25,6 +25,10 @@ document.addEventListener('DOMContentLoaded', function() {
         // Mostrar comando en la terminal
         appendToTerminal(`$ ${command}`, 'command');
 
+        // Lista de comandos que modifican el sistema de archivos
+        const fileModifyingCommands = ['mkdir', 'touch', 'rm', 'cp', 'mv', 'echo', 'cat', 'npm', 'pip'];
+        const shouldUpdateExplorer = fileModifyingCommands.some(cmd => command.startsWith(cmd));
+
         // Ejecutar comando y notificar al explorador
         if (window.executeTerminalCommand) {
             window.executeTerminalCommand(command);
@@ -46,9 +50,27 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (data.success) {
                     appendToTerminal(data.output || 'Comando ejecutado', 'output');
 
-                    // Forzar actualización del explorador
-                    if (data.refresh_explorer && window.refreshFileExplorer) {
-                        setTimeout(window.refreshFileExplorer, 300);
+                    // Si el comando modifica archivos, actualizar explorador múltiples veces
+                    if (shouldUpdateExplorer) {
+                        // Actualización inmediata
+                        if (window.refreshFileExplorer) {
+                            window.refreshFileExplorer();
+                        }
+                        
+                        // Actualizaciones posteriores para asegurar sincronización
+                        [500, 1000, 2000].forEach(delay => {
+                            setTimeout(() => {
+                                if (window.refreshFileExplorer) {
+                                    window.refreshFileExplorer();
+                                }
+                            }, delay);
+                        });
+
+                        // Emitir evento para otros componentes
+                        const event = new CustomEvent('file_system_changed', {
+                            detail: { command, timestamp: Date.now() }
+                        });
+                        window.dispatchEvent(event);
                     }
                 } else {
                     appendToTerminal(`Error: ${data.error}`, 'error');
