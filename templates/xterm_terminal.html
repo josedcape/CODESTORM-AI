@@ -115,103 +115,6 @@
             width: 10px;
             height: 10px;
             border-radius: 50%;
-
-<!-- Panel de instalación de dependencias -->
-<div class="package-install-panel mt-3 mb-3 p-3 border border-secondary rounded">
-    <h5 class="mb-3">Instalar Dependencias</h5>
-    <div class="row g-2">
-        <div class="col-md-8">
-            <input type="text" id="package-name" class="form-control bg-dark text-light" placeholder="Nombre del paquete">
-        </div>
-        <div class="col-md-4">
-            <select id="package-manager" class="form-select bg-dark text-light">
-                <option value="pip">pip (Python)</option>
-                <option value="npm">npm (Node.js)</option>
-                <option value="yarn">yarn</option>
-                <option value="poetry">poetry</option>
-                <option value="apt">apt (sistema)</option>
-            </select>
-        </div>
-    </div>
-    <div class="mt-2">
-        <button id="install-package-btn" class="btn btn-primary">Instalar</button>
-        <button id="update-packages-btn" class="btn btn-secondary">Actualizar Todo</button>
-    </div>
-</div>
-
-<script>
-    // Configurar el panel de instalación de dependencias
-    document.addEventListener('DOMContentLoaded', function() {
-        const packageNameInput = document.getElementById('package-name');
-        const packageManagerSelect = document.getElementById('package-manager');
-        const installPackageBtn = document.getElementById('install-package-btn');
-        const updatePackagesBtn = document.getElementById('update-packages-btn');
-        
-        // Instalar paquete
-        installPackageBtn.addEventListener('click', function() {
-            const packageName = packageNameInput.value.trim();
-            const packageManager = packageManagerSelect.value;
-            
-            if (!packageName) {
-                showNotification('Por favor ingrese el nombre del paquete', 'warning');
-                return;
-            }
-            
-            // Llamar a la función de instalación de paquetes
-            if (window.terminalInterface && typeof window.terminalInterface.executeCommand === 'function') {
-                const command = `${packageManager} install ${packageName}`;
-                window.terminalInterface.executeCommand(command);
-                packageNameInput.value = '';  // Limpiar el campo
-            } else if (window.fileActions && typeof window.fileActions.installPackage === 'function') {
-                window.fileActions.installPackage(packageName, packageManager);
-                packageNameInput.value = '';  // Limpiar el campo
-            } else {
-                showNotification('Error: No se pudo encontrar la interfaz para instalar paquetes', 'danger');
-            }
-        });
-        
-        // Actualizar todos los paquetes
-        updatePackagesBtn.addEventListener('click', function() {
-            const packageManager = packageManagerSelect.value;
-            let command = '';
-            
-            switch (packageManager) {
-                case 'pip':
-                    command = 'pip install --upgrade -r requirements.txt';
-                    break;
-                case 'npm':
-                    command = 'npm update';
-                    break;
-                case 'yarn':
-                    command = 'yarn upgrade';
-                    break;
-                case 'poetry':
-                    command = 'poetry update';
-                    break;
-                case 'apt':
-                    command = 'apt-get update && apt-get upgrade -y';
-                    break;
-                default:
-                    command = 'echo "Gestor de paquetes no soportado"';
-            }
-            
-            // Ejecutar comando de actualización
-            if (window.terminalInterface && typeof window.terminalInterface.executeCommand === 'function') {
-                window.terminalInterface.executeCommand(command);
-            } else {
-                showNotification('Error: No se pudo encontrar la interfaz para ejecutar comandos', 'danger');
-            }
-        });
-        
-        // Permitir instalación al presionar Enter en el campo de texto
-        packageNameInput.addEventListener('keydown', function(event) {
-            if (event.key === 'Enter') {
-                installPackageBtn.click();
-            }
-        });
-    });
-</script>
-
             margin-left: 10px;
         }
 
@@ -682,47 +585,60 @@
                 }
 
                 // Intentar procesar como lenguaje natural
-                const result = naturalCommandProcessor.processInstruction(input, currentDirectory);
+                //Comentado para enviar al asistente directamente
+                /*const result = naturalCommandProcessor.processInstruction(input, currentDirectory);
 
                 if (result.success && result.command) {
                     // Es un comando válido, ejecutarlo
                     writeToTerminal(`\x1b[36mInterpretando: ${result.command}\x1b[0m\r\n`);
                     executeCommand(result.command);
-                } else {
+                } else {*/
                     // No se pudo interpretar, intentar enviar al servidor para procesamiento
-                    fetch('/api/process_natural', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify({
-                            text: input,
-                            user_id: userId
-                        })
+                    //Modificado para enviar al asistente
+                    sendToAssistant(input);
+                /*}*/
+            }
+
+            function sendToAssistant(input){
+                fetch('/api/process_natural', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        text: input,
+                        user_id: userId
                     })
-                    .then(response => response.json())
-                    .then(data => {
-                        if (data.success && data.command) {
-                            writeToTerminal(`\x1b[36mComando generado: ${data.command}\x1b[0m\r\n`);
-                            executeCommand(data.command);
-                        } else {
-                            writeToTerminal('\x1b[33mNo se pudo interpretar como comando. Tratando como consulta al asistente...\x1b[0m\r\n');
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success && data.command) {
+                        // Mostrar el comando generado
+                        writeToTerminal('\r\n\x1b[33mComando generado: ' + data.command + '\x1b[0m\r\n');
+
+                        // Ejecutar el comando
+                        socket.emit('execute_command', {
+                            command: data.command,
+                            user_id: userId,
+                            terminal_id: terminalId
+                        });
+                    } else {
+                        writeToTerminal('\r\n\x1b[33mNo se pudo interpretar como comando. Tratando como consulta al asistente...\x1b[0m\r\n');
 
                             // Redirigir al usuario al asistente con la consulta
-                            const assistantUrl = `/assistant?query=${encodeURIComponent(input)}`;
-                            writeToTerminal(`\x1b[33mPuedes abrir el asistente para responder esta consulta: \x1b[34m${assistantUrl}\x1b[0m\r\n`);
+                            //const assistantUrl = `/assistant?query=${encodeURIComponent(input)}`;
+                            //writeToTerminal(`\x1b[33mPuedes abrir el asistente para responder esta consulta: \x1b[34m${assistantUrl}\x1b[0m\r\n`);
 
                             // Mostrar el prompt de nuevo
-                            writeToTerminal('\r\n$ ');
-                        }
-                    })
-                    .catch(error => {
-                        console.error('Error:', error);
-                        writeToTerminal(`\x1b[31mError al procesar el comando: ${error.message}\x1b[0m\r\n`);
                         writeToTerminal('\r\n$ ');
-                    });
-                }
+                    }
+                })
+                .catch(error => {
+                    writeToTerminal('\r\n\x1b[31mError: ' + error.message + '\x1b[0m\r\n');
+                    writeToTerminal('\r\n$ ');
+                });
             }
+
 
             // Configurar eventos de Socket.IO
             socket.on('connect', () => {
@@ -744,27 +660,28 @@
 
             socket.on('command_result', (data) => {
                 if (data.terminal_id === terminalId) {
-                    if (data.output) {
-                        writeToTerminal(data.output);
+                    if (data.success) {
+                        writeToTerminal('\r\n' + (data.output || '') + '\r\n');
+                    } else {
+                        writeToTerminal('\r\n\x1b[31m' + (data.output || 'Error al ejecutar el comando') + '\x1b[0m\r\n');
                     }
-
-                    if (!data.success) {
-                        writeToTerminal('\r\n\x1b[31mEl comando falló con código de error\x1b[0m\r\n');
-                    }
-
-                    writeToTerminal('\r\n$ ');
-
-                    // Si el comando podría haber modificado archivos, actualizar explorador
-                    if (data.command && (
-                        data.command.includes('mkdir') || 
-                        data.command.includes('touch') || 
-                        data.command.includes('rm') || 
-                        data.command.includes('mv') || 
-                        data.command.includes('cp')
-                    )) {
-                        loadFiles();
-                    }
+                    writeToTerminal('$ ');
                 }
+            });
+
+            // Manejar respuestas del asistente
+            socket.on('agent_response', function(data) {
+                console.log('Respuesta del asistente recibida:', data);
+
+                if (data.error) {
+                    writeToTerminal('\r\n\x1b[31mError: ' + data.error + '\x1b[0m\r\n');
+                } else {
+                    // Formatear y mostrar la respuesta
+                    const formattedResponse = formatForTerminal(data.response);
+                    writeToTerminal('\r\n\x1b[34m' + formattedResponse + '\x1b[0m\r\n');
+                }
+
+                writeToTerminal('$ ');
             });
 
             socket.on('file_system_changed', (data) => {
@@ -928,6 +845,107 @@
                 }
             }
         });
+
+        // Placeholder for the assumed function
+        function formatForTerminal(response) {
+          // Implement your formatting logic here
+          return response;
+        }
     </script>
+    <!-- Panel de instalación de dependencias -->
+<div class="package-install-panel mt-3 mb-3 p-3 border border-secondary rounded">
+    <h5 class="mb-3">Instalar Dependencias</h5>
+    <div class="row g-2">
+        <div class="col-md-8">
+            <input type="text" id="package-name" class="form-control bg-dark text-light" placeholder="Nombre del paquete">
+        </div>
+        <div class="col-md-4">
+            <select id="package-manager" class="form-select bg-dark text-light">
+                <option value="pip">pip (Python)</option>
+                <option value="npm">npm (Node.js)</option>
+                <option value="yarn">yarn</option>
+                <option value="poetry">poetry</option>
+                <option value="apt">apt (sistema)</option>
+            </select>
+        </div>
+    </div>
+    <div class="mt-2">
+        <button id="install-package-btn" class="btn btn-primary">Instalar</button>
+        <button id="update-packages-btn" class="btn btn-secondary">Actualizar Todo</button>
+    </div>
+</div>
+
+<script>
+    // Configurar el panel de instalación de dependencias
+    document.addEventListener('DOMContentLoaded', function() {
+        const packageNameInput = document.getElementById('package-name');
+        const packageManagerSelect = document.getElementById('package-manager');
+        const installPackageBtn = document.getElementById('install-package-btn');
+        const updatePackagesBtn = document.getElementById('update-packages-btn');
+
+        // Instalar paquete
+        installPackageBtn.addEventListener('click', function() {
+            const packageName = packageNameInput.value.trim();
+            const packageManager = packageManagerSelect.value;
+
+            if (!packageName) {
+                showNotification('Por favor ingrese el nombre del paquete', 'warning');
+                return;
+            }
+
+            // Llamar a la función de instalación de paquetes
+            if (window.terminalInterface && typeof window.terminalInterface.executeCommand === 'function') {
+                const command = `${packageManager} install ${packageName}`;
+                window.terminalInterface.executeCommand(command);
+                packageNameInput.value = '';  // Limpiar el campo
+            } else if (window.fileActions && typeof window.fileActions.installPackage === 'function') {
+                window.fileActions.installPackage(packageName, packageManager);
+                packageNameInput.value = '';  // Limpiar el campo
+            } else {
+                showNotification('Error: No se pudo encontrar la interfaz para instalar paquetes', 'danger');
+            }
+        });
+
+        // Actualizar todos los paquetes
+        updatePackagesBtn.addEventListener('click', function() {
+            const packageManager = packageManagerSelect.value;
+            let command = '';
+
+            switch (packageManager) {
+                case 'pip':
+                    command = 'pip install --upgrade -r requirements.txt';
+                    break;
+                case 'npm':
+                    command = 'npm update';
+                    break;
+                case 'yarn':
+                    command = 'yarn upgrade';
+                    break;
+                case 'poetry':
+                    command = 'poetry update';
+                    break;
+                case 'apt':
+                    command = 'apt-get update && apt-get upgrade -y';
+                    break;
+                default:
+                    command = 'echo "Gestor de paquetes no soportado"';
+            }
+
+            // Ejecutar comando de actualización
+            if (window.terminalInterface && typeof window.terminalInterface.executeCommand === 'function') {
+                window.terminalInterface.executeCommand(command);
+            } else {
+                showNotification('Error: No se pudo encontrar la interfaz para ejecutar comandos', 'danger');
+            }
+        });
+
+        // Permitir instalación al presionar Enter en el campo de texto
+        packageNameInput.addEventListener('keydown', function(event) {
+            if (event.key === 'Enter') {
+                installPackageBtn.click();
+            }
+        });
+    });
+</script>
 </body>
 </html>

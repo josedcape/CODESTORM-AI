@@ -934,3 +934,307 @@ window.webSocketClient = {
     updateFileExplorer: loadFiles
 };
 
+// Terminal integration code
+document.addEventListener('DOMContentLoaded', function() {
+    console.log("Terminal integration module loaded");
+    
+    // Variables globales
+    let currentDirectory = '.';
+    let history = [];
+    let historyIndex = -1;
+    let commandInProgress = false;
+    
+    // Referencias a elementos del DOM
+    const terminalInput = document.getElementById('terminal-input');
+    const terminalOutput = document.getElementById('terminal-output');
+    const sendButton = document.getElementById('send-button');
+    
+    // Configurar Socket.IO
+    let socket = null;
+    if (typeof io !== 'undefined') {
+        socket = io({
+            transports: ['websocket'],
+            reconnection: true,
+            reconnectionAttempts: 5,
+            reconnectionDelay: 1000
+        });
+        
+        // Eventos Socket.IO
+        socket.on('connect', function() {
+            console.log('Terminal: Conectado al servidor WebSocket');
+            appendToTerminal('Conectado al servidor', 'system');
+        });
+        
+        socket.on('disconnect', function() {
+            console.log('Terminal: Desconectado del servidor WebSocket');
+            appendToTerminal('Desconectado del servidor', 'error');
+        });
+        
+        socket.on('connect_error', function(err) {
+            console.error('Terminal: Error de conexión WebSocket', err);
+            appendToTerminal('Error de conexión al servidor: ' + err.message, 'error');
+        });
+        
+        socket.on('command_result', function(data) {
+            commandInProgress = false;
+            
+            if (data.success) {
+                appendToTerminal(data.output || 'Comando ejecutado correctamente', 'output');
+            } else {
+                appendToTerminal(data.output || 'Error al ejecutar el comando', 'error');
+            }
+            
+            // Actualizar explorador si es necesario
+            if (data.refresh_explorer && window.refreshFileExplorer) {
+                window.refreshFileExplorer();
+            }
+        });
+        
+        socket.on('agent_response', function(data) {
+            console.log('Terminal: Respuesta del agente recibida', data);
+            if (data.error) {
+                appendToTerminal('Error: ' + data.error, 'error');
+            } else {
+                appendToTerminal(data.response, 'assistant');
+            }
+        });
+    } else {
+        console.error('Terminal: Socket.IO no está disponible');
+    }
+    
+    // Función para ejecutar un comando
+    function executeCommand(command) {
+        if (!command.trim() || commandInProgress) return;
+        
+        commandInProgress = true;
+        
+        // Agregar comando al historial
+        history.push(command);
+        historyIndex = history.length;
+        
+        // Mostrar comando en la terminal
+        appendToTerminal('$ ' + command, 'command');
+        
+        if (socket && socket.connected) {
+            // Enviar comando vía WebSocket
+            socket.emit('execute_command', {
+                command: command,
+                user_id: localStorage.getItem('user_id') || 'default',
+                terminal_id: 'terminal-' + Math.random().toString(36).substr(2, 9)
+            });
+        } else {
+            // Fallback: enviar mediante HTTP si WebSocket no está disponible
+            fetch('/api/execute_command', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    command: command,
+                    user_id: localStorage.getItem('user_id') || 'default'
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                commandInProgress = false;
+                
+                if (data.success) {
+                    appendToTerminal(data.output || 'Comando ejecutado correctamente', 'output');
+                } else {
+                    appendToTerminal(data.error || 'Error al ejecutar el comando', 'error');
+                }
+                
+                // Actualizar explorador si es necesario
+                if (data.refresh_explorer && window.refreshFileExplorer) {
+                    window.refreshFileExplorer();
+                }
+            })
+            .catch(error => {
+                commandInProgress = false;
+                appendToTerminal('Error de conexión: ' + error.message, 'error');
+            });
+        }
+    }
+    
+    // Función para enviar mensaje al asistente
+    function sendToAssistant(message) {
+        if (!message.trim() || commandInProgress) return;
+        
+        commandInProgress = true;
+        
+        // Mostrar mensaje en la terminal
+        appendToTerminal('> ' + message, 'user-message');
+        
+        if (socket && socket.connected) {
+            // Enviar mensaje vía WebSocket
+            socket.emit('user_message', {
+                message: message,
+                agent: 'developer',
+                model: 'openai'
+            });
+        } else {
+            // Fallback: enviar mediante HTTP si WebSocket no está disponible
+            fetch('/api/chat', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    message: message,
+                    agent_id: 'developer',
+                    model: 'openai'
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                commandInProgress = false;
+                
+                if (data.error) {
+                    appendToTerminal('Error: ' + data.error, 'error');
+                } else {
+                    appendToTerminal(data.response, 'assistant');
+                }
+            })
+            .catch(error => {
+                commandInProgress = false;
+                appendToTerminal('Error de conexión: ' + error.message, 'error');
+            });
+        }
+    }
+    
+    // Función para agregar texto a la terminal
+    function appendToTerminal(text, className) {
+        if (!terminalOutput) return;
+        
+        const line = document.createElement('div');
+        line.className = `terminal-line ${className || ''}`;
+        
+        // Formatear texto según el tipo
+        if (className === 'assistant') {
+            // Formatear respuesta de asistente con Markdown simple
+            line.innerHTML = formatMarkdown(text);
+        } else {
+            line.textContent = text;
+        }
+        
+        terminalOutput.appendChild(line);
+        terminalOutput.scrollTop = terminalOutput.scrollHeight;
+    }
+    
+    // Formatear texto con Markdown simple
+    function formatMarkdown(text) {
+        if (!text) return '';
+        
+        // Convertir código inline
+        text = text.replace(/`([^`]+)`/g, '<code>$1</code>');
+        
+        // Convertir bloques de código
+        text = text.replace(/```(\w*)\n([\s\S]*?)\n```/g, function(match, language, code) {
+            return `<pre class="code-block ${language}">${code}</pre>`;
+        });
+        
+        // Convertir enlaces
+        text = text.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank">$1</a>');
+        
+        // Convertir negritas
+        text = text.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+        
+        // Convertir cursivas
+        text = text.replace(/\*([^*]+)\*/g, '<em>$1</em>');
+        
+        return text;
+    }
+    
+    // Manejar entrada del terminal
+    if (terminalInput) {
+        terminalInput.addEventListener('keydown', function(event) {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                const input = terminalInput.value.trim();
+                
+                if (input) {
+                    // Determinar si es un comando o una pregunta para el asistente
+                    if (input.startsWith('!')) {
+                        // Es un comando explícito (sin el !)
+                        executeCommand(input.substring(1));
+                    } else if (input.startsWith('/') || 
+                              input.startsWith('mkdir') || 
+                              input.startsWith('cd') || 
+                              input.startsWith('ls') || 
+                              input.startsWith('rm') || 
+                              input.startsWith('touch') || 
+                              input.startsWith('cat') || 
+                              input.startsWith('echo')) {
+                        // Es un comando de sistema claramente reconocible
+                        executeCommand(input);
+                    } else {
+                        // Es una pregunta para el asistente
+                        sendToAssistant(input);
+                    }
+                    
+                    // Limpiar input
+                    terminalInput.value = '';
+                }
+            } else if (event.key === 'ArrowUp') {
+                // Navegar historial hacia arriba
+                if (historyIndex > 0) {
+                    historyIndex--;
+                    terminalInput.value = history[historyIndex];
+                    event.preventDefault();
+                }
+            } else if (event.key === 'ArrowDown') {
+                // Navegar historial hacia abajo
+                if (historyIndex < history.length - 1) {
+                    historyIndex++;
+                    terminalInput.value = history[historyIndex];
+                } else {
+                    historyIndex = history.length;
+                    terminalInput.value = '';
+                }
+                event.preventDefault();
+            }
+        });
+    }
+    
+    // Manejar botón de envío
+    if (sendButton) {
+        sendButton.addEventListener('click', function() {
+            const input = terminalInput.value.trim();
+            
+            if (input) {
+                if (input.startsWith('!')) {
+                    executeCommand(input.substring(1));
+                } else if (input.startsWith('/') || 
+                          input.startsWith('mkdir') || 
+                          input.startsWith('cd') || 
+                          input.startsWith('ls') || 
+                          input.startsWith('rm') || 
+                          input.startsWith('touch') || 
+                          input.startsWith('cat') || 
+                          input.startsWith('echo')) {
+                    executeCommand(input);
+                } else {
+                    sendToAssistant(input);
+                }
+                
+                terminalInput.value = '';
+            }
+        });
+    }
+    
+    // Exponer funciones públicas
+    window.terminalInterface = {
+        executeCommand: executeCommand,
+        sendToAssistant: sendToAssistant,
+        appendToTerminal: appendToTerminal
+    };
+    
+    // Agregar mensaje de bienvenida
+    appendToTerminal('Terminal integrada iniciada. Escribe comandos de terminal directamente o consultas para el asistente.', 'system');
+    appendToTerminal('Para ejecutar un comando explícito, inicia con ! (ejemplo: !ls)', 'system');
+    
+    // Enfocar el input
+    if (terminalInput) {
+        terminalInput.focus();
+    }
+});

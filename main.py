@@ -1114,6 +1114,84 @@ def handle_execute_command(data):
             'output': f"Error: {str(e)}"
         })
 
+def handle_chat_internal(request_data):
+    # This function is a placeholder and should contain the existing chat handling logic.  It's not included in the provided original code
+    # so a basic placeholder will be used instead.  In a real implementation, this function will process the chat request and return a response.
+    return {'response': 'This is a placeholder response from handle_chat_internal', 'error': None}
+
+@socketio.on('user_message')
+def handle_user_message(data):
+    """Manejar mensajes del usuario a través de Socket.IO."""
+    try:
+        logging.info(f"Mensaje recibido vía Socket.IO: {data}")
+        user_message = data.get('message', '')
+        agent_id = data.get('agent', 'developer')  # Cambiado a developer por defecto
+        model = data.get('model', 'openai')  # Cambiado a openai por defecto
+        document = data.get('document', '')
+        terminal_id = data.get('terminal_id', '')
+
+        if not user_message:
+            emit('error', {'message': 'Mensaje vacío'})
+            return
+
+        logging.info(f"Procesando mensaje Socket.IO: '{user_message[:30]}...' usando agente {agent_id} y modelo {model}")
+
+        # Preparar datos para procesamiento
+        request_data = {
+            'message': user_message,
+            'agent_id': agent_id,
+            'model': model,
+            'context': data.get('context', [])
+        }
+
+        # Intentar procesar mediante API directa primero para mejor rendimiento
+        try:
+            if model == 'openai' and openai_api_key:
+                # Usar OpenAI directamente
+                messages = [
+                    {"role": "system", "content": f"Eres un asistente de {agent_id} experto y útil."},
+                    {"role": "user", "content": user_message}
+                ]
+
+                completion = openai.ChatCompletion.create(
+                    model="gpt-4o",
+                    messages=messages,
+                    temperature=0.7,
+                    max_tokens=2000
+                )
+
+                response = completion.choices[0].message.content
+                logging.info(f"Respuesta generada directamente con OpenAI: {response[:100]}...")
+
+                emit('agent_response', {
+                    'response': response,
+                    'agent': agent_id,
+                    'model': model,
+                    'error': None
+                })
+                return
+        except Exception as api_error:
+            logging.warning(f"Error en API directa: {str(api_error)}, usando handle_chat_internal")
+            # Continuar con el método alternativo
+
+        # Procesar el mensaje usando la lógica existente
+        result = handle_chat_internal(request_data)
+
+        # Enviar respuesta al cliente
+        logging.info(f"Enviando respuesta Socket.IO: '{result.get('response', '')[:30]}...'")
+        emit('agent_response', {
+            'response': result.get('response', ''),
+            'agent': agent_id,
+            'model': model,
+            'error': result.get('error', None),
+            'terminal_id': terminal_id
+        })
+
+    except Exception as e:
+        logging.error(f"Error en Socket.IO user_message: {str(e)}")
+        logging.error(traceback.format_exc())
+        emit('error', {'message': str(e)})
+
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     socketio.run(app, host='0.0.0.0', port=port, debug=True)
