@@ -1,117 +1,99 @@
 // Terminal integration code
 document.addEventListener('DOMContentLoaded', function() {
-    // Referencia al elemento de entrada de la terminal
-    const terminalInput = document.getElementById('terminal-input');
-
-    // Historial de comandos
-    let commandHistory = [];
-    let historyIndex = -1;
-
-    // Función para ejecutar un comando
-    function executeCommand(command) {
-        if (!command.trim()) return;
-
-        // Añadir al historial
-        commandHistory.push(command);
-        historyIndex = commandHistory.length;
-
-        // Mostrar comando en la terminal
-        appendToTerminal(`$ ${command}`, 'command');
-
-        // Verificar si es un comando que modifica archivos
-        const fileModifyingCommands = ['mkdir', 'touch', 'rm', 'mv', 'cp', 'echo'];
-        const shouldRefresh = fileModifyingCommands.some(cmd => command.startsWith(cmd));
-
-        // Ejecutar comando y notificar al explorador
-        if (window.executeTerminalCommand) {
-            window.executeTerminalCommand(command);
-        } else {
-            // Fallback si la función global no está disponible
-            fetch('/api/execute_command', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    command: command,
-                    user_id: localStorage.getItem('user_id') || 'default'
-                })
-            })
-            .then(response => response.json())
-            .then(data => {
-                // Mostrar salida en la terminal
-                if (data.success) {
-                    appendToTerminal(data.output || 'Comando ejecutado', 'output');
-
-                    // Forzar actualización del explorador
-                    if (data.refresh_explorer && window.refreshFileExplorer) {
-                        setTimeout(window.refreshFileExplorer, 300);
-                    }
-                } else {
-                    appendToTerminal(`Error: ${data.error}`, 'error');
-                }
-            })
-            .catch(error => {
-                appendToTerminal(`Error: ${error.message}`, 'error');
-            });
-        }
-
-        // Limpiar entrada
-        terminalInput.value = '';
-    }
-
-    // Función para añadir texto a la terminal
-    function appendToTerminal(text, className) {
-        const terminalOutput = document.getElementById('terminal-output');
-        const line = document.createElement('div');
-        line.className = `terminal-line ${className || ''}`;
-        line.textContent = text;
-        terminalOutput.appendChild(line);
-        terminalOutput.scrollTop = terminalOutput.scrollHeight;
-    }
-
-    // Manejar envío de comandos
-    if (terminalInput) {
-        terminalInput.addEventListener('keydown', function(event) {
-            if (event.key === 'Enter') {
-                event.preventDefault();
-                const command = terminalInput.value;
-                executeCommand(command);
-            } else if (event.key === 'ArrowUp') {
-                // Navegar historial hacia atrás
-                if (historyIndex > 0) {
-                    historyIndex--;
-                    terminalInput.value = commandHistory[historyIndex];
-                }
-                event.preventDefault();
-            } else if (event.key === 'ArrowDown') {
-                // Navegar historial hacia adelante
-                if (historyIndex < commandHistory.length - 1) {
-                    historyIndex++;
-                    terminalInput.value = commandHistory[historyIndex];
-                } else {
-                    historyIndex = commandHistory.length;
-                    terminalInput.value = '';
-                }
-                event.preventDefault();
-            }
-        });
-    }
-
-    // Escuchar eventos WebSocket para actualizar la terminal
-    document.addEventListener('socket_ready', function() {
-        if (window.socketClient) {
-            window.socketClient.on('command_result', function(data) {
-                appendToTerminal(data.output || 'Comando ejecutado', data.success ? 'output' : 'error');
-            });
-
-            window.socketClient.on('error', function(data) {
-                appendToTerminal(`Error: ${data.message}`, 'error');
-            });
+    const term = new Terminal({
+        cursorBlink: true,
+        theme: {
+            background: '#1a1a1a',
+            foreground: '#f0f0f0',
+            cursor: '#ffffff'
         }
     });
 
-    // Exponer funciones globalmente
-    window.terminalExecuteCommand = executeCommand;
-    window.terminalAppendOutput = appendToTerminal;
+    const fitAddon = new FitAddon.FitAddon();
+    term.loadAddon(fitAddon);
+
+    // Initialize terminal
+    const terminal = document.getElementById('terminal');
+    term.open(terminal);
+    fitAddon.fit();
+
+    // Terminal state
+    let currentLine = '';
+    const terminalId = Date.now().toString();
+    const userId = localStorage.getItem('user_id') || 'default';
+    let commandHistory = [];
+    let historyIndex = -1;
+
+    // Socket connection
+    const socket = io({
+        transports: ['websocket'],
+        reconnection: true
+    });
+
+    // Handle terminal input
+    term.onKey(({ key, domEvent }) => {
+        const printable = !domEvent.altKey && !domEvent.ctrlKey && !domEvent.metaKey;
+
+        if (domEvent.keyCode === 13) { // Enter
+            if (currentLine.trim()) {
+                executeCommand(currentLine);
+                commandHistory.push(currentLine);
+                historyIndex = commandHistory.length;
+            }
+            currentLine = '';
+            term.write('\r\n$ ');
+        } else if (domEvent.keyCode === 8) { // Backspace
+            if (currentLine.length > 0) {
+                currentLine = currentLine.slice(0, -1);
+                term.write('\b \b');
+            }
+        } else if (printable) {
+            currentLine += key;
+            term.write(key);
+        }
+    });
+
+    // Command execution
+    function executeCommand(command) {
+        socket.emit('execute_command', {
+            command: command,
+            terminal_id: terminalId,
+            user_id: userId
+        });
+    }
+
+    // Handle command results
+    socket.on('command_result', function(data) {
+        if (data.terminal_id === terminalId) {
+            term.write('\r\n' + data.output);
+
+            if (data.success && isFileModifyingCommand(data.command)) {
+                refreshFileExplorer();
+            }
+
+            term.write('\r\n$ ');
+        }
+    });
+
+    // Check if command modifies files
+    function isFileModifyingCommand(command) {
+        const fileCommands = ['mkdir', 'touch', 'rm', 'cp', 'mv', 'echo'];
+        const cmdParts = command.trim().split(' ');
+        return fileCommands.includes(cmdParts[0]);
+    }
+
+    // Request file explorer update
+    function refreshFileExplorer() {
+        socket.emit('request_file_list', {
+            user_id: userId
+        });
+    }
+
+    // Handle window resize
+    window.addEventListener('resize', () => {
+        fitAddon.fit();
+    });
+
+    // Initial prompt
+    term.write('$ ');
 });
