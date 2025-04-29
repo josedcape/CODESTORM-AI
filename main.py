@@ -60,7 +60,7 @@ else:
 if gemini_api_key:
     try:
         import google.generativeai as genai
-        google.generativeai.configure(api_key=gemini_api_key)
+        genai.configure(api_key=gemini_api_key)
         logging.info(f"Gemini API key configurada: {gemini_api_key[:5]}...{gemini_api_key[-5:]}")
     except ImportError as ie:
         logging.error(f"Error al importar módulos para Gemini: {str(ie)}")

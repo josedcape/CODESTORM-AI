@@ -10,7 +10,7 @@ deploymentTarget = "autoscale"
 run = ["sh", "-c", "python main_completo.py"]
 
 [workflows]
-runButton = "Run With XTerm Support"
+runButton = "Run Server"
 
 [[workflows.workflow]]
 name = "Project"
@@ -166,6 +166,15 @@ args = "python main.py"
 [[workflows.workflow]]
 name = "Run App with Fixed Paths"
 author = 42021489
+mode = "sequential"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "python main.py"
+
+[[workflows.workflow]]
+name = "Run Server"
+author = 42061016
 mode = "sequential"
 
 [[workflows.workflow.tasks]]
