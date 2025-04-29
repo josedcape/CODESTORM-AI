@@ -1318,8 +1318,141 @@
                     return;
                 }
 
+                // Manejar todos los eventos de socket en un solo lugar
+
                 // Manejar respuesta del asistente (respuesta del servidor)
                 socket.on('instruction_result', function(data) {
+                    console.log('Resultado del procesamiento:', data);
+
+                    if (data.success) {
+                        // Mostrar el comando generado
+                        terminal.write('\r\n\x1b[32m[Asistente] Comando generado: ' + data.command + '\x1b[0m\r\n');
+
+                        // Auto-ejecutar el comando insertándolo en el campo de terminal
+                        terminalInput.value = data.command;
+
+                        // Si hay una explicación, mostrarla
+                        if (data.explanation) {
+                            terminal.write('\r\n\x1b[36m[Asistente] ' + data.explanation + '\x1b[0m\r\n');
+                        }
+
+                        // Disparar un evento de cambio para que el campo se actualice visualmente
+                        const event = new Event('input', { bubbles: true });
+                        terminalInput.dispatchEvent(event);
+
+                        // Ejecutar el comando automáticamente después de un breve retraso
+                        if (data.auto_execute !== false) { // Ejecutar por defecto a menos que se especifique lo contrario
+                            // Pequeña pausa para visualizar el comando antes de ejecutarlo
+                            setTimeout(() => {
+                                // Usar el método de envío actual (WebSocket o REST)
+                                const methodSelector = document.getElementById('command-method');
+                                const method = methodSelector.value;
+
+                                if (method === 'rest') {
+                                    executeCommandViaREST(data.command);
+                                    terminalInput.value = '';
+                                } else {
+                                    handleInput();
+                                }
+
+                                // Notificar al usuario que el comando fue ejecutado
+                                showNotification('Comando ejecutado automáticamente', 'info');
+                            }, 500);
+                        } else {
+                            // Enfocar el campo para que el usuario pueda modificar el comando si lo desea
+                            terminalInput.focus();
+                            // Colocar el cursor al final del texto
+                            terminalInput.setSelectionRange(data.command.length, data.command.length);
+
+                            showNotification('Comando listo para ejecutar. Presiona Enter para ejecutarlo.', 'info');
+                        }
+                    } else {
+                        terminal.write('\r\n\x1b[31m[Asistente] Error: ' + (data.error || 'No se pudo procesar la instrucción') + '\x1b[0m\r\n');
+                    }
+                });
+                socket.on('connect', function() {
+                    console.log('Conectado al servidor WebSocket');
+                    isConnected = true;
+                    updateConnectionStatus('connected');
+
+                    // Inicializar manejadores de eventos
+                    initializeSocketHandlers();
+
+                    // Mensaje de bienvenida
+                    terminal.write('\r\n\x1b[32m¡Bienvenido a la Terminal Avanzada de Codestorm!\x1b[0m\r\n');
+                    terminal.write('Puedes ejecutar comandos bash o usar lenguaje natural.\r\n\r\n');
+
+                    // Cargar directorio actual
+                    loadDirectoryContents(currentDirectory);
+
+                    // Configurar preview inicial
+                    updatePreviewIframe('/');
+                });
+
+                socket.on('disconnect', function() {
+                    console.log('Desconectado del servidor WebSocket');
+                    isConnected = false;
+                    updateConnectionStatus('disconnected');
+                    terminal.write('\r\n\x1b[31mDesconectado del servidor. Intentando reconectar...\x1b[0m\r\n');
+                });
+
+                socket.on('command_result', function(data) {
+                    console.log('Resultado del comando recibido:', data);
+
+                    // Mostrar resultado en el terminal
+                    if (data.success) {
+                        terminal.write('\r\n' + data.output + '\r\n');
+
+                        // Si hay un ydoc activo, añadir al historial compartido
+                        if (ydoc) {
+                            const yTerminalHistory = ydoc.getText('terminal-history');
+                            yTerminalHistory.insert(yTerminalHistory.length, '\r\n' + data.output + '\r\n');
+                        }
+
+                        // Actualizar el explorador si el comando afecta a archivos
+                        if (shouldRefreshExplorer(data.command)) {
+                            setTimeout(() => loadDirectoryContents(currentDirectory), 500);
+                        }
+
+                        // Actualizar preview en ciertos comandos
+                        if (data.command.includes('touch') || data.command.includes('echo') || 
+                            data.command.includes('cat') || data.command.includes('npm')) {
+                            updatePreviewIframe('/preview');
+                        }
+
+                        // Actualizar directorio actual si es comando cd
+                        if (data.command.startsWith('cd ')) {
+                            updateCurrentDirectory(data);
+                        }
+                    } else {
+                        terminal.write('\r\n\x1b[31mError: ' + data.stderr + '\x1b[0m\r\n');
+                    }
+                });
+
+                socket.on('directory_contents', function(data) {
+                    console.log('Contenido del directorio recibido:', data);
+
+                    if (data.success) {
+                        updateExplorer(data.path, data.contents);
+                    } else {
+                        showNotification('Error al cargar archivos: ' + data.error, 'error');
+                    }
+                });
+
+                socket.on('file_change', function(data) {
+                    console.log('Cambio en archivos detectado:', data);
+                    showNotification(data.message, 'info');
+                    loadDirectoryContents(currentDirectory);
+
+                    // Actualizar preview si se ha modificado un archivo
+                    updatePreviewIframe('/preview');
+                });
+
+                socket.on('error', function(error) {
+                    console.error('Error de WebSocket:', error);
+                    terminal.write('\r\n\x1b[31mError: ' + error + '\x1b[0m\r\n');
+                });
+                socket.on('process_instruction', function(data) {
                     console.log('Resultado del procesamiento:', data);
 
                     if (data.success) {
