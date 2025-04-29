@@ -21,17 +21,188 @@
     <script src="https://unpkg.com/yjs@13.5.0/dist/yjs.js"></script>
     <script src="https://unpkg.com/y-websocket@1.4.0/dist/y-websocket.js"></script>
 
-    <!-- Estilos CSS (mantener los que ya estaban) -->
+    <!-- Estilos CSS -->
     <style>
-        /* Mantener los estilos existentes */
-        /* ... */
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Arial', sans-serif;
+            background-color: #121212;
+            color: #f0f0f0;
+        }
+        
+        .terminal-page {
+            display: flex;
+            height: 100vh;
+        }
+        
+        .explorer-panel {
+            width: 250px;
+            background-color: #1e1e1e;
+            border-right: 1px solid #333;
+            overflow-y: auto;
+        }
+        
+        .terminal-panel {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .terminal-header {
+            background: linear-gradient(90deg, #001020 0%, #001f3f 100%);
+            padding: 10px;
+            border-bottom: 1px solid #333;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        #terminal-container {
+            flex: 1;
+            padding: 5px;
+            background-color: #000;
+        }
+        
+        .terminal-controls {
+            background-color: #1e1e1e;
+            padding: 10px;
+            display: flex;
+            border-top: 1px solid #333;
+        }
+        
+        .terminal-input {
+            flex: 1;
+            background-color: #2a2a2a;
+            border: 1px solid #444;
+            color: #fff;
+            padding: 8px;
+            border-radius: 4px;
+            margin-right: 5px;
+        }
+        
+        .btn {
+            background: linear-gradient(45deg, #003366 0%, #004080 100%);
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        
+        .file-item {
+            padding: 8px 10px;
+            cursor: pointer;
+            border-bottom: 1px solid #333;
+            display: flex;
+            align-items: center;
+        }
+        
+        .file-item:hover {
+            background-color: #2a2a2a;
+        }
+        
+        .file-item .icon {
+            margin-right: 8px;
+            color: #0087d7;
+        }
+        
+        .directory .icon {
+            color: #ffcc00;
+        }
+        
+        .status-indicator {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-left: 10px;
+        }
+        
+        .status-connected {
+            background-color: #00cc66;
+        }
+        
+        .status-disconnected {
+            background-color: #ff3333;
+        }
+        
+        .status-connecting {
+            background-color: #ffcc00;
+        }
+        
+        .notifications {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+        }
+        
+        .notification {
+            padding: 10px 15px;
+            margin-bottom: 10px;
+            border-radius: 4px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+            animation: fadeIn 0.3s;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .notification-info {
+            background-color: #003366;
+            color: white;
+        }
+        
+        .notification-error {
+            background-color: #cc0000;
+            color: white;
+        }
+        
+        .notification-success {
+            background-color: #006600;
+            color: white;
+        }
     </style>
 </head>
 <body>
-    <!-- Mantener la estructura HTML existente -->
-    <!-- ... -->
+    <div class="terminal-page">
+        <!-- Panel explorador de archivos -->
+        <div class="explorer-panel">
+            <div class="terminal-header">
+                <h5 class="mb-0">Explorador</h5>
+                <span id="current-path">/</span>
+            </div>
+            <div class="explorer-content"></div>
+        </div>
+        
+        <!-- Panel de terminal -->
+        <div class="terminal-panel">
+            <div class="terminal-header">
+                <div>
+                    <h5 class="mb-0">Terminal XTerm</h5>
+                    <small>Comandos y lenguaje natural</small>
+                </div>
+                <div>
+                    <span id="status-indicator" class="status-indicator"></span>
+                </div>
+            </div>
+            
+            <!-- Contenedor de la terminal XTerm -->
+            <div id="terminal-container"></div>
+            
+            <!-- Controles de la terminal -->
+            <div class="terminal-controls">
+                <input type="text" id="terminal-input" class="terminal-input" placeholder="Ingrese un comando o texto en lenguaje natural...">
+                <button id="send-button" class="btn">Enviar</button>
+                <button id="clear-button" class="btn">Limpiar</button>
+                <button id="toggle-explorer" class="btn d-md-none">Explorador</button>
+            </div>
+        </div>
+    </div>
 
-    <!-- Agregar un div para notificaciones -->
+    <!-- Div para notificaciones -->
     <div id="notifications" class="notifications"></div>
 
     <!-- Cargar el procesador de comandos naturales -->
