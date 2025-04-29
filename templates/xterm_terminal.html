@@ -493,6 +493,29 @@
             opacity: 0.8;
         }
 
+        .loading-indicator {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            padding: 20px;
+        }
+
+        .file-list {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .file-item {
+            padding: 8px 12px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .file-item.directory {
+            color: var(--highlight-color);
+        }
+
+
     </style>
 </head>
 <body>
@@ -857,7 +880,8 @@
                 });
             }
 
-            // Actualizar la lista de colaboradores en la UI
+            // Actual```javascript
+izar la lista de colaboradores en la UI
             function updateCollaborators() {
                 if (!ydoc) return;
 
@@ -1107,18 +1131,63 @@
                 }
 
                 explorerContainer.innerHTML = `
-                    <div class="text-center p-3">
-                        <div class="spinner-border spinner-border-sm text-primary" role="status">
-                            <span class="visually-hidden">Cargando...</span>
-                        </div>
-                        <p class="mt-2 text-muted">Cargando archivos...</p>
-                    </div>
-                `;
+                    <div class="loading-indicator">
+                        <div class="spinner-border spinner-border-sm text-primary"></div>
+                        <span class="ms-2">Cargando archivos...</span>
+                    </div>`;
 
-                socket.emit('list_directory', {
-                    path: path,
-                    user_id: userId
-                });
+                fetch('/api/files?directory=' + encodeURIComponent(path))
+                    .then(response => response.json())
+                    .then(data => {
+                        if (!data.success) {
+                            throw new Error(data.error || 'Error al cargar archivos');
+                        }
+
+                        explorerContainer.innerHTML = '';
+
+                        if (data.files && data.files.length > 0) {
+                            const fileList = document.createElement('div');
+                            fileList.className = 'file-list';
+
+                            data.files.forEach(file => {
+                                const item = document.createElement('div');
+                                item.className = `file-item ${file.type}`;
+
+                                const icon = file.type === 'directory' ? 
+                                    'bi-folder-fill' : 'bi-file-text';
+
+                                item.innerHTML = `
+                                    <i class="bi ${icon} me-2"></i>
+                                    <span>${file.name}</span>
+                                `;
+
+                                item.addEventListener('click', () => {
+                                    if (file.type === 'directory') {
+                                        currentDirectory = file.path;
+                                        loadDirectoryContents(file.path);
+                                    }
+                                });
+
+                                fileList.appendChild(item);
+                            });
+
+                            explorerContainer.appendChild(fileList);
+                        } else {
+                            explorerContainer.innerHTML = `
+                                <div class="text-center text-muted p-3">
+                                    <i class="bi bi-folder2-open"></i>
+                                    <p>Carpeta vacía</p>
+                                </div>`;
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        explorerContainer.innerHTML = `
+                            <div class="alert alert-danger">
+                                <i class="bi bi-exclamation-triangle me-2"></i>
+                                ${error.message}
+                            </div>`;
+                    });
             }
 
             // Actualizar el explorador de archivos
@@ -1720,7 +1789,7 @@
                     })
                     .then(response => response.json())
                     .then(data => {
-                        console.log('API de archivos actualizada, datos:', data);
+                                                console.log('API de archivos actualizada, datos:', data);
                         // Reactivar los métodos anteriores después de obtener datos frescos
                         setTimeout(updateParentFileExplorer, 200);
                     })
