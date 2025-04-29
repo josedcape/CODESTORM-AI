@@ -30,25 +30,25 @@
             background-color: #121212;
             color: #f0f0f0;
         }
-        
+
         .terminal-page {
             display: flex;
             height: 100vh;
         }
-        
+
         .explorer-panel {
             width: 250px;
             background-color: #1e1e1e;
             border-right: 1px solid #333;
             overflow-y: auto;
         }
-        
+
         .terminal-panel {
             flex: 1;
             display: flex;
             flex-direction: column;
         }
-        
+
         .terminal-header {
             background: linear-gradient(90deg, #001020 0%, #001f3f 100%);
             padding: 10px;
@@ -57,20 +57,20 @@
             justify-content: space-between;
             align-items: center;
         }
-        
+
         #terminal-container {
             flex: 1;
             padding: 5px;
             background-color: #000;
         }
-        
+
         .terminal-controls {
             background-color: #1e1e1e;
             padding: 10px;
             display: flex;
             border-top: 1px solid #333;
         }
-        
+
         .terminal-input {
             flex: 1;
             background-color: #2a2a2a;
@@ -80,7 +80,7 @@
             border-radius: 4px;
             margin-right: 5px;
         }
-        
+
         .btn {
             background: linear-gradient(45deg, #003366 0%, #004080 100%);
             color: white;
@@ -89,7 +89,7 @@
             border-radius: 4px;
             cursor: pointer;
         }
-        
+
         .file-item {
             padding: 8px 10px;
             cursor: pointer;
@@ -97,46 +97,46 @@
             display: flex;
             align-items: center;
         }
-        
+
         .file-item:hover {
             background-color: #2a2a2a;
         }
-        
+
         .file-item .icon {
             margin-right: 8px;
             color: #0087d7;
         }
-        
+
         .directory .icon {
             color: #ffcc00;
         }
-        
+
         .status-indicator {
             width: 10px;
             height: 10px;
             border-radius: 50%;
             margin-left: 10px;
         }
-        
+
         .status-connected {
             background-color: #00cc66;
         }
-        
+
         .status-disconnected {
             background-color: #ff3333;
         }
-        
+
         .status-connecting {
             background-color: #ffcc00;
         }
-        
+
         .notifications {
             position: fixed;
             top: 20px;
             right: 20px;
             z-index: 1000;
         }
-        
+
         .notification {
             padding: 10px 15px;
             margin-bottom: 10px;
@@ -144,26 +144,94 @@
             box-shadow: 0 2px 5px rgba(0,0,0,0.3);
             animation: fadeIn 0.3s;
         }
-        
+
+        .notification-hide {
+            animation: fadeOut 0.3s forwards;
+        }
+
         @keyframes fadeIn {
             from { opacity: 0; transform: translateY(-10px); }
             to { opacity: 1; transform: translateY(0); }
         }
-        
+
+        @keyframes fadeOut {
+            from { opacity: 1; transform: translateY(0); }
+            to { opacity: 0; transform: translateY(-10px); }
+        }
+
         .notification-info {
             background-color: #003366;
             color: white;
         }
-        
+
         .notification-error {
             background-color: #cc0000;
             color: white;
         }
-        
+
         .notification-success {
             background-color: #006600;
             color: white;
         }
+
+        .assistant-container {
+            background-color: #282828;
+            padding: 15px;
+            margin-bottom: 10px;
+            border-radius: 4px;
+        }
+
+        .assistant-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .assistant-input {
+            width: 100%;
+            height: 100px;
+            background-color: #383838;
+            border: 1px solid #555;
+            color: #fff;
+            padding: 8px;
+            border-radius: 4px;
+            margin-bottom: 10px;
+            resize: vertical;
+        }
+
+        .assistant-buttons {
+            display: flex;
+            justify-content: flex-end;
+            margin-bottom: 10px;
+        }
+
+        .assistant-result {
+            background-color: #383838;
+            border: 1px solid #555;
+            padding: 10px;
+            border-radius: 4px;
+            min-height: 50px;
+            overflow-y: auto;
+        }
+
+        .command-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 5px;
+        }
+
+        .command-text {
+            flex: 1;
+            word-break: break-all; /* Permite saltos de línea en comandos largos */
+        }
+
+        .command-actions {
+            display: flex;
+            gap: 5px;
+        }
+
     </style>
 </head>
 <body>
@@ -176,7 +244,7 @@
             </div>
             <div class="explorer-content"></div>
         </div>
-        
+
         <!-- Panel de terminal -->
         <div class="terminal-panel">
             <div class="terminal-header">
@@ -188,10 +256,34 @@
                     <span id="status-indicator" class="status-indicator"></span>
                 </div>
             </div>
-            
+
             <!-- Contenedor de la terminal XTerm -->
             <div id="terminal-container"></div>
-            
+
+            <!-- Asistente de comandos -->
+            <div class="assistant-container">
+                <div class="assistant-header">
+                    <h5>Asistente de Comandos</h5>
+                    <select id="assistant-model" class="form-select form-select-sm">
+                        <option value="openai">OpenAI (GPT-4o)</option>
+                        <option value="anthropic">Anthropic (Claude)</option>
+                        <option value="gemini">Google (Gemini)</option>
+                    </select>
+                </div>
+                <div class="assistant-content">
+                    <textarea id="assistant-input" class="assistant-input" placeholder="Describe en lenguaje natural lo que quieres hacer..."></textarea>
+                    <div class="assistant-buttons">
+                        <button id="clear-assistant-btn" class="btn btn-secondary">Limpiar</button>
+                        <button id="assistant-btn" class="btn btn-primary">Consultar</button>
+                    </div>
+                    <div id="assistant-result" class="assistant-result">
+                        <div class="text-center text-muted p-3">
+                            <small>El asistente convertirá tus instrucciones a comandos de terminal</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <!-- Controles de la terminal -->
             <div class="terminal-controls">
                 <input type="text" id="terminal-input" class="terminal-input" placeholder="Ingrese un comando o texto en lenguaje natural...">
@@ -207,8 +299,161 @@
 
     <!-- Cargar el procesador de comandos naturales -->
     <script src="{{ url_for('static', filename='js/natural-command-processor.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/command-assistant.js') }}"></script>
 
     <script>
+        // Eventos para el asistente de comandos
+        document.addEventListener('DOMContentLoaded', function() {
+            const assistantInput = document.getElementById('assistant-input');
+            const assistantBtn = document.getElementById('assistant-btn');
+            const clearAssistantBtn = document.getElementById('clear-assistant-btn');
+            const assistantResult = document.getElementById('assistant-result');
+            const assistantModel = document.getElementById('assistant-model');
+
+            if (assistantBtn && assistantInput && assistantResult) {
+                assistantBtn.addEventListener('click', function() {
+                    const query = assistantInput.value.trim();
+                    if (!query) return;
+
+                    // Mostrar estado de carga
+                    assistantResult.innerHTML = `
+                        <div class="text-center py-2">
+                            <div class="spinner-border spinner-border-sm text-light" role="status"></div>
+                            <p class="mt-2 text-muted">Procesando instrucción...</p>
+                        </div>
+                    `;
+
+                    // Obtener modelo seleccionado
+                    const model = assistantModel ? assistantModel.value : 'openai';
+
+                    // Enviar solicitud al servidor
+                    fetch('/api/process_instructions', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            instruction: query,
+                            model: model
+                        })
+                    })
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error(`Error: ${response.status}`);
+                        }
+                        return response.json();
+                    })
+                    .then(data => {
+                        if (data.command) {
+                            // Mostrar comando generado
+                            assistantResult.innerHTML = `
+                                <div class="command-item">
+                                    <div class="command-text">${data.command}</div>
+                                    <div class="command-actions">
+                                        <button title="Copiar al portapapeles" class="copy-btn btn btn-sm btn-secondary">
+                                            <i class="bi bi-clipboard"></i>
+                                        </button>
+                                        <button title="Ejecutar comando" class="execute-btn btn btn-sm btn-primary">
+                                            <i class="bi bi-play"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            `;
+
+                            // Añadir funcionalidad a los botones
+                            const copyBtn = assistantResult.querySelector('.copy-btn');
+                            const executeBtn = assistantResult.querySelector('.execute-btn');
+
+                            if (copyBtn) {
+                                copyBtn.addEventListener('click', function() {
+                                    const textArea = document.createElement('textarea');
+                                    textArea.value = data.command;
+                                    document.body.appendChild(textArea);
+                                    textArea.select();
+                                    document.execCommand('copy');
+                                    document.body.removeChild(textArea);
+
+                                    showNotification('Comando copiado al portapapeles', 'success');
+                                });
+                            }
+
+                            if (executeBtn) {
+                                executeBtn.addEventListener('click', function() {
+                                    if (window.terminalInterface && typeof window.terminalInterface.executeCommand === 'function') {
+                                        window.terminalInterface.executeCommand(data.command);
+                                    } else {
+                                        // Alternativa: usar el input del terminal
+                                        const terminalInput = document.getElementById('terminal-input');
+                                        const sendButton = document.getElementById('send-button');
+
+                                        if (terminalInput && sendButton) {
+                                            terminalInput.value = data.command;
+                                            sendButton.click();
+                                        }
+                                    }
+
+                                    showNotification('Comando ejecutado', 'success');
+                                });
+                            }
+                        } else {
+                            // Mostrar error
+                            assistantResult.innerHTML = `
+                                <div class="alert alert-danger">
+                                    ${data.error || 'No se pudo generar un comando'}
+                                </div>
+                            `;
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error al procesar instrucción:', error);
+                        assistantResult.innerHTML = `
+                            <div class="alert alert-danger">
+                                Error al comunicarse con el servidor: ${error.message}
+                            </div>
+                        `;
+                    });
+                });
+
+                // Limpiar el asistente
+                if (clearAssistantBtn) {
+                    clearAssistantBtn.addEventListener('click', function() {
+                        assistantInput.value = '';
+                        assistantResult.innerHTML = `
+                            <div class="text-center text-muted p-3">
+                                <small>El asistente convertirá tus instrucciones a comandos de terminal</small>
+                            </div>
+                        `;
+                        assistantInput.focus();
+                    });
+                }
+
+                // Tecla Enter para enviar (con Ctrl o Cmd)
+                assistantInput.addEventListener('keydown', function(e) {
+                    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+                        e.preventDefault();
+                        assistantBtn.click();
+                    }
+                });
+            }
+
+            // Función para mostrar notificaciones
+            window.showNotification = function(message, type = 'info') {
+                const notifications = document.getElementById('notifications');
+                if (!notifications) return;
+
+                const notification = document.createElement('div');
+                notification.className = `notification notification-${type}`;
+                notification.innerHTML = message;
+
+                notifications.appendChild(notification);
+
+                setTimeout(() => {
+                    notification.classList.add('notification-hide');
+                    setTimeout(() => notification.remove(), 500);
+                }, 5000);
+            };
+        });
+
         document.addEventListener('DOMContentLoaded', function() {
             // Inicializar el procesador de comandos naturales
             const naturalCommandProcessor = new NaturalCommandProcessor();
@@ -258,27 +503,6 @@
                 if (!indicator) return;
 
                 indicator.className = 'status-indicator';
-
-            // Conectado al servidor WebSocket
-            socket.on('connect', function() {
-                updateStatusIndicator(true);
-                console.log('Conectado al servidor WebSocket');
-                writeToTerminal('\r\n\x1b[32mConectado al servidor\x1b[0m\r\n');
-                writeToTerminal('\r\nBienvenido a la Terminal Avanzada de Codestorm.\r\n');
-                writeToTerminal('Puedes escribir comandos directamente o usar lenguaje natural.\r\n');
-                writeToTerminal('Ejemplo: "crea una carpeta llamada proyectos" o "!mkdir proyectos"\r\n\r\n');
-                writeToTerminal('$ ');
-
-                // Cargar archivos iniciales
-                loadFiles();
-            });
-
-            // Observador de cambios configurado para el explorador
-            document.addEventListener('files_updated', function(e) {
-                console.log("Detectado cambio en explorador", e.detail);
-                loadFiles(e.detail?.directory || currentDirectory);
-            });
-
 
                 switch (status) {
                     case 'connected':
@@ -586,6 +810,26 @@
 
             // Enfoque inicial en la entrada
             document.getElementById('terminal-input').focus();
+        });
+
+        // Escuchar eventos de actualización del explorador desde cualquier fuente
+        document.addEventListener('files_updated', function(e) {
+            console.log("Detectado cambio en explorador", e.detail);
+            const currentDir = document.getElementById('directory-path')?.textContent || '/';
+            if (window.loadFiles && typeof window.loadFiles === 'function') {
+                window.loadFiles(currentDir);
+            }
+        });
+
+        // Escuchar mensajes desde iframes (como terminal)
+        window.addEventListener('message', function(event) {
+            if (event.data && event.data.type === 'explorer_refresh') {
+                console.log("Solicitud de actualización desde iframe:", event.data);
+                const currentDir = document.getElementById('directory-path')?.textContent || '/';
+                if (window.loadFiles && typeof window.loadFiles === 'function') {
+                    window.loadFiles(currentDir);
+                }
+            }
         });
     </script>
 </body>

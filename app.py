@@ -585,6 +585,127 @@ def handle_chat_internal(data):
         # Detectar solicitudes para generar archivos complejos
         is_complex_file_request = re.search(r'(?:crea|genera|hacer|crear|implementa|programa|diseña|haz)\s+(?:una?|el)?\s*(?:página|pagina|sitio|web|componente|interfaz|archivo|aplicación|app)', user_message, re.IGNORECASE)
 
+
+@app.route('/api/file/delete', methods=['POST'])
+def delete_file():
+    """Eliminar un archivo o carpeta."""
+    try:
+        data = request.json
+        if not data or 'file_path' not in data:
+            return jsonify({
+                'success': False,
+                'error': 'Se requiere ruta de archivo'
+            }), 400
+            
+        file_path = data['file_path']
+        
+        # Obtener workspace del usuario
+        user_id = session.get('user_id', 'default')
+        workspace_path = get_user_workspace(user_id)
+        
+        # Crear ruta completa y verificar seguridad
+        target_path = (workspace_path / file_path).resolve()
+        if not str(target_path).startswith(str(workspace_path.resolve())):
+            return jsonify({
+                'success': False,
+                'error': 'Acceso denegado: No se puede acceder a archivos fuera del workspace'
+            }), 403
+            
+        # Eliminar archivo o directorio
+        if target_path.is_dir():
+            shutil.rmtree(target_path)
+        else:
+            target_path.unlink()
+            
+        # Notificar cambio si es posible
+        try:
+            file_data = {
+                'path': file_path,
+                'name': target_path.name,
+                'type': 'directory' if target_path.is_dir() else 'file'
+            }
+            notify_file_change(user_id, 'delete', file_data)
+        except Exception as e:
+            logging.warning(f"Error al notificar cambio de archivo: {str(e)}")
+            
+        return jsonify({
+            'success': True,
+            'message': f'{"Directorio" if target_path.is_dir() else "Archivo"} eliminado correctamente'
+        })
+        
+    except Exception as e:
+        logging.error(f"Error al eliminar archivo: {str(e)}")
+        logging.error(traceback.format_exc())
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@app.route('/api/file/rename', methods=['POST'])
+def rename_file():
+    """Renombrar un archivo o carpeta."""
+    try:
+        data = request.json
+        if not data or 'file_path' not in data or 'new_name' not in data:
+            return jsonify({
+                'success': False,
+                'error': 'Se requiere ruta de archivo y nuevo nombre'
+            }), 400
+            
+        file_path = data['file_path']
+        new_name = data['new_name']
+        
+        # Obtener workspace del usuario
+        user_id = session.get('user_id', 'default')
+        workspace_path = get_user_workspace(user_id)
+        
+        # Crear ruta completa y verificar seguridad
+        source_path = (workspace_path / file_path).resolve()
+        if not str(source_path).startswith(str(workspace_path.resolve())):
+            return jsonify({
+                'success': False,
+                'error': 'Acceso denegado: No se puede acceder a archivos fuera del workspace'
+            }), 403
+            
+        # Crear ruta de destino
+        target_path = source_path.parent / new_name
+        
+        # Verificar que el destino no existe
+        if target_path.exists():
+            return jsonify({
+                'success': False,
+                'error': f'Ya existe un archivo o directorio con el nombre {new_name}'
+            }), 400
+            
+        # Renombrar archivo o directorio
+        source_path.rename(target_path)
+        
+        # Notificar cambio si es posible
+        try:
+            file_data = {
+                'path': str(target_path.relative_to(workspace_path)),
+                'name': target_path.name,
+                'type': 'directory' if target_path.is_dir() else 'file',
+                'old_path': file_path
+            }
+            notify_file_change(user_id, 'rename', file_data)
+        except Exception as e:
+            logging.warning(f"Error al notificar cambio de archivo: {str(e)}")
+            
+        return jsonify({
+            'success': True,
+            'message': f'{"Directorio" if target_path.is_dir() else "Archivo"} renombrado correctamente',
+            'new_path': str(target_path.relative_to(workspace_path))
+        })
+        
+    except Exception as e:
+        logging.error(f"Error al renombrar archivo: {str(e)}")
+        logging.error(traceback.format_exc())
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
         logging.debug(f"Mensaje recibido: '{user_message}'")
 
         # Procesar comando directo de terminal si se detecta uno
@@ -1060,30 +1181,92 @@ def process_instructions():
             # Patrones específicos si no hubo coincidencia exacta
             if not terminal_command:
                 if "crear" in user_input_lower and "carpeta" in user_input_lower:
-                    folder_name = user_input_lower.split("carpeta")[-1].strip()
+                    # Extraer el nombre de la carpeta de forma más inteligente
+                    folder_match = re.search(r'(?:llamad[ao]|nombrad[ao]|con\s+nombre)\s+["\']?([a-zA-Z0-9_\-\.\/]+)["\']?', user_input_lower)
+                    if folder_match:
+                        folder_name = folder_match.group(1).strip()
+                    else:
+                        folder_name = user_input_lower.split("carpeta")[-1].strip()
+                        # Limpiar posibles palabras adicionales
+                        folder_name = re.sub(r'\s+con\s+.*$|\s+y\s+.*$|\s+que\s+.*$', '', folder_name)
+                    
                     terminal_command = f"mkdir -p {folder_name}"
                 elif "crear" in user_input_lower and "archivo" in user_input_lower:
-                    parts = user_input_lower.split("archivo")
-                    if len(parts) > 1:
-                        file_name = parts[-1].strip()
-                        terminal_command = f"touch {file_name}"
+                    # Extraer el nombre del archivo de forma más inteligente
+                    file_match = re.search(r'(?:llamad[ao]|nombrad[ao]|con\s+nombre)\s+["\']?([a-zA-Z0-9_\-\.\/]+)["\']?', user_input_lower)
+                    content_match = re.search(r'(?:con\s+(?:el\s+)?contenido|con\s+texto|que\s+diga)\s+["\'](.+?)["\']', user_input, re.IGNORECASE)
+                    
+                    if file_match:
+                        file_name = file_match.group(1).strip()
                     else:
-                        terminal_command = "touch nuevo_archivo.txt"
+                        parts = user_input_lower.split("archivo")
+                        if len(parts) > 1:
+                            file_name = parts[-1].strip()
+                            # Limpiar posibles palabras adicionales
+                            file_name = re.sub(r'\s+con\s+.*$|\s+y\s+.*$|\s+que\s+.*$', '', file_name)
+                        else:
+                            file_name = "nuevo_archivo.txt"
+                    
+                    if content_match:
+                        content = content_match.group(1)
+                        # Escapar para shell
+                        escaped_content = content.replace('"', '\\"')
+                        terminal_command = f'echo "{escaped_content}" > {file_name}'
+                    else:
+                        terminal_command = f"touch {file_name}"
                 elif "mostrar" in user_input_lower and ("contenido" in user_input_lower or "cat" in user_input_lower):
-                    parts = user_input_lower.replace("mostrar", "").replace("contenido", "").replace("del", "").replace("de", "").strip()
-                    terminal_command = f"cat {parts}"
+                    # Extraer el nombre del archivo de forma más inteligente
+                    file_match = re.search(r'(?:de|el|del)\s+(?:archivo|fichero)?\s*["\']?([a-zA-Z0-9_\-\.\/]+)["\']?', user_input_lower)
+                    if file_match:
+                        file_name = file_match.group(1).strip()
+                    else:
+                        parts = user_input_lower.replace("mostrar", "").replace("contenido", "").replace("del", "").replace("de", "").strip()
+                        file_name = parts
+                    
+                    terminal_command = f"cat {file_name}"
                 elif "eliminar" in user_input_lower or "borrar" in user_input_lower:
-                    words = user_input_lower.split()
-                    target_idx = -1
-                    for i, word in enumerate(words):
-                        if word in ["archivo", "carpeta", "directorio", "fichero"]:
-                            target_idx = i + 1
-                            break
-                    if target_idx >= 0 and target_idx < len(words):
-                        target = words[target_idx]
+                    # Extraer el nombre del archivo/carpeta de forma más inteligente
+                    target_match = re.search(r'(?:el|la|los|las)?\s*(?:archivo|carpeta|directorio|fichero)?\s*["\']?([a-zA-Z0-9_\-\.\/]+)["\']?', user_input_lower)
+                    if target_match:
+                        target = target_match.group(1).strip()
                         terminal_command = f"rm -rf {target}"
                     else:
-                        terminal_command = "echo 'Por favor especifica qué quieres eliminar'"
+                        words = user_input_lower.split()
+                        target_idx = -1
+                        for i, word in enumerate(words):
+                            if word in ["archivo", "carpeta", "directorio", "fichero"]:
+                                target_idx = i + 1
+                                break
+                        if target_idx >= 0 and target_idx < len(words):
+                            target = words[target_idx]
+                            terminal_command = f"rm -rf {target}"
+                        else:
+                            terminal_command = "echo 'Por favor especifica qué quieres eliminar'"
+                elif "editar" in user_input_lower:
+                    # Extraer el nombre del archivo de forma más inteligente
+                    file_match = re.search(r'(?:el|la|los|las)?\s*(?:archivo|fichero)?\s*["\']?([a-zA-Z0-9_\-\.\/]+)["\']?', user_input_lower)
+                    if file_match:
+                        file_name = file_match.group(1).strip()
+                        # Detectar editor preferido
+                        if "nano" in user_input_lower:
+                            terminal_command = f"nano {file_name}"
+                        elif "vim" in user_input_lower:
+                            terminal_command = f"vim {file_name}"
+                        else:
+                            terminal_command = f"nano {file_name}"
+                    else:
+                        terminal_command = "echo 'Por favor especifica qué archivo quieres editar'"
+                elif "renombrar" in user_input_lower:
+                    # Intentar extraer el nombre original y el nuevo nombre
+                    old_file_match = re.search(r'(?:el|la|los|las)?\s*(?:archivo|carpeta|directorio|fichero)?\s*["\']?([a-zA-Z0-9_\-\.\/]+)["\']?', user_input_lower)
+                    new_file_match = re.search(r'(?:a|como|por)\s*["\']?([a-zA-Z0-9_\-\.\/]+)["\']?', user_input_lower)
+                    
+                    if old_file_match and new_file_match:
+                        old_name = old_file_match.group(1).strip()
+                        new_name = new_file_match.group(1).strip()
+                        terminal_command = f"mv {old_name} {new_name}"
+                    else:
+                        terminal_command = "echo 'Por favor especifica el archivo original y el nuevo nombre'"
 
             # Solo llamamos a la API si no se encontró un comando local
             if not terminal_command:
@@ -1093,21 +1276,28 @@ def process_instructions():
                     response = client.chat.completions.create(
                         model="gpt-4o",
                         messages=[
-                            {"role": "system", "content": "Convierte instrucciones a comandos de terminal Linux. Responde solo con el comando exacto, sin comillas ni texto adicional."},
+                            {"role": "system", "content": "Eres un experto en Linux que convierte instrucciones en lenguaje natural a comandos de terminal precisos. Devuelve SOLO el comando, sin explicaciones ni formato markdown."},
                             {"role": "user", "content": user_input}
                         ],
-                        max_tokens=60,
+                        max_tokens=100,
                         temperature=0.1
                     )
 
                     terminal_command = response.choices[0].message.content.strip()
                     # Limpiamos los bloques de código que a veces devuelve
                     terminal_command = terminal_command.replace("```bash", "").replace("```", "").strip()
+                    
+                    # Verificar si el comando es seguro (no destructivo)
+                    dangerous_patterns = ["rm -rf /", "rm -rf ~", "> /dev/sda", "mkfs", ":(){:|:&};:"]
+                    if any(pattern in terminal_command for pattern in dangerous_patterns):
+                        terminal_command = f"echo 'ADVERTENCIA: Comando potencialmente peligroso: {terminal_command}'"
                 except Exception as e:
                     logging.warning(f"OpenAI failed, using fallback: {str(e)}")
                     # Fallback más inteligente basado en palabras clave
                     if "listar" in user_input_lower or "mostrar" in user_input_lower:
                         terminal_command = "ls -la"
+                    elif "crear" in user_input_lower:
+                        terminal_command = "touch nuevo_archivo.txt"
                     else:
                         terminal_command = "echo 'No se pudo procesar la instrucción'"
 
@@ -1126,9 +1316,27 @@ def process_instructions():
                 )
 
                 terminal_command = response.content[0].text.strip()
+                
+                # Limpiar posibles explicaciones o bloques de código
+                if "```" in terminal_command:
+                    terminal_command = re.search(r'```(?:\w+)?\n(.*?)\n```', terminal_command, re.DOTALL)
+                    if terminal_command:
+                        terminal_command = terminal_command.group(1).strip()
+                
+                # Verificar si el comando es seguro (no destructivo)
+                dangerous_patterns = ["rm -rf /", "rm -rf ~", "> /dev/sda", "mkfs", ":(){:|:&};:"]
+                if any(pattern in terminal_command for pattern in dangerous_patterns):
+                    terminal_command = f"echo 'ADVERTENCIA: Comando potencialmente peligroso: {terminal_command}'"
             except Exception as e:
                 logging.error(f"Anthropic API error: {str(e)}")
-                terminal_command = "echo 'Error connecting to Anthropic API'"
+                # Usar lógica local para comandos comunes
+                user_input_lower = user_input.lower()
+                if "crear archivo" in user_input_lower:
+                    terminal_command = "touch nuevo_archivo.txt"
+                elif "crear carpeta" in user_input_lower:
+                    terminal_command = "mkdir nueva_carpeta"
+                else:
+                    terminal_command = "echo 'Error connecting to Anthropic API'"
 
         elif model_choice == 'gemini':
             # Implementación básica de Gemini con manejo de errores mejorado
@@ -1137,9 +1345,12 @@ def process_instructions():
                 if not gemini_api_key:
                     # Fallback para cuando no hay API key configurada
                     logging.warning("Gemini API key not configured, using fallback logic")
-                    if "crear" in user_input.lower() and "carpeta" in user_input.lower():
-                        folder_name = user_input.lower().split("carpeta")[-1].strip()
-                        terminal_command = f"mkdir -p {folder_name}"
+                    # Usar lógica local para comandos comunes
+                    user_input_lower = user_input.lower()
+                    if "crear archivo" in user_input_lower:
+                        terminal_command = "touch nuevo_archivo.txt"
+                    elif "crear carpeta" in user_input_lower:
+                        terminal_command = "mkdir nueva_carpeta"
                     else:
                         terminal_command = "echo 'Gemini API key not configured'"
                     return jsonify({'command': terminal_command})
@@ -1152,24 +1363,41 @@ def process_instructions():
                     model = genai.GenerativeModel('gemini-1.5-pro')
 
                     response = model.generate_content(
-                        f"Convert this instruction to a terminal command without any explanation: {user_input}"
+                        f"Convert this instruction to a terminal command without any explanation or markdown formatting: {user_input}"
                     )
                     terminal_command = response.text.strip()
+                    
+                    # Limpiar posibles explicaciones o bloques de código
+                    if "```" in terminal_command:
+                        terminal_command = re.search(r'```(?:\w+)?\n(.*?)\n```', terminal_command, re.DOTALL)
+                        if terminal_command:
+                            terminal_command = terminal_command.group(1).strip()
+                    
+                    # Verificar si el comando es seguro (no destructivo)
+                    dangerous_patterns = ["rm -rf /", "rm -rf ~", "> /dev/sda", "mkfs", ":(){:|:&};:"]
+                    if any(pattern in terminal_command for pattern in dangerous_patterns):
+                        terminal_command = f"echo 'ADVERTENCIA: Comando potencialmente peligroso: {terminal_command}'"
                 except Exception as api_error:
                     logging.error(f"Gemini API error: {str(api_error)}")
                     # Fallback si hay error con la API
-                    if "crear" in user_input.lower() and "carpeta" in user_input.lower():
-                        folder_name = user_input.lower().split("carpeta")[-1].strip()
-                        terminal_command = f"mkdir -p {folder_name}"
+                    # Usar lógica local para comandos comunes
+                    user_input_lower = user_input.lower()
+                    if "crear archivo" in user_input_lower:
+                        terminal_command = "touch nuevo_archivo.txt"
+                    elif "crear carpeta" in user_input_lower:
+                        terminal_command = "mkdir nueva_carpeta"
                     else:
                         terminal_command = "echo 'Error connecting to Gemini API'"
 
             except Exception as e:
                 logging.error(f"Error using Gemini API: {str(e)}")
                 # En lugar de devolver error 500, usamos lógica de respaldo
-                if "crear" in user_input.lower() and "carpeta" in user_input.lower():
-                    folder_name = user_input.lower().split("carpeta")[-1].strip()
-                    terminal_command = f"mkdir -p {folder_name}"
+                # Usar lógica local para comandos comunes
+                user_input_lower = user_input.lower()
+                if "crear archivo" in user_input_lower:
+                    terminal_command = "touch nuevo_archivo.txt"
+                elif "crear carpeta" in user_input_lower:
+                    terminal_command = "mkdir nueva_carpeta"
                 else:
                     terminal_command = "echo 'Error with Gemini API'"
         else:

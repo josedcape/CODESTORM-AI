@@ -20,6 +20,11 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Socket para comunicación en tiempo real
     let socket;
+    
+    // Inicializar asistente de comandos si existe
+    if (window.commandAssistant && typeof window.commandAssistant.init === 'function') {
+        window.commandAssistant.init();
+    }
 
     // Inicializar WebSocket si está disponible
     function initializeSocket() {
@@ -203,11 +208,24 @@ document.addEventListener('DOMContentLoaded', function() {
             dirElement.dataset.type = 'directory';
             
             dirElement.innerHTML = `
-                <i class="bi bi-folder-fill me-2 text-warning"></i>
-                <span>${dir.name}</span>
+                <div class="d-flex align-items-center flex-grow-1">
+                    <i class="bi bi-folder-fill me-2 text-warning"></i>
+                    <span>${dir.name}</span>
+                </div>
+                <div class="file-actions">
+                    <button class="btn btn-sm btn-outline-secondary btn-edit-name" title="Renombrar">
+                        <i class="bi bi-pencil-square"></i>
+                    </button>
+                    <button class="btn btn-sm btn-outline-danger btn-delete" title="Eliminar">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                </div>
             `;
             dirElement.style.cursor = 'pointer';
-            dirElement.addEventListener('click', () => loadFiles(dir.path));
+            
+            // Solo el área de texto navega al directorio, no los botones
+            const textArea = dirElement.querySelector('div:first-child');
+            textArea.addEventListener('click', () => loadFiles(dir.path));
             
             // Agregar evento de clic derecho para menú contextual
             dirElement.addEventListener('contextmenu', (e) => {
@@ -217,6 +235,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
                 return false;
             });
+            
+            // Configurar botones de acción
+            setupActionButtons(dirElement, dir);
             
             fileExplorer.appendChild(dirElement);
         });
@@ -241,18 +262,28 @@ document.addEventListener('DOMContentLoaded', function() {
             else if (['md'].includes(ext)) icon = 'bi-file-earmark-text';
 
             fileElement.innerHTML = `
-                <div>
+                <div class="d-flex align-items-center flex-grow-1">
                     <i class="bi ${icon} me-2 text-muted"></i>
                     <span>${file.name}</span>
                 </div>
-                <div class="text-muted small">${formatFileSize(file.size || 0)}</div>
+                <div class="d-flex align-items-center">
+                    <span class="text-muted small me-2">${formatFileSize(file.size || 0)}</span>
+                    <div class="file-actions">
+                        <button class="btn btn-sm btn-outline-secondary btn-edit" title="Editar">
+                            <i class="bi bi-pencil"></i>
+                        </button>
+                        <button class="btn btn-sm btn-outline-secondary btn-edit-name" title="Renombrar">
+                            <i class="bi bi-pencil-square"></i>
+                        </button>
+                        <button class="btn btn-sm btn-outline-danger btn-delete" title="Eliminar">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </div>
+                </div>
             `;
-            fileElement.style.cursor = 'pointer';
             
-            // Clic principal para editar
-            fileElement.addEventListener('click', () => {
-                window.location.href = `/edit_file?path=${encodeURIComponent(file.path)}`;
-            });
+            // Configurar botones de acción
+            setupActionButtons(fileElement, file);
             
             // Clic derecho para menú contextual
             fileElement.addEventListener('contextmenu', (e) => {
@@ -275,6 +306,133 @@ document.addEventListener('DOMContentLoaded', function() {
         if (window.fileActions && typeof window.fileActions.enhanceFileDisplay === 'function') {
             setTimeout(window.fileActions.enhanceFileDisplay, 100);
         }
+        
+        // Añadir estilos CSS para los botones de acción si no existen
+        if (!document.getElementById('file-actions-styles')) {
+            const style = document.createElement('style');
+            style.id = 'file-actions-styles';
+            style.textContent = `
+                .file-item {
+                    position: relative;
+                }
+                .file-actions {
+                    display: none;
+                    gap: 5px;
+                }
+                .file-item:hover .file-actions {
+                    display: flex;
+                }
+                .file-actions button {
+                    padding: 0.15rem 0.4rem;
+                    font-size: 0.75rem;
+                }
+            `;
+            document.head.appendChild(style);
+        }
+    }
+    
+    // Configurar botones de acción para archivos y carpetas
+    function setupActionButtons(element, fileData) {
+        // Botón Editar
+        const editBtn = element.querySelector('.btn-edit');
+        if (editBtn) {
+            editBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                window.location.href = `/edit_file?path=${encodeURIComponent(fileData.path)}`;
+            });
+        }
+        
+        // Botón Renombrar
+        const renameBtn = element.querySelector('.btn-edit-name');
+        if (renameBtn) {
+            renameBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                renameFileOrFolder(fileData.path, fileData.name);
+            });
+        }
+        
+        // Botón Eliminar
+        const deleteBtn = element.querySelector('.btn-delete');
+        if (deleteBtn) {
+            deleteBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                deleteFileOrFolder(fileData.path, fileData.name);
+            });
+        }
+    }
+    
+    // Renombrar archivo o carpeta
+    function renameFileOrFolder(path, currentName) {
+        const newName = prompt('Ingrese el nuevo nombre:', currentName);
+        if (!newName || newName === currentName) return;
+        
+        // Llamar al endpoint de renombrar
+        fetch('/api/file/rename', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                file_path: path,
+                new_name: newName
+            })
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`Error ${response.status}: ${response.statusText}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.success) {
+                showNotification(`Elemento renombrado correctamente a "${newName}"`, 'success');
+                // Recargar archivos
+                loadFiles(currentDirectory);
+            } else {
+                showNotification(data.error || 'Error al renombrar elemento', 'danger');
+            }
+        })
+        .catch(error => {
+            console.error('Error al renombrar:', error);
+            showNotification(error.message, 'danger');
+        });
+    }
+    
+    // Eliminar archivo o carpeta
+    function deleteFileOrFolder(path, name) {
+        if (!confirm(`¿Está seguro de que desea eliminar "${name}"? Esta acción no se puede deshacer.`)) {
+            return;
+        }
+        
+        // Llamar al endpoint de eliminar
+        fetch('/api/file/delete', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                file_path: path
+            })
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`Error ${response.status}: ${response.statusText}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.success) {
+                showNotification(`Elemento "${name}" eliminado correctamente`, 'success');
+                // Recargar archivos
+                loadFiles(currentDirectory);
+            } else {
+                showNotification(data.error || 'Error al eliminar elemento', 'danger');
+            }
+        })
+        .catch(error => {
+            console.error('Error al eliminar:', error);
+            showNotification(error.message, 'danger');
+        });
     }
 
     // Formatear tamaño de archivo
