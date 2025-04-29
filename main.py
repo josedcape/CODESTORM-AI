@@ -269,6 +269,8 @@ def handle_chat_internal(request_data):
                 "content": msg.get('content', '')
             })
 
+        USING_NEW_OPENAI_CLIENT = False #  Determine this based on your openai client version.  This is a placeholder.
+
         if model_choice == 'openai' and openai_api_key:
             try:
                 messages = [{"role": "system", "content": system_prompt}]
@@ -276,14 +278,22 @@ def handle_chat_internal(request_data):
                     messages.append({"role": msg['role'], "content": msg['content']})
                 messages.append({"role": "user", "content": user_message})
 
-                completion = openai.ChatCompletion.create(
-                    model="gpt-4o",
-                    messages=messages,
-                    temperature=0.7,
-                    max_tokens=2000
-                )
-
-                response = completion.choices[0].message.content
+                if USING_NEW_OPENAI_CLIENT:
+                    completion = client.chat.completions.create(
+                        model="gpt-4o",
+                        messages=messages,
+                        temperature=0.7,
+                        max_tokens=2000
+                    )
+                    response = completion.choices[0].message.content
+                else:
+                    completion = openai.ChatCompletion.create(
+                        model="gpt-4o",
+                        messages=messages,
+                        temperature=0.7,
+                        max_tokens=2000
+                    )
+                    response = completion.choices[0].message.content
                 logging.info(f"Respuesta generada con OpenAI: {response[:100]}...")
 
                 return {'response': response, 'error': None}
