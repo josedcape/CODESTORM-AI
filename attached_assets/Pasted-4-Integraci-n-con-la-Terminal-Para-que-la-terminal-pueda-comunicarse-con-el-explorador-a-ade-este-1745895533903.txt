@@ -1,0 +1,118 @@
+4. Integración con la Terminal
+Para que la terminal pueda comunicarse con el explorador, añade este código en tu archivo JavaScript de la terminal :
+
+javascript
+Copiar
+// Código para integrar en tu archivo de terminal
+document.addEventListener('DOMContentLoaded', function() {
+    // Referencia al elemento de entrada de la terminal
+    const terminalInput = document.getElementById('terminal-input');
+    
+    // Historial de comandos
+    let commandHistory = [];
+    let historyIndex = -1;
+    
+    // Función para ejecutar un comando
+    function executeCommand(command) {
+        if (!command.trim()) return;
+        
+        // Añadir al historial
+        commandHistory.push(command);
+        historyIndex = commandHistory.length;
+        
+        // Mostrar comando en la terminal
+        appendToTerminal(`$ ${command}`, 'command');
+        
+        // Ejecutar comando y notificar al explorador
+        if (window.executeTerminalCommand) {
+            window.executeTerminalCommand(command);
+        } else {
+            // Fallback si la función global no está disponible
+            fetch('/api/execute_command', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    command: command,
+                    user_id: localStorage.getItem('user_id') || 'default'
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                // Mostrar salida en la terminal
+                if (data.success) {
+                    appendToTerminal(data.output || 'Comando ejecutado', 'output');
+                    
+                    // Forzar actualización del explorador
+                    if (data.refresh_explorer && window.refreshFileExplorer) {
+                        setTimeout(window.refreshFileExplorer, 300);
+                    }
+                } else {
+                    appendToTerminal(`Error: ${data.error}`, 'error');
+                }
+            })
+            .catch(error => {
+                appendToTerminal(`Error: ${error.message}`, 'error');
+            });
+        }
+        
+        // Limpiar entrada
+        terminalInput.value = '';
+    }
+    
+    // Función para añadir texto a la terminal
+    function appendToTerminal(text, className) {
+        const terminalOutput = document.getElementById('terminal-output');
+        const line = document.createElement('div');
+        line.className = `terminal-line ${className || ''}`;
+        line.textContent = text;
+        terminalOutput.appendChild(line);
+        terminalOutput.scrollTop = terminalOutput.scrollHeight;
+    }
+    
+    // Manejar envío de comandos
+    if (terminalInput) {
+        terminalInput.addEventListener('keydown', function(event) {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                const command = terminalInput.value;
+                executeCommand(command);
+            } else if (event.key === 'ArrowUp') {
+                // Navegar historial hacia atrás
+                if (historyIndex > 0) {
+                    historyIndex--;
+                    terminalInput.value = commandHistory[historyIndex];
+                }
+                event.preventDefault();
+            } else if (event.key === 'ArrowDown') {
+                // Navegar historial hacia adelante
+                if (historyIndex < commandHistory.length - 1) {
+                    historyIndex++;
+                    terminalInput.value = commandHistory[historyIndex];
+                } else {
+                    historyIndex = commandHistory.length;
+                    terminalInput.value = '';
+                }
+                event.preventDefault();
+            }
+        });
+    }
+    
+    // Escuchar eventos WebSocket para actualizar la terminal
+    document.addEventListener('socket_ready', function() {
+        if (window.socketClient) {
+            window.socketClient.on('command_result', function(data) {
+                appendToTerminal(data.output || 'Comando ejecutado', data.success ? 'output' : 'error');
+            });
+            
+            window.socketClient.on('error', function(data) {
+                appendToTerminal(`Error: ${data.message}`, 'error');
+            });
+        }
+    });
+    
+    // Exponer funciones globalmente
+    window.terminalExecuteCommand = executeCommand;
+    window.terminalAppendOutput = appendToTerminal;
+});
