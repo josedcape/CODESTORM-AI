@@ -94,20 +94,30 @@ def index():
 def chat():
     """Render the chat page with specialized agents."""
     return render_template('chat.html')
-    
+
 @app.route('/api/chat', methods=['POST'])
 def api_chat():
     """API endpoint para manejar solicitudes de chat."""
     try:
-        data = request.json
-        user_message = data.get('message', '')
+        data = request.get_json(force=True, silent=True)
+
+        if not data:
+            logging.warning("No se recibieron datos JSON válidos")
+            return jsonify({
+                'error': 'Invalid JSON data',
+                'response': 'Error: Los datos enviados no son JSON válido'
+            }), 400
+
+        logging.debug(f"Datos recibidos: {json.dumps(data)}")
+
+        user_message = data.get('message')
         agent_id = data.get('agent_id', 'general')
         model_choice = data.get('model', 'gemini')
         context = data.get('context', [])
-        
+
         if not user_message:
             return jsonify({'error': 'No se proporcionó un mensaje'}), 400
-        
+
         # Configurar prompts específicos según el agente seleccionado
         agent_prompts = {
             'developer': "Eres un Agente de Desarrollo experto en optimización y edición de código en tiempo real. Tu objetivo es ayudar a los usuarios con tareas de programación, desde la corrección de errores hasta la implementación de funcionalidades completas.",
@@ -115,9 +125,9 @@ def api_chat():
             'advanced': "Eres un Agente Avanzado de Software con experiencia en integraciones complejas y funcionalidades avanzadas. Puedes asesorar sobre tecnologías emergentes, optimización de rendimiento y soluciones a problemas técnicos sofisticados.",
             'general': "Eres un asistente de desarrollo de software experto y útil. Respondes preguntas y ayudas con tareas de programación de manera clara y concisa."
         }
-        
+
         system_prompt = agent_prompts.get(agent_id, agent_prompts['general'])
-        
+
         # Preprocesar contexto para dar formato consistente
         formatted_context = []
         for msg in context:
@@ -128,31 +138,31 @@ def api_chat():
                 "role": role,
                 "content": msg.get('content', '')
             })
-        
+
         response = ""
-        
+
         # Usar el modelo seleccionado para generar la respuesta
         if model_choice == 'openai' and openai_client:
             try:
                 messages = [{"role": "system", "content": system_prompt}]
-                
+
                 # Añadir mensajes de contexto
                 for msg in formatted_context:
                     messages.append({"role": msg['role'], "content": msg['content']})
-                
+
                 # Añadir el mensaje actual del usuario
                 messages.append({"role": "user", "content": user_message})
-                
+
                 completion = openai_client.chat.completions.create(
                     model="gpt-4o",
                     messages=messages,
                     temperature=0.7,
                     max_tokens=2000
                 )
-                
+
                 response = completion.choices[0].message.content
                 logging.info(f"Respuesta generada con OpenAI: {response[:100]}...")
-                
+
             except Exception as e:
                 logging.error(f"Error con API de OpenAI: {str(e)}")
                 return jsonify({
@@ -160,35 +170,35 @@ def api_chat():
                     'agent': agent_id,
                     'model': model_choice
                 }), 500
-                
+
         elif model_choice == 'anthropic' and anthropic_api_key:
             try:
                 # Importar anthropic si es necesario
                 import anthropic
                 from anthropic import Anthropic
-                
+
                 # Inicializar cliente
                 client = Anthropic(api_key=anthropic_api_key)
-                
+
                 messages = [{"role": "system", "content": system_prompt}]
-                
+
                 # Añadir mensajes de contexto
                 for msg in formatted_context:
                     messages.append({"role": msg['role'], "content": msg['content']})
-                
+
                 # Añadir el mensaje actual del usuario
                 messages.append({"role": "user", "content": user_message})
-                
+
                 completion = client.messages.create(
                     model="claude-3-5-sonnet-latest",
                     messages=messages,
                     max_tokens=2000,
                     temperature=0.7
                 )
-                
+
                 response = completion.content[0].text
                 logging.info(f"Respuesta generada con Anthropic: {response[:100]}...")
-                
+
             except Exception as e:
                 logging.error(f"Error con API de Anthropic: {str(e)}")
                 return jsonify({
@@ -196,32 +206,32 @@ def api_chat():
                     'agent': agent_id,
                     'model': model_choice
                 }), 500
-                
+
         elif model_choice == 'gemini' and gemini_api_key:
             try:
                 import google.generativeai as genai
-                
+
                 if not hasattr(genai, '_configured') or not genai._configured:
                     genai.configure(api_key=gemini_api_key)
-                
+
                 model = genai.GenerativeModel('gemini-1.5-pro')
-                
+
                 # Construir el prompt con contexto
                 full_prompt = system_prompt + "\n\n"
-                
+
                 # Añadir el contexto de la conversación
                 for msg in formatted_context:
                     role_prefix = "Usuario: " if msg['role'] == 'user' else "Asistente: "
                     full_prompt += role_prefix + msg['content'] + "\n\n"
-                
+
                 # Añadir el mensaje actual
                 full_prompt += "Usuario: " + user_message + "\n\nAsistente: "
-                
+
                 # Generar respuesta
                 gemini_response = model.generate_content(full_prompt)
                 response = gemini_response.text
                 logging.info(f"Respuesta generada con Gemini: {response[:100]}...")
-                
+
             except Exception as e:
                 logging.error(f"Error con API de Gemini: {str(e)}")
                 return jsonify({
@@ -236,10 +246,10 @@ def api_chat():
                 'agent': agent_id,
                 'model': model_choice
             }), 400
-        
+
         # Registrar la petición para depuración
         logging.info(f"Mensaje procesado: {user_message} por agente {agent_id} usando {model_choice}")
-        
+
         # Devolver respuesta
         return jsonify({
             'response': response,
@@ -277,7 +287,7 @@ def terminal():
             f.write('# Workspace\n\nEste es tu espacio de trabajo. Usa comandos o instrucciones en lenguaje natural para crear y modificar archivos.\n\nEjemplos:\n- "crea una carpeta llamada proyectos"\n- "mkdir proyectos"\n- "touch archivo.txt"')
 
     return render_template('monaco_terminal.html')
-    
+
 @app.route('/xterm_terminal')
 def xterm_terminal_route():
     """Render the XTerm terminal page directly."""
@@ -820,261 +830,7 @@ def download_file():
         full_path = os.path.join(user_workspace, file_path)
 
         # Verificar que el archivo existe
-        if not os.path.exists(full_path):
-            return jsonify({
-                'success': False,
-                'error': 'Archivo no encontrado'
-            }), 404
-
-        if os.path.isdir(full_path):
-            return jsonify({
-                'success': False,
-                'error': 'La ruta especificada es un directorio. Use api/files/download-dir para descargar directorios.'
-            }), 400
-
-        # Enviar el archivo para descarga
-        return send_from_directory(
-            os.path.dirname(full_path),
-            os.path.basename(full_path),
-            as_attachment=True
-        )
-
-    except Exception as e:
-        logging.error(f"Error en descarga de archivo: {str(e)}")
-        return jsonify({
-            'success': False,
-            'error': str(e)
-        }), 500
-
-@app.route('/api/files/download-dir', methods=['GET'])
-def download_directory():
-    """API para descargar un directorio como ZIP desde el workspace del usuario."""
-    try:
-        dir_path = request.args.get('dir_path')
-        user_id = request.args.get('user_id', 'default')
-
-        if not dir_path:
-            return jsonify({
-                'success': False,
-                'error': 'No se proporcionó ruta de directorio'
-            }), 400
-
-        # Obtener el workspace del usuario
-        user_workspace = get_user_workspace(user_id)
-
-        # Construir ruta completa y limpiar para evitar path traversal
-        dir_path = dir_path.replace('..', '').strip('/')
-        full_path = os.path.join(user_workspace, dir_path)
-
-        # Verificar que el directorio existe
-        if not os.path.exists(full_path):
-            return jsonify({
-                'success': False,
-                'error': 'Directorio no encontrado'
-            }), 404
-
-        if not os.path.isdir(full_path):
-            return jsonify({
-                'success': False,
-                'error': 'La ruta especificada no es un directorio'
-            }), 400
-
-        # Crear archivo ZIP en memoria
-        import io
-        import zipfile
-
-        memory_file = io.BytesIO()
-        with zipfile.ZipFile(memory_file, 'w', zipfile.ZIP_DEFLATED) as zipf:
-            # Recorrer el directorio recursivamente
-            for root, dirs, files in os.walk(full_path):
-                for file in files:
-                    file_path = os.path.join(root, file)
-                    arcname = os.path.relpath(file_path, full_path)
-                    zipf.write(file_path, arcname)
-
-        # Mover el puntero al inicio del archivo
-        memory_file.seek(0)
-
-        # Crear nombre para el archivo ZIP
-        zip_filename = f"{os.path.basename(dir_path)}.zip"
-
-        # Devolver el archivo ZIP
-        return send_file(
-            memory_file,
-            mimetype='application/zip',
-            as_attachment=True,
-            download_name=zip_filename
-        )
-
-    except Exception as e:
-        logging.error(f"Error en descarga de directorio: {str(e)}")
-        return jsonify({
-            'success': False,
-            'error': str(e)
-        }), 500
-
-@app.route('/api/files/upload', methods=['POST'])
-def upload_file():
-    """API para subir un archivo al workspace del usuario."""
-    try:
-        user_id = request.form.get('user_id', 'default')
-        directory = request.form.get('directory', '.')
-
-        if 'file' not in request.files:
-            return jsonify({
-                'success': False,
-                'error': 'No se proporcionó archivo'
-            }), 400
-
-        uploaded_file = request.files['file']
-
-        if uploaded_file.filename == '':
-            return jsonify({
-                'success': False,
-                'error': 'Nombre de archivo vacío'
-            }), 400
-
-        # Obtener el workspace del usuario
-        user_workspace = get_user_workspace(user_id)
-
-        # Construir ruta destino
-        directory = directory.replace('..', '').strip('/')
-        target_dir = os.path.join(user_workspace, directory)
-
-        # Crear directorio destino si no existe
-        if not os.path.exists(target_dir):
-            os.makedirs(target_dir, exist_ok=True)
-
-        # Guardar archivo con nombre seguro
-        filename = secure_filename(uploaded_file.filename)
-        file_path = os.path.join(target_dir, filename)
-
-        uploaded_file.save(file_path)
-
-        relative_path = os.path.join(directory, filename) if directory != '.' else filename
-
-        return jsonify({
-            'success': True,
-            'message': f'Archivo {filename} subido exitosamente',
-            'file_path': relative_path
-        })
-
-    except Exception as e:
-        logging.error(f"Error en subida de archivo: {str(e)}")
-        return jsonify({
-            'success': False,
-            'error': str(e)
-        }), 500
-
-@app.route('/api/repo/clone', methods=['POST'])
-def clone_repository():
-    """API para clonar un repositorio Git en el workspace del usuario."""
-    try:
-        data = request.json
-        if not data:
-            return jsonify({
-                'success': False,
-                'error': 'No se proporcionaron datos'
-            }), 400
-
-        repo_url = data.get('repo_url')
-        user_id = data.get('user_id', 'default')
-        target_dir = data.get('target_dir')
-
-        if not repo_url:
-            return jsonify({
-                'success': False,
-                'error': 'No se proporcionó URL del repositorio'
-            }), 400
-
-        # Obtener el workspace del usuario
-        user_workspace = get_user_workspace(user_id)
-
-        # Si no se especifica directorio destino, usar el nombre del repositorio
-        if not target_dir:
-            # Extraer nombre del repositorio de la URL
-            repo_name = repo_url.split('/')[-1]
-            if repo_name.endswith('.git'):
-                repo_name = repo_name[:-4]
-            target_dir = repo_name
-
-        # Limpiar ruta destino
-        target_dir = target_dir.replace('..', '').strip('/')
-        full_target_path = os.path.join(user_workspace, target_dir)
-
-        # Verificar si ya existe
-        if os.path.exists(full_target_path):
-            return jsonify({
-                'success': False,
-                'error': f'Ya existe un directorio con el nombre {target_dir}'
-            }), 400
-
-        # Crear directorio padre si no existe
-        os.makedirs(os.path.dirname(full_target_path), exist_ok=True)
-
-        # Instalar git si no está instalado
-        try:
-            subprocess.run(['git', '--version'], check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        except (subprocess.SubprocessError, FileNotFoundError):
-            return jsonify({
-                'success': False,
-                'error': 'Git no está instalado en el sistema'
-            }), 500
-
-        # Clonar el repositorio con manejo de errores mejorado
-        try:
-            process = subprocess.run(
-                ['git', 'clone', repo_url, full_target_path],
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                text=True
-            )
-
-            # Verificar si hay error en la salida de error de git
-            if process.returncode != 0:
-                return jsonify({
-                    'success': False,
-                    'error': f'Error al clonar repositorio: {process.stderr}'
-                }), 500
-
-            logging.info(f"Repositorio clonado exitosamente: {repo_url} -> {full_target_path}")
-
-            return jsonify({
-                'success': True,
-                'message': f'Repositorio clonado exitosamente en {target_dir}',
-                'output': process.stdout,
-                'target_dir': target_dir
-            })
-        except Exception as e:
-            logging.error(f"Error al ejecutar git clone: {str(e)}")
-            return jsonify({
-                'success': False,
-                'error': f'Error al clonar repositorio: {str(e)}'
-            }), 500
-
-    except Exception as e:
-        logging.error(f"Error al clonar repositorio: {str(e)}")
-        logging.error(traceback.format_exc())  # Añadir traza completa para mejor depuración
-        return jsonify({
-            'success': False,
-            'error': str(e)
-        }), 500
-
-@app.route('/api/process', methods=['POST'])
-def process_request():
-    """API para procesar solicitudes genéricas."""
-    try:
-        data = request.json
-        if not data:
-            return jsonify({
-                'success': False,
-                'error': 'No se proporcionaron datos'
-            }), 400
-
-        # Formatear la respuesta si existe
-        response = data.get('response', '')
-        if response:
-            response = re.sub(r'```([a-zA-Z0-9]+)?\s*', r'```\1\n', response)
+        if not os.path.exists(full_path([a-zA-Z0-9]+)?\s*', r'```\1\n', response)
             response = re.sub(r'\s*```', r'\n```', response)
 
             # Asegurar que los títulos tengan espacio después del #
@@ -1135,24 +891,4 @@ def extract_json_from_claude(text):
         return json.loads(text.strip())
     except json.JSONDecodeError:
         # Si no es JSON válido, buscamos dentro de bloques de código
-        json_match = re.search(r'```json\s*(.*?)\s*```', text, re.DOTALL)
-        if json_match:
-            try:
-                return json.loads(json_match.group(1).strip())
-            except json.JSONDecodeError:
-                # Si aún falla, creamos una estructura básica con la respuesta completa
-                return {
-                    "correctedCode": "",
-                    "changes": [],
-                    "explanation": "Error al procesar la respuesta JSON de Claude. Respuesta recibida: " + text[:200] + "..."
-                }
-        else:
-            # Si no encontramos bloques JSON, construimos una respuesta informativa
-            return {
-                "correctedCode": "",
-                "changes": [],
-                "explanation": "Claude no respondió en el formato esperado. Intente de nuevo o use otro modelo."
-            }
-
-if __name__ == '__main__':
-    socketio.run(app, debug=True)
+        json_match = re.search(r'```json\s*(.*?)\s*

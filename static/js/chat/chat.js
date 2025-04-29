@@ -339,7 +339,10 @@ async function sendMessage() {
 
         // Verificar si hubo error HTTP
         if (!response.ok) {
-            throw new Error(`Error del servidor: ${response.status} ${response.statusText}`);
+            const errorData = await response.json().catch(() => ({
+                error: `${response.status} ${response.statusText}`
+            }));
+            throw new Error(errorData.error || `Error del servidor: ${response.status} ${response.statusText}`);
         }
 
         const data = await response.json();
