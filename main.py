@@ -1,94 +1,45 @@
-from flask import Flask, render_template, request, jsonify, session, send_from_directory, send_file, redirect
+from flask import Flask, render_template, request, jsonify, session, redirect
 from flask_cors import CORS
+from flask_socketio import SocketIO
 import os
 import logging
 import json
-import re
 from dotenv import load_dotenv
 import openai
-import requests
-import traceback
-import time
-import subprocess
-import shutil
-from werkzeug.utils import secure_filename
-from flask_socketio import SocketIO
-from intelligent_terminal import init_terminal
-from xterm_terminal import init_xterm_blueprint # Import from xterm_terminal.py file
-
-
-# Load environment variables with force reload
-load_dotenv(override=True)
+import google.generativeai as genai
 
 # Configure logging
-logging.basicConfig(
-    level=logging.DEBUG,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
+logging.basicConfig(level=logging.DEBUG,
+                   format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+
+# Load environment variables
+load_dotenv()
 
 # Initialize Flask app
 app = Flask(__name__)
-CORS(app)  # Enable CORS for all routes
-socketio = SocketIO(app, cors_allowed_origins="*")  # Inicializar Socket.IO
+CORS(app)
+socketio = SocketIO(app, cors_allowed_origins="*")
 
-# Initialize intelligent terminal
-init_terminal(app, socketio)
-
-# Initialize xterm terminal
-init_xterm_blueprint(app, socketio)
-
-# Set session secret
-app.secret_key = os.environ.get("SESSION_SECRET", os.urandom(24).hex())
-
-# Verificar y cargar explícitamente las claves API
-openai_api_key = os.environ.get('OPENAI_API_KEY')
-anthropic_api_key = os.environ.get('ANTHROPIC_API_KEY')
-gemini_api_key = os.environ.get('GEMINI_API_KEY')
+# Configure API keys
+openai_api_key = os.getenv('OPENAI_API_KEY')
+anthropic_api_key = os.getenv('ANTHROPIC_API_KEY')
+gemini_api_key = os.getenv('GEMINI_API_KEY')
 
 if openai_api_key:
-    # Configurar la API key de OpenAI
     openai.api_key = openai_api_key
     logging.info(f"OpenAI API key configurada: {openai_api_key[:5]}...{openai_api_key[-5:]}")
-else:
-    logging.warning("OPENAI_API_KEY no encontrada")
 
 if anthropic_api_key:
     logging.info(f"Anthropic API key configurada: {anthropic_api_key[:5]}...{anthropic_api_key[-5:]}")
-else:
-    logging.warning("ANTHROPIC_API_KEY no encontrada")
 
 if gemini_api_key:
-    try:
-        import google.generativeai as genai
-        genai.configure(api_key=gemini_api_key)
-        logging.info(f"Gemini API key configurada: {gemini_api_key[:5]}...{gemini_api_key[-5:]}")
-    except ImportError as ie:
-        logging.error(f"Error al importar módulos para Gemini: {str(ie)}")
-    except Exception as e:
-        logging.error(f"Error al configurar Gemini API: {str(e)}")
-else:
-    logging.warning("GEMINI_API_KEY no encontrada")
+    genai.configure(api_key=gemini_api_key)
+    logging.info(f"Gemini API key configurada: {gemini_api_key[:5]}...{gemini_api_key[-5:]}")
 
-
-# Initialize API clients with error handling
-openai_client = None
-if openai_api_key:
-    try:
-        openai.api_key = openai_api_key
-        openai_client = openai.OpenAI()
-        logging.info("OpenAI client initialized successfully")
-    except Exception as e:
-        logging.error(f"Error initializing OpenAI client: {str(e)}")
 
 @app.route('/')
 def index():
-    """Render the main page or redirect to terminal."""
-    try:
-        return render_template('index.html')
-    except Exception as e:
-        # En caso de error, redirigir a la terminal
-        logging.error(f"Error al renderizar index.html: {str(e)}")
-        return redirect('/terminal')
+    return render_template('index.html')
 
 @app.route('/chat')
 def chat():
@@ -142,7 +93,7 @@ def api_chat():
         response = ""
 
         # Usar el modelo seleccionado para generar la respuesta
-        if model_choice == 'openai' and openai_client:
+        if model_choice == 'openai' and openai_api_key:
             try:
                 messages = [{"role": "system", "content": system_prompt}]
 
@@ -153,7 +104,7 @@ def api_chat():
                 # Añadir el mensaje actual del usuario
                 messages.append({"role": "user", "content": user_message})
 
-                completion = openai_client.chat.completions.create(
+                completion = openai.ChatCompletion.create(
                     model="gpt-4o",
                     messages=messages,
                     temperature=0.7,
@@ -209,11 +160,7 @@ def api_chat():
 
         elif model_choice == 'gemini' and gemini_api_key:
             try:
-                import google.generativeai as genai
-
-                if not hasattr(genai, '_configured') or not genai._configured:
-                    genai.configure(api_key=gemini_api_key)
-
+                
                 model = genai.GenerativeModel('gemini-1.5-pro')
 
                 # Construir el prompt con contexto
@@ -323,10 +270,10 @@ def process_code_endpoint():
             }), 400
 
         # Verificar qué modelo usar
-        if model == 'openai' and openai_client:
+        if model == 'openai' and openai_api_key:
             try:
                 # Usar OpenAI para corregir el código
-                response = openai_client.chat.completions.create(
+                response = openai.ChatCompletion.create(
                     model="gpt-4o",
                     messages=[
                         {"role": "system", "content": f"Eres un experto programador. Tu tarea es corregir el siguiente código en {language} según las instrucciones proporcionadas. El código resultante debe ser limpio, optimizado y SIN COMENTARIOS explicativos dentro del código. Devuelve el código corregido, una lista de cambios realizados y una explicación clara separada del código."},
@@ -400,14 +347,10 @@ def process_code_endpoint():
                     'error': f'Error al conectar con Anthropic: {str(e)}'
                 }), 500
 
-        elif model == 'gemini' and os.environ.get('GEMINI_API_KEY'):
+        elif model == 'gemini' and gemini_api_key:
             try:
                 # Usar genai para procesar con Gemini
-                import google.generativeai as genai
-
-                if not hasattr(genai, '_configured') or not genai._configured:
-                    genai.configure(api_key=os.environ.get('GEMINI_API_KEY'))
-
+                
                 gemini_model = genai.GenerativeModel(
                     model_name='gemini-1.5-pro',
                     generation_config={
@@ -419,15 +362,15 @@ def process_code_endpoint():
                 )
 
                 prompt = f"""Eres un experto programador. Tu tarea es corregir el siguiente código en {language} según las instrucciones proporcionadas.
-
+                
                 CÓDIGO:
                 ```{language}
                 {code}
                 ```
-
+                
                 INSTRUCCIONES:
                 {instructions}
-
+                
                 Responde en formato JSON con las siguientes claves:
                 - correctedCode: el código corregido completo
                 - changes: una lista de objetos, cada uno con 'description' y 'lineNumbers'
@@ -497,9 +440,9 @@ def health_check():
     try:
         # Check API configurations
         apis = {
-            "openai": "ok" if os.environ.get('OPENAI_API_KEY') else "not configured",
-            "anthropic": "ok" if os.environ.get('ANTHROPIC_API_KEY') else "not configured",
-            "gemini": "ok" if os.environ.get('GEMINI_API_KEY') else "not configured"
+            "openai": "ok" if openai_api_key else "not configured",
+            "anthropic": "ok" if anthropic_api_key else "not configured",
+            "gemini": "ok" if gemini_api_key else "not configured"
         }
 
         return jsonify({
@@ -830,24 +773,21 @@ def download_file():
         full_path = os.path.join(user_workspace, file_path)
 
         # Verificar que el archivo existe
-        if not os.path.exists(full_path): 
-            response = re.sub(r'```([a-zA-Z0-9]+)?\s*', r'```\1\n', response)
-            response = re.sub(r'\s*```', r'\n```', response)
+        if not os.path.exists(full_path):
+            return jsonify({
+                'success': False,
+                'error': 'Archivo no encontrado'
+            }), 404
 
-            # Asegurar que los títulos tengan espacio después del #
-            response = re.sub(r'(^|\n)#([^#\s])', r'\1# \2', response)
+        return send_file(full_path, as_attachment=True, download_name=os.path.basename(file_path))
 
-            # Asegurar que las listas tengan formato adecuado
-            response = re.sub(r'(^|\n)(-|\d+\.) ([^\s])', r'\1\2 \3', response)
-
-        return jsonify({'response': response})
     except Exception as e:
-        logging.error(f"Error in handle_chat: {str(e)}")
-        logging.error(traceback.format_exc())
+        logging.error(f"Error al descargar archivo: {str(e)}")
         return jsonify({
-            'error': str(e),
-            'response': f"Error inesperado: {str(e)}"
+            'success': False,
+            'error': f'Error al descargar archivo: {str(e)}'
         }), 500
+
 
 @app.route('/api_status')
 def api_status():
@@ -872,24 +812,6 @@ def api_status():
         'gemini': gemini_key,
         'message': 'Visita esta URL para verificar el estado de las APIs'
     })
-def extract_json_from_gemini(text):
-    """Extrae JSON de una respuesta de Gemini."""
-    import re
-    json_match = re.search(r'```json\s*(.*?)\s*```', text, re.DOTALL)
-    if json_match:
-        try:
-            return json.loads(json_match.group(1).strip())
-        except json.JSONDecodeError:
-            return {"correctedCode": "", "changes": [], "explanation": "Error al procesar la respuesta JSON de Gemini."}
-    else:
-        return {"correctedCode": "", "changes": [], "explanation": "No se encontró JSON en la respuesta de Gemini."}
 
-def extract_json_from_claude(text):
-    """Extrae JSON de una respuesta de Claude."""
-    import re
-    try:
-        # Primero intentamos ver si toda la respuesta es JSON directamente
-        return json.loads(text.strip())
-    except json.JSONDecodeError:
-        # Si no es JSON válido, buscamos dentro de bloques de código
-         json_match = re.search(r'```json\s*(.*?)\s*```', text, re.DOTALL)
+if __name__ == '__main__':
+    socketio.run(app, host='0.0.0.0', port=5000, debug=True)
