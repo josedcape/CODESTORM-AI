@@ -1601,6 +1601,88 @@ def generate_complex_file():
             'message': str(e)
         }), 500
 
+@app.route('/api/process_instructions', methods=['POST'])
+def process_instructions():
+    """Process natural language instructions and convert to terminal commands."""
+    try:
+        data = request.json
+        instruction = data.get('message', '') or data.get('instruction', '')
+        model_choice = data.get('model', 'openai')  # Default to OpenAI
+
+        if not instruction:
+            return jsonify({'error': 'No instruction provided'}), 400
+
+        # For handling command-only responses
+        command_only = data.get('command_only', False)
+
+        # Process the instruction to generate a command
+        try:
+            # Simple mapping for common commands
+            command_map = {
+                "listar": "ls -la",
+                "mostrar archivos": "ls -la",
+                "mostrar directorio": "ls -la",
+                "ver archivos": "ls -la",
+                "archivos": "ls -la",
+                "dir": "ls -la",
+                "fecha": "date",
+                "hora": "date +%H:%M:%S",
+                "calendario": "cal",
+                "quien soy": "whoami",
+                "donde estoy": "pwd",
+                "limpiar": "clear",
+                "sistema": "uname -a",
+                "memoria": "free -h",
+                "espacio": "df -h",
+                "procesos": "ps aux"
+            }
+            
+            instruction_lower = instruction.lower()
+            terminal_command = None
+            
+            # Check for exact matches first
+            for key, cmd in command_map.items():
+                if key in instruction_lower:
+                    terminal_command = cmd
+                    break
+                    
+            # If no direct match, use pattern matching
+            if not terminal_command:
+                if "crear" in instruction_lower and "carpeta" in instruction_lower:
+                    folder_name = instruction_lower.split("carpeta")[-1].strip()
+                    terminal_command = f"mkdir -p {folder_name}"
+                elif "crear" in instruction_lower and "archivo" in instruction_lower:
+                    file_name = instruction_lower.split("archivo")[-1].strip()
+                    terminal_command = f"touch {file_name}"
+                elif "eliminar" in instruction_lower or "borrar" in instruction_lower:
+                    target = instruction_lower.replace("eliminar", "").replace("borrar", "").strip()
+                    terminal_command = f"rm -rf {target}"
+                else:
+                    # Default command if nothing else matches
+                    terminal_command = "echo 'Comando no reconocido'"
+            
+            # Log the generated command
+            logging.info(f"Instrucción: '{instruction}' → Comando: '{terminal_command}'")
+            
+            # Return just the command or with additional context
+            if command_only:
+                return jsonify({'command': terminal_command})
+            else:
+                return jsonify({
+                    'command': terminal_command,
+                    'original_instruction': instruction,
+                    'model_used': model_choice
+                })
+                
+        except Exception as e:
+            logging.error(f"Error generating command: {str(e)}")
+            return jsonify({'error': f"Error generating command: {str(e)}"}), 500
+
+    except Exception as e:
+        logging.error(f"Error processing instructions: {str(e)}")
+        logging.error(traceback.format_exc())
+        return jsonify({'error': str(e)}), 500
+
 @app.route('/api/process', methods=['POST'])
 def process_command():
     """Process commands from the terminal interface."""
@@ -2056,6 +2138,18 @@ def health_check():
 def simple_health_check():
     """Simple health check endpoint."""
     return jsonify({"status": "ok"})
+
+@app.route('/api/health', methods=['GET'])
+def api_health_check():
+    """API health check endpoint."""
+    return jsonify({
+        "status": "ok",
+        "apis": {
+            "openai": "ok" if os.environ.get('OPENAI_API_KEY') else "not configured",
+            "anthropic": "ok" if os.environ.get('ANTHROPIC_API_KEY') else "not configured",
+            "gemini": "ok" if os.environ.get('GEMINI_API_KEY') else "not configured"
+        }
+    })
 
 @app.route('/api/generate', methods=['POST'])
 def generate():

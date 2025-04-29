@@ -1193,5 +1193,44 @@ def handle_user_message(data):
         emit('error', {'message': str(e)})
 
 if __name__ == '__main__':
-    port = int(os.environ.get('PORT', 5000))
-    socketio.run(app, host='0.0.0.0', port=port, debug=True)
+    try:
+        logging.info("Iniciando servidor CODESTORM Assistant...")
+
+        # Comprobar claves de API
+        if not openai_api_key:
+            logging.warning("OPENAI_API_KEY no configurada - funcionalidades de OpenAI estarán deshabilitadas")
+        if not anthropic_api_key:
+            logging.warning("ANTHROPIC_API_KEY no configurada - funcionalidades de Anthropic estarán deshabilitadas")
+        if not gemini_api_key:
+            logging.warning("GEMINI_API_KEY no configurada - funcionalidades de Gemini estarán deshabilitadas")
+
+        # Comprobar si al menos una API está configurada
+        if not any([openai_api_key, anthropic_api_key, gemini_api_key]):
+            logging.error("¡ADVERTENCIA! Ninguna API está configurada. El sistema funcionará en modo degradado.")
+
+        # Intentar iniciar el hilo de observación de archivos si existe la función
+        try:
+            import threading
+            if 'watch_workspace_files' in globals():
+                file_watcher_thread = threading.Thread(target=watch_workspace_files, daemon=True)
+                file_watcher_thread.start()
+                logging.info("Observador de archivos iniciado correctamente")
+        except Exception as watcher_error:
+            logging.warning(f"No se pudo iniciar el observador de archivos: {str(watcher_error)}")
+
+        # Configurar el servidor para usar web sockets
+        logging.info("Servidor listo para recibir conexiones en puerto 5000")
+
+        # Start the SocketIO server with engineio ping configurations 
+        # and allow cross-origin requests for better compatibility
+        socketio.run(
+            app, 
+            host='0.0.0.0', 
+            port=5000, 
+            debug=True,
+            allow_unsafe_werkzeug=True,  # Required for newer Werkzeug versions
+            cors_allowed_origins="*"     # Allow connections from any origin
+        )
+    except Exception as e:
+        logging.critical(f"Error fatal al iniciar el servidor: {str(e)}")
+        logging.critical(traceback.format_exc())
