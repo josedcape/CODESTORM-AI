@@ -176,111 +176,40 @@ def init_xterm_blueprint(app, socketio):
 
     @socketio.on('natural_language')
     def handle_natural_language(data):
-        """Procesa instrucciones en lenguaje natural."""
+        """Procesa instrucciones en lenguaje natural de forma segura."""
         text = data.get('text', '')
         user_id = data.get('user_id', 'default')
         model = data.get('model', 'openai')
         directory = data.get('directory', '.')
 
         if not text:
-            emit('command_result', {
+            emit('instruction_result', {
                 'success': False,
                 'command': '',
-                'stderr': 'No se proporcionó ningún texto',
-                'output': 'No se proporcionó ningún texto'
+                'error': 'No se proporcionó ningún texto',
+                'explanation': 'Es necesario proporcionar una instrucción'
             }, room=request.sid)
             return
 
         try:
-            # Aquí procesaríamos el lenguaje natural con algún modelo de IA
-            # Por ahora, vamos a usar algunas reglas simples
-            command = ""
+            # Procesar el texto usando el modelo seleccionado
+            command = process_natural_language(text, model)
 
-            # Mapa de comandos comunes
-            command_map = {
-                "listar": "ls -la",
-                "mostrar archivos": "ls -la",
-                "crear directorio": "mkdir ",
-                "crear carpeta": "mkdir ",
-                "crear archivo": "touch ",
-                "eliminar": "rm ",
-                "borrar": "rm ",
-                "mover": "mv ",
-                "copiar": "cp ",
-                "mostrar contenido": "cat ",
-                "leer archivo": "cat ",
-                "crea un proyecto": "mkdir proyecto && echo '# Mi Proyecto\n\nEste es un nuevo proyecto creado desde la terminal.' > proyecto/README.md",
-            }
-
-            # Buscar coincidencias exactas primero
-            if text.lower() in command_map:
-                command = command_map[text.lower()]
-            else:
-                # Buscar coincidencias parciales
-                for key, cmd in command_map.items():
-                    if key in text.lower():
-                        command = cmd
-                        # Extraer nombres si es necesario
-                        if cmd in ["mkdir ", "touch ", "rm ", "mv ", "cp ", "cat "]:
-                            parts = text.split()
-                            for i, part in enumerate(parts):
-                                if part.lower() in ["llamada", "llamado", "nombre"]:
-                                    if i + 1 < len(parts):
-                                        command += parts[i + 1]
-                                        break
-                            # Si no se encontró un nombre específico y hay palabras después del comando
-                            if command == cmd and len(parts) > 1:
-                                # Usar la última palabra como nombre predeterminado
-                                command += parts[-1]
-                        break
-
-            if not command:
-                # Si no hay coincidencia exacta, devolver mensaje informativo
-                emit('command_result', {
-                    'success': True,
-                    'command': 'echo',
-                    'stdout': f"No pude procesar: '{text}'. Prueba con instrucciones más específicas como 'crear archivo test.txt' o usa comandos bash directamente.",
-                    'output': f"No pude procesar: '{text}'. Prueba con instrucciones más específicas como 'crear archivo test.txt' o usa comandos bash directamente."
-                }, room=request.sid)
-                return
-
-            # Ejecutar el comando generado
-            workspace_path = get_user_workspace(user_id)
-
-            # Construir ruta completa para el directorio actual
-            if directory == '.':
-                current_dir = workspace_path
-            else:
-                current_dir = workspace_path / directory
-
-            logging.debug(f"Ejecutando comando (Lenguaje natural): '{command}'")
-            process = subprocess.Popen(
-                command,
-                shell=True,
-                cwd=str(current_dir),
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                text=True
-            )
-
-            stdout, stderr = process.communicate()
-
-            # Emitir resultado
-            emit('command_result', {
-                'success': process.returncode == 0,
+            # Emitir resultado con el comando sugerido pero sin ejecutarlo
+            emit('instruction_result', {
+                'success': True,
                 'command': command,
-                'stdout': stdout,
-                'stderr': stderr,
-                'output': f"Instrucción: '{text}'\nComando ejecutado: {command}\n\n{stdout if process.returncode == 0 else stderr}"
+                'explanation': f'Comando sugerido basado en: "{text}"',
+                'auto_execute': False # Siempre falso para seguridad
             }, room=request.sid)
 
         except Exception as e:
             logging.error(f"Error al procesar lenguaje natural: {str(e)}")
-            emit('command_result', {
+            emit('instruction_result', {
                 'success': False,
                 'command': '',
-                'stderr': str(e),
-                'output': f"Error al procesar: {str(e)}"
+                'error': str(e),
+                'explanation': 'Error al procesar la instrucción'
             }, room=request.sid)
 
     @socketio.on('list_directory')
@@ -361,3 +290,52 @@ def init_xterm_blueprint(app, socketio):
     # Registrar eventos adicionales que se necesiten
     logging.info("Terminal xterm.js y colaboración en tiempo real inicializados")
     logging.info("XTerm terminal blueprint registered successfully")
+
+
+def process_natural_language(text, model):
+    """Procesa instrucciones en lenguaje natural y devuelve el comando correspondiente.  NECESITA IMPLEMENTACION"""
+    # Aquí se debería implementar la lógica para procesar el lenguaje natural
+    # usando el modelo especificado.  Por ahora, se devuelve un comando de ejemplo.
+
+    # Ejemplo de implementación (reemplazar con lógica real)
+    command_map = {
+        "listar": "ls -la",
+        "mostrar archivos": "ls -la",
+        "crear directorio": "mkdir ",
+        "crear carpeta": "mkdir ",
+        "crear archivo": "touch ",
+        "eliminar": "rm ",
+        "borrar": "rm ",
+        "mover": "mv ",
+        "copiar": "cp ",
+        "mostrar contenido": "cat ",
+        "leer archivo": "cat ",
+        "crea un proyecto": "mkdir proyecto && echo '# Mi Proyecto\n\nEste es un nuevo proyecto creado desde la terminal.' > proyecto/README.md",
+    }
+
+    # Buscar coincidencias exactas primero
+    if text.lower() in command_map:
+        command = command_map[text.lower()]
+    else:
+        # Buscar coincidencias parciales
+        for key, cmd in command_map.items():
+            if key in text.lower():
+                command = cmd
+                # Extraer nombres si es necesario
+                if cmd in ["mkdir ", "touch ", "rm ", "mv ", "cp ", "cat "]:
+                    parts = text.split()
+                    for i, part in enumerate(parts):
+                        if part.lower() in ["llamada", "llamado", "nombre"]:
+                            if i + 1 < len(parts):
+                                command += parts[i + 1]
+                                break
+                    # Si no se encontró un nombre específico y hay palabras después del comando
+                    if command == cmd and len(parts) > 1:
+                        # Usar la última palabra como nombre predeterminado
+                        command += parts[-1]
+                break
+
+    if not command:
+        command = "echo 'Comando no encontrado'" # Default command if no match
+
+    return command
