@@ -163,7 +163,9 @@ def process_natural_language_to_command(text):
 def session_info():
     """Return session information for the current user."""
     user_id = session.get('user_id', 'default')
-    workspace = get_user_workspace(user_id)
+    # Create an instance of FileSystemManager to use its get_user_workspace method
+    file_system_manager = FileSystemManager(socketio)
+    workspace = file_system_manager.get_user_workspace(user_id)
 
     return jsonify({
         'user_id': user_id,
@@ -321,6 +323,10 @@ def handle_chat_internal(request_data):
 
         elif model_choice == 'gemini' and gemini_api_key:
             try:
+                # Make sure Gemini is configured properly
+                if not hasattr(genai, '_configured') or not genai._configured:
+                    genai.configure(api_key=gemini_api_key)
+                
                 model = genai.GenerativeModel('gemini-1.5-pro')
 
                 full_prompt = system_prompt + "\n\n"
@@ -337,9 +343,18 @@ def handle_chat_internal(request_data):
 
             except Exception as e:
                 logging.error(f"Error con API de Gemini: {str(e)}")
-                return {'error': f"Error con Gemini: {str(e)}", 'response': None}
+                
+                # Fallback to a more graceful response
+                return {
+                    'response': f"Lo siento, hubo un problema con el servicio de IA. Por favor intenta nuevamente o selecciona un modelo diferente. Error: {str(e)}",
+                    'error': None
+                }
         else:
-            return {'error': f"Modelo {model_choice} no soportado o API no configurada", 'response': None}
+            # If model not supported, return a helpful message instead of an error
+            return {
+                'response': f"Lo siento, el modelo '{model_choice}' no está disponible en este momento. Por favor selecciona otro modelo como 'openai' o 'anthropic' si está configurado.",
+                'error': None
+            }
 
     except Exception as e:
         logging.error(f"Error general en handle_chat_internal: {str(e)}")
