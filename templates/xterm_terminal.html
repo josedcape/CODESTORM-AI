@@ -1,1364 +1,310 @@
 <!DOCTYPE html>
-<html lang="es" data-bs-theme="dark">
+<html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Terminal Avanzada - Codestorm</title>
-
-    <!-- Bootstrap y CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
-
-    <!-- xterm.js y dependencias -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm@5.1.0/css/xterm.min.css" />
-    <script src="https://cdn.jsdelivr.net/npm/xterm@5.1.0/lib/xterm.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/xterm-addon-fit@0.7.0/lib/xterm-addon-fit.min.js"></script>
-
-    <!-- Socket.IO -->
-    <script src="https://cdn.socket.io/4.6.0/socket.io.min.js"></script>
-
-    <!-- Yjs para colaboración en tiempo real -->
-    <script src="https://unpkg.com/yjs@13.5.0/dist/yjs.js"></script>
-    <script src="https://unpkg.com/y-websocket@1.4.0/dist/y-websocket.js"></script>
-
+    <title>Terminal Avanzada</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm/css/xterm.css" />
     <style>
-        :root {
-            --darker-blue: #091428;
-            --dark-blue: #0A2149;
-            --medium-blue: #1E88E5;
-            --light-blue: #4CB9FF;
-            --highlight-color: #ffc107;
-            --dark-background: #121212;
-            --card-background: #1a1a1a;
-            --card-header: #212529;
-            --text-primary: #e9ecef;
-            --text-secondary: #adb5bd;
-            --mobile-breakpoint: 768px;
-        }
-
         body {
-            background-color: var(--dark-background);
-            color: var(--text-primary);
-            font-family: 'Arial', sans-serif;
-            min-height: 100vh;
             display: flex;
             flex-direction: column;
+            height: 100vh;
             margin: 0;
-            padding: 0;
-            overflow-x: hidden;
+            font-family: Arial, sans-serif;
         }
-
-        .navbar-futuristic {
-            background: linear-gradient(90deg, var(--darker-blue) 0%, var(--dark-blue) 100%);
-            box-shadow: 0 2px 15px rgba(0, 100, 255, 0.2);
-            border-bottom: 1px solid var(--medium-blue);
-        }
-
-        .main-container {
-            display: flex;
-            flex-direction: column;
-            height: calc(100vh - 56px);
-        }
-
-        .workspace-container {
-            display: flex;
+        #terminal-container {
             flex: 1;
-            overflow: hidden;
-        }
-
-        .explorer-panel {
-            width: 280px;
-            background-color: var(--card-background);
-            border-right: 1px solid rgba(78, 115, 223, 0.2);
             display: flex;
-            flex-direction: column;
             overflow: hidden;
         }
-
-        .explorer-header {
+        #terminal {
+            width: 100%;
+            height: 100%;
+        }
+        .input-container {
+            display: flex;
             padding: 10px;
-            background-color: var(--card-header);
-            border-bottom: 1px solid rgba(78, 115, 223, 0.2);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
+            background: #333;
         }
-
-        .explorer-content {
+        .input-container input {
             flex: 1;
+            padding: 10px;
+            border: none;
+            border-radius: 5px;
+        }
+        .input-container button {
+            padding: 10px 20px;
+            margin-left: 10px;
+            border: none;
+            border-radius: 5px;
+            background: #007bff;
+            color: white;
+            cursor: pointer;
+        }
+        .explorer-panel {
+            width: 300px;
+            background: #2c3e50;
+            color: white;
             overflow-y: auto;
             padding: 10px;
         }
-
         .file-item {
-            display: flex;
-            align-items: center;
+            cursor: pointer;
             padding: 5px;
-            cursor: pointer;
-            border-radius: 4px;
-            margin-bottom: 2px;
+            border-radius: 3px;
         }
-
         .file-item:hover {
-            background-color: rgba(30, 136, 229, 0.1);
+            background: #34495e;
         }
-
         .file-item .icon {
-            margin-right: 8px;
+            margin-right: 10px;
         }
-
-        .directory {
-            color: var(--highlight-color);
+        .preview-container {
+            position: fixed;
+            bottom: 10px;
+            right: 10px;
+            width: 400px;
+            height: 300px;
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            display: none;
         }
-
-        .folder-content {
-            margin-left: 20px;
-        }
-
-        .terminal-panel {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            overflow: hidden;
-        }
-
-        .terminal-header {
+        .preview-header {
+            cursor: move;
             padding: 10px;
-            background-color: var(--card-header);
-            border-bottom: 1px solid rgba(78, 115, 223, 0.2);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            flex-wrap: wrap;
+            background: #f7f7f7;
+            border-bottom: 1px solid #ddd;
         }
-
-        .terminal-content {
-            flex: 1;
-            overflow: hidden;
-            display: flex;
-            flex-direction: column;
-            position: relative;
+        .preview-content {
+            height: calc(100% - 40px);
         }
-
-        /* Estilos específicos para móvil */
-        @media screen and (max-width: var(--mobile-breakpoint)) {
-            .terminal-header {
-                padding: 8px;
-            }
-
-            .terminal-header h5 {
-                font-size: 1rem;
-                margin-bottom: 5px;
-                width: 100%;
-            }
-
-            .explorer-panel {
-                width: 100%;
-                max-height: 200px;
-                position: relative;
-                z-index: 100;
-            }
-
-            .workspace-container {
-                flex-direction: column;
-            }
-
-            .dropdown-menu {
-                max-width: 100%;
-                overflow-x: auto;
-            }
-
-            .dropdown-item {
-                padding: 8px 12px;
-                font-size: 0.9rem;
-            }
-        }
-
-        .terminal-container {
-            flex: 1;
-            overflow: hidden;
-            padding: 10px;
-            background-color: #000;
-        }
-
-        .input-container, .assistant-container {
-            padding: 10px;
-            background-color: var(--card-background);
-            display: flex;
-            border-top: 1px solid rgba(78, 115, 223, 0.2);
-            flex-wrap: wrap;
-        }
-
-        .assistant-container {
-            border-bottom: none;
-            border-top: 1px solid rgba(78, 115, 223, 0.2);
-            flex-direction: column;
-            padding-bottom: 5px;
-        }
-
-        .terminal-input {
-            flex: 1;
-            background-color: rgba(255, 255, 255, 0.1);
-            border: none;
-            border-radius: 4px;
-            color: var(--text-primary);
-            padding: 8px 12px;
-            margin-right: 8px;
-            min-width: 0; /* Permite que el input se encoja correctamente */
-        }
-
-        .terminal-input:focus {
-            outline: none;
-            box-shadow: 0 0 0 2px rgba(78, 115, 223, 0.4);
-        }
-
-        .model-selector {
-            padding: 8px;
-            background-color: rgba(255, 255, 255, 0.1);
-            color: var(--text-primary);
-            border: none;
-            border-radius: 4px;
-            margin-right: 8px;
-        }
-
-        /* Estilos móviles para la entrada de comandos */
-        @media screen and (max-width: var(--mobile-breakpoint)) {
-            .input-container {
-                padding: 8px;
-            }
-
-            .model-selector-container {
-                display: flex;
-                width: 100%;
-                margin-bottom: 8px;
-            }
-
-            .model-selector {
-                flex: 1;
-                margin-right: 5px;
-                font-size: 0.9rem;
-                padding: 6px;
-            }
-
-            .terminal-input {
-                font-size: 0.9rem;
-                padding: 8px;
-            }
-
-            .send-button {
-                padding: 8px 12px;
-            }
-        }
-
-        .model-selector:focus {
-            outline: none;
-        }
-
-        .send-button {
-            background-color: var(--medium-blue);
+        .notification {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            background: #333;
             color: white;
-            border: none;
-            border-radius: 4px;
-            padding: 8px 16px;
-            cursor: pointer;
+            padding: 10px 20px;
+            border-radius: 5px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            z-index: 1000;
         }
-
-        .send-button:hover {
-            background-color: var(--light-blue);
+        .notification-info {
+            background: #007bff;
         }
-
+        .notification-success {
+            background: #28a745;
+        }
+        .notification-error {
+            background: #dc3545;
+        }
         .status-indicator {
+            display: flex;
+            align-items: center;
+        }
+        .status-indicator .status-icon {
             width: 10px;
             height: 10px;
             border-radius: 50%;
-            margin-right: 8px;
-        }
-
-        .status-connected {
-            background-color: #28a745;
-        }
-
-        .status-disconnected {
-            background-color: #dc3545;
-        }
-
-        .status-connecting {
-            background-color: #ffc107;
-            animation: pulse 1.5s infinite;
-        }
-
-        @keyframes pulse {
-            0% { opacity: 0.6; }
-            50% { opacity: 1; }
-            100% { opacity: 0.6; }
-        }
-
-        .folder-toggle {
-            cursor: pointer;
-            width: 16px;
-            display: inline-block;
-            text-align: center;
             margin-right: 5px;
         }
-
-        .command-type {
-            background-color: rgba(78, 115, 223, 0.2);
-            color: var(--light-blue);
-            font-size: 0.8rem;
-            padding: 2px 4px;
-            border-radius: 3px;
-            margin-left: 5px;
+        .status-connected .status-icon {
+            background: green;
         }
-
-        .notifications {
-            position: fixed;
-            top: 70px;
-            right: 20px;
-            width: 350px;
-            z-index: 1050;
+        .status-disconnected .status-icon {
+            background: red;
         }
-
-        .notification {
-            padding: 15px;
-            margin-bottom: 10px;
-            border-radius: 5px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-            animation: slideIn 0.3s, fadeOut 0.5s 4.5s;
-            opacity: 0;
-            animation-fill-mode: forwards;
+        .status-connecting .status-icon {
+            background: orange;
         }
-
-        .notification-success {
-            background-color: rgba(40, 167, 69, 0.9);
-            color: white;
-        }
-
-        .notification-error {
-            background-color: rgba(220, 53, 69, 0.9);
-            color: white;
-        }
-
-        .notification-info {
-            background-color: rgba(23, 162, 184, 0.9);
-            color: white;
-        }
-
-        @keyframes slideIn {
-            0% { transform: translateX(100%); opacity: 0; }
-            100% { transform: translateX(0); opacity: 1; }
-        }
-
-        @keyframes fadeOut {
-            0% { opacity: 1; }
-            100% { opacity: 0; display: none; }
-        }
-
-        /* Estilos para el panel de control móvil */
         .mobile-control-bar {
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            background-color: var(--dark-blue);
-            padding: 10px;
-            display: flex;
-            justify-content: space-around;
-            z-index: 1000;
-            border-top: 1px solid rgba(255, 255, 255, 0.1);
-        }
-
-        .mobile-control-btn {
-            background-color: var(--medium-blue);
-            color: white;
-            border: none;
-            border-radius: 4px;
-            padding: 8px 12px;
-            font-size: 0.9rem;
-        }
-
-        .mobile-control-btn:active {
-            background-color: var(--light-blue);
-        }
-
-        /* Ajustes adicionales para móvil */
-        @media screen and (max-width: var(--mobile-breakpoint)) {
-            .mobile-control-bar {
-                display: flex;
-            }
-
-            .main-container {
-                padding-bottom: 60px; /* Espacio para la barra de control móvil */
-            }
-
-            .input-container {
-                flex-direction: column;
-            }
-
-            .model-selector {
-                width: 100%;
-                margin-bottom: 8px;
-                margin-right: 0;
-            }
-
-            .dropdown-menu {
-                width: 100%;
-                max-width: 300px;
-            }
-        }
-
-        /* Usuarios colaborando */
-        .collaborators {
-            position: absolute;
-            top: 10px;
-            right: 10px;
-            z-index: 100;
-            display: flex;
-            gap: 5px;
-        }
-
-        .collaborator {
-            width: 30px;
-            height: 30px;
-            border-radius: 50%;
-            background-color: var(--medium-blue);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            font-weight: bold;
-            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
-        }
-
-        /* Preview en tiempo real */
-        .preview-container {
-            position: absolute;
-            bottom: 20px;
-            right: 20px;
-            width: 300px;
-            height: 200px;
-            background-color: var(--card-background);
-            border: 1px solid var(--card-header);
-            border-radius: 5px;
-            overflow: hidden;
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
-            z-index: 1000;
             display: none;
-        }
-
-        .preview-header {
-            padding: 5px 10px;
-            background-color: var(--card-header);
-            display: flex;
-            justify-content: space-between;
+            flex-direction: column;
             align-items: center;
-            cursor: move;
+            padding: 10px;
+            background: #333;
         }
-
-        .preview-content {
-            height: calc(100% - 30px);
-            overflow: hidden;
-        }
-
-        .preview-iframe {
+        .mobile-control-bar button {
+            margin: 5px 0;
             width: 100%;
-            height: 100%;
+            padding: 10px;
             border: none;
-            background-color: white;
-        }
-
-        /* Auto-completado */
-        .autocomplete {
-            position: absolute;
-            background-color: var(--card-background);
-            border: 1px solid var(--medium-blue);
-            border-radius: 4px;
-            max-height: 200px;
-            overflow-y: auto;
-            z-index: 1000;
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
-        }
-
-        .autocomplete-item {
-            padding: 5px 10px;
+            border-radius: 5px;
+            background: #007bff;
+            color: white;
             cursor: pointer;
         }
-
-        .autocomplete-item:hover,
-        .autocomplete-item.selected {
-            background-color: rgba(30, 136, 229, 0.2);
+        .assistant-container {
+            display: flex;
+            padding: 10px;
+            background: #2a2a2a;
+            border-top: 1px solid #444;
+        }
+        .assistant-container input {
+            flex: 1;
+            padding: 10px;
+            border: none;
+            border-radius: 5px;
+            background: #444;
+            color: white;
+        }
+        .assistant-container button {
+            padding: 10px 20px;
+            margin-left: 10px;
+            border: none;
+            border-radius: 5px;
+            background: #28a745;
+            color: white;
+            cursor: pointer;
         }
     </style>
 </head>
 <body>
-    <nav class="navbar navbar-expand-lg navbar-futuristic">
-        <div class="container-fluid">
-            <a class="navbar-brand" href="/">
-                <i class="bi bi-braces"></i> Codestorm Assistant
-            </a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-            <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav">
-                    <li class="nav-item">
-                        <a class="nav-link" href="/"><i class="bi bi-house"></i> Inicio</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="/chat"><i class="bi bi-chat-dots"></i> Asistente IA</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="/files"><i class="bi bi-folder2-open"></i> Explorador</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link active" href="/xterm_terminal"><i class="bi bi-terminal"></i> Terminal Avanzada</a>
-                    </li>
-                </ul>
-                <div class="ms-auto d-flex align-items-center">
-                    <div class="d-flex align-items-center me-3">
-                        <span class="status-indicator status-disconnected" id="status-indicator"></span>
-                        <span id="connection-status">Desconectado</span>
-                    </div>
-                    <div class="dropdown">
-                        <button class="btn btn-sm btn-outline-light dropdown-toggle" type="button" id="terminalActions" data-bs-toggle="dropdown" aria-expanded="false">
-                            Acciones
-                        </button>
-                        <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="terminalActions">
-                            <li><a class="dropdown-item" href="#" id="clear-terminal-btn"><i class="bi bi-trash"></i> Limpiar Terminal</a></li>
-                            <li><a class="dropdown-item" href="#" id="toggle-preview-btn"><i class="bi bi-eye"></i> Mostrar/Ocultar Preview</a></li>
-                            <li><a class="dropdown-item" href="#" id="share-session-btn"><i class="bi bi-share"></i> Compartir Sesión</a></li>
-                            <li><hr class="dropdown-divider"></li>
-                            <li><a class="dropdown-item" href="#" id="settings-btn"><i class="bi bi-gear"></i> Configuración</a></li>
-                        </ul>
-                    </div>
-                </div>
+    <div class="status-indicator" id="status-indicator">
+        <div class="status-icon"></div>
+        <span id="connection-status">Conectando...</span>
+    </div>
+    <div id="terminal-container">
+        <div class="explorer-panel" id="explorer-panel">
+            <div class="explorer-header">
+                <h5>Explorador de Archivos</h5>
+                <button id="refresh-explorer-btn" class="btn btn-sm btn-primary">Refrescar</button>
+            </div>
+            <div class="explorer-content" id="explorer-content">
+                <!-- Contenido del explorador se cargará aquí -->
             </div>
         </div>
-    </nav>
-
-    <!-- Barra de control móvil -->
-    <div class="mobile-control-bar d-none">
-        <button id="toggle-explorer-btn" class="mobile-control-btn">
-            <i class="bi bi-folder2-open"></i> Explorador
-        </button>
-        <button id="mobile-terminal-options-btn" class="mobile-control-btn" data-bs-toggle="modal" data-bs-target="#mobileOptionsModal">
-            <i class="bi bi-gear-fill"></i> Opciones
-        </button>
+        <div id="terminal"></div>
     </div>
 
-    <!-- Modal de opciones para móvil -->
-    <div class="modal fade" id="mobileOptionsModal" tabindex="-1" aria-labelledby="mobileOptionsModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content bg-dark text-light">
-                <div class="modal-header border-secondary">
-                    <h5 class="modal-title" id="mobileOptionsModalLabel">Opciones de Terminal</h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body">
-                    <div class="list-group list-group-flush bg-dark">
-                        <button class="list-group-item list-group-item-action bg-dark text-light mobile-option" id="mobile-clear-terminal">
-                            <i class="bi bi-trash me-2"></i> Limpiar Terminal
-                        </button>
-                        <button class="list-group-item list-group-item-action bg-dark text-light mobile-option" id="mobile-toggle-preview">
-                            <i class="bi bi-eye me-2"></i> Mostrar/Ocultar Preview
-                        </button>
-                        <button class="list-group-item list-group-item-action bg-dark text-light mobile-option" id="mobile-share-session">
-                            <i class="bi bi-share me-2"></i> Compartir Sesión
-                        </button>
-                        <button class="list-group-item list-group-item-action bg-dark text-light mobile-option" id="mobile-settings">
-                            <i class="bi bi-gear me-2"></i> Configuración
-                        </button>
-                    </div>
-                </div>
-            </div>
+    <!-- Contenedor del Asistente -->
+    <div class="assistant-container">
+        <select id="assistant-model-selector">
+            <option value="openai">OpenAI (GPT-4o)</option>
+            <option value="anthropic">Anthropic (Claude)</option>
+            <option value="gemini">Google (Gemini)</option>
+        </select>
+        <input type="text" id="assistant-input" placeholder="Escribe tu instrucción en lenguaje natural..." />
+        <button id="assistant-send-button"><i class="fas fa-magic"></i> Generar Comando</button>
+    </div>
+
+    <div class="input-container">
+        <select id="model-selector">
+            <option value="openai">OpenAI</option>
+            <option value="anthropic">Anthropic</option>
+            <option value="gemini">Gemini</option>
+        </select>
+        <select id="command-method">
+            <option value="socket">Socket.IO</option>
+            <option value="rest">REST API</option>
+        </select>
+        <input type="text" id="terminal-input" placeholder="Ingresa un comando o instrucción..." />
+        <button id="send-button">Enviar</button>
+        <button id="clear-terminal-btn">Limpiar Terminal</button>
+        <button id="toggle-preview-btn">Mostrar/Ocultar Preview</button>
+        <button id="share-session-btn">Compartir Sesión</button>
+    </div>
+    <div class="preview-container" id="preview-container">
+        <div class="preview-header" id="preview-header">
+            <span>Vista Previa</span>
+            <button id="close-preview-btn" style="float: right;">Cerrar</button>
+        </div>
+        <div class="preview-content">
+            <iframe id="preview-iframe" style="width: 100%; height: 100%; border: none;"></iframe>
         </div>
     </div>
-
-    <div class="main-container">
-        <div class="workspace-container">
-            <div class="explorer-panel" id="explorer-panel">
-                <div class="explorer-header">
-                    <h5 class="mb-0"><i class="bi bi-folder2-open"></i> Explorador</h5>
-                    <button class="btn btn-sm btn-outline-secondary" id="refresh-explorer-btn">
-                        <i class="bi bi-arrow-clockwise"></i>
-                    </button>
-                </div>
-                <div class="explorer-content" id="explorer-container">
-                    <div class="text-center p-3">
-                        <div class="spinner-border spinner-border-sm text-primary" role="status">
-                            <span class="visually-hidden">Cargando...</span>
-                        </div>
-                        <p class="mt-2 text-muted">Cargando archivos...</p>
-                    </div>
-                </div>
-            </div>
-
-            <div class="terminal-panel">
-                <div class="terminal-header">
-                    <h5 class="mb-0"><i class="bi bi-terminal"></i> Terminal Avanzada (xterm.js)</h5>
-                    <div class="d-flex align-items-center">
-                        <div class="me-3" id="collaborators-count">
-                            <i class="bi bi-people"></i> <span>1</span> online
-                        </div>
-                        <span id="cwd-display">./</span>
-                    </div>
-                </div>
-                <div class="terminal-content">
-                    <!-- Contenedor para usuarios colaborando -->
-                    <div class="collaborators" id="collaborators-container">
-                        <div class="collaborator" style="background-color: #1E88E5;">U</div>
-                    </div>
-
-                    <!-- Terminal xterm.js -->
-                    <div id="terminal-container" class="terminal-container"></div>
-
-                    <!-- Panel del Asistente en Lenguaje Natural -->
-                    <div class="assistant-container mb-2">
-                        <div class="d-flex align-items-center mb-1">
-                            <span class="me-2"><i class="bi bi-robot"></i> Asistente:</span>
-                            <select class="model-selector" id="assistant-model-selector">
-                                <option value="openai">OpenAI (GPT-4o)</option>
-                                <option value="anthropic">Anthropic (Claude)</option>
-                                <option value="gemini">Google (Gemini)</option>
-                            </select>
-                        </div>
-                        <div class="d-flex">
-                            <input type="text" class="terminal-input" id="assistant-input" 
-                                   placeholder="Escribe tu instrucción en lenguaje natural...">
-                            <button class="send-button" id="assistant-send-button">
-                                <i class="bi bi-magic"></i>
-                            </button>
-                        </div>
-                    </div>
-
-                    <!-- Panel de Terminal (Existente) -->
-                    <div class="input-container">
-                        <select class="model-selector" id="model-selector">
-                            <option value="openai">OpenAI</option>
-                            <option value="anthropic">Anthropic</option>
-                            <option value="gemini">Gemini</option>
-                        </select>
-                        <select class="model-selector" id="command-method" style="max-width: 100px;">
-                            <option value="websocket">WebSocket</option>
-                            <option value="rest">REST API</option>
-                        </select>
-                        <input type="text" class="terminal-input" id="terminal-input" 
-                               placeholder="Ingresa un comando o instrucción en lenguaje natural...">
-                        <button class="send-button" id="send-button">
-                            <i class="bi bi-send"></i>
-                        </button>
-                    </div>
-
-                    <!-- Preview en tiempo real (oculto por defecto) -->
-                    <div class="preview-container" id="preview-container">
-                        <div class="preview-header" id="preview-header">
-                            <span>Vista previa en tiempo real</span>
-                            <button class="btn btn-sm btn-close" id="close-preview-btn"></button>
-                        </div>
-                        <div class="preview-content">
-                            <iframe id="preview-iframe" class="preview-iframe" src="about:blank"></iframe>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
+    <div class="mobile-control-bar" id="mobile-control-bar">
+        <button id="toggle-explorer-btn">Mostrar/Ocultar Explorador</button>
+        <button id="mobile-clear-terminal">Limpiar Terminal</button>
+        <button id="mobile-toggle-preview">Mostrar/Ocultar Preview</button>
+        <button id="mobile-share-session">Compartir Sesión</button>
+        <button id="mobile-settings">Configuración</button>
     </div>
+    <div id="notifications-container"></div>
 
-    <div class="notifications" id="notifications-container"></div>
-
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-
+    <!-- Include xterm.js first -->
+    <script src="https://cdn.jsdelivr.net/npm/xterm/lib/xterm.js"></script>
+    <!-- Then include xterm-addon-fit -->
+    <script src="https://cdn.jsdelivr.net/npm/xterm-addon-fit/lib/xterm-addon-fit.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.1.2/socket.io.min.js"></script>
     <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            // Detectar si es dispositivo móvil
-            const isMobile = window.innerWidth <= 768;
-            if (isMobile) {
-                document.querySelector('.mobile-control-bar').classList.remove('d-none');
+        const terminal = new Terminal();
+        const fitAddon = new FitAddon();
+        terminal.loadAddon(fitAddon);
+        terminal.open(document.getElementById('terminal'));
+        fitAddon.fit();
+
+        let socket;
+        let isConnected = false;
+        let currentDirectory = '.';
+        let userId = 'default';
+        let ydoc = null;
+        let yWebsocket = null;
+        let collaborators = new Map();
+
+        const statusIndicator = document.getElementById('status-indicator');
+        const connectionStatus = document.getElementById('connection-status');
+        const explorerContainer = document.getElementById('explorer-content');
+        const terminalInput = document.getElementById('terminal-input');
+        const sendButton = document.getElementById('send-button');
+        const clearTerminalBtn = document.getElementById('clear-terminal-btn');
+        const refreshExplorerBtn = document.getElementById('refresh-explorer-btn');
+        const togglePreviewBtn = document.getElementById('toggle-preview-btn');
+        const closePreviewBtn = document.getElementById('close-preview-btn');
+        const shareSessionBtn = document.getElementById('share-session-btn');
+        const previewContainer = document.getElementById('preview-container');
+        const previewIframe = document.getElementById('preview-iframe');
+
+        // Elementos del asistente
+        const assistantInput = document.getElementById('assistant-input');
+        const assistantSendButton = document.getElementById('assistant-send-button');
+        const assistantModelSelector = document.getElementById('assistant-model-selector');
+
+        function updateConnectionStatus(status) {
+            statusIndicator.classList.remove('status-connected', 'status-disconnected', 'status-connecting');
+
+            switch (status) {
+                case 'connected':
+                    statusIndicator.classList.add('status-connected');
+                    connectionStatus.textContent = 'Conectado';
+                    break;
+
+                case 'disconnected':
+                    statusIndicator.classList.add('status-disconnected');
+                    connectionStatus.textContent = 'Desconectado';
+                    break;
+
+                case 'connecting':
+                    statusIndicator.classList.add('status-connecting');
+                    connectionStatus.textContent = 'Conectando...';
+                    break;
             }
+        }
 
-            // Inicialización del terminal xterm.js
-            const terminal = new Terminal({
-                cursorBlink: true,
-                theme: {
-                    background: '#000',
-                    foreground: '#FFF',
-                    cursor: '#F0F',
-                    selection: 'rgba(30, 136, 229, 0.3)',
-                    black: '#000000',
-                    red: '#C51E14',
-                    green: '#1DC121',
-                    yellow: '#C7C329',
-                    blue: '#0A2FC4',
-                    magenta: '#C839C5',
-                    cyan: '#20C5C6',
-                    white: '#C7C7C7',
-                    brightBlack: '#686868',
-                    brightRed: '#FD6F6B',
-                    brightGreen: '#67F86F',
-                    brightYellow: '#FFFA72',
-                    brightBlue: '#6A76FB',
-                    brightMagenta: '#FD7CFC',
-                    brightCyan: '#68FDFE',
-                    brightWhite: '#FFFFFF'
-                }
-            });
+        function initializeWebSocket() {
+            updateConnectionStatus('connecting');
 
-            // Addon para ajustar automáticamente el tamaño
-            const fitAddon = new FitAddon.FitAddon();
-            terminal.loadAddon(fitAddon);
-
-            // Montar el terminal en el contenedor
-            terminal.open(document.getElementById('terminal-container'));
-            fitAddon.fit();
-
-            // Ajustar tamaño al cambiar la ventana
-            window.addEventListener('resize', () => {
-                fitAddon.fit();
-            });
-
-            // Variables globales
-            let socket;
-            let isConnected = false;
-            let currentDirectory = '.';
-            const userId = Math.random().toString(36).substring(2, 8);
-            let username = 'Usuario';
-            let collaborators = new Map();
-            let ydoc;
-            let yWebsocket;
-
-            // Referencias a elementos DOM
-            const terminalInput = document.getElementById('terminal-input');
-            const sendButton = document.getElementById('send-button');
-            const modelSelector = document.getElementById('model-selector');
-            const statusIndicator = document.getElementById('status-indicator');
-            const connectionStatus = document.getElementById('connection-status');
-            const cwdDisplay = document.getElementById('cwd-display');
-            const clearTerminalBtn = document.getElementById('clear-terminal-btn');
-            const refreshExplorerBtn = document.getElementById('refresh-explorer-btn');
-            const explorerContainer = document.getElementById('explorer-container');
-            const previewContainer = document.getElementById('preview-container');
-            const togglePreviewBtn = document.getElementById('toggle-preview-btn');
-            const closePreviewBtn = document.getElementById('close-preview-btn');
-            const previewIframe = document.getElementById('preview-iframe');
-            const shareSessionBtn = document.getElementById('share-session-btn');
-            const collaboratorsContainer = document.getElementById('collaborators-container');
-            const collaboratorsCount = document.getElementById('collaborators-count').querySelector('span');
-
-            // Inicializar Yjs para colaboración en tiempo real
-            function initYjs() {
-                ydoc = new Y.Doc();
-
-                // Mapa para almacenar información de los usuarios
-                const yUsers = ydoc.getMap('users');
-
-                // Texto compartido para sincronizar el historial del terminal
-                const yTerminalHistory = ydoc.getText('terminal-history');
-
-                // Conectar mediante WebSocket
-                yWebsocket = new WebsocketProvider(
-                    'wss://' + window.location.host + '/yjs-ws',
-                    'codestorm-terminal-' + Math.random().toString(36).substring(2, 7),
-                    ydoc
-                );
-
-                // Cuando nos conectamos, añadir este usuario
-                yWebsocket.on('status', event => {
-                    if (event.status === 'connected') {
-                        // Añadir este usuario
-                        yUsers.set(userId, {
-                            id: userId,
-                            name: username,
-                            color: getRandomColor(),
-                            active: true,
-                            lastActive: new Date().toISOString()
-                        });
-
-                        updateCollaborators();
-                    }
+            try {
+                socket = io({
+                    transports: ['websocket', 'polling'],
+                    reconnection: true,
+                    reconnectionAttempts: 5,
+                    reconnectionDelay: 1000
                 });
 
-                // Observar cambios en los usuarios conectados
-                yUsers.observe(event => {
-                    updateCollaborators();
-                });
-
-                // Observar cambios en el historial del terminal
-                yTerminalHistory.observe(event => {
-                    // Actualizar terminal solo si es otro usuario quien envió el cambio
-                    if (event.transaction.origin !== userId) {
-                        const newText = event.changes.delta.reduce((acc, change) => {
-                            if (change.insert) return acc + change.insert;
-                            return acc;
-                        }, '');
-
-                        if (newText) {
-                            terminal.write(newText);
-                        }
-                    }
-                });
-            }
-
-            // Actualizar la lista de colaboradores en la UI
-            function updateCollaborators() {
-                if (!ydoc) return;
-
-                const yUsers = ydoc.getMap('users');
-                collaborators.clear();
-
-                yUsers.forEach((userInfo, userId) => {
-                    if (userInfo.active) {
-                        collaborators.set(userId, userInfo);
-                    }
-                });
-
-                // Actualizar contador
-                collaboratorsCount.textContent = collaborators.size;
-
-                // Actualizar avatares
-                collaboratorsContainer.innerHTML = '';
-                collaborators.forEach(user => {
-                    const avatar = document.createElement('div');
-                    avatar.className = 'collaborator';
-                    avatar.style.backgroundColor = user.color;
-                    avatar.textContent = user.name.charAt(0).toUpperCase();
-                    avatar.title = user.name;
-                    collaboratorsContainer.appendChild(avatar);
-                });
-            }
-
-            // Obtener un color aleatorio para usuario
-            function getRandomColor() {
-                const colors = [
-                    '#1E88E5', '#43A047', '#E53935', '#9C27B0', 
-                    '#FF5722', '#00ACC1', '#3949AB', '#7CB342'
-                ];
-                return colors[Math.floor(Math.random() * colors.length)];
-            }
-
-            // Inicializar Socket.IO
-            function initializeWebSocket() {
-                updateConnectionStatus('connecting');
-
-                try {
-                    socket = io({
-                        transports: ['websocket', 'polling'],
-                        reconnection: true,
-                        reconnectionAttempts: 5,
-                        reconnectionDelay: 1000
-                    });
-
-                    socket.on('connect', function() {
-                        console.log('Conectado al servidor WebSocket');
-                        isConnected = true;
-                        updateConnectionStatus('connected');
-
-                        // Inicializar manejadores de eventos
-                        initializeSocketHandlers();
-
-                        // Mensaje de bienvenida
-                        terminal.write('\r\n\x1b[32m¡Bienvenido a la Terminal Avanzada de Codestorm!\x1b[0m\r\n');
-                        terminal.write('Puedes ejecutar comandos bash o usar lenguaje natural.\r\n\r\n');
-
-                        // Cargar directorio actual
-                        loadDirectoryContents(currentDirectory);
-
-                        // Configurar preview inicial
-                        updatePreviewIframe('/');
-                    });
-
-                    socket.on('disconnect', function() {
-                        console.log('Desconectado del servidor WebSocket');
-                        isConnected = false;
-                        updateConnectionStatus('disconnected');
-                        terminal.write('\r\n\x1b[31mDesconectado del servidor. Intentando reconectar...\x1b[0m\r\n');
-                    });
-
-                    socket.on('command_result', function(data) {
-                        console.log('Resultado del comando recibido:', data);
-
-                        // Mostrar resultado en el terminal
-                        if (data.success) {
-                            terminal.write('\r\n' + data.output + '\r\n');
-
-                            // Si hay un ydoc activo, añadir al historial compartido
-                            if (ydoc) {
-                                const yTerminalHistory = ydoc.getText('terminal-history');
-                                yTerminalHistory.insert(yTerminalHistory.length, '\r\n' + data.output + '\r\n');
-                            }
-
-                            // Actualizar el explorador si el comando afecta a archivos
-                            if (shouldRefreshExplorer(data.command)) {
-                                setTimeout(() => loadDirectoryContents(currentDirectory), 500);
-                            }
-
-                            // Actualizar preview en ciertos comandos
-                            if (data.command.includes('touch') || data.command.includes('echo') || 
-                                data.command.includes('cat') || data.command.includes('npm')) {
-                                updatePreviewIframe('/preview');
-                            }
-
-                            // Actualizar directorio actual si es comando cd
-                            if (data.command.startsWith('cd ')) {
-                                updateCurrentDirectory(data);
-                            }
-                        } else {
-                            terminal.write('\r\n\x1b[31mError: ' + data.stderr + '\x1b[0m\r\n');
-                        }
-                    });
-
-                    socket.on('directory_contents', function(data) {
-                        console.log('Contenido del directorio recibido:', data);
-
-                        if (data.success) {
-                            updateExplorer(data.path, data.contents);
-                        } else {
-                            showNotification('Error al cargar archivos: ' + data.error, 'error');
-                        }
-                    });
-
-                    socket.on('file_change', function(data) {
-                        console.log('Cambio en archivos detectado:', data);
-                        showNotification(data.message, 'info');
-                        loadDirectoryContents(currentDirectory);
-
-                        // Actualizar preview si se ha modificado un archivo
-                        updatePreviewIframe('/preview');
-                    });
-
-                    socket.on('error', function(error) {
-                        console.error('Error de WebSocket:', error);
-                        terminal.write('\r\n\x1b[31mError: ' + error + '\x1b[0m\r\n');
-                    });
-
-                } catch (e) {
-                    console.error('Error al inicializar WebSocket:', e);
-                    terminal.write('\r\n\x1b[31mError al inicializar la conexión: ' + e.message + '\x1b[0m\r\n');
-                    updateConnectionStatus('disconnected');
-                }
-            }
-
-            // Determinar si un comando debería actualizar el explorador
-            function shouldRefreshExplorer(command) {
-                const refreshCommands = ['mkdir', 'touch', 'rm', 'cp', 'mv', 'git', 'echo', 'npm'];
-                return refreshCommands.some(cmd => command.startsWith(cmd));
-            }
-
-            // Actualizar estado de conexión
-            function updateConnectionStatus(status) {
-                statusIndicator.classList.remove('status-connected', 'status-disconnected', 'status-connecting');
-
-                switch (status) {
-                    case 'connected':
-                        statusIndicator.classList.add('status-connected');
-                        connectionStatus.textContent = 'Conectado';
-                        break;
-
-                    case 'disconnected':
-                        statusIndicator.classList.add('status-disconnected');
-                        connectionStatus.textContent = 'Desconectado';
-                        break;
-
-                    case 'connecting':
-                        statusIndicator.classList.add('status-connecting');
-                        connectionStatus.textContent = 'Conectando...';
-                        break;
-                }
-            }
-
-            // Manejar envío de comandos
-            function handleInput() {
-                const input = terminalInput.value.trim();
-                if (!input) return;
-
-                // Mostrar el comando en el terminal
-                terminal.write('\r\n\x1b[33m$ ' + input + '\x1b[0m\r\n');
-
-                // Si hay un ydoc activo, añadir al historial compartido
-                if (ydoc) {
-                    const yTerminalHistory = ydoc.getText('terminal-history');
-                    yTerminalHistory.insert(yTerminalHistory.length, '\r\n\x1b[33m$ ' + input + '\x1b[0m\r\n');
-                }
-
-                // Verificar si el socket está inicializado
-                if (!socket || !socket.connected) {
-                    terminal.write('\r\n\x1b[31mNo hay conexión con el servidor. Intentando reconectar...\x1b[0m\r\n');
-                    initializeWebSocket();
-                    return;
-                }
-
-                // Determinar si es comando bash o lenguaje natural
-                const isBashCommand = /^[a-z]+(?: -[a-zA-Z]+)* |^cd |^ls |^mkdir |^rm |^touch |^cp |^mv |^echo |^cat |^grep |^find |^git /i.test(input);
-
-                if (isBashCommand) {
-                    // Enviar comando bash
-                    socket.emit('bash_command', {
-                        command: input,
-                        user_id: userId,
-                        directory: currentDirectory
-                    });
-                } else {
-                    // Enviar como lenguaje natural
-                    const modelValue = document.getElementById('model-selector').value;
-                    socket.emit('natural_language', {
-                        text: input,
-                        model: modelValue,
-                        user_id: userId,
-                        directory: currentDirectory
-                    });
-                }
-
-                // Limpiar el input
-                terminalInput.value = '';
-            }
-
-            // Función alternativa para ejecutar comandos vía API REST
-            async function executeCommandViaREST(command) {
-                try {
-                    terminal.write('\r\n\x1b[33mEjecutando vía API REST: ' + command + '\x1b[0m\r\n');
-
-                    const response = await fetch('/execute-command', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({ command })
-                    });
-
-                    const data = await response.json();
-
-                    if (data.success) {
-                        terminal.write('\r\n' + data.stdout + '\r\n');
-                    } else {
-                        terminal.write('\r\n\x1b[31mError: ' + data.stderr + '\x1b[0m\r\n');
-                    }
-
-                    // Actualizar explorador si el comando afecta archivos
-                    if (shouldRefreshExplorer(command)) {
-                        setTimeout(() => loadDirectoryContents(currentDirectory), 500);
-                    }
-
-                } catch (error) {
-                    console.error('Error al ejecutar comando vía REST:', error);
-                    terminal.write('\r\n\x1b[31mError: ' + error.message + '\x1b[0m\r\n');
-                }
-            }
-
-            // Cargar contenidos del directorio
-            function loadDirectoryContents(path) {
-                if (!isConnected) {
-                    showNotification('No hay conexión con el servidor', 'error');
-                    return;
-                }
-
-                explorerContainer.innerHTML = `
-                    <div class="text-center p-3">
-                        <div class="spinner-border spinner-border-sm text-primary" role="status">
-                            <span class="visually-hidden">Cargando...</span>
-                        </div>
-                        <p class="mt-2 text-muted">Cargando archivos...</p>
-                    </div>
-                `;
-
-                socket.emit('list_directory', {
-                    path: path,
-                    user_id: userId
-                });
-            }
-
-            // Actualizar el explorador de archivos
-            function updateExplorer(path, contents) {
-                currentDirectory = path;
-                cwdDisplay.textContent = path === '.' ? './' : path;
-
-                // Ordenar: primero directorios, luego archivos
-                const sortedContents = [...contents].sort((a, b) => {
-                    if (a.is_directory && !b.is_directory) return -1;
-                    if (!a.is_directory && b.is_directory) return 1;
-                    return a.name.localeCompare(b.name);
-                });
-
-                // Limpiar explorador
-                explorerContainer.innerHTML = '';
-
-                // Añadir opción para subir un nivel si no estamos en la raíz
-                if (path !== '.') {
-                    const parentDir = path.split('/').slice(0, -1).join('/') || '.';
-                    const upItem = document.createElement('div');
-                    upItem.className = 'file-item';
-                    upItem.innerHTML = `<i class="bi bi-arrow-up-circle icon"></i> ..`;
-                    upItem.addEventListener('click', () => loadDirectoryContents(parentDir));
-                    explorerContainer.appendChild(upItem);
-                }
-
-                // Mostrar directorios y archivos
-                if (sortedContents.length > 0) {
-                    sortedContents.forEach(item => {
-                        const fileItem = document.createElement('div');
-                        fileItem.className = 'file-item';
-
-                        let icon = 'bi-file-earmark';
-                        if (item.is_directory) {
-                            icon = 'bi-folder-fill directory';
-                        } else {
-                            // Determinar icono basado en extensión
-                            const ext = item.name.split('.').pop().toLowerCase();
-                            if (['js', 'ts'].includes(ext)) icon = 'bi-filetype-js';
-                            else if (['html', 'htm'].includes(ext)) icon = 'bi-filetype-html';
-                            else if (['css'].includes(ext)) icon = 'bi-filetype-css';
-                            else if (['py'].includes(ext)) icon = 'bi-filetype-py';
-                            else if (['json'].includes(ext)) icon = 'bi-filetype-json';
-                            else if (['md'].includes(ext)) icon = 'bi-filetype-md';
-                            else if (['jpg', 'jpeg', 'png', 'gif'].includes(ext)) icon = 'bi-file-earmark-image';
-                        }
-
-                        fileItem.innerHTML = `<i class="bi ${icon} icon"></i> ${item.name}`;
-
-                        if (item.is_directory) {
-                            fileItem.addEventListener('click', () => {
-                                const newPath = path === '.' ? item.name : `${path}/${item.name}`;
-                                loadDirectoryContents(newPath);
-                            });
-                        } else {
-                            // Para archivos, sugerir cómo verlos
-                            fileItem.addEventListener('click', () => {
-                                const filePath = path === '.' ? item.name : `${path}/${item.name}`;
-                                terminal.write(`\r\n\x1b[36m[Info] Seleccionado: ${filePath}\x1b[0m\r\n`);
-                                terminal.write(`\x1b[36mSugerencia: Para ver el contenido puedes usar "cat ${filePath}"\x1b[0m\r\n`);
-
-                                // Si es HTML, actualizar el preview
-                                if (filePath.endsWith('.html')) {
-                                    updatePreviewIframe(`/preview?file=${filePath}`);
-                                    if (previewContainer.style.display !== 'block') {
-                                        togglePreview();
-                                    }
-                                }
-                            });
-                        }
-
-                        explorerContainer.appendChild(fileItem);
-                    });
-                } else {
-                    // Directorio vacío
-                    const emptyDir = document.createElement('div');
-                    emptyDir.className = 'text-center p-3';
-                    emptyDir.innerHTML = `
-                        <i class="bi bi-folder-x" style="font-size: 2rem; opacity: 0.5;"></i>
-                        <p class="mt-2 text-muted">Directorio vacío</p>
-                    `;
-                    explorerContainer.appendChild(emptyDir);
-                }
-            }
-
-            // Actualizar directorio actual basado en comando cd
-            function updateCurrentDirectory(commandResult) {
-                if (commandResult.success) {
-                    // Extraer nueva ruta del comando cd
-                    const cdCommand = commandResult.command;
-                    const targetPath = cdCommand.substring(3).trim();
-
-                    // Manejar rutas relativas y absolutas
-                    if (targetPath.startsWith('/')) {
-                        currentDirectory = targetPath.slice(1); // Eliminar / inicial
-                    } else if (targetPath === '..') {
-                        // Subir un nivel
-                        currentDirectory = currentDirectory.split('/').slice(0, -1).join('/') || '.';
-                    } else if (targetPath === '.') {
-                        // Mantener igual
-                    } else if (targetPath === '~') {
-                        // Ir a home
-                        currentDirectory = '.';
-                    } else {
-                        // Ruta relativa
-                        currentDirectory = currentDirectory === '.' ? 
-                            targetPath : `${currentDirectory}/${targetPath}`;
-                    }
-
-                    // Actualizar interfaz
-                    cwdDisplay.textContent = currentDirectory === '.' ? './' : currentDirectory;
-
-                    // Cargar contenido del nuevo directorio
-                    loadDirectoryContents(currentDirectory);
-                }
-            }
-
-            // Mostrar notificaciones en pantalla
-            function showNotification(message, type = 'info') {
-                const notificationsContainer = document.getElementById('notifications-container');
-                const notification = document.createElement('div');
-                notification.className = `notification notification-${type}`;
-                notification.textContent = message;
-
-                notificationsContainer.appendChild(notification);
-
-                // Eliminar después de 5 segundos
-                setTimeout(() => {
-                    notification.remove();
-                }, 5000);
-            }
-
-            // Actualizar el iframe de preview
-            function updatePreviewIframe(src) {
-                // Evitar problemas de seguridad añadiendo la URL base
-                if (!src.startsWith('http')) {
-                    if (!src.startsWith('/')) src = '/' + src;
-                    src = window.location.origin + src;
-                }
-
-                previewIframe.src = src;
-            }
-
-            // Mostrar/ocultar el preview
-            function togglePreview() {
-                if (previewContainer.style.display === 'block') {
-                    previewContainer.style.display = 'none';
-                } else {
-                    previewContainer.style.display = 'block';
-                    updatePreviewIframe('/preview');
-                }
-            }
-
-            // Hacer el preview arrastrable
-            function makeDraggable(element, handle) {
-                let pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
-
-                handle.onmousedown = dragMouseDown;
-
-                function dragMouseDown(e) {
-                    e.preventDefault();
-                    pos3 = e.clientX;
-                    pos4 = e.clientY;
-                    document.onmouseup = closeDragElement;
-                    document.onmousemove = elementDrag;
-                }
-
-                function elementDrag(e) {
-                    e.preventDefault();
-                    pos1 = pos3 - e.clientX;
-                    pos2 = pos4 - e.clientY;
-                    pos3 = e.clientX;
-                    pos4 = e.clientY;
-
-                    // Limitar dentro de la ventana
-                    const newTop = element.offsetTop - pos2;
-                    const newLeft = element.offsetLeft - pos1;
-
-                    if (newTop >= 0 && newTop + element.offsetHeight <= window.innerHeight) {
-                        element.style.top = newTop + "px";
-                    }
-
-                    if (newLeft >= 0 && newLeft + element.offsetWidth <= window.innerWidth) {
-                        element.style.left = newLeft + "px";
-                    }
-                }
-
-                function closeDragElement() {
-                    document.onmouseup = null;
-                    document.onmousemove = null;
-                }
-            }
-
-            // Compartir la sesión actual
-            function shareSession() {
-                if (!ydoc) {
-                    initYjs();
-                    showNotification('Sesión de colaboración iniciada', 'success');
-                }
-
-                // Generar enlace para compartir
-                const shareUrl = window.location.href + '?session=' + yWebsocket.roomname;
-
-                // Copiar al portapapeles
-                navigator.clipboard.writeText(shareUrl).then(() => {
-                    showNotification('Enlace de colaboración copiado al portapapeles', 'success');
-                }).catch(err => {
-                    console.error('Error al copiar enlace:', err);
-                    showNotification('No se pudo copiar el enlace: ' + shareUrl, 'info');
-                });
-            }
-
-            // Referencia al campo de asistente y botón
-            const assistantInput = document.getElementById('assistant-input');
-            const assistantSendButton = document.getElementById('assistant-send-button');
-            const assistantModelSelector = document.getElementById('assistant-model-selector');
-
-            // Función para procesar instrucción con el asistente y convertirla en comando
-            function processAssistantInput() {
-                const instruction = assistantInput.value.trim();
-                if (!instruction) return;
-
-                // Mostrar que el asistente está procesando
-                terminal.write('\r\n\x1b[36m[Asistente] Procesando: ' + instruction + '\x1b[0m\r\n');
-
-                // Obtener el modelo seleccionado
-                const model = assistantModelSelector.value;
-
-                // Enviar la instrucción para procesamiento
-                if (!socket || !socket.connected) {
-                    terminal.write('\r\n\x1b[31mNo hay conexión con el servidor. Intentando reconectar...\x1b[0m\r\n');
-                    initializeWebSocket();
-                    return;
-                }
-
-                // Emitir evento para procesar instrucción con modelo especificado
-                socket.emit('process_instruction', {
-                    instruction: instruction,
-                    model: model,
-                    user_id: userId,
-                    directory: currentDirectory
-                });
-
-                // Limpiar el campo del asistente
-                assistantInput.value = '';
-            }
-
-            // Inicializar Socket.IO y configurar manejadores de eventos
-            function initializeSocketHandlers() {
-                // Verificar que socket esté inicializado
-                if (!socket || !socket.connected) {
-                    console.error('Socket no inicializado o no conectado');
-                    return;
-                }
-
-                // Manejar todos los eventos de socket en un solo lugar
-
-                // Manejar respuesta del asistente (respuesta del servidor)
-                socket.on('instruction_result', function(data) {
-                    console.log('Resultado del procesamiento:', data);
-
-                    if (data.success) {
-                        // Mostrar el comando generado
-                        terminal.write('\r\n\x1b[32m[Asistente] Comando generado: ' + data.command + '\x1b[0m\r\n');
-
-                        // Colocar el comando en el campo de entrada para que el usuario pueda ejecutarlo manualmente
-                        terminalInput.value = data.command;
-
-                        // Enfocar el campo de entrada para que el usuario pueda editar o ejecutar el comando
-                        terminalInput.focus();
-
-                        // Si hay una explicación, mostrarla
-                        if (data.explanation) {
-                            terminal.write('\r\n\x1b[36m[Asistente] ' + data.explanation + '\x1b[0m\r\n');
-                        }
-
-                        // Notificar al usuario que puede ejecutar el comando
-                        terminal.write('\r\n\x1b[33m[Asistente] El comando está listo en el campo de entrada. Presiona Enter para ejecutarlo.\x1b[0m\r\n');
-
-                        // NUNCA ejecutamos automáticamente, dejamos que el usuario lo haga
-                        // data.auto_execute se ignora intencionalmente
-                    } else {
-                        terminal.write('\r\n\x1b[31m[Asistente] Error: ' + (data.error || 'No se pudo procesar la instrucción') + '\x1b[0m\r\n');
-                    }
-                });
                 socket.on('connect', function() {
                     console.log('Conectado al servidor WebSocket');
                     isConnected = true;
                     updateConnectionStatus('connected');
 
-                    // Inicializar manejadores de eventos
-                    initializeSocketHandlers();
-
                     // Mensaje de bienvenida
-                    terminal.write('\r\n\x1b[32m¡Bienvenido a la Terminal Avanzada de Codestorm!\x1b[0m\r\n');
-                    terminal.write('Puedes ejecutar comandos bash o usar lenguaje natural.\r\n\r\n');
+                    terminal.write('\r\n\x1b[32m¡Bienvenido a la Terminal Avanzada!\x1b[0m\r\n');
+                    terminal.write('Puedes ejecutar comandos bash o usar el asistente para generar comandos.\r\n\r\n');
 
                     // Cargar directorio actual
                     loadDirectoryContents(currentDirectory);
@@ -1393,7 +339,7 @@
                         }
 
                         // Actualizar preview en ciertos comandos
-                        if (data.command.includes('touch') || data.command.includes('echo') || 
+                        if (data.command.includes('touch') || data.command.includes('echo') ||
                             data.command.includes('cat') || data.command.includes('npm')) {
                             updatePreviewIframe('/preview');
                         }
@@ -1403,7 +349,7 @@
                             updateCurrentDirectory(data);
                         }
                     } else {
-                        terminal.write('\r\n\x1b[31mError: ' + data.stderr + '\x1b[0m\r\n');
+                        terminal.write('\r\n\x1b[31mError: ' + data.output + '\x1b[0m\r\n');
                     }
                 });
 
@@ -1430,62 +376,385 @@
                     console.error('Error de WebSocket:', error);
                     terminal.write('\r\n\x1b[31mError: ' + error + '\x1b[0m\r\n');
                 });
-                socket.on('process_instruction', function(data) {
-                    console.log('Resultado del procesamiento:', data);
+
+                // Manejador para respuestas del asistente de lenguaje natural
+                socket.on('assistant_response', function(data) {
+                    console.log('Respuesta del asistente recibida:', data);
 
                     if (data.success) {
-                        // Mostrar el comando generado
-                        terminal.write('\r\n\x1b[32m[Asistente] Comando generado: ' + data.command + '\x1b[0m\r\n');
+                        // Mostrar información en la terminal
+                        terminal.write('\r\n\x1b[36m[Asistente] Sugerencia: ' + data.command + '\x1b[0m\r\n');
 
-                        // Colocar el comando en el campo de entrada para que el usuario pueda ejecutarlo manualmente
-                        terminalInput.value = data.command;
-
-                        // Enfocar el campo de entrada para que el usuario pueda editar o ejecutar el comando
-                        terminalInput.focus();
-
-                        // Si hay una explicación, mostrarla
                         if (data.explanation) {
-                            terminal.write('\r\n\x1b[36m[Asistente] ' + data.explanation + '\x1b[0m\r\n');
+                            terminal.write('\x1b[36m[Asistente] ' + data.explanation + '\x1b[0m\r\n');
                         }
 
-                        // Notificar al usuario que puede ejecutar el comando
-                        terminal.write('\r\n\x1b[33m[Asistente] El comando está listo en el campo de entrada. Presiona Enter para ejecutarlo.\x1b[0m\r\n');
+                        // Colocar el comando en el campo de entrada para que el usuario lo ejecute manualmente
+                        terminalInput.value = data.command;
 
-                        // NUNCA ejecutamos automáticamente, dejamos que el usuario lo haga
-                        // data.auto_execute se ignora intencionalmente
+                        // Enfocar el campo para que el usuario pueda editar o ejecutar
+                        terminalInput.focus();
+
+                        // Notificar al usuario que puede ejecutar el comando
+                        terminal.write('\x1b[33m[Asistente] El comando está listo en el campo de entrada. Presiona Enter para ejecutarlo.\x1b[0m\r\n');
                     } else {
                         terminal.write('\r\n\x1b[31m[Asistente] Error: ' + (data.error || 'No se pudo procesar la instrucción') + '\x1b[0m\r\n');
                     }
                 });
+
+            } catch (e) {
+                console.error('Error al inicializar WebSocket:', e);
+                terminal.write('\r\n\x1b[31mError al inicializar la conexión: ' + e.message + '\x1b[0m\r\n');
+                updateConnectionStatus('disconnected');
+            }
+        }
+
+        function shouldRefreshExplorer(command) {
+            const refreshCommands = ['mkdir', 'touch', 'rm', 'cp', 'mv', 'git', 'echo', 'npm'];
+            return refreshCommands.some(cmd => command.startsWith(cmd));
+        }
+
+        function handleInput() {
+            const input = terminalInput.value.trim();
+            if (!input) return;
+
+            // Mostrar el comando en el terminal
+            terminal.write('\r\n\x1b[33m$ ' + input + '\x1b[0m\r\n');
+
+            // Si hay un ydoc activo, añadir al historial compartido
+            if (ydoc) {
+                const yTerminalHistory = ydoc.getText('terminal-history');
+                yTerminalHistory.insert(yTerminalHistory.length, '\r\n\x1b[33m$ ' + input + '\x1b[0m\r\n');
             }
 
-            // Event listeners para el asistente
-            assistantInput.addEventListener('keydown', function(event) {
-                if (event.key === 'Enter') {
-                    processAssistantInput();
+            // Verificar si el socket está inicializado
+            if (!socket || !socket.connected) {
+                terminal.write('\r\n\x1b[31mNo hay conexión con el servidor. Intentando reconectar...\x1b[0m\r\n');
+                initializeWebSocket();
+                return;
+            }
+
+            // Determinar si es comando bash o lenguaje natural
+            const isBashCommand = /^[a-z]+(?: -[a-zA-Z]+)* |^cd |^ls |^mkdir |^rm |^touch |^cp |^mv |^echo |^cat |^grep |^find |^git /i.test(input);
+
+            if (isBashCommand) {
+                // Enviar comando bash
+                socket.emit('bash_command', {
+                    command: input,
+                    user_id: userId,
+                    directory: currentDirectory
+                });
+            } else {
+                // Enviar como lenguaje natural
+                const modelValue = document.getElementById('model-selector').value;
+                socket.emit('natural_language', {
+                    text: input,
+                    model: modelValue,
+                    user_id: userId,
+                    directory: currentDirectory
+                });
+            }
+
+            // Limpiar el input
+            terminalInput.value = '';
+        }
+
+        // Función para procesar la entrada del asistente
+        function processAssistantInput() {
+            const instruction = assistantInput.value.trim();
+            if (!instruction) return;
+
+            // Mostrar que el asistente está procesando
+            terminal.write('\r\n\x1b[36m[Asistente] Procesando: ' + instruction + '\x1b[0m\r\n');
+
+            // Verificar si el socket está inicializado
+            if (!socket || !socket.connected) {
+                terminal.write('\r\n\x1b[31mNo hay conexión con el servidor. Intentando reconectar...\x1b[0m\r\n');
+                initializeWebSocket();
+                return;
+            }
+
+            // Obtener el modelo seleccionado
+            const model = assistantModelSelector.value;
+
+            // Enviar la instrucción para procesamiento
+            socket.emit('natural_language', {
+                text: instruction,
+                model: model,
+                user_id: userId,
+                directory: currentDirectory
+            });
+
+            // Limpiar el campo del asistente
+            assistantInput.value = '';
+        }
+
+        async function executeCommandViaREST(command) {
+            try {
+                terminal.write('\r\n\x1b[33mEjecutando vía API REST: ' + command + '\x1b[0m\r\n');
+
+                const response = await fetch('/execute-command', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ command })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    terminal.write('\r\n' + data.stdout + '\r\n');
+                } else {
+                    terminal.write('\r\n\x1b[31mError: ' + data.stderr + '\x1b[0m\r\n');
                 }
+
+                // Actualizar explorador si el comando afecta archivos
+                if (shouldRefreshExplorer(command)) {
+                    setTimeout(() => loadDirectoryContents(currentDirectory), 500);
+                }
+
+            } catch (error) {
+                console.error('Error al ejecutar comando vía REST:', error);
+                terminal.write('\r\n\x1b[31mError: ' + error.message + '\x1b[0m\r\n');
+            }
+        }
+
+        function loadDirectoryContents(path) {
+            if (!isConnected) {
+                showNotification('No hay conexión con el servidor', 'error');
+                return;
+            }
+
+            explorerContainer.innerHTML = `
+                <div class="text-center p-3">
+                    <div class="spinner-border spinner-border-sm text-primary" role="status">
+                        <span class="visually-hidden">Cargando...</span>
+                    </div>
+                    <p class="mt-2 text-muted">Cargando archivos...</p>
+                </div>
+            `;
+
+            socket.emit('list_directory', {
+                path: path,
+                user_id: userId
+            });
+        }
+
+        function updateExplorer(path, contents) {
+            currentDirectory = path;
+
+            // Ordenar: primero directorios, luego archivos
+            const sortedContents = [...contents].sort((a, b) => {
+                if (a.is_directory && !b.is_directory) return -1;
+                if (!a.is_directory && b.is_directory) return 1;
+                return a.name.localeCompare(b.name);
             });
 
-            assistantSendButton.addEventListener('click', function() {
-                processAssistantInput();
-            });
+            // Limpiar explorador
+            explorerContainer.innerHTML = '';
 
-            // Event listeners para terminal original
-            terminalInput.addEventListener('keydown', function(event) {
-                if (event.key === 'Enter') {
-                    const methodSelector = document.getElementById('command-method');
-                    const method = methodSelector.value;
+            // Añadir opción para subir un nivel si no estamos en la raíz
+            if (path !== '.') {
+                const parentDir = path.split('/').slice(0, -1).join('/') || '.';
+                const upItem = document.createElement('div');
+                upItem.className = 'file-item';
+                upItem.innerHTML = `<i class="fas fa-arrow-up icon"></i> ..`;
+                upItem.addEventListener('click', () => loadDirectoryContents(parentDir));
+                explorerContainer.appendChild(upItem);
+            }
 
-                    if (method === 'rest') {
-                        executeCommandViaREST(terminalInput.value.trim());
-                        terminalInput.value = '';
+            // Mostrar directorios y archivos
+            if (sortedContents.length > 0) {
+                sortedContents.forEach(item => {
+                    const fileItem = document.createElement('div');
+                    fileItem.className = 'file-item';
+
+                    let icon = 'fa-file';
+                    if (item.is_directory) {
+                        icon = 'fa-folder';
                     } else {
-                        handleInput();
+                        // Determinar icono basado en extensión
+                        const ext = item.name.split('.').pop().toLowerCase();
+                        if (['js', 'ts'].includes(ext)) icon = 'fa-file-code';
+                        else if (['html', 'htm'].includes(ext)) icon = 'fa-file-code';
+                        else if (['css'].includes(ext)) icon = 'fa-file-code';
+                        else if (['py'].includes(ext)) icon = 'fa-file-code';
+                        else if (['json'].includes(ext)) icon = 'fa-file-code';
+                        else if (['md'].includes(ext)) icon = 'fa-file-alt';
+                        else if (['jpg', 'jpeg', 'png', 'gif'].includes(ext)) icon = 'fa-file-image';
                     }
-                }
-            });
 
-            sendButton.addEventListener('click', function() {
+                    fileItem.innerHTML = `<i class="fas ${icon} icon"></i> ${item.name}`;
+
+                    if (item.is_directory) {
+                        fileItem.addEventListener('click', () => {
+                            const newPath = path === '.' ? item.name : `${path}/${item.name}`;
+                            loadDirectoryContents(newPath);
+                        });
+                    } else {
+                        // Para archivos, sugerir cómo verlos
+                        fileItem.addEventListener('click', () => {
+                            const filePath = path === '.' ? item.name : `${path}/${item.name}`;
+                            terminal.write(`\r\n\x1b[36m[Info] Seleccionado: ${filePath}\x1b[0m\r\n`);
+                            terminal.write(`\x1b[36mSugerencia: Para ver el contenido puedes usar "cat ${filePath}"\x1b[0m\r\n`);
+
+                            // Si es HTML, actualizar el preview
+                            if (filePath.endsWith('.html')) {
+                                updatePreviewIframe(`/preview?file=${filePath}`);
+                                if (previewContainer.style.display !== 'block') {
+                                    togglePreview();
+                                }
+                            }
+                        });
+                    }
+
+                    explorerContainer.appendChild(fileItem);
+                });
+            } else {
+                // Directorio vacío
+                const emptyDir = document.createElement('div');
+                emptyDir.className = 'text-center p-3';
+                emptyDir.innerHTML = `
+                    <i class="fas fa-folder-open" style="font-size: 2rem; opacity: 0.5;"></i>
+                    <p class="mt-2 text-muted">Directorio vacío</p>
+                `;
+                explorerContainer.appendChild(emptyDir);
+            }
+        }
+
+        function updateCurrentDirectory(commandResult) {
+            if (commandResult.success) {
+                // Extraer nueva ruta del comando cd
+                const cdCommand = commandResult.command;
+                const targetPath = cdCommand.substring(3).trim();
+
+                // Manejar rutas relativas y absolutas
+                if (targetPath.startsWith('/')) {
+                    currentDirectory = targetPath.slice(1); // Eliminar / inicial
+                } else if (targetPath === '..') {
+                    // Subir un nivel
+                    currentDirectory = currentDirectory.split('/').slice(0, -1).join('/') || '.';
+                } else if (targetPath === '.') {
+                    // Mantener igual
+                } else if (targetPath === '~') {
+                    // Ir a home
+                    currentDirectory = '.';
+                } else {
+                    // Ruta relativa
+                    currentDirectory = currentDirectory === '.' ?
+                        targetPath : `${currentDirectory}/${targetPath}`;
+                }
+
+                // Cargar contenido del nuevo directorio
+                loadDirectoryContents(currentDirectory);
+            }
+        }
+
+        function showNotification(message, type = 'info') {
+            const notificationsContainer = document.getElementById('notifications-container');
+            const notification = document.createElement('div');
+            notification.className = `notification notification-${type}`;
+            notification.textContent = message;
+
+            notificationsContainer.appendChild(notification);
+
+            // Eliminar después de 5 segundos
+            setTimeout(() => {
+                notification.remove();
+            }, 5000);
+        }
+
+        function updatePreviewIframe(src) {
+            // Evitar problemas de seguridad añadiendo la URL base
+            if (!src.startsWith('http')) {
+                if (!src.startsWith('/')) src = '/' + src;
+                src = window.location.origin + src;
+            }
+
+            previewIframe.src = src;
+        }
+
+        function togglePreview() {
+            if (previewContainer.style.display === 'block') {
+                previewContainer.style.display = 'none';
+            } else {
+                previewContainer.style.display = 'block';
+                updatePreviewIframe('/preview');
+            }
+        }
+
+        function makeDraggable(element, handle) {
+            let pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
+
+            handle.onmousedown = dragMouseDown;
+
+            function dragMouseDown(e) {
+                e.preventDefault();
+                pos3 = e.clientX;
+                pos4 = e.clientY;
+                document.onmouseup = closeDragElement;
+                document.onmousemove = elementDrag;
+            }
+
+            function elementDrag(e) {
+                e.preventDefault();
+                pos1 = pos3 - e.clientX;
+                pos2 = pos4 - e.clientY;
+                pos3 = e.clientX;
+                pos4 = e.clientY;
+
+                // Limitar dentro de la ventana
+                const newTop = element.offsetTop - pos2;
+                const newLeft = element.offsetLeft - pos1;
+
+                if (newTop >= 0 && newTop + element.offsetHeight <= window.innerHeight) {
+                    element.style.top = newTop + "px";
+                }
+
+                if (newLeft >= 0 && newLeft + element.offsetWidth <= window.innerWidth) {
+                    element.style.left = newLeft + "px";
+                }
+            }
+
+            function closeDragElement() {
+                document.onmouseup = null;
+                document.onmousemove = null;
+            }
+        }
+
+        function shareSession() {
+            if (!ydoc) {
+                showNotification('Función de colaboración no disponible en esta versión', 'info');
+                return;
+            }
+
+            // Generar enlace para compartir
+            const shareUrl = window.location.href + '?session=' + Math.random().toString(36).substring(2, 10);
+
+            // Copiar al portapapeles
+            navigator.clipboard.writeText(shareUrl).then(() => {
+                showNotification('Enlace de colaboración copiado al portapapeles', 'success');
+            }).catch(err => {
+                console.error('Error al copiar enlace:', err);
+                showNotification('No se pudo copiar el enlace: ' + shareUrl, 'info');
+            });
+        }
+
+        // Event listeners para el asistente
+        assistantInput.addEventListener('keydown', function(event) {
+            if (event.key === 'Enter') {
+                processAssistantInput();
+            }
+        });
+
+        assistantSendButton.addEventListener('click', function() {
+            processAssistantInput();
+        });
+
+        // Event listeners para terminal original
+        terminalInput.addEventListener('keydown', function(event) {
+            if (event.key === 'Enter') {
                 const methodSelector = document.getElementById('command-method');
                 const method = methodSelector.value;
 
@@ -1495,339 +764,118 @@
                 } else {
                     handleInput();
                 }
-            });
-
-            clearTerminalBtn.addEventListener('click', function() {
-                terminal.clear();
-            });
-
-            refreshExplorerBtn.addEventListener('click', function() {
-                loadDirectoryContents(currentDirectory);
-            });
-
-            togglePreviewBtn.addEventListener('click', togglePreview);
-
-            closePreviewBtn.addEventListener('click', function() {
-                previewContainer.style.display = 'none';
-            });
-
-            shareSessionBtn.addEventListener('click', shareSession);
-
-            // Hacer preview arrastrable
-            makeDraggable(previewContainer, document.getElementById('preview-header'));
-
-            // Inicializar
-            initializeWebSocket();
-
-            // Comprobar si hay un parámetro de sesión para unirse
-            const urlParams = new URLSearchParams(window.location.search);
-            const sessionParam = urlParams.get('session');
-            if (sessionParam) {
-                // Unirse a la sesión existente
-                username = prompt('Ingresa tu nombre para la sesión colaborativa:') || 'Usuario';
-                initYjs();
-                showNotification('Te has unido a una sesión colaborativa', 'success');
             }
+        });
 
-            // Gestión de la interfaz móvil
-            const toggleExplorerBtn = document.getElementById('toggle-explorer-btn');
-            const explorerPanel = document.getElementById('explorer-panel');
+        sendButton.addEventListener('click', function() {
+            const methodSelector = document.getElementById('command-method');
+            const method = methodSelector.value;
 
-            if (toggleExplorerBtn) {
-                toggleExplorerBtn.addEventListener('click', function() {
-                    if (explorerPanel.style.display === 'none') {
-                        explorerPanel.style.display = 'flex';
-                    } else {
-                        explorerPanel.style.display = 'none';
-                    }
-                });
+            if (method === 'rest') {
+                executeCommandViaREST(terminalInput.value.trim());
+                terminalInput.value = '';
+            } else {
+                handleInput();
             }
+        });
 
-            // En móviles, ocultar el explorador inicialmente
-            if (window.innerWidth <= 768) {
-                if (explorerPanel) explorerPanel.style.display = 'none';
-            }
+        clearTerminalBtn.addEventListener('click', function() {
+            terminal.clear();
+        });
 
-            // Manejadores de eventos para opciones móviles
-            document.getElementById('mobile-clear-terminal')?.addEventListener('click', function() {
-                terminal.clear();
-                $('#mobileOptionsModal').modal('hide');
-            });
+        refreshExplorerBtn.addEventListener('click', function() {
+            loadDirectoryContents(currentDirectory);
+        });
 
-            document.getElementById('mobile-toggle-preview')?.addEventListener('click', function() {
-                togglePreview();
-                $('#mobileOptionsModal').modal('hide');
-            });
+        togglePreviewBtn.addEventListener('click', togglePreview);
 
-            document.getElementById('mobile-share-session')?.addEventListener('click', function() {
-                shareSession();
-                $('#mobileOptionsModal').modal('hide');
-            });
+        closePreviewBtn.addEventListener('click', function() {
+            previewContainer.style.display = 'none';
+        });
 
-            document.getElementById('mobile-settings')?.addEventListener('click', function() {
-                // Implementación pendiente
-                showNotification('Configuración avanzada no disponible', 'info');
-                $('#mobileOptionsModal').modal('hide');
-            });
+        shareSessionBtn.addEventListener('click', shareSession);
 
-            // Reorganizar elementos en la interfaz para móvil
-            function reorganizeForMobile() {
-                if (window.innerWidth <= 768) {
-                    // Crear contenedor para selectores
-                    if (!document.querySelector('.model-selector-container')) {
-                        const modelSelectorContainer = document.createElement('div');
-                        modelSelectorContainer.className = 'model-selector-container';
+        // Hacer preview arrastrable
+        makeDraggable(previewContainer, document.getElementById('preview-header'));
 
-                        // Mover selectores al contenedor
-                        const modelSelector = document.getElementById('model-selector');
-                        const commandMethod = document.getElementById('command-method');
+        // Inicializar
+        initializeWebSocket();
 
-                        if (modelSelector && commandMethod) {
-                            const inputContainer = document.querySelector('.input-container');
-                            modelSelectorContainer.appendChild(modelSelector);
-                            modelSelectorContainer.appendChild(commandMethod);
+        // Comprobar si hay un parámetro de sesión para unirse
+        const urlParams = new URLSearchParams(window.location.search);
+        const sessionParam = urlParams.get('session');
+        if (sessionParam) {
+            // Unirse a la sesión existente
+            username = prompt('Ingresa tu nombre para la sesión colaborativa:') || 'Usuario';
+            showNotification('Te has unido a una sesión colaborativa', 'success');
+        }
 
-                            inputContainer.insertBefore(modelSelectorContainer, inputContainer.firstChild);
-                        }
-                    }
-                }
-            }
+        // Gestión de la interfaz móvil
+        const toggleExplorerBtn = document.getElementById('toggle-explorer-btn');
+        const explorerPanel = document.getElementById('explorer-panel');
 
-            // Ejecutar reorganización al cargar
-            reorganizeForMobile();
-
-            // Ajustar cuando cambia el tamaño de la ventana
-            window.addEventListener('resize', function() {
-                if (window.innerWidth <= 768) {
-                    document.querySelector('.mobile-control-bar')?.classList.remove('d-none');
-                    reorganizeForMobile();
+        if (toggleExplorerBtn) {
+            toggleExplorerBtn.addEventListener('click', function() {
+                if (explorerPanel.style.display === 'none') {
+                    explorerPanel.style.display = 'flex';
                 } else {
-                    document.querySelector('.mobile-control-bar')?.classList.add('d-none');
-                    if (explorerPanel) explorerPanel.style.display = 'flex';
+                    explorerPanel.style.display = 'none';
                 }
             });
-
-            // Enfocar input al iniciar
-            setTimeout(() => {
-                terminalInput.focus();
-            }, 500);
-
-            // Configurar terminal xterm para capturar entrada del usuario
-            terminal.onData(data => {
-                // Si se presiona Ctrl+C, manejar
-                if (data.charCodeAt(0) === 3) {
-                    terminal.write('^C\r\n$ ');
-                    return;
-                }
-
-                // Para otros datos, simplemente mostrar
-                terminal.write(data);
-            });
-        });
-    </script>
-</body>
-</html>
-
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>XTerm Terminal | CODESTORM</title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm@5.1.0/css/xterm.min.css">
-    <script src="https://cdn.jsdelivr.net/npm/xterm@5.1.0/lib/xterm.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/xterm-addon-fit@0.7.0/lib/xterm-addon-fit.min.js"></script>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 0;
-            padding: 0;
-            height: 100vh;
-            background: linear-gradient(90deg, #091428 0%, #0A2149 100%);
-            color: #fff;
         }
 
-        .terminal-container {
-            display: flex;
-            flex-direction: column;
-            height: 100vh;
-            padding: 10px;
-            box-sizing: border-box;
+        // En móviles, ocultar el explorador inicialmente
+        if (window.innerWidth <= 768) {
+            if (explorerPanel) explorerPanel.style.display = 'none';
         }
 
-        .terminal-header {
-            padding: 5px 10px;
-            background-color: rgba(0, 0, 0, 0.3);
-            border-top-left-radius: 5px;
-            border-top-right-radius: 5px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .terminal-header h1 {
-            font-size: 18px;
-            margin: 0;
-        }
-
-        #terminal {
-            flex-grow: 1;
-            background-color: rgba(0, 0, 0, 0.7);
-            border-bottom-left-radius: 5px;
-            border-bottom-right-radius: 5px;
-            padding: 10px;
-            overflow: hidden;
-        }
-
-        .terminal-buttons {
-            display: flex;
-            gap: 10px;
-        }
-
-        .terminal-button {
-            background-color: #1E3A8A;
-            color: white;
-            border: none;
-            padding: 5px 10px;
-            border-radius: 3px;
-            cursor: pointer;
-            transition: background-color 0.3s;
-        }
-
-        .terminal-button:hover {
-            background-color: #2563EB;
-        }
-    </style>
-</head>
-<body>
-    <div class="terminal-container">
-        <div class="terminal-header">
-            <h1>XTerm Terminal</h1>
-            <div class="terminal-buttons">
-                <button class="terminal-button" id="clearButton">Limpiar</button>
-                <button class="terminal-button" id="homeButton">Inicio</button>
-            </div>
-        </div>
-        <div id="terminal"></div>
-    </div>
-
-    <script>
-        // Inicializar terminal
-        const term = new Terminal({
-            cursorBlink: true,
-            fontFamily: 'monospace',
-            fontSize: 14,
-            theme: {
-                background: '#0a0a0a',
-                foreground: '#f0f0f0',
-                cursor: '#ffffff',
-                selection: 'rgba(255, 255, 255, 0.3)',
-                black: '#000000',
-                red: '#e06c75',
-                green: '#98c379',
-                yellow: '#e5c07b',
-                blue: '#61afef',
-                magenta: '#c678dd',
-                cyan: '#56b6c2',
-                white: '#dcdfe4'
-            }
+        // Manejadores de eventos para opciones móviles
+        document.getElementById('mobile-clear-terminal')?.addEventListener('click', function() {
+            terminal.clear();
         });
 
-        // Cargar addon para ajustar tamaño
-        const fitAddon = new FitAddon.FitAddon();
-        term.loadAddon(fitAddon);
+        document.getElementById('mobile-toggle-preview')?.addEventListener('click', function() {
+            togglePreview();
+        });
 
-        // Abrir terminal en el contenedor
-        term.open(document.getElementById('terminal'));
-        fitAddon.fit();
+        document.getElementById('mobile-share-session')?.addEventListener('click', function() {
+            shareSession();
+        });
 
-        // Ajustar terminal al cambiar tamaño de ventana
-        window.addEventListener('resize', () => {
+        document.getElementById('mobile-settings')?.addEventListener('click', function() {
+            // Implementación pendiente
+            showNotification('Configuración avanzada no disponible', 'info');
+        });
+
+        // Ajustar cuando cambia el tamaño de la ventana
+        window.addEventListener('resize', function() {
             fitAddon.fit();
-        });
 
-        // Buffer para almacenar entrada del usuario
-        let commandBuffer = '';
-        const prompt = '\r\n\x1b[32mcodestorm\x1b[37m@\x1b[34mterminal\x1b[0m:\x1b[36m~\x10m$ ';
-
-        // Mostrar mensaje de bienvenida
-        term.write('¡Bienvenido a XTerm Terminal de CODESTORM!\r\n');
-        term.write('Escribe comandos para interactuar con el sistema.\r\n');
-        term.write(prompt);
-
-        // Manejar eventos de teclado
-        term.onKey(({ key, domEvent }) => {
-            const printable = !domEvent.altKey && !domEvent.ctrlKey && !domEvent.metaKey;
-
-            if (domEvent.keyCode === 13) { // Enter
-                // Procesar comando
-                processCommand(commandBuffer);
-                commandBuffer = '';
-            } else if (domEvent.keyCode === 8) { // Backspace
-                // Eliminar último carácter
-                if (commandBuffer.length > 0) {
-                    commandBuffer = commandBuffer.slice(0, -1);
-                    term.write('\b \b');
-                }
-            } else if (printable) {
-                // Agregar carácter al buffer y mostrar
-                commandBuffer += key;
-                term.write(key);
+            if (window.innerWidth <= 768) {
+                document.querySelector('.mobile-control-bar')?.style.display = 'flex';
+                if (explorerPanel) explorerPanel.style.display = 'none';
+            } else {
+                document.querySelector('.mobile-control-bar')?.style.display = 'none';
+                if (explorerPanel) explorerPanel.style.display = 'flex';
             }
         });
 
-        // Procesar comandos
-        function processCommand(command) {
-            term.write('\r\n');
+        // Enfocar input al iniciar
+        setTimeout(() => {
+            assistantInput.focus();
+        }, 500);
 
-            if (command.trim() === '') {
-                term.write(prompt);
+        // Configurar terminal xterm para capturar entrada del usuario
+        terminal.onData(data => {
+            // Si se presiona Ctrl+C, manejar
+            if (data.charCodeAt(0) === 3) {
+                terminal.write('^C\r\n$ ');
                 return;
             }
 
-            if (command === 'clear') {
-                term.clear();
-                term.write(prompt);
-                return;
-            }
-
-            // Enviar comando al servidor
-            fetch('/api/xterm/execute', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ command: command }),
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    if (data.stdout) {
-                        term.write(data.stdout);
-                    }
-                    if (data.stderr) {
-                        term.write('\x1b[31m' + data.stderr + '\x1b[0m');
-                    }
-                } else {
-                    term.write('\x1b[31mError: ' + data.error + '\x1b[0m\r\n');
-                }
-                term.write(prompt);
-            })
-            .catch(error => {
-                term.write('\x1b[31mError de conexión: ' + error.message + '\x1b[0m\r\n');
-                term.write(prompt);
-            });
-        }
-
-        // Configurar botones
-        document.getElementById('clearButton').addEventListener('click', () => {
-            term.clear();
-            term.write(prompt);
+            // Para otros datos, simplemente mostrar
+            terminal.write(data);
         });
-
-        document.getElementById('homeButton').addEventListener('click', () => {
-            window.location.href = '/';
-        });
-    </script>
-</body>
-</html>
+        </script>
+        </body>
+        </html>
