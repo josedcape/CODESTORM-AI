@@ -1066,14 +1066,62 @@ document.addEventListener('DOMContentLoaded', function() {
         appendToTerminal('> ' + message, 'user-message');
         
         if (socket && socket.connected) {
-            // Enviar mensaje vía WebSocket
-            socket.emit('user_message', {
-                message: message,
-                agent: 'developer',
-                model: 'openai'
-            });
+            try {
+                // Enviar mensaje vía WebSocket con promesa para manejar timeout
+                const socketPromise = new Promise((resolve, reject) => {
+                    // Configurar timeout por si el socket no responde
+                    const socketTimeout = setTimeout(() => {
+                        reject(new Error('Tiempo de espera excedido para la respuesta del WebSocket'));
+                    }, 10000); // 10 segundos de timeout
+                    
+                    // Manejador de respuesta única
+                    const responseHandler = (data) => {
+                        clearTimeout(socketTimeout);
+                        resolve(data);
+                        // Eliminar el listener para evitar fugas de memoria
+                        socket.off('assistant_response', responseHandler);
+                    };
+                    
+                    // Registrar manejador de respuesta
+                    socket.once('assistant_response', responseHandler);
+                    
+                    // Enviar mensaje
+                    socket.emit('user_message', {
+                        message: message,
+                        agent: 'developer',
+                        model: 'openai'
+                    });
+                });
+                
+                // Manejar la promesa del socket
+                socketPromise
+                    .then(data => {
+                        commandInProgress = false;
+                        if (data.error) {
+                            appendToTerminal('Error: ' + data.error, 'error');
+                        } else {
+                            appendToTerminal(data.response, 'assistant');
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error en comunicación WebSocket:', error);
+                        // Si hay error en el socket, usar HTTP como fallback
+                        useFallbackHttp(message);
+                    });
+            } catch (error) {
+                console.error('Error al configurar comunicación WebSocket:', error);
+                useFallbackHttp(message);
+            }
         } else {
-            // Fallback: enviar mediante HTTP si WebSocket no está disponible
+            // Usar HTTP directamente si el socket no está conectado
+            useFallbackHttp(message);
+        }
+        
+        // Función para usar HTTP como fallback
+        function useFallbackHttp(message) {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 20000); // 20 segundos de timeout
+            
             fetch('/api/chat', {
                 method: 'POST',
                 headers: {
@@ -1083,9 +1131,16 @@ document.addEventListener('DOMContentLoaded', function() {
                     message: message,
                     agent_id: 'developer',
                     model: 'openai'
-                })
+                }),
+                signal: controller.signal
             })
-            .then(response => response.json())
+            .then(response => {
+                clearTimeout(timeoutId);
+                if (!response.ok) {
+                    throw new Error(`Error: ${response.status} ${response.statusText}`);
+                }
+                return response.json();
+            })
             .then(data => {
                 commandInProgress = false;
                 
@@ -1096,6 +1151,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             })
             .catch(error => {
+                clearTimeout(timeoutId);
                 commandInProgress = false;
                 appendToTerminal('Error de conexión: ' + error.message, 'error');
             });

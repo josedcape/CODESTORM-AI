@@ -1,0 +1,213 @@
+
+/* Estilos para el asistente flotante */
+.floating-assistant-btn {
+  position: fixed;
+  bottom: 30px;
+  right: 30px;
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #0A2149 0%, #091428 100%);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  z-index: 9999;
+  border: 2px solid var(--gold, #ffd700);
+}
+
+.floating-assistant-btn:hover {
+  transform: scale(1.05) translateY(-3px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
+}
+
+.floating-assistant-btn i {
+  font-size: 24px;
+  color: var(--gold, #ffd700);
+}
+
+.assistant-panel {
+  position: fixed;
+  bottom: 100px;
+  right: 30px;
+  width: 350px;
+  max-width: calc(100vw - 40px);
+  height: 500px;
+  max-height: calc(100vh - 150px);
+  background: linear-gradient(135deg, #091428 0%, #0A2149 100%);
+  border-radius: 12px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  z-index: 9998;
+  border: 1px solid var(--gold, #ffd700);
+  transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275),
+              opacity 0.3s ease;
+  transform-origin: bottom right;
+}
+
+.assistant-panel.hidden {
+  transform: scale(0.8);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.assistant-header {
+  padding: 12px 15px;
+  background: linear-gradient(90deg, #0a1429 0%, #0d2855 100%);
+  border-bottom: 1px solid var(--accent-primary, #61dafb);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.assistant-header h5 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--gold, #ffd700);
+}
+
+.assistant-close {
+  background: none;
+  border: none;
+  color: var(--text-light, #ccd6f6);
+  cursor: pointer;
+  font-size: 20px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.2s;
+}
+
+.assistant-close:hover {
+  color: var(--gold, #ffd700);
+}
+
+.assistant-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 15px;
+  overflow: hidden;
+}
+
+.assistant-result {
+  background-color: rgba(9, 20, 40, 0.7);
+  border: 1px solid rgba(30, 136, 229, 0.2);
+  border-radius: 8px;
+  padding: 10px;
+  margin-bottom: 15px;
+  flex: 1;
+  overflow-y: auto;
+  font-size: 14px;
+}
+
+.assistant-input-container {
+  display: flex;
+  gap: 10px;
+}
+
+.assistant-input {
+  flex: 1;
+  background-color: rgba(9, 20, 40, 0.7);
+  border: 1px solid rgba(30, 136, 229, 0.2);
+  border-radius: 8px;
+  padding: 10px;
+  color: var(--text-primary, #e6f1ff);
+  resize: none;
+  height: 80px;
+  font-size: 14px;
+}
+
+.assistant-input:focus {
+  outline: none;
+  border-color: var(--gold, #ffd700);
+  box-shadow: 0 0 0 2px rgba(255, 215, 0, 0.2);
+}
+
+.assistant-send {
+  align-self: flex-end;
+  background: linear-gradient(135deg, #0A2149 0%, #091428 100%);
+  border: 1px solid var(--gold, #ffd700);
+  border-radius: 8px;
+  color: var(--gold, #ffd700);
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.assistant-send:hover {
+  background: linear-gradient(135deg, #0c2657 0%, #0c2657 100%);
+  transform: translateY(-2px);
+}
+
+.assistant-send:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.command-item {
+  background-color: #1a2133;
+  border: 1px solid #2a3041;
+  border-radius: 4px;
+  padding: 8px 12px;
+  margin-bottom: 8px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.command-text {
+  font-family: monospace;
+  color: #50fa7b;
+  word-break: break-all;
+}
+
+.command-actions {
+  display: flex;
+  gap: 5px;
+}
+
+.command-actions button {
+  background: none;
+  border: none;
+  color: #6272a4;
+  cursor: pointer;
+  padding: 2px;
+  font-size: 14px;
+  transition: color 0.2s;
+}
+
+.command-actions button:hover {
+  color: #bd93f9;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .floating-assistant-btn {
+    bottom: 20px;
+    right: 20px;
+    width: 50px;
+    height: 50px;
+  }
+  
+  .assistant-panel {
+    bottom: 80px;
+    right: 20px;
+    width: calc(100% - 40px);
+    height: 60vh;
+  }
+  
+  .assistant-input {
+    height: 60px;
+  }
+}

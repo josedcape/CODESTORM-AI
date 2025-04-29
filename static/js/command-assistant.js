@@ -225,7 +225,14 @@
                 </div>
             `;
             
-            // Enviar petición al servidor
+            // Configurar timeout para abortar petición si tarda demasiado
+            const controller = new AbortController();
+            const signal = controller.signal;
+            const timeout = setTimeout(() => {
+                controller.abort();
+            }, 30000); // 30 segundos de timeout
+            
+            // Enviar petición al servidor con control de timeout
             fetch('/api/process_instructions', {
                 method: 'POST',
                 headers: {
@@ -234,9 +241,11 @@
                 body: JSON.stringify({
                     instruction: query,
                     model: this.activeModel
-                })
+                }),
+                signal: signal
             })
             .then(response => {
+                clearTimeout(timeout);
                 if (!response.ok) {
                     throw new Error(`Error: ${response.status} ${response.statusText}`);
                 }
@@ -266,12 +275,12 @@
                         </div>
                     `;
                     
-                    // Añadir funcionalidad a los botones
+                    // Añadir funcionalidad a los botones con manejo mejorado de eventos
                     const copyBtn = resultContainer.querySelector('.copy-btn');
                     const executeBtn = resultContainer.querySelector('.execute-btn');
                     
                     if (copyBtn) {
-                        copyBtn.addEventListener('click', () => {
+                        const copyHandler = () => {
                             navigator.clipboard.writeText(data.command)
                                 .then(() => {
                                     this.showNotification('Comando copiado al portapapeles', 'success');
@@ -280,36 +289,72 @@
                                     console.error('Error al copiar:', err);
                                     this.showNotification('Error al copiar comando', 'danger');
                                 });
-                        });
+                        };
+                        
+                        // Usar evento una vez
+                        copyBtn.addEventListener('click', copyHandler, {once: false});
                     }
                     
                     if (executeBtn) {
-                        executeBtn.addEventListener('click', () => {
-                            // Verificar si existe la función global para ejecutar comandos
-                            if (window.terminalInterface && typeof window.terminalInterface.executeCommand === 'function') {
-                                window.terminalInterface.executeCommand(data.command);
-                                this.showNotification('Comando ejecutado', 'success');
-                            } else if (window.executeCommand && typeof window.executeCommand === 'function') {
-                                window.executeCommand(data.command);
-                                this.showNotification('Comando ejecutado', 'success');
-                            } else {
-                                // Como alternativa, enviar el comando al servidor directamente
-                                fetch('/api/execute_command', {
-                                    method: 'POST',
-                                    headers: {
-                                        'Content-Type': 'application/json'
-                                    },
-                                    body: JSON.stringify({
-                                        command: data.command
+                        const executeHandler = () => {
+                            // Crear una promesa para resolver la ejecución del comando
+                            const executePromise = new Promise((resolve, reject) => {
+                                // Verificar si existe la función global para ejecutar comandos
+                                if (window.terminalInterface && typeof window.terminalInterface.executeCommand === 'function') {
+                                    try {
+                                        window.terminalInterface.executeCommand(data.command);
+                                        resolve({success: true});
+                                    } catch (err) {
+                                        reject(err);
+                                    }
+                                } else if (window.executeCommand && typeof window.executeCommand === 'function') {
+                                    try {
+                                        window.executeCommand(data.command);
+                                        resolve({success: true});
+                                    } catch (err) {
+                                        reject(err);
+                                    }
+                                } else {
+                                    // Como alternativa, enviar el comando al servidor directamente
+                                    // Configurar timeout para esta petición también
+                                    const cmdController = new AbortController();
+                                    const cmdSignal = cmdController.signal;
+                                    const cmdTimeout = setTimeout(() => cmdController.abort(), 15000);
+                                    
+                                    fetch('/api/execute_command', {
+                                        method: 'POST',
+                                        headers: {
+                                            'Content-Type': 'application/json'
+                                        },
+                                        body: JSON.stringify({
+                                            command: data.command
+                                        }),
+                                        signal: cmdSignal
                                     })
-                                })
-                                .then(response => response.json())
+                                    .then(response => {
+                                        clearTimeout(cmdTimeout);
+                                        if (!response.ok) {
+                                            throw new Error(`Error: ${response.status} ${response.statusText}`);
+                                        }
+                                        return response.json();
+                                    })
+                                    .then(cmdResult => {
+                                        resolve(cmdResult);
+                                    })
+                                    .catch(err => {
+                                        reject(err);
+                                    });
+                                }
+                            });
+                            
+                            // Manejar resultado de la ejecución
+                            executePromise
                                 .then(cmdResult => {
                                     this.showNotification('Comando ejecutado', 'success');
                                     
                                     // Si hay un terminal-output, mostrar salida
                                     const outputDisplay = document.getElementById('output-display');
-                                    if (outputDisplay) {
+                                    if (outputDisplay && cmdResult.stdout !== undefined) {
                                         outputDisplay.innerHTML = `<div><strong>Ejecutado:</strong> ${data.command}</div>`;
                                         if (cmdResult.stdout) {
                                             outputDisplay.innerHTML += `<pre>${cmdResult.stdout}</pre>`;
@@ -321,8 +366,17 @@
                                 })
                                 .catch(err => {
                                     console.error('Error al ejecutar:', err);
-                                    this.showNotification('Error al ejecutar comando', 'danger');
+                                    this.showNotification('Error al ejecutar comando: ' + (err.message || 'Error desconocido'), 'danger');
                                 });
+                        };
+                        
+                        // Usar evento con gestión de errores
+                        executeBtn.addEventListener('click', () => {
+                            try {
+                                executeHandler();
+                            } catch (err) {
+                                console.error('Error en manejador de ejecución:', err);
+                                this.showNotification('Error interno al ejecutar comando', 'danger');
                             }
                         });
                     }
@@ -336,15 +390,26 @@
                 }
             })
             .catch(error => {
+                clearTimeout(timeout);
                 console.error('Error:', error);
+                
                 // Ocultar spinner
                 if (spinner) spinner.classList.add('d-none');
                 if (sendBtn) sendBtn.disabled = false;
                 
+                // Personalizar mensaje según el tipo de error
+                let errorMessage = 'Error al comunicarse con el servidor';
+                
+                if (error.name === 'AbortError') {
+                    errorMessage = 'La solicitud ha excedido el tiempo de espera. Por favor, intenta de nuevo.';
+                } else if (error.message) {
+                    errorMessage = error.message;
+                }
+                
                 // Mostrar error
                 resultContainer.innerHTML = `
                     <div class="alert alert-danger">
-                        ${error.message || 'Error al comunicarse con el servidor'}
+                        ${errorMessage}
                     </div>
                 `;
                 
