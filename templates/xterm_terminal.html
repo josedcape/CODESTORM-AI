@@ -1328,44 +1328,22 @@
                         // Mostrar el comando generado
                         terminal.write('\r\n\x1b[32m[Asistente] Comando generado: ' + data.command + '\x1b[0m\r\n');
 
-                        // Auto-ejecutar el comando insertándolo en el campo de terminal
+                        // Colocar el comando en el campo de entrada para que el usuario pueda ejecutarlo manualmente
                         terminalInput.value = data.command;
+
+                        // Enfocar el campo de entrada para que el usuario pueda editar o ejecutar el comando
+                        terminalInput.focus();
 
                         // Si hay una explicación, mostrarla
                         if (data.explanation) {
                             terminal.write('\r\n\x1b[36m[Asistente] ' + data.explanation + '\x1b[0m\r\n');
                         }
 
-                        // Disparar un evento de cambio para que el campo se actualice visualmente
-                        const event = new Event('input', { bubbles: true });
-                        terminalInput.dispatchEvent(event);
+                        // Notificar al usuario que puede ejecutar el comando
+                        terminal.write('\r\n\x1b[33m[Asistente] El comando está listo en el campo de entrada. Presiona Enter para ejecutarlo.\x1b[0m\r\n');
 
-                        // Ejecutar el comando automáticamente después de un breve retraso
-                        if (data.auto_execute !== false) { // Ejecutar por defecto a menos que se especifique lo contrario
-                            // Pequeña pausa para visualizar el comando antes de ejecutarlo
-                            setTimeout(() => {
-                                // Usar el método de envío actual (WebSocket o REST)
-                                const methodSelector = document.getElementById('command-method');
-                                const method = methodSelector.value;
-
-                                if (method === 'rest') {
-                                    executeCommandViaREST(data.command);
-                                    terminalInput.value = '';
-                                } else {
-                                    handleInput();
-                                }
-
-                                // Notificar al usuario que el comando fue ejecutado
-                                showNotification('Comando ejecutado automáticamente', 'info');
-                            }, 500);
-                        } else {
-                            // Enfocar el campo para que el usuario pueda modificar el comando si lo desea
-                            terminalInput.focus();
-                            // Colocar el cursor al final del texto
-                            terminalInput.setSelectionRange(data.command.length, data.command.length);
-
-                            showNotification('Comando listo para ejecutar. Presiona Enter para ejecutarlo.', 'info');
-                        }
+                        // NUNCA ejecutamos automáticamente, dejamos que el usuario lo haga
+                        // data.auto_execute se ignora intencionalmente
                     } else {
                         terminal.write('\r\n\x1b[31m[Asistente] Error: ' + (data.error || 'No se pudo procesar la instrucción') + '\x1b[0m\r\n');
                     }
@@ -1459,44 +1437,22 @@
                         // Mostrar el comando generado
                         terminal.write('\r\n\x1b[32m[Asistente] Comando generado: ' + data.command + '\x1b[0m\r\n');
 
-                        // Auto-ejecutar el comando insertándolo en el campo de terminal
+                        // Colocar el comando en el campo de entrada para que el usuario pueda ejecutarlo manualmente
                         terminalInput.value = data.command;
+
+                        // Enfocar el campo de entrada para que el usuario pueda editar o ejecutar el comando
+                        terminalInput.focus();
 
                         // Si hay una explicación, mostrarla
                         if (data.explanation) {
                             terminal.write('\r\n\x1b[36m[Asistente] ' + data.explanation + '\x1b[0m\r\n');
                         }
 
-                        // Disparar un evento de cambio para que el campo se actualice visualmente
-                        const event = new Event('input', { bubbles: true });
-                        terminalInput.dispatchEvent(event);
+                        // Notificar al usuario que puede ejecutar el comando
+                        terminal.write('\r\n\x1b[33m[Asistente] El comando está listo en el campo de entrada. Presiona Enter para ejecutarlo.\x1b[0m\r\n');
 
-                        // Ejecutar el comando automáticamente después de un breve retraso
-                        if (data.auto_execute !== false) { // Ejecutar por defecto a menos que se especifique lo contrario
-                            // Pequeña pausa para visualizar el comando antes de ejecutarlo
-                            setTimeout(() => {
-                                // Usar el método de envío actual (WebSocket o REST)
-                                const methodSelector = document.getElementById('command-method');
-                                const method = methodSelector.value;
-
-                                if (method === 'rest') {
-                                    executeCommandViaREST(data.command);
-                                    terminalInput.value = '';
-                                } else {
-                                    handleInput();
-                                }
-
-                                // Notificar al usuario que el comando fue ejecutado
-                                showNotification('Comando ejecutado automáticamente', 'info');
-                            }, 500);
-                        } else {
-                            // Enfocar el campo para que el usuario pueda modificar el comando si lo desea
-                            terminalInput.focus();
-                            // Colocar el cursor al final del texto
-                            terminalInput.setSelectionRange(data.command.length, data.command.length);
-
-                            showNotification('Comando listo para ejecutar. Presiona Enter para ejecutarlo.', 'info');
-                        }
+                        // NUNCA ejecutamos automáticamente, dejamos que el usuario lo haga
+                        // data.auto_execute se ignora intencionalmente
                     } else {
                         terminal.write('\r\n\x1b[31m[Asistente] Error: ' + (data.error || 'No se pudo procesar la instrucción') + '\x1b[0m\r\n');
                     }
@@ -1792,7 +1748,7 @@
 
         // Buffer para almacenar entrada del usuario
         let commandBuffer = '';
-        const prompt = '\r\n\x1b[32mcodestorm\x1b[37m@\x1b[34mterminal\x1b[0m:\x1b[36m~\x1b[0m$ ';
+        const prompt = '\r\n\x1b[32mcodestorm\x1b[37m@\x1b[34mterminal\x1b[0m:\x1b[36m~\x10m$ ';
 
         // Mostrar mensaje de bienvenida
         term.write('¡Bienvenido a XTerm Terminal de CODESTORM!\r\n');
