@@ -21,6 +21,7 @@
     <script src="https://unpkg.com/yjs@13.5.0/dist/yjs.js"></script>
     <script src="https://unpkg.com/y-websocket@1.4.0/dist/y-websocket.js"></script>
 
+
     <style>
         :root {
             --darker-blue: #091428;
@@ -697,6 +698,14 @@
                             const terminalInput = document.getElementById('terminal-input');
                             const copyButton = document.getElementById('copy-command');
 
+
+                            // Añadir al inicio del script, después de las declaraciones de variables
+                            document.addEventListener('file_system_changed', function(event) {
+                                console.log('Evento de cambio en sistema de archivos detectado:', event.detail);
+                                loadDirectoryContents(currentDirectory);
+                            });
+
+
                             if (!naturalInput.value) return;
 
                             try {
@@ -1016,11 +1025,25 @@
                 }
             }
 
-            // Determinar si un comando debería actualizar el explorador
             function shouldRefreshExplorer(command) {
+                // Lista de comandos que modifican archivos
                 const refreshCommands = ['mkdir', 'touch', 'rm', 'cp', 'mv', 'git', 'echo', 'npm'];
-                return refreshCommands.some(cmd => command.startsWith(cmd));
+
+                // Comprobar si el comando comienza con alguno de los comandos de la lista
+                const shouldRefresh = refreshCommands.some(cmd => command.startsWith(cmd));
+
+                if (shouldRefresh) {
+                    console.log(`Comando '${command}' requiere actualización del explorador`);
+
+                    // Programar múltiples intentos de actualización para asegurar que funcione
+                    setTimeout(forceFileExplorerUpdate, 100);
+                    setTimeout(forceFileExplorerUpdate, 500);
+                    setTimeout(forceFileExplorerUpdate, 1000);
+                }
+
+                return shouldRefresh;
             }
+
 
             // Actualizar estado de conexión
             function updateConnectionStatus(status) {
@@ -2061,6 +2084,34 @@
                     term.write('\r\n$ ');
                 });
             }
+
+            // En socket.on('command_result', function(data) {...})
+            socket.on('command_result', function(data) {
+                if (data.terminal_id === terminalId) {
+                    // Mostrar el resultado en la terminal
+                    term.write('\r\n' + data.output);
+
+                    // Si el comando fue exitoso y es un comando que modifica archivos, actualizar el explorador
+                    if (data.success && isFileModifyingCommand(data.command)) {
+                        // Aquí está el problema - esta función no está funcionando correctamente
+                        loadDirectoryContents(currentDirectory);
+
+                        // Emitir evento explícito para forzar actualización
+                        socket.emit('request_file_list', {
+                            user_id: userId,
+                            directory: currentDirectory
+                        });
+
+                        // También forzar actualización del DOM
+                        if (refreshExplorerBtn) {
+                            refreshExplorerBtn.click();
+                        }
+                    }
+
+                    term.write('\r\n$ ');
+                }
+            });
+
 
             // Configurar botones
             document.getElementById('clearButton').addEventListener('click', () => {

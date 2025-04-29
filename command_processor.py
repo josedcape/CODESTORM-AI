@@ -84,7 +84,7 @@ def nl_to_bash(natural_command):
         openai.api_key = os.environ.get('OPENAI_API_KEY')
         try:
             response = openai.chat.completions.create(
-                model="gpt-3.5-turbo",
+                model="gpt-4o",
                 messages=[
                     {"role": "system", "content": "Convert the following natural language request to a bash command. Output ONLY the bash command, nothing else."},
                     {"role": "user", "content": natural_command}
