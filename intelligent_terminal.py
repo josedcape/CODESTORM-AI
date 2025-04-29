@@ -322,7 +322,12 @@ Debes responder en formato JSON con los siguientes campos:
         if 'command' not in result:
             return {
                 'success': False,
-                'error': "La respuesta del modelo no contiene un comando válido."
+                'error': "La respuesta del modelo no contiene un comando válido"
+            }
+            
+        # Asegurar que auto_execute tenga un valor booleano por defecto si no existe
+        if 'auto_execute' not in result:
+            result['auto_execute'] = True  # Por defecto, ejecutar automáticamente válido."
             }
 
         # Sanitizar y validar el comando resultante
