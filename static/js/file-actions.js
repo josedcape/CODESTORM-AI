@@ -186,6 +186,9 @@
                 return;
             }
             
+            // Mostrar indicador de progreso
+            this.showNotification('Eliminando elemento...', 'info', false);
+            
             // Eliminar en el servidor
             fetch('/api/file/delete', {
                 method: 'POST',
@@ -213,6 +216,11 @@
                 
                 // Recargar el explorador de archivos
                 this.refreshFileExplorer();
+                
+                // Emitir evento para notificar a otros componentes
+                document.dispatchEvent(new CustomEvent('file_deleted', {
+                    detail: { path: filePath }
+                }));
             })
             .catch(error => {
                 console.error('Error al eliminar:', error);
@@ -223,6 +231,9 @@
         // Editar un archivo
         editFile: function(filePath, content) {
             if (!filePath) return;
+            
+            // Mostrar indicador de progreso
+            this.showNotification('Guardando cambios...', 'info', false);
             
             // Editar en el servidor
             fetch('/api/file/edit', {
@@ -251,10 +262,101 @@
                 
                 // Invalidar caché para esta ruta
                 fileCache.clear();
+                
+                // Emitir evento para notificar a otros componentes
+                document.dispatchEvent(new CustomEvent('file_edited', {
+                    detail: { path: filePath }
+                }));
             })
             .catch(error => {
                 console.error('Error al editar archivo:', error);
                 this.showNotification('Error al editar archivo: ' + error.message, 'danger');
+            });
+        },
+        
+        // Instalar un paquete o dependencia
+        installPackage: function(packageName, packageManager = 'pip') {
+            if (!packageName) return;
+            
+            // Mostrar indicador de progreso
+            this.showNotification(`Instalando paquete ${packageName}...`, 'info', false);
+            
+            // Enviar solicitud al servidor
+            fetch('/api/package/install', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    package: packageName,
+                    manager: packageManager
+                })
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`Error del servidor: ${response.status} ${response.statusText}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (!data.success) {
+                    this.showNotification(data.error || `Error al instalar ${packageName}`, 'danger');
+                    console.error('Error de instalación:', data.stderr);
+                    return;
+                }
+                
+                this.showNotification(`Paquete ${packageName} instalado correctamente`, 'success');
+                
+                // Mostrar un modal con la salida detallada si está disponible
+                if (data.stdout || data.stderr) {
+                    // Crear un modal para mostrar la salida
+                    const modalId = 'package-install-modal';
+                    let modal = document.getElementById(modalId);
+                    
+                    if (!modal) {
+                        modal = document.createElement('div');
+                        modal.id = modalId;
+                        modal.className = 'modal fade';
+                        modal.innerHTML = `
+                            <div class="modal-dialog modal-lg">
+                                <div class="modal-content bg-dark text-light">
+                                    <div class="modal-header">
+                                        <h5 class="modal-title">Instalación de paquete: ${packageName}</h5>
+                                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                                    </div>
+                                    <div class="modal-body">
+                                        <div class="output-container">
+                                            ${data.stdout ? `<h6>Salida:</h6><pre class="text-light">${data.stdout}</pre>` : ''}
+                                            ${data.stderr ? `<h6>Errores/Advertencias:</h6><pre class="text-warning">${data.stderr}</pre>` : ''}
+                                        </div>
+                                    </div>
+                                    <div class="modal-footer">
+                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                        document.body.appendChild(modal);
+                    } else {
+                        // Actualizar contenido del modal existente
+                        modal.querySelector('.modal-title').textContent = `Instalación de paquete: ${packageName}`;
+                        modal.querySelector('.output-container').innerHTML = `
+                            ${data.stdout ? `<h6>Salida:</h6><pre class="text-light">${data.stdout}</pre>` : ''}
+                            ${data.stderr ? `<h6>Errores/Advertencias:</h6><pre class="text-warning">${data.stderr}</pre>` : ''}
+                        `;
+                    }
+                    
+                    // Mostrar el modal
+                    if (typeof bootstrap !== 'undefined') {
+                        new bootstrap.Modal(modal).show();
+                    } else {
+                        modal.style.display = 'block';
+                    }
+                }
+            })
+            .catch(error => {
+                console.error('Error al instalar paquete:', error);
+                this.showNotification('Error al instalar paquete: ' + error.message, 'danger');
             });
         },
         

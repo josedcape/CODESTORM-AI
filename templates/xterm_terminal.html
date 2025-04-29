@@ -115,6 +115,103 @@
             width: 10px;
             height: 10px;
             border-radius: 50%;
+
+<!-- Panel de instalación de dependencias -->
+<div class="package-install-panel mt-3 mb-3 p-3 border border-secondary rounded">
+    <h5 class="mb-3">Instalar Dependencias</h5>
+    <div class="row g-2">
+        <div class="col-md-8">
+            <input type="text" id="package-name" class="form-control bg-dark text-light" placeholder="Nombre del paquete">
+        </div>
+        <div class="col-md-4">
+            <select id="package-manager" class="form-select bg-dark text-light">
+                <option value="pip">pip (Python)</option>
+                <option value="npm">npm (Node.js)</option>
+                <option value="yarn">yarn</option>
+                <option value="poetry">poetry</option>
+                <option value="apt">apt (sistema)</option>
+            </select>
+        </div>
+    </div>
+    <div class="mt-2">
+        <button id="install-package-btn" class="btn btn-primary">Instalar</button>
+        <button id="update-packages-btn" class="btn btn-secondary">Actualizar Todo</button>
+    </div>
+</div>
+
+<script>
+    // Configurar el panel de instalación de dependencias
+    document.addEventListener('DOMContentLoaded', function() {
+        const packageNameInput = document.getElementById('package-name');
+        const packageManagerSelect = document.getElementById('package-manager');
+        const installPackageBtn = document.getElementById('install-package-btn');
+        const updatePackagesBtn = document.getElementById('update-packages-btn');
+        
+        // Instalar paquete
+        installPackageBtn.addEventListener('click', function() {
+            const packageName = packageNameInput.value.trim();
+            const packageManager = packageManagerSelect.value;
+            
+            if (!packageName) {
+                showNotification('Por favor ingrese el nombre del paquete', 'warning');
+                return;
+            }
+            
+            // Llamar a la función de instalación de paquetes
+            if (window.terminalInterface && typeof window.terminalInterface.executeCommand === 'function') {
+                const command = `${packageManager} install ${packageName}`;
+                window.terminalInterface.executeCommand(command);
+                packageNameInput.value = '';  // Limpiar el campo
+            } else if (window.fileActions && typeof window.fileActions.installPackage === 'function') {
+                window.fileActions.installPackage(packageName, packageManager);
+                packageNameInput.value = '';  // Limpiar el campo
+            } else {
+                showNotification('Error: No se pudo encontrar la interfaz para instalar paquetes', 'danger');
+            }
+        });
+        
+        // Actualizar todos los paquetes
+        updatePackagesBtn.addEventListener('click', function() {
+            const packageManager = packageManagerSelect.value;
+            let command = '';
+            
+            switch (packageManager) {
+                case 'pip':
+                    command = 'pip install --upgrade -r requirements.txt';
+                    break;
+                case 'npm':
+                    command = 'npm update';
+                    break;
+                case 'yarn':
+                    command = 'yarn upgrade';
+                    break;
+                case 'poetry':
+                    command = 'poetry update';
+                    break;
+                case 'apt':
+                    command = 'apt-get update && apt-get upgrade -y';
+                    break;
+                default:
+                    command = 'echo "Gestor de paquetes no soportado"';
+            }
+            
+            // Ejecutar comando de actualización
+            if (window.terminalInterface && typeof window.terminalInterface.executeCommand === 'function') {
+                window.terminalInterface.executeCommand(command);
+            } else {
+                showNotification('Error: No se pudo encontrar la interfaz para ejecutar comandos', 'danger');
+            }
+        });
+        
+        // Permitir instalación al presionar Enter en el campo de texto
+        packageNameInput.addEventListener('keydown', function(event) {
+            if (event.key === 'Enter') {
+                installPackageBtn.click();
+            }
+        });
+    });
+</script>
+
             margin-left: 10px;
         }
 

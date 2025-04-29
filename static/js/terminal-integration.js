@@ -446,9 +446,89 @@ document.addEventListener('DOMContentLoaded', function() {
         return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
     }
 
+    // Instalar dependencia/paquete
+    function installPackage(packageName, packageManager = 'pip') {
+        if (!packageName) return;
+
+        // Mostrar indicador de carga
+        if (outputDisplay) {
+            outputDisplay.innerHTML = `<div class="spinner-border spinner-border-sm text-light" role="status">
+                <span class="visually-hidden">Cargando...</span>
+            </div> Instalando paquete ${packageName}...`;
+        }
+
+        // Enviar solicitud para instalar el paquete
+        fetch('/api/package/install', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                package: packageName,
+                manager: packageManager
+            })
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`Error al instalar paquete: ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.success) {
+                // Mostrar resultado en la interfaz
+                if (outputDisplay) {
+                    outputDisplay.innerHTML = `
+                        <div class="mb-2"><span class="text-success">✓</span> Paquete ${packageName} instalado correctamente</div>
+                        <pre class="mb-2 text-light">${data.stdout}</pre>
+                        ${data.stderr ? `<pre class="mb-2 text-warning">${data.stderr}</pre>` : ''}
+                    `;
+                }
+                showNotification(`Paquete ${packageName} instalado correctamente`, 'success');
+            } else {
+                // Mostrar error en la interfaz
+                if (outputDisplay) {
+                    outputDisplay.innerHTML = `
+                        <div class="mb-2"><span class="text-danger">✗</span> Error al instalar paquete ${packageName}</div>
+                        <pre class="mb-2 text-danger">${data.stderr || data.error}</pre>
+                        ${data.stdout ? `<pre class="mb-2 text-light">${data.stdout}</pre>` : ''}
+                    `;
+                }
+                showNotification(`Error al instalar paquete: ${data.error || 'Error desconocido'}`, 'danger');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            if (outputDisplay) {
+                outputDisplay.innerHTML = `<div class="text-danger">Error: ${error.message}</div>`;
+            }
+            showNotification(error.message, 'danger');
+        });
+    }
+
     // Ejecutar comando
     function executeCommand(command, showInDisplay = true) {
         if (!command) return;
+
+        // Verificar si es un comando de instalación de paquete
+        const pipInstallRegex = /^pip\s+install\s+(.+)$/i;
+        const npmInstallRegex = /^npm\s+(?:install|i)\s+(.+)$/i;
+        const yarnAddRegex = /^yarn\s+add\s+(.+)$/i;
+        
+        const pipMatch = command.match(pipInstallRegex);
+        const npmMatch = command.match(npmInstallRegex);
+        const yarnMatch = command.match(yarnAddRegex);
+        
+        if (pipMatch) {
+            installPackage(pipMatch[1], 'pip');
+            return;
+        } else if (npmMatch) {
+            installPackage(npmMatch[1], 'npm');
+            return;
+        } else if (yarnMatch) {
+            installPackage(yarnMatch[1], 'yarn');
+            return;
+        }
 
         // Mostrar comando en la interfaz
         if (showInDisplay && commandDisplay) {
@@ -790,7 +870,25 @@ document.addEventListener('DOMContentLoaded', function() {
         executeCommand,
         processNaturalLanguage,
         loadFiles,
-        getCurrentDirectory: () => currentDirectory
+        getCurrentDirectory: () => currentDirectory,
+        installPackage: (packageName, packageManager = 'pip') => {
+            installPackage(packageName, packageManager);
+        },
+        deleteFile: (filePath) => {
+            if (window.fileActions && typeof window.fileActions.deleteFileOrFolder === 'function') {
+                window.fileActions.deleteFileOrFolder(filePath);
+            } else {
+                const command = `rm -rf ${filePath}`;
+                executeCommand(command);
+            }
+        },
+        editFile: (filePath, content) => {
+            if (window.fileActions && typeof window.fileActions.editFile === 'function') {
+                window.fileActions.editFile(filePath, content);
+            } else {
+                showNotification('Funcionalidad de edición no disponible', 'warning');
+            }
+        }
     };
 
     // Inicializar

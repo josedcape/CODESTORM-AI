@@ -1897,6 +1897,76 @@ def create_file():
             'error': str(e)
         }), 500
 
+@app.route('/api/package/install', methods=['POST'])
+def install_package():
+    """Instalar un paquete o dependencia."""
+    try:
+        data = request.json
+        if not data or 'package' not in data:
+            return jsonify({
+                'success': False,
+                'error': 'Se requiere nombre del paquete'
+            }), 400
+            
+        package_name = data['package']
+        package_manager = data.get('manager', 'pip')  # Por defecto pip, pero puede ser npm, yarn, etc.
+        
+        # Obtener workspace del usuario
+        user_id = session.get('user_id', 'default')
+        workspace_path = get_user_workspace(user_id)
+        
+        # Construir el comando según el gestor de paquetes
+        if package_manager == 'pip':
+            command = f"pip install {package_name}"
+        elif package_manager == 'npm':
+            command = f"npm install {package_name}"
+        elif package_manager == 'yarn':
+            command = f"yarn add {package_name}"
+        elif package_manager == 'poetry':
+            command = f"poetry add {package_name}"
+        elif package_manager == 'apt':
+            command = f"apt-get install -y {package_name}"
+        else:
+            return jsonify({
+                'success': False,
+                'error': f'Gestor de paquetes no soportado: {package_manager}'
+            }), 400
+            
+        # Ejecutar el comando
+        process = subprocess.Popen(
+            command,
+            shell=True,
+            cwd=str(workspace_path),
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True
+        )
+        stdout, stderr = process.communicate()
+        
+        # Verificar si la instalación fue exitosa
+        if process.returncode == 0:
+            return jsonify({
+                'success': True,
+                'message': f'Paquete {package_name} instalado correctamente',
+                'stdout': stdout,
+                'stderr': stderr
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'error': f'Error al instalar paquete: {stderr}',
+                'stdout': stdout,
+                'stderr': stderr
+            })
+            
+    except Exception as e:
+        logging.error(f"Error al instalar paquete: {str(e)}")
+        logging.error(traceback.format_exc())
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
 @app.route('/api/process', methods=['POST'])
 def process_command():
     """Process commands from the terminal interface."""
