@@ -1221,15 +1221,14 @@ if __name__ == '__main__':
         # Configurar el servidor para usar web sockets
         logging.info("Servidor listo para recibir conexiones en puerto 5000")
 
-        # Start the SocketIO server with engineio ping configurations 
-        # and allow cross-origin requests for better compatibility
+        # Start the SocketIO server with engineio ping configurations
+        # CORS is already configured when creating the SocketIO instance
         socketio.run(
             app, 
             host='0.0.0.0', 
             port=5000, 
             debug=True,
-            allow_unsafe_werkzeug=True,  # Required for newer Werkzeug versions
-            cors_allowed_origins="*"     # Allow connections from any origin
+            allow_unsafe_werkzeug=True  # Required for newer Werkzeug versions
         )
     except Exception as e:
         logging.critical(f"Error fatal al iniciar el servidor: {str(e)}")
