@@ -52,8 +52,20 @@ socket.on('command_executed', function(data) {
 
 // Función para actualizar el explorador
 function refreshFileExplorer() {
+    console.log('Actualizando explorador de archivos...');
     const explorerContainer = document.getElementById('explorer-container');
-    if (!explorerContainer) return;
+    if (!explorerContainer) {
+        console.warn('No se encontró el contenedor del explorador');
+        return;
+    }
+
+    // Mostrar indicador de carga
+    explorerContainer.innerHTML = `
+        <div class="loading-indicator">
+            <div class="spinner"></div>
+            <span>Actualizando...</span>
+        </div>
+    `;
 
     // Mostrar indicador de carga
     explorerContainer.innerHTML = `

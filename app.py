@@ -1221,6 +1221,25 @@ def execute_command():
     try:
         data = request.json
         command = data.get('command', '')
+        
+        if not command:
+            return jsonify({'error': 'No command provided'}), 400
+
+        # Get the user workspace
+        user_id = session.get('user_id', 'default')
+        workspace_path = get_user_workspace(user_id)
+        
+        # Execute command
+        result = execute_command_internal(command)
+        
+        # Force explorer refresh for file-modifying commands
+        should_refresh = any(cmd in command.split()[0] for cmd in ['mkdir', 'touch', 'rm', 'mv', 'cp', 'echo'])
+        
+        response = {
+            'success': result.get('success', False),
+            'output': result.get('output', ''),
+            'refresh_explorer': should_refresh
+        }
         model_used = data.get('model', 'openai')
         instruction = data.get('instruction', '')
 

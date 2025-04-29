@@ -1,24 +1,27 @@
-
 // Terminal integration code
 document.addEventListener('DOMContentLoaded', function() {
     // Referencia al elemento de entrada de la terminal
     const terminalInput = document.getElementById('terminal-input');
-    
+
     // Historial de comandos
     let commandHistory = [];
     let historyIndex = -1;
-    
+
     // Función para ejecutar un comando
     function executeCommand(command) {
         if (!command.trim()) return;
-        
+
         // Añadir al historial
         commandHistory.push(command);
         historyIndex = commandHistory.length;
-        
+
         // Mostrar comando en la terminal
         appendToTerminal(`$ ${command}`, 'command');
-        
+
+        // Verificar si es un comando que modifica archivos
+        const fileModifyingCommands = ['mkdir', 'touch', 'rm', 'mv', 'cp', 'echo'];
+        const shouldRefresh = fileModifyingCommands.some(cmd => command.startsWith(cmd));
+
         // Ejecutar comando y notificar al explorador
         if (window.executeTerminalCommand) {
             window.executeTerminalCommand(command);
@@ -39,7 +42,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 // Mostrar salida en la terminal
                 if (data.success) {
                     appendToTerminal(data.output || 'Comando ejecutado', 'output');
-                    
+
                     // Forzar actualización del explorador
                     if (data.refresh_explorer && window.refreshFileExplorer) {
                         setTimeout(window.refreshFileExplorer, 300);
@@ -52,11 +55,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 appendToTerminal(`Error: ${error.message}`, 'error');
             });
         }
-        
+
         // Limpiar entrada
         terminalInput.value = '';
     }
-    
+
     // Función para añadir texto a la terminal
     function appendToTerminal(text, className) {
         const terminalOutput = document.getElementById('terminal-output');
@@ -66,7 +69,7 @@ document.addEventListener('DOMContentLoaded', function() {
         terminalOutput.appendChild(line);
         terminalOutput.scrollTop = terminalOutput.scrollHeight;
     }
-    
+
     // Manejar envío de comandos
     if (terminalInput) {
         terminalInput.addEventListener('keydown', function(event) {
@@ -94,20 +97,20 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     }
-    
+
     // Escuchar eventos WebSocket para actualizar la terminal
     document.addEventListener('socket_ready', function() {
         if (window.socketClient) {
             window.socketClient.on('command_result', function(data) {
                 appendToTerminal(data.output || 'Comando ejecutado', data.success ? 'output' : 'error');
             });
-            
+
             window.socketClient.on('error', function(data) {
                 appendToTerminal(`Error: ${data.message}`, 'error');
             });
         }
     });
-    
+
     // Exponer funciones globalmente
     window.terminalExecuteCommand = executeCommand;
     window.terminalAppendOutput = appendToTerminal;
