@@ -507,10 +507,10 @@
                         <a class="nav-link" href="/chat"><i class="bi bi-chat-dots"></i> Asistente IA</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="/files"><i class="bi bi-folder2-open"></i> Explorador</a>
+                        <a class="nav-link active" href="/files"><i class="bi bi-folder2-open"></i> Explorador</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link active" href="/xterm_terminal"><i class="bi bi-terminal"></i> Terminal Avanzada</a>
+                        <a class="nav-link" href="/xterm_terminal"><i class="bi bi-terminal"></i> Terminal Avanzada</a>
                     </li>
                 </ul>
                 <div class="ms-auto d-flex align-items-center">
@@ -849,6 +849,7 @@
                     socket.on('connect', function() {
                         console.log('Conectado al servidor WebSocket');
                         isConnected = true;
+                        loadDirectoryContents(currentDirectory); // Load directory on connect
                         updateConnectionStatus('connected');
 
                         // Inicializar manejadores de eventos
@@ -859,7 +860,7 @@
                         terminal.write('Puedes ejecutar comandos bash o usar lenguaje natural.\r\n\r\n');
 
                         // Cargar directorio actual
-                        loadDirectoryContents(currentDirectory);
+                        //loadDirectoryContents(currentDirectory);
 
                         // Configurar preview inicial
                         updatePreviewIframe('/');
@@ -1325,13 +1326,8 @@
                     console.log('Resultado del procesamiento:', data);
 
                     if (data.success) {
-                        // Mostrar el comando generado
-                        terminal.write('\r\n\x1b[32m[Asistente] Comando generado: ' + data.command + '\x1b[0m\r\n');
-
-                        // Colocar el comando en el campo de entrada para que el usuario pueda ejecutarlo manualmente
+                        // Solo colocar el comando en el campo de entrada
                         terminalInput.value = data.command;
-
-                        // Enfocar el campo de entrada para que el usuario pueda editar o ejecutar el comando
                         terminalInput.focus();
 
                         // Si hay una explicación, mostrarla
@@ -1434,13 +1430,8 @@
                     console.log('Resultado del procesamiento:', data);
 
                     if (data.success) {
-                        // Mostrar el comando generado
-                        terminal.write('\r\n\x1b[32m[Asistente] Comando generado: ' + data.command + '\x1b[0m\r\n');
-
-                        // Colocar el comando en el campo de entrada para que el usuario pueda ejecutarlo manualmente
+                        // Solo colocar el comando en el campo de entrada
                         terminalInput.value = data.command;
-
-                        // Enfocar el campo de entrada para que el usuario pueda editar o ejecutar el comando
                         terminalInput.focus();
 
                         // Si hay una explicación, mostrarla
@@ -1760,8 +1751,7 @@
             const printable = !domEvent.altKey && !domEvent.ctrlKey && !domEvent.metaKey;
 
             if (domEvent.keyCode === 13) { // Enter
-                // Procesar comando
-                processCommand(commandBuffer);
+                // Procesar comando                processCommand(commandBuffer);
                 commandBuffer = '';
             } else if (domEvent.keyCode === 8) { // Backspace
                 // Eliminar último carácter

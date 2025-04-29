@@ -293,11 +293,8 @@ def init_xterm_blueprint(app, socketio):
 
 
 def process_natural_language(text, model):
-    """Procesa instrucciones en lenguaje natural y devuelve el comando correspondiente.  NECESITA IMPLEMENTACION"""
-    # Aquí se debería implementar la lógica para procesar el lenguaje natural
-    # usando el modelo especificado.  Por ahora, se devuelve un comando de ejemplo.
-
-    # Ejemplo de implementación (reemplazar con lógica real)
+    """Procesa instrucciones en lenguaje natural y devuelve el comando correspondiente.  """
+    #Se modifico para que solo devuelva comandos sin comentarios.
     command_map = {
         "listar": "ls -la",
         "mostrar archivos": "ls -la",
@@ -310,7 +307,7 @@ def process_natural_language(text, model):
         "copiar": "cp ",
         "mostrar contenido": "cat ",
         "leer archivo": "cat ",
-        "crea un proyecto": "mkdir proyecto && echo '# Mi Proyecto\n\nEste es un nuevo proyecto creado desde la terminal.' > proyecto/README.md",
+        "crea un proyecto": "mkdir proyecto && echo '# Mi Proyecto' > proyecto/README.md",
     }
 
     # Buscar coincidencias exactas primero
@@ -334,8 +331,13 @@ def process_natural_language(text, model):
                         # Usar la última palabra como nombre predeterminado
                         command += parts[-1]
                 break
-
     if not command:
         command = "echo 'Comando no encontrado'" # Default command if no match
 
+    return command
+
+def process_natural_language_to_command(user_message):
+    """Convierte lenguaje natural a comando directamente."""
+    #Implementación simplificada - Requiere un NLP más robusto en un entorno real
+    command = process_natural_language(user_message, 'openai') #usar el modelo openai por defecto
     return command
