@@ -1,4 +1,3 @@
-
 /**
  * Command Assistant - Integración con el asistente flotante
  * Asegura que la funcionalidad de comandos esté disponible a través del asistente flotante
@@ -13,11 +12,11 @@
                 console.log('Usando asistente flotante existente para comandos');
                 return;
             }
-            
+
             // Si no existe el asistente flotante, cargar el script
             this.loadFloatingAssistant();
         },
-        
+
         // Cargar el script del asistente flotante
         loadFloatingAssistant: function() {
             const script = document.createElement('script');
@@ -36,7 +35,7 @@
             };
             document.head.appendChild(script);
         },
-        
+
         // Método para procesar comandos a través del asistente flotante
         processCommand: function(command) {
             if (window.floatingAssistant) {
@@ -54,14 +53,18 @@
     // Inicializar solo si estamos en una página que usa el asistente
     const initAssistant = () => {
         // Verificar si la página actual necesita el asistente
-        if (document.querySelector('[data-needs-assistant]') || 
-            document.getElementById('floating-assistant-container')) {
-            commandAssistant.init();
-        } else {
-            console.log('Esta página no requiere el asistente de comandos');
+        try {
+            if (document.querySelector('[data-needs-assistant]') || 
+                document.getElementById('floating-assistant-container')) {
+                commandAssistant.init();
+            } else {
+                console.log('Esta página no requiere el asistente de comandos');
+            }
+        } catch (error) {
+            console.error('Error durante la inicialización del asistente:', error);
         }
     };
-    
+
     // Inicializar cuando el DOM esté listo
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', initAssistant);

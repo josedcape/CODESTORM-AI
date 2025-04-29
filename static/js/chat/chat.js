@@ -783,6 +783,50 @@ function formatMessageContent(content) {
  * @param {string} agentId - ID del agente
  */
 function updateAgentInfo(agentId) {
+    // Asegurarse de que los agentes estén definidos
+    if (!window.app.chat.availableAgents || Object.keys(window.app.chat.availableAgents).length === 0) {
+        console.log('Agentes no disponibles, usando valores predeterminados');
+        // Definir agentes predeterminados si no existen
+        window.app.chat.availableAgents = window.app.chat.availableAgents || {
+            'developer': {
+                name: 'Agente de Desarrollo',
+                description: 'Especialista en optimización y edición de código en tiempo real',
+                capabilities: [
+                    'Programación en múltiples lenguajes',
+                    'Depuración de código y resolución de errores',
+                    'Implementación de funcionalidades',
+                    'Pruebas y optimización de rendimiento',
+                    'Gestión de dependencias y librerías'
+                ],
+                icon: 'code-slash'
+            },
+            'architect': {
+                name: 'Agente de Arquitectura',
+                description: 'Diseñador de arquitecturas escalables y optimizadas',
+                capabilities: [
+                    'Definición de estructura del proyecto',
+                    'Selección de tecnologías y frameworks',
+                    'Asesoría en elección de bases de datos',
+                    'Implementación de microservicios',
+                    'Planificación de UI/UX y patrones de diseño'
+                ],
+                icon: 'diagram-3'
+            },
+            'general': {
+                name: 'Asistente General',
+                description: 'Asistente versátil para diversas tareas de programación',
+                capabilities: [
+                    'Resolución de consultas generales',
+                    'Asistencia en proyectos diversos',
+                    'Explicación de conceptos técnicos',
+                    'Recomendaciones de buenas prácticas',
+                    'Orientación en elección de tecnologías'
+                ],
+                icon: 'person-check'
+            }
+        };
+    }
+
     const agent = window.app.chat.availableAgents[agentId] || window.app.chat.availableAgents.general;
     const {agentInfo, agentCapabilities, agentBadge} = window.app.chat.elements;
 
@@ -798,7 +842,7 @@ function updateAgentInfo(agentId) {
     }
 
     // Actualizar lista de capacidades
-    if (agentCapabilities) {
+    if (agentCapabilities && agent.capabilities) {
         agentCapabilities.innerHTML = '';
         agent.capabilities.forEach(capability => {
             const item = document.createElement('li');
@@ -997,12 +1041,62 @@ document.addEventListener('DOMContentLoaded', function() {
     if (!window.app.chat) window.app.chat = {};
     
     // Inicializar configuración básica si no existe
-    if (!window.app.chat.availableAgents) window.app.chat.availableAgents = {};
-    if (!window.app.chat.availableModels) window.app.chat.availableModels = {};
     if (!window.app.chat.elements) window.app.chat.elements = {};
     if (!window.app.chat.context) window.app.chat.context = [];
     
+    // Asegurarse de que los agentes estén definidos antes de inicializar
+    if (!window.app.chat.availableAgents || Object.keys(window.app.chat.availableAgents).length === 0) {
+        window.app.chat.availableAgents = {
+            'developer': {
+                name: 'Agente de Desarrollo',
+                description: 'Especialista en optimización y edición de código en tiempo real',
+                capabilities: [
+                    'Programación en múltiples lenguajes',
+                    'Depuración de código y resolución de errores',
+                    'Implementación de funcionalidades',
+                    'Pruebas y optimización de rendimiento',
+                    'Gestión de dependencias y librerías'
+                ],
+                icon: 'code-slash'
+            },
+            'architect': {
+                name: 'Agente de Arquitectura',
+                description: 'Diseñador de arquitecturas escalables y optimizadas',
+                capabilities: [
+                    'Definición de estructura del proyecto',
+                    'Selección de tecnologías y frameworks',
+                    'Asesoría en elección de bases de datos',
+                    'Implementación de microservicios',
+                    'Planificación de UI/UX y patrones de diseño'
+                ],
+                icon: 'diagram-3'
+            },
+            'general': {
+                name: 'Asistente General',
+                description: 'Asistente versátil para diversas tareas de programación',
+                capabilities: [
+                    'Resolución de consultas generales',
+                    'Asistencia en proyectos diversos',
+                    'Explicación de conceptos técnicos',
+                    'Recomendaciones de buenas prácticas',
+                    'Orientación en elección de tecnologías'
+                ],
+                icon: 'person-check'
+            }
+        };
+    }
+    
+    // Asegurarse de que los modelos estén definidos
+    if (!window.app.chat.availableModels || Object.keys(window.app.chat.availableModels).length === 0) {
+        window.app.chat.availableModels = {
+            'openai': 'OpenAI (GPT-4o)',
+            'anthropic': 'Anthropic (Claude)',
+            'gemini': 'Google (Gemini)'
+        };
+    }
+    
     window.app.chat.chatMessageId = 0;  // Reiniciar contador de mensajes
+    window.app.chat.activeAgent = window.app.chat.activeAgent || 'architect'; // Asegurar agente activo
     
     try {
         // Solo inicializar si estamos en la página de chat
