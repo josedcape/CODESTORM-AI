@@ -197,20 +197,37 @@ document.addEventListener('DOMContentLoaded', function() {
         // Agregar directorios
         directories.forEach(dir => {
             const dirElement = document.createElement('div');
-            dirElement.className = 'p-2 border-bottom d-flex align-items-center';
+            dirElement.className = 'p-2 border-bottom d-flex align-items-center directory file-item';
+            dirElement.dataset.path = dir.path;
+            dirElement.dataset.name = dir.name;
+            dirElement.dataset.type = 'directory';
+            
             dirElement.innerHTML = `
                 <i class="bi bi-folder-fill me-2 text-warning"></i>
                 <span>${dir.name}</span>
             `;
             dirElement.style.cursor = 'pointer';
             dirElement.addEventListener('click', () => loadFiles(dir.path));
+            
+            // Agregar evento de clic derecho para menú contextual
+            dirElement.addEventListener('contextmenu', (e) => {
+                e.preventDefault();
+                if (window.fileActions && typeof window.fileActions.showContextMenu === 'function') {
+                    window.fileActions.showContextMenu(e, dir.path, true);
+                }
+                return false;
+            });
+            
             fileExplorer.appendChild(dirElement);
         });
 
         // Agregar archivos
         regularFiles.forEach(file => {
             const fileElement = document.createElement('div');
-            fileElement.className = 'p-2 border-bottom d-flex align-items-center justify-content-between';
+            fileElement.className = 'p-2 border-bottom d-flex align-items-center justify-content-between file file-item';
+            fileElement.dataset.path = file.path;
+            fileElement.dataset.name = file.name;
+            fileElement.dataset.type = 'file';
 
             // Determinar icono según extensión
             let icon = 'bi-file-earmark';
@@ -231,15 +248,32 @@ document.addEventListener('DOMContentLoaded', function() {
                 <div class="text-muted small">${formatFileSize(file.size || 0)}</div>
             `;
             fileElement.style.cursor = 'pointer';
+            
+            // Clic principal para editar
             fileElement.addEventListener('click', () => {
                 window.location.href = `/edit_file?path=${encodeURIComponent(file.path)}`;
             });
+            
+            // Clic derecho para menú contextual
+            fileElement.addEventListener('contextmenu', (e) => {
+                e.preventDefault();
+                if (window.fileActions && typeof window.fileActions.showContextMenu === 'function') {
+                    window.fileActions.showContextMenu(e, file.path, false);
+                }
+                return false;
+            });
+            
             fileExplorer.appendChild(fileElement);
         });
 
         // Mostrar mensaje si no hay archivos
         if (files.length === 0) {
             fileExplorer.innerHTML = '<div class="p-3 text-center text-muted">No hay archivos en este directorio</div>';
+        }
+        
+        // Mejorar display de archivos si está disponible
+        if (window.fileActions && typeof window.fileActions.enhanceFileDisplay === 'function') {
+            setTimeout(window.fileActions.enhanceFileDisplay, 100);
         }
     }
 

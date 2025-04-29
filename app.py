@@ -1420,6 +1420,255 @@ def process_command():
             'error': str(e)
         }), 500
 
+@app.route('/api/file/delete', methods=['POST'])
+def delete_file():
+    """Eliminar un archivo o carpeta."""
+    try:
+        data = request.json
+        if not data or 'file_path' not in data:
+            return jsonify({
+                'success': False,
+                'error': 'Se requiere ruta de archivo'
+            }), 400
+            
+        file_path = data['file_path']
+        
+        # Obtener workspace del usuario
+        user_id = session.get('user_id', 'default')
+        workspace_path = get_user_workspace(user_id)
+        
+        # Crear ruta completa y verificar seguridad
+        target_path = (workspace_path / file_path).resolve()
+        if not str(target_path).startswith(str(workspace_path.resolve())):
+            return jsonify({
+                'success': False,
+                'error': 'Acceso denegado: No se puede acceder a archivos fuera del workspace'
+            }), 403
+            
+        # Eliminar archivo o directorio
+        if target_path.is_dir():
+            shutil.rmtree(target_path)
+        else:
+            target_path.unlink()
+            
+        # Notificar cambio si es posible
+        try:
+            file_data = {
+                'path': file_path,
+                'name': target_path.name,
+                'type': 'directory' if target_path.is_dir() else 'file'
+            }
+            notify_file_change(user_id, 'delete', file_data)
+        except Exception as e:
+            logging.warning(f"Error al notificar cambio de archivo: {str(e)}")
+            
+        return jsonify({
+            'success': True,
+            'message': f'{"Directorio" if target_path.is_dir() else "Archivo"} eliminado correctamente'
+        })
+        
+    except Exception as e:
+        logging.error(f"Error al eliminar archivo: {str(e)}")
+        logging.error(traceback.format_exc())
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@app.route('/api/file/edit', methods=['POST'])
+def edit_file():
+    """Editar contenido de un archivo."""
+    try:
+        data = request.json
+        if not data or 'file_path' not in data or 'content' not in data:
+            return jsonify({
+                'success': False,
+                'error': 'Se requiere ruta de archivo y contenido'
+            }), 400
+            
+        file_path = data['file_path']
+        content = data['content']
+        
+        # Obtener workspace del usuario
+        user_id = session.get('user_id', 'default')
+        workspace_path = get_user_workspace(user_id)
+        
+        # Crear ruta completa y verificar seguridad
+        target_path = (workspace_path / file_path).resolve()
+        if not str(target_path).startswith(str(workspace_path.resolve())):
+            return jsonify({
+                'success': False,
+                'error': 'Acceso denegado: No se puede acceder a archivos fuera del workspace'
+            }), 403
+            
+        # No permitir editar directorios
+        if target_path.is_dir():
+            return jsonify({
+                'success': False,
+                'error': 'No se puede editar un directorio'
+            }), 400
+            
+        # Escribir contenido al archivo
+        with open(target_path, 'w') as f:
+            f.write(content)
+            
+        # Notificar cambio si es posible
+        try:
+            file_data = {
+                'path': file_path,
+                'name': target_path.name,
+                'type': 'file'
+            }
+            notify_file_change(user_id, 'update', file_data)
+        except Exception as e:
+            logging.warning(f"Error al notificar cambio de archivo: {str(e)}")
+            
+        return jsonify({
+            'success': True,
+            'message': 'Archivo editado correctamente'
+        })
+        
+    except Exception as e:
+        logging.error(f"Error al editar archivo: {str(e)}")
+        logging.error(traceback.format_exc())
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@app.route('/api/file/rename', methods=['POST'])
+def rename_file():
+    """Renombrar un archivo o carpeta."""
+    try:
+        data = request.json
+        if not data or 'file_path' not in data or 'new_name' not in data:
+            return jsonify({
+                'success': False,
+                'error': 'Se requiere ruta de archivo y nuevo nombre'
+            }), 400
+            
+        file_path = data['file_path']
+        new_name = data['new_name']
+        
+        # Obtener workspace del usuario
+        user_id = session.get('user_id', 'default')
+        workspace_path = get_user_workspace(user_id)
+        
+        # Crear ruta completa y verificar seguridad
+        source_path = (workspace_path / file_path).resolve()
+        if not str(source_path).startswith(str(workspace_path.resolve())):
+            return jsonify({
+                'success': False,
+                'error': 'Acceso denegado: No se puede acceder a archivos fuera del workspace'
+            }), 403
+            
+        # Crear ruta de destino
+        target_path = source_path.parent / new_name
+        
+        # Verificar que el destino no existe
+        if target_path.exists():
+            return jsonify({
+                'success': False,
+                'error': f'Ya existe un archivo o directorio con el nombre {new_name}'
+            }), 400
+            
+        # Renombrar archivo o directorio
+        source_path.rename(target_path)
+        
+        # Notificar cambio si es posible
+        try:
+            file_data = {
+                'path': str(target_path.relative_to(workspace_path)),
+                'name': target_path.name,
+                'type': 'directory' if target_path.is_dir() else 'file',
+                'old_path': file_path
+            }
+            notify_file_change(user_id, 'rename', file_data)
+        except Exception as e:
+            logging.warning(f"Error al notificar cambio de archivo: {str(e)}")
+            
+        return jsonify({
+            'success': True,
+            'message': f'{"Directorio" if target_path.is_dir() else "Archivo"} renombrado correctamente',
+            'new_path': str(target_path.relative_to(workspace_path))
+        })
+        
+    except Exception as e:
+        logging.error(f"Error al renombrar archivo: {str(e)}")
+        logging.error(traceback.format_exc())
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@app.route('/api/file/create', methods=['POST'])
+def create_file():
+    """Crear un nuevo archivo o carpeta."""
+    try:
+        data = request.json
+        if not data or 'file_path' not in data:
+            return jsonify({
+                'success': False,
+                'error': 'Se requiere ruta de archivo'
+            }), 400
+            
+        file_path = data['file_path']
+        is_directory = data.get('is_directory', False)
+        content = data.get('content', '')
+        
+        # Obtener workspace del usuario
+        user_id = session.get('user_id', 'default')
+        workspace_path = get_user_workspace(user_id)
+        
+        # Crear ruta completa y verificar seguridad
+        target_path = (workspace_path / file_path).resolve()
+        if not str(target_path).startswith(str(workspace_path.resolve())):
+            return jsonify({
+                'success': False,
+                'error': 'Acceso denegado: No se puede acceder a archivos fuera del workspace'
+            }), 403
+            
+        # Verificar que el destino no existe
+        if target_path.exists():
+            return jsonify({
+                'success': False,
+                'error': f'Ya existe un archivo o directorio en {file_path}'
+            }), 400
+            
+        # Crear directorio o archivo
+        if is_directory:
+            target_path.mkdir(parents=True, exist_ok=True)
+        else:
+            # Asegurarse de que el directorio padre existe
+            target_path.parent.mkdir(parents=True, exist_ok=True)
+            # Crear archivo
+            with open(target_path, 'w') as f:
+                f.write(content)
+                
+        # Notificar cambio si es posible
+        try:
+            file_data = {
+                'path': file_path,
+                'name': target_path.name,
+                'type': 'directory' if is_directory else 'file'
+            }
+            notify_file_change(user_id, 'create', file_data)
+        except Exception as e:
+            logging.warning(f"Error al notificar cambio de archivo: {str(e)}")
+            
+        return jsonify({
+            'success': True,
+            'message': f'{"Directorio" if is_directory else "Archivo"} creado correctamente'
+        })
+        
+    except Exception as e:
+        logging.error(f"Error al crear archivo: {str(e)}")
+        logging.error(traceback.format_exc())
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
 @app.route('/api/process', methods=['POST'])
 def process_command():
     """Process commands from the terminal interface."""

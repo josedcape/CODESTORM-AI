@@ -187,7 +187,7 @@
             }
             
             // Eliminar en el servidor
-            fetch('/api/delete_file', {
+            fetch('/api/file/delete', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -201,8 +201,8 @@
                 return response.json();
             })
             .then(data => {
-                if (data.error) {
-                    this.showNotification(data.error, 'danger');
+                if (!data.success) {
+                    this.showNotification(data.error || 'Error al eliminar', 'danger');
                     return;
                 }
                 
@@ -217,6 +217,92 @@
             .catch(error => {
                 console.error('Error al eliminar:', error);
                 this.showNotification('Error al eliminar: ' + error.message, 'danger');
+            });
+        },
+        
+        // Editar un archivo
+        editFile: function(filePath, content) {
+            if (!filePath) return;
+            
+            // Editar en el servidor
+            fetch('/api/file/edit', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ 
+                    file_path: filePath,
+                    content: content
+                })
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`Error del servidor: ${response.status} ${response.statusText}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (!data.success) {
+                    this.showNotification(data.error || 'Error al editar archivo', 'danger');
+                    return;
+                }
+                
+                this.showNotification(data.message || 'Archivo editado exitosamente', 'success');
+                
+                // Invalidar caché para esta ruta
+                fileCache.clear();
+            })
+            .catch(error => {
+                console.error('Error al editar archivo:', error);
+                this.showNotification('Error al editar archivo: ' + error.message, 'danger');
+            });
+        },
+        
+        // Renombrar un archivo o carpeta
+        renameFileOrFolder: function(filePath) {
+            if (!filePath) return;
+            
+            // Obtener el nombre actual del archivo/carpeta
+            const currentName = filePath.split('/').pop();
+            
+            // Solicitar nuevo nombre
+            const newName = prompt('Ingrese el nuevo nombre:', currentName);
+            if (!newName || newName === currentName) return;
+            
+            // Renombrar en el servidor
+            fetch('/api/file/rename', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ 
+                    file_path: filePath,
+                    new_name: newName 
+                })
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`Error del servidor: ${response.status} ${response.statusText}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (!data.success) {
+                    this.showNotification(data.error || 'Error al renombrar', 'danger');
+                    return;
+                }
+                
+                this.showNotification(data.message || 'Elemento renombrado exitosamente', 'success');
+                
+                // Invalidar caché para todas las rutas
+                fileCache.clear();
+                
+                // Recargar el explorador de archivos
+                this.refreshFileExplorer();
+            })
+            .catch(error => {
+                console.error('Error al renombrar:', error);
+                this.showNotification('Error al renombrar: ' + error.message, 'danger');
             });
         },
         
@@ -364,6 +450,149 @@
         }
     };
     
+    // Mostrar menú contextual para un archivo o carpeta
+    fileActions.showContextMenu = function(event, filePath, isDirectory) {
+        event.preventDefault();
+        event.stopPropagation();
+        
+        // Eliminar cualquier menú contextual existente
+        document.querySelectorAll('.file-context-menu').forEach(menu => menu.remove());
+        
+        // Crear menú contextual
+        const contextMenu = document.createElement('div');
+        contextMenu.className = 'file-context-menu';
+        contextMenu.style.position = 'absolute';
+        contextMenu.style.left = `${event.pageX}px`;
+        contextMenu.style.top = `${event.pageY}px`;
+        contextMenu.style.backgroundColor = '#1e1e2e';
+        contextMenu.style.border = '1px solid #333';
+        contextMenu.style.borderRadius = '4px';
+        contextMenu.style.boxShadow = '0 2px 10px rgba(0,0,0,0.3)';
+        contextMenu.style.zIndex = '1000';
+        
+        // Opciones del menú
+        const options = [];
+        
+        // Opción: Editar (solo para archivos)
+        if (!isDirectory) {
+            options.push({
+                text: 'Editar',
+                icon: 'bi-pencil',
+                action: () => {
+                    window.location.href = `/edit_file?path=${encodeURIComponent(filePath)}`;
+                }
+            });
+        }
+        
+        // Opción: Renombrar
+        options.push({
+            text: 'Renombrar',
+            icon: 'bi-pencil-square',
+            action: () => fileActions.renameFileOrFolder(filePath)
+        });
+        
+        // Opción: Eliminar
+        options.push({
+            text: 'Eliminar',
+            icon: 'bi-trash',
+            action: () => fileActions.deleteFileOrFolder(filePath)
+        });
+        
+        // Crear elementos del menú
+        options.forEach(option => {
+            const menuItem = document.createElement('div');
+            menuItem.className = 'file-context-menu-item';
+            menuItem.style.padding = '8px 12px';
+            menuItem.style.cursor = 'pointer';
+            menuItem.style.color = '#f0f0f0';
+            menuItem.style.display = 'flex';
+            menuItem.style.alignItems = 'center';
+            
+            menuItem.innerHTML = `<i class="bi ${option.icon}" style="margin-right: 8px;"></i> ${option.text}`;
+            
+            menuItem.addEventListener('click', function() {
+                option.action();
+                contextMenu.remove();
+            });
+            
+            menuItem.addEventListener('mouseover', function() {
+                this.style.backgroundColor = '#2a2a3c';
+            });
+            
+            menuItem.addEventListener('mouseout', function() {
+                this.style.backgroundColor = 'transparent';
+            });
+            
+            contextMenu.appendChild(menuItem);
+        });
+        
+        // Agregar al DOM
+        document.body.appendChild(contextMenu);
+        
+        // Cerrar menú al hacer clic fuera
+        setTimeout(() => {
+            document.addEventListener('click', function closeMenu(e) {
+                if (!contextMenu.contains(e.target)) {
+                    contextMenu.remove();
+                    document.removeEventListener('click', closeMenu);
+                }
+            });
+        }, 0);
+        
+        return false;
+    };
+    
+    // Función para mejorar la representación de archivos con opciones de edición/eliminación
+    fileActions.enhanceFileDisplay = function() {
+        // Seleccionar todos los elementos de archivo/carpeta
+        const fileItems = document.querySelectorAll('.file-item');
+        
+        fileItems.forEach(item => {
+            // Verificar si ya está mejorado
+            if (item.dataset.enhanced === 'true') return;
+            
+            // Marcar como mejorado
+            item.dataset.enhanced = 'true';
+            
+            // Obtener datos del archivo
+            const filePath = item.dataset.path;
+            const isDirectory = item.classList.contains('directory');
+            
+            if (!filePath) return;
+            
+            // Añadir evento de clic derecho
+            item.addEventListener('contextmenu', function(e) {
+                fileActions.showContextMenu(e, filePath, isDirectory);
+            });
+            
+            // Añadir ícono de opciones
+            const actionsIcon = document.createElement('span');
+            actionsIcon.className = 'file-actions-icon';
+            actionsIcon.innerHTML = '<i class="bi bi-three-dots-vertical"></i>';
+            actionsIcon.style.marginLeft = 'auto';
+            actionsIcon.style.cursor = 'pointer';
+            actionsIcon.style.opacity = '0.7';
+            actionsIcon.style.display = 'none';
+            
+            actionsIcon.addEventListener('click', function(e) {
+                e.stopPropagation();
+                fileActions.showContextMenu(e, filePath, isDirectory);
+            });
+            
+            // Mostrar ícono al pasar el mouse
+            item.addEventListener('mouseover', function() {
+                actionsIcon.style.display = 'block';
+            });
+            
+            item.addEventListener('mouseout', function() {
+                actionsIcon.style.display = 'none';
+            });
+            
+            // Agregar el ícono al elemento
+            item.appendChild(actionsIcon);
+        });
+    };
+    
     // Exponer funciones al ámbito global
     window.fileActions = fileActions;
     
@@ -378,5 +607,26 @@
                 }
             });
         });
+        
+        // Mejorar la visualización inicial de archivos
+        setTimeout(fileActions.enhanceFileDisplay, 500);
+        
+        // Observer para mejorar dinámicamente los nuevos elementos de archivo que se añadan
+        const observer = new MutationObserver(function(mutations) {
+            mutations.forEach(function(mutation) {
+                if (mutation.addedNodes.length) {
+                    setTimeout(fileActions.enhanceFileDisplay, 100);
+                }
+            });
+        });
+        
+        // Configurar y comenzar la observación
+        const explorerContainer = document.getElementById('file-explorer') || 
+                                 document.getElementById('explorer-container') || 
+                                 document.querySelector('.explorer-content');
+        
+        if (explorerContainer) {
+            observer.observe(explorerContainer, { childList: true, subtree: true });
+        }
     });
 })();

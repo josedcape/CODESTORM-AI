@@ -13,6 +13,7 @@
 
     <!-- Estilos compartidos de base -->
     <link href="/static/css/style.css" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/file-explorer.css') }}">
 
     <style>
         /* Los estilos propios del index se mantienen, pero quitamos los de navbar
@@ -332,7 +333,7 @@
                 // Show loading
                 spinner.classList.remove('d-none');
                 executeBtn.disabled = true;
-                
+
                 // Mostrar la instrucción en el área de comandos para feedback inmediato
                 commandDisplay.textContent = `Procesando: ${instruction}`;
                 outputDisplay.textContent = 'Ejecutando...';
@@ -364,34 +365,11 @@
                 .then(data => {
                     console.log("Respuesta del servidor:", data);
 
-    <script>
-        // Escuchar eventos de actualización del explorador desde cualquier fuente
-        document.addEventListener('files_updated', function(e) {
-            console.log("Detectado cambio en explorador", e.detail);
-            const currentDir = document.getElementById('directory-path')?.textContent || '/';
-            if (window.loadFiles && typeof window.loadFiles === 'function') {
-                window.loadFiles(currentDir);
-            }
-        });
-        
-        // Escuchar mensajes desde iframes (como terminal)
-        window.addEventListener('message', function(event) {
-            if (event.data && event.data.type === 'explorer_refresh') {
-                console.log("Solicitud de actualización desde iframe:", event.data);
-                const currentDir = document.getElementById('directory-path')?.textContent || '/';
-                if (window.loadFiles && typeof window.loadFiles === 'function') {
-                    window.loadFiles(currentDir);
-                }
-            }
-        });
-    </script>
-
-                    
                     // Mostrar comando
                     if (data.command) {
                         commandDisplay.textContent = data.command;
                     }
-                    
+
                     // Mostrar salida
                     if (data.output) {
                         outputDisplay.innerHTML = formatOutput(data.output, data.error, data.status);
@@ -700,6 +678,27 @@
             }
 
 
+        });
+    </script>
+    <script>
+        // Escuchar eventos de actualización del explorador desde cualquier fuente
+        document.addEventListener('files_updated', function(e) {
+            console.log("Detectado cambio en explorador", e.detail);
+            const currentDir = document.getElementById('directory-path')?.textContent || '/';
+            if (window.loadFiles && typeof window.loadFiles === 'function') {
+                window.loadFiles(currentDir);
+            }
+        });
+
+        // Escuchar mensajes desde iframes (como terminal)
+        window.addEventListener('message', function(event) {
+            if (event.data && event.data.type === 'explorer_refresh') {
+                console.log("Solicitud de actualización desde iframe:", event.data);
+                const currentDir = document.getElementById('directory-path')?.textContent || '/';
+                if (window.loadFiles && typeof window.loadFiles === 'function') {
+                    window.loadFiles(currentDir);
+                }
+            }
         });
     </script>
 </body>
