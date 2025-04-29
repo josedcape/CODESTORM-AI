@@ -65,6 +65,11 @@ document.addEventListener('DOMContentLoaded', function() {
                     // Continue with default values if the session API fails
                     this.userId = 'default';
                     this.workspace = 'default';
+                    
+                    // Still update the file explorer after setting defaults
+                    if (typeof this.updateFileExplorer === 'function') {
+                        this.updateFileExplorer();
+                    }
                 });
         },
         

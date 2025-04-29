@@ -136,6 +136,19 @@ def process_natural_language_to_command(text):
         "mostrar archivos": "ls -la",
         "mostrar directorio": "ls -la",
         "ver archivos": "ls -la",
+
+@app.route('/api/session')
+def session_info():
+    """Return session information for the current user."""
+    user_id = session.get('user_id', 'default')
+    workspace = get_user_workspace(user_id)
+    
+    return jsonify({
+        'user_id': user_id,
+        'workspace': str(workspace.relative_to(os.getcwd())) if hasattr(workspace, 'relative_to') else str(workspace),
+        'status': 'active'
+    })
+
         "archivos": "ls -la",
         "dir": "ls -la",
         "fecha": "date",
