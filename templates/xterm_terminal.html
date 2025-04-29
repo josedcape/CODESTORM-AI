@@ -181,19 +181,12 @@
             background-color: #000;
         }
 
-        .input-container, .assistant-container {
+        .input-container {
             padding: 10px;
             background-color: var(--card-background);
             display: flex;
             border-top: 1px solid rgba(78, 115, 223, 0.2);
             flex-wrap: wrap;
-        }
-
-        .assistant-container {
-            border-bottom: none;
-            border-top: 1px solid rgba(78, 115, 223, 0.2);
-            flex-direction: column;
-            padding-bottom: 5px;
         }
 
         .terminal-input {
@@ -487,6 +480,19 @@
         .autocomplete-item.selected {
             background-color: rgba(30, 136, 229, 0.2);
         }
+
+        .download-btn {
+            background-color: transparent;
+            border: none;
+            cursor: pointer;
+            margin-left: auto; /* Push to the right */
+            padding: 5px;
+        }
+
+        .download-btn:hover {
+            opacity: 0.8;
+        }
+
     </style>
 </head>
 <body>
@@ -563,6 +569,7 @@
                         </button>
                         <button class="list-group-item list-group-item-action bg-dark text-light mobile-option" id="mobile-share-session">
                             <i class="bi bi-share me-2"></i> Compartir Sesión
+
                         </button>
                         <button class="list-group-item list-group-item-action bg-dark text-light mobile-option" id="mobile-settings">
                             <i class="bi bi-gear me-2"></i> Configuración
@@ -611,42 +618,95 @@
                     <!-- Terminal xterm.js -->
                     <div id="terminal-container" class="terminal-container"></div>
 
-                    <!-- Panel del Asistente en Lenguaje Natural -->
-                    <div class="assistant-container mb-2">
-                        <div class="d-flex align-items-center mb-1">
-                            <span class="me-2"><i class="bi bi-robot"></i> Asistente:</span>
-                            <select class="model-selector" id="assistant-model-selector">
-                                <option value="openai">OpenAI (GPT-4o)</option>
-                                <option value="anthropic">Anthropic (Claude)</option>
-                                <option value="gemini">Google (Gemini)</option>
+                    <div class="input-container">
+                        <div class="input-row">
+                            <select class="model-selector" id="model-selector">
+                                <option value="openai">OpenAI</option>
+                                <option value="anthropic">Anthropic</option>
+                                <option value="gemini">Gemini</option>
+                            </select>
+                            <select class="model-selector" id="command-method" style="max-width: 100px;">
+                                <option value="websocket">WebSocket</option>
+                                <option value="rest">REST API</option>
                             </select>
                         </div>
-                        <div class="d-flex">
-                            <input type="text" class="terminal-input" id="assistant-input" 
-                                   placeholder="Escribe tu instrucción en lenguaje natural...">
-                            <button class="send-button" id="assistant-send-button">
-                                <i class="bi bi-magic"></i>
+                        <div class="input-row">
+                            <input type="text" class="terminal-input" id="natural-input" 
+                                   placeholder="Describe lo que quieres hacer en lenguaje natural...">
+                            <button class="copy-button" id="copy-command" style="display: none;">
+                                <i class="bi bi-clipboard"></i>
+                            </button>
+                            <button class="send-button" id="process-natural">
+                                <i class="bi bi-translate"></i>
+                            </button>
+                        </div>
+                        <div class="input-row">
+                            <input type="text" class="terminal-input" id="terminal-input" 
+                                   placeholder="Comando generado aparecerá aquí...">
+                            <button class="send-button" id="send-button">
+                                <i class="bi bi-send"></i>
                             </button>
                         </div>
                     </div>
 
-                    <!-- Panel de Terminal (Existente) -->
-                    <div class="input-container">
-                        <select class="model-selector" id="model-selector">
-                            <option value="openai">OpenAI</option>
-                            <option value="anthropic">Anthropic</option>
-                            <option value="gemini">Gemini</option>
-                        </select>
-                        <select class="model-selector" id="command-method" style="max-width: 100px;">
-                            <option value="websocket">WebSocket</option>
-                            <option value="rest">REST API</option>
-                        </select>
-                        <input type="text" class="terminal-input" id="terminal-input" 
-                               placeholder="Ingresa un comando o instrucción en lenguaje natural...">
-                        <button class="send-button" id="send-button">
-                            <i class="bi bi-send"></i>
-                        </button>
-                    </div>
+                    <style>
+                        .input-row {
+                            display: flex;
+                            gap: 8px;
+                            margin-bottom: 8px;
+                        }
+                        .copy-button {
+                            background-color: #2c3e50;
+                            color: white;
+                            border: none;
+                            border-radius: 4px;
+                            padding: 8px 16px;
+                            cursor: pointer;
+                        }
+                        .copy-button:hover {
+                            background-color: #34495e;
+                        }
+                    </style>
+
+                    <script>
+                        document.getElementById('process-natural').addEventListener('click', async () => {
+                            const naturalInput = document.getElementById('natural-input');
+                            const terminalInput = document.getElementById('terminal-input');
+                            const copyButton = document.getElementById('copy-command');
+
+                            if (!naturalInput.value) return;
+
+                            try {
+                                const response = await fetch('/api/process_natural', {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ text: naturalInput.value })
+                                });
+
+                                const data = await response.json();
+                                if (data.command) {
+                                    terminalInput.value = data.command;
+                                    copyButton.style.display = 'block';
+                                    // Opcional: ejecutar automáticamente
+                                    // document.getElementById('send-button').click();
+                                }
+                            } catch (error) {
+                                console.error('Error:', error);
+                            }
+                        });
+
+                        document.getElementById('copy-command').addEventListener('click', () => {
+                            const terminalInput = document.getElementById('terminal-input');
+                            navigator.clipboard.writeText(terminalInput.value)
+                                .then(() => {
+                                    const copyButton = document.getElementById('copy-command');
+                                    copyButton.innerHTML = '<i class="bi bi-check"></i>';
+                                    setTimeout(() => {
+                                        copyButton.innerHTML = '<i class="bi bi-clipboard"></i>';
+                                    }, 2000);
+                                });
+                        });
+                    </script>
 
                     <!-- Preview en tiempo real (oculto por defecto) -->
                     <div class="preview-container" id="preview-container">
@@ -811,7 +871,7 @@
                 });
 
                 // Actualizar contador
-                collaboratorsCount.textContent = collaborators.size;
+                collaboratorsCount.textContent = collaborators.size;;
 
                 // Actualizar avatares
                 collaboratorsContainer.innerHTML = '';
@@ -825,7 +885,7 @@
                 });
             }
 
-            // Obtener un color aleatorio para usuario
+                        // Obtener un color aleatorio para usuario
             function getRandomColor() {
                 const colors = [
                     '#1E88E5', '#43A047', '#E53935', '#9C27B0', 
@@ -849,18 +909,14 @@
                     socket.on('connect', function() {
                         console.log('Conectado al servidor WebSocket');
                         isConnected = true;
-                        loadDirectoryContents(currentDirectory); // Load directory on connect
                         updateConnectionStatus('connected');
-
-                        // Inicializar manejadores de eventos
-                        initializeSocketHandlers();
 
                         // Mensaje de bienvenida
                         terminal.write('\r\n\x1b[32m¡Bienvenido a la Terminal Avanzada de Codestorm!\x1b[0m\r\n');
                         terminal.write('Puedes ejecutar comandos bash o usar lenguaje natural.\r\n\r\n');
 
                         // Cargar directorio actual
-                        //loadDirectoryContents(currentDirectory);
+                        loadDirectoryContents(currentDirectory);
 
                         // Configurar preview inicial
                         updatePreviewIframe('/');
@@ -1133,6 +1189,13 @@
                                     }
                                 }
                             });
+                            // Add download button
+                            const downloadBtn = document.createElement('button');
+                            downloadBtn.className = 'download-btn';
+                            downloadBtn.innerHTML = '<i class="bi bi-download"></i>';
+                            downloadBtn.title = 'Download file';
+                            downloadBtn.onclick = () => downloadFile(path === '.' ? item.name : `${path}/${item.name}`);
+                            fileItem.appendChild(downloadBtn);
                         }
 
                         explorerContainer.appendChild(fileItem);
@@ -1276,192 +1339,31 @@
                 });
             }
 
-            // Referencia al campo de asistente y botón
-            const assistantInput = document.getElementById('assistant-input');
-            const assistantSendButton = document.getElementById('assistant-send-button');
-            const assistantModelSelector = document.getElementById('assistant-model-selector');
-
-            // Función para procesar instrucción con el asistente y convertirla en comando
-            function processAssistantInput() {
-                const instruction = assistantInput.value.trim();
-                if (!instruction) return;
-
-                // Mostrar que el asistente está procesando
-                terminal.write('\r\n\x1b[36m[Asistente] Procesando: ' + instruction + '\x1b[0m\r\n');
-
-                // Obtener el modelo seleccionado
-                const model = assistantModelSelector.value;
-
-                // Enviar la instrucción para procesamiento
-                if (!socket || !socket.connected) {
-                    terminal.write('\r\n\x1b[31mNo hay conexión con el servidor. Intentando reconectar...\x1b[0m\r\n');
-                    initializeWebSocket();
+            // Función para descargar un archivo
+            function downloadFile(filePath) {
+                if (!filePath) {
+                    console.error('No se proporcionó ruta de archivo');
                     return;
                 }
 
-                // Emitir evento para procesar instrucción con modelo especificado
-                socket.emit('process_instruction', {
-                    instruction: instruction,
-                    model: model,
-                    user_id: userId,
-                    directory: currentDirectory
-                });
+                const downloadUrl = `/api/files/download?file_path=${encodeURIComponent(filePath)}`;
+                const fileName = filePath.split('/').pop();
 
-                // Limpiar el campo del asistente
-                assistantInput.value = '';
+                console.log(`Descargando ${fileName} desde ${downloadUrl}`);
+
+                const a = document.createElement('a');
+                a.href = downloadUrl;
+                a.download = fileName;
+                a.style.display = 'none';
+                document.body.appendChild(a);
+                a.click();
+
+                setTimeout(() => {
+                    document.body.removeChild(a);
+                }, 100);
             }
 
-            // Inicializar Socket.IO y configurar manejadores de eventos
-            function initializeSocketHandlers() {
-                // Verificar que socket esté inicializado
-                if (!socket || !socket.connected) {
-                    console.error('Socket no inicializado o no conectado');
-                    return;
-                }
-
-                // Manejar todos los eventos de socket en un solo lugar
-
-                // Manejar respuesta del asistente (respuesta del servidor)
-                socket.on('instruction_result', function(data) {
-                    console.log('Resultado del procesamiento:', data);
-
-                    if (data.success) {
-                        // Solo colocar el comando en el campo de entrada
-                        terminalInput.value = data.command;
-                        terminalInput.focus();
-
-                        // Si hay una explicación, mostrarla
-                        if (data.explanation) {
-                            terminal.write('\r\n\x1b[36m[Asistente] ' + data.explanation + '\x1b[0m\r\n');
-                        }
-
-                        // Notificar al usuario que puede ejecutar el comando
-                        terminal.write('\r\n\x1b[33m[Asistente] El comando está listo en el campo de entrada. Presiona Enter para ejecutarlo.\x1b[0m\r\n');
-
-                        // NUNCA ejecutamos automáticamente, dejamos que el usuario lo haga
-                        // data.auto_execute se ignora intencionalmente
-                    } else {
-                        terminal.write('\r\n\x1b[31m[Asistente] Error: ' + (data.error || 'No se pudo procesar la instrucción') + '\x1b[0m\r\n');
-                    }
-                });
-                socket.on('connect', function() {
-                    console.log('Conectado al servidor WebSocket');
-                    isConnected = true;
-                    updateConnectionStatus('connected');
-
-                    // Inicializar manejadores de eventos
-                    initializeSocketHandlers();
-
-                    // Mensaje de bienvenida
-                    terminal.write('\r\n\x1b[32m¡Bienvenido a la Terminal Avanzada de Codestorm!\x1b[0m\r\n');
-                    terminal.write('Puedes ejecutar comandos bash o usar lenguaje natural.\r\n\r\n');
-
-                    // Cargar directorio actual
-                    loadDirectoryContents(currentDirectory);
-
-                    // Configurar preview inicial
-                    updatePreviewIframe('/');
-                });
-
-                socket.on('disconnect', function() {
-                    console.log('Desconectado del servidor WebSocket');
-                    isConnected = false;
-                    updateConnectionStatus('disconnected');
-                    terminal.write('\r\n\x1b[31mDesconectado del servidor. Intentando reconectar...\x1b[0m\r\n');
-                });
-
-                socket.on('command_result', function(data) {
-                    console.log('Resultado del comando recibido:', data);
-
-                    // Mostrar resultado en el terminal
-                    if (data.success) {
-                        terminal.write('\r\n' + data.output + '\r\n');
-
-                        // Si hay un ydoc activo, añadir al historial compartido
-                        if (ydoc) {
-                            const yTerminalHistory = ydoc.getText('terminal-history');
-                            yTerminalHistory.insert(yTerminalHistory.length, '\r\n' + data.output + '\r\n');
-                        }
-
-                        // Actualizar el explorador si el comando afecta a archivos
-                        if (shouldRefreshExplorer(data.command)) {
-                            setTimeout(() => loadDirectoryContents(currentDirectory), 500);
-                        }
-
-                        // Actualizar preview en ciertos comandos
-                        if (data.command.includes('touch') || data.command.includes('echo') || 
-                            data.command.includes('cat') || data.command.includes('npm')) {
-                            updatePreviewIframe('/preview');
-                        }
-
-                        // Actualizar directorio actual si es comando cd
-                        if (data.command.startsWith('cd ')) {
-                            updateCurrentDirectory(data);
-                        }
-                    } else {
-                        terminal.write('\r\n\x1b[31mError: ' + data.stderr + '\x1b[0m\r\n');
-                    }
-                });
-
-                socket.on('directory_contents', function(data) {
-                    console.log('Contenido del directorio recibido:', data);
-
-                    if (data.success) {
-                        updateExplorer(data.path, data.contents);
-                    } else {
-                        showNotification('Error al cargar archivos: ' + data.error, 'error');
-                    }
-                });
-
-                socket.on('file_change', function(data) {
-                    console.log('Cambio en archivos detectado:', data);
-                    showNotification(data.message, 'info');
-                    loadDirectoryContents(currentDirectory);
-
-                    // Actualizar preview si se ha modificado un archivo
-                    updatePreviewIframe('/preview');
-                });
-
-                socket.on('error', function(error) {
-                    console.error('Error de WebSocket:', error);
-                    terminal.write('\r\n\x1b[31mError: ' + error + '\x1b[0m\r\n');
-                });
-                socket.on('process_instruction', function(data) {
-                    console.log('Resultado del procesamiento:', data);
-
-                    if (data.success) {
-                        // Solo colocar el comando en el campo de entrada
-                        terminalInput.value = data.command;
-                        terminalInput.focus();
-
-                        // Si hay una explicación, mostrarla
-                        if (data.explanation) {
-                            terminal.write('\r\n\x1b[36m[Asistente] ' + data.explanation + '\x1b[0m\r\n');
-                        }
-
-                        // Notificar al usuario que puede ejecutar el comando
-                        terminal.write('\r\n\x1b[33m[Asistente] El comando está listo en el campo de entrada. Presiona Enter para ejecutarlo.\x1b[0m\r\n');
-
-                        // NUNCA ejecutamos automáticamente, dejamos que el usuario lo haga
-                        // data.auto_execute se ignora intencionalmente
-                    } else {
-                        terminal.write('\r\n\x1b[31m[Asistente] Error: ' + (data.error || 'No se pudo procesar la instrucción') + '\x1b[0m\r\n');
-                    }
-                });
-            }
-
-            // Event listeners para el asistente
-            assistantInput.addEventListener('keydown', function(event) {
-                if (event.key === 'Enter') {
-                    processAssistantInput();
-                }
-            });
-
-            assistantSendButton.addEventListener('click', function() {
-                processAssistantInput();
-            });
-
-            // Event listeners para terminal original
+            // Event listeners
             terminalInput.addEventListener('keydown', function(event) {
                 if (event.key === 'Enter') {
                     const methodSelector = document.getElementById('command-method');
@@ -1509,6 +1411,35 @@
 
             // Inicializar
             initializeWebSocket();
+
+            // Añadir detector de eventos para cambios en archivos
+            document.addEventListener('file_explorer_refresh', function(e) {
+                console.log('Evento de actualización de archivos detectado:', e.detail);
+                // Intentar recargar el explorador de archivos si está disponible
+                if (explorerContainer && typeof loadDirectoryContents === 'function') {
+                    loadDirectoryContents(currentDirectory);
+                }
+            });
+
+            // Configurar observador de cambios de DOM para detectar actualizaciones en el explorador
+            if (typeof MutationObserver !== 'undefined') {
+                const observer = new MutationObserver(function(mutations) {
+                    mutations.forEach(function(mutation) {
+                        if (mutation.type === 'childList' && 
+                            mutation.target.id === 'explorer-container' || 
+                            mutation.target.classList.contains('explorer-content')) {
+                            console.log('Detectado cambio en explorador');
+                        }
+                    });
+                });
+
+                // Comenzar a observar cambios en el explorador
+                const config = { childList: true, subtree: true };
+                if (explorerContainer) {
+                    observer.observe(explorerContainer, config);
+                    console.log('Observador de cambios configurado para el explorador');
+                }
+            }
 
             // Comprobar si hay un parámetro de sesión para unirse
             const urlParams = new URLSearchParams(window.location.search);
@@ -1703,120 +1634,375 @@
     </div>
 
     <script>
-        // Inicializar terminal
-        const term = new Terminal({
-            cursorBlink: true,
-            fontFamily: 'monospace',
-            fontSize: 14,
-            theme: {
-                background: '#0a0a0a',
-                foreground: '#f0f0f0',
-                cursor: '#ffffff',
-                selection: 'rgba(255, 255, 255, 0.3)',
-                black: '#000000',
-                red: '#e06c75',
-                green: '#98c379',
-                yellow: '#e5c07b',
-                blue: '#61afef',
-                magenta: '#c678dd',
-                cyan: '#56b6c2',
-                white: '#dcdfe4'
-            }
-        });
+        // Función para actualizar el explorador de archivos en la ventana principal
+        function updateParentFileExplorer() {
+            try {
+                // Intentar múltiples métodos para asegurar que se actualice el explorador
+                let updated = false;
 
-        // Cargar addon para ajustar tamaño
-        const fitAddon = new FitAddon.FitAddon();
-        term.loadAddon(fitAddon);
-
-        // Abrir terminal en el contenedor
-        term.open(document.getElementById('terminal'));
-        fitAddon.fit();
-
-        // Ajustar terminal al cambiar tamaño de ventana
-        window.addEventListener('resize', () => {
-            fitAddon.fit();
-        });
-
-        // Buffer para almacenar entrada del usuario
-        let commandBuffer = '';
-        const prompt = '\r\n\x1b[32mcodestorm\x1b[37m@\x1b[34mterminal\x1b[0m:\x1b[36m~\x10m$ ';
-
-        // Mostrar mensajede bienvenida
-        term.write('¡Bienvenido a XTerm Terminal de CODESTORM!\r\n');
-        term.write('Escribe comandos para interactuar con el sistema.\r\n');
-        term.write(prompt);
-
-        // Manejar eventos de teclado
-        term.onKey(({ key, domEvent }) => {
-            const printable = !domEvent.altKey && !domEvent.ctrlKey && !domEvent.metaKey;
-
-            if (domEvent.keyCode === 13) { // Enter
-                // Procesar comando                processCommand(commandBuffer);
-                commandBuffer = '';
-            } else if (domEvent.keyCode === 8) { // Backspace
-                // Eliminar último carácter
-                if (commandBuffer.length > 0) {
-                    commandBuffer = commandBuffer.slice(0, -1);
-                    term.write('\b \b');
+                // Método 1: Usando fileActions en la ventana principal
+                if (window.parent && window.parent.fileActions) {
+                    window.parent.fileActions.refreshFileExplorer();
+                    console.log('Solicitud de actualización enviada a la ventana principal (método fileActions)');
+                    updated = true;
                 }
-            } else if (printable) {
-                // Agregar carácter al buffer y mostrar
-                commandBuffer += key;
-                term.write(key);
-            }
-        });
 
-        // Procesar comandos
-        function processCommand(command) {
-            term.write('\r\n');
-
-            if (command.trim() === '') {
-                term.write(prompt);
-                return;
-            }
-
-            if (command === 'clear') {
-                term.clear();
-                term.write(prompt);
-                return;
-            }
-
-            // Enviar comando al servidor
-            fetch('/api/xterm/execute', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ command: command }),
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    if (data.stdout) {
-                        term.write(data.stdout);
-                    }
-                    if (data.stderr) {
-                        term.write('\x1b[31m' + data.stderr + '\x1b[0m');
-                    }
-                } else {
-                    term.write('\x1b[31mError: ' + data.error + '\x1b[0m\r\n');
+                // Método 2: Usar método updateFileExplorer si existe
+                if (window.parent && window.parent.updateFileExplorer) {
+                    window.parent.updateFileExplorer();
+                    console.log('Solicitud de actualización enviada a la ventana principal (método updateFileExplorer)');
+                    updated = true;
                 }
-                term.write(prompt);
-            })
-            .catch(error => {
-                term.write('\x1b[31mError de conexión: ' + error.message + '\x1b[0m\r\n');
-                term.write(prompt);
-            });
+
+                // Método 3: Emitir evento personalizado para que lo capte cualquier listener
+                if (window.parent) {
+                    const event = new CustomEvent('file_explorer_refresh_requested', {
+                        detail: { timestamp: Date.now() }
+                    });
+                    window.parent.document.dispatchEvent(event);
+                    console.log('Evento de actualización emitido a la ventana principal');
+                    updated = true;
+
+                    // Forzar refresco con múltiples intentos a intervalos diferentes
+                    [100, 500, 1000, 2000].forEach(delay => {
+                        setTimeout(() => {
+                            const refreshEvent = new CustomEvent('file_explorer_refresh_requested', {
+                                detail: { timestamp: Date.now(), forced: true, delay: delay }
+                            });
+                            window.parent.document.dispatchEvent(refreshEvent);
+                            console.log(`Enviado evento de actualización con retraso de ${delay}ms`);
+                        }, delay);
+                    });
+                }
+
+                // Método 4: Actualizar directamente el DOM si podemos acceder a él
+                if (window.parent && window.parent.document) {
+                    const refreshButtons = window.parent.document.querySelectorAll('.refresh-explorer-btn, #refresh-explorer-btn, [id*="refresh"]');
+                    if (refreshButtons.length > 0) {
+                        console.log(`Encontrados ${refreshButtons.length} botones de actualización, intentando simular clic`);
+                        refreshButtons.forEach(btn => {
+                            try { btn.click(); } catch(e) { console.warn('Error al hacer clic en botón:', e); }
+                        });
+                        updated = true;
+                    }
+                }
+
+                // Método 5: Usar WebSocket para notificar al servidor sobre cambio
+                try {
+                    if (window.parent && window.parent.socketClient) {
+                        // Enviar múltiples veces para asegurar que se procese
+                        window.parent.socketClient.emit('force_refresh_explorer', {
+                            timestamp: Date.now()
+                        });
+
+                        // Reenviar después de un pequeño retraso
+                        setTimeout(() => {
+                            window.parent.socketClient.emit('file_change', {
+                                type: 'refresh',
+                                file: { path: '.' },
+                                timestamp: Date.now(),
+                                forced: true
+                            });
+                        }, 500);
+
+                        console.log('Solicitudes de actualización enviadas por WebSocket');
+                        updated = true;
+                    }
+                } catch (wsError) {
+                    console.warn('Error al enviar evento por WebSocket:', wsError);
+                }
+
+                // Método 6: Hacer una solicitud directa a la API
+                try {
+                    fetch('/api/files?directory=.', { 
+                        method: 'GET',
+                        headers: { 'X-Requested-With': 'XMLHttpRequest', 'Cache-Control': 'no-cache' }
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        console.log('API de archivos actualizada, datos:', data);
+                        // Reactivar los métodos anteriores después de obtener datos frescos
+                        setTimeout(updateParentFileExplorer, 200);
+                    })
+                    .catch(err => console.warn('Error al actualizar datos de archivos:', err));
+                } catch (apiError) {
+                    console.warn('Error al hacer solicitud a API:', apiError);
+                }
+
+                return updated;
+            } catch (e) {
+                console.error('Error al comunicarse con la ventana principal:', e);
+            }
+            return false;
         }
 
-        // Configurar botones
-        document.getElementById('clearButton').addEventListener('click', () => {
-            term.clear();
-            term.write(prompt);
-        });
+        // Función para descargar un archivo desde la terminal
+        function downloadFileFromTerminal(filePath) {
+            if (!filePath) {
+                term.write('\r\n\x1b[31mError: No se proporcionó ruta de archivo\x1b[0m\r\n');
+                return false;
+            }
 
-        document.getElementById('homeButton').addEventListener('click', () => {
-            window.location.href = '/';
+            // Intentar descargar usando la función global en la ventana principal
+            try {
+                if (window.parent && window.parent.downloadFile) {
+                    window.parent.downloadFile(filePath);
+                    term.write(`\r\n\x1b[32mDescargando archivo: ${filePath}\x1b[0m\r\n`);
+                    return true;
+                } else {
+                    // Fallback: crear un enlace de descarga directamente
+                    const downloadUrl = `/api/files/download?file_path=${encodeURIComponent(filePath)}`;
+
+                    const downloadLink = document.createElement('a');
+                    downloadLink.href = downloadUrl;
+                    downloadLink.download = filePath.split('/').pop();
+                    downloadLink.target = '_blank';
+
+                    document.body.appendChild(downloadLink);
+                    downloadLink.click();
+                    setTimeout(() => {
+                        document.body.removeChild(downloadLink);
+                    }, 100);
+
+                    term.write(`\r\n\x1b[32mDescargando archivo: ${filePath}\x1b[0m\r\n`);
+                    return true;
+                }
+            } catch (e) {
+                console.error('Error al descargar archivo:', e);
+                term.write(`\r\n\x1b[31mError al descargar: ${e.message}\x1b[0m\r\n`);
+                return false;
+            }
+        }
+
+        // Exponer estas funciones globalmente para que otros componentes puedan usarlas
+        window.updateFileExplorer = updateParentFileExplorer;
+        window.downloadFileFromTerminal = downloadFileFromTerminal;
+
+        // Terminal setup
+        document.addEventListener('DOMContentLoaded', function() {
+            // Inicializar terminal
+            const term = new Terminal({
+                cursorBlink: true,
+                fontFamily: 'monospace',
+                fontSize: 14,
+                theme: {
+                    background: '#0a0a0a',
+                    foreground: '#f0f0f0',
+                    cursor: '#ffffff',
+                    selection: 'rgba(255, 255, 255, 0.3)',
+                    black: '#000000',
+                    red: '#e06c75',
+                    green: '#98c379',
+                    yellow: '#e5c07b',
+                    blue: '#61afef',
+                    magenta: '#c678dd',
+                    cyan: '#56b6c2',
+                    white: '#dcdfe4'
+                }
+            });
+
+            // Cargar addon para ajustar tamaño
+            const fitAddon = new FitAddon.FitAddon();
+            term.loadAddon(fitAddon);
+
+            // Abrir terminal en el contenedor
+            term.open(document.getElementById('terminal'));
+            fitAddon.fit();
+
+            // Ajustar terminal al cambiar tamaño de ventana
+            window.addEventListener('resize', () => {
+                fitAddon.fit();
+            });
+
+            // Buffer para almacenar entrada del usuario
+            let commandBuffer = '';
+            const prompt = '\r\n\x1b[32mcodestorm\x1b[37m@\x1b[34mterminal\x1b[0m:\x1b[36m~\x1b[0m$ ';
+
+            // Mostrar mensaje de bienvenida
+            term.write('¡Bienvenido a XTerm Terminal de CODESTORM!\r\n');
+            term.write('Escribe comandos para interactuar con el sistema.\r\n');
+            term.write(prompt);
+
+            // Manejar eventos de teclado
+            term.onKey(({ key, domEvent }) => {
+                const printable = !domEvent.altKey && !domEvent.ctrlKey && !domEvent.metaKey;
+
+                if (domEvent.keyCode === 13) { // Enter
+                    // Procesar comando
+                    processCommand(commandBuffer);
+                    commandBuffer = '';
+                } else if (domEvent.keyCode === 8) { // Backspace
+                    // Eliminar último carácter
+                    if (commandBuffer.length > 0) {
+                        commandBuffer = commandBuffer.slice(0, -1);
+                        term.write('\b \b');
+                    }
+                } else if (printable) {
+                    // Agregar carácter al buffer y mostrar
+                    commandBuffer += key;
+                    term.write(key);
+                }
+            });
+
+            // Procesar comandos
+            function processCommand(command) {
+                term.write('\r\n');
+
+                if (command.trim() === '') {
+                    term.write(prompt);
+                    return;
+                }
+
+                if (command === 'clear') {
+                    term.clear();
+                    term.write(prompt);
+                    return;
+                }
+
+                // Enviar comando al servidor
+                fetch('/api/xterm/execute', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ command: command }),
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        if (data.stdout) {
+                            term.write(data.stdout);
+                        }
+                        if (data.stderr) {
+                            term.write('\x1b[31m' + data.stderr + '\x1b[0m');
+                        }
+
+                        // Detectar si el comando modifica archivos
+                        const fileCommands = ['mkdir', 'rm', 'touch', 'cp', 'mv', 'ls'];
+                        const isFileCommand = fileCommands.some(cmd => command.startsWith(cmd));
+
+                        if (isFileCommand) {
+                            term.write('\r\n\x1b[33mActualizando explorador de archivos...\x1b[0m\r\n');
+
+                            // Intentar actualizar el explorador de archivos en la ventana principal
+                            const updated = updateParentFileExplorer();
+
+                            if (!updated) {
+                                term.write('\x1b[33mNo se pudo actualizar el explorador automáticamente\x1b[0m\r\n');
+                            }
+                        }
+                    } else {
+                        term.write('\x1b[31mError: ' + data.error + '\x1b[0m\r\n');
+                    }
+                    term.write(prompt);
+                })
+                .catch(error => {
+                    term.write('\x1b[31mError de conexión: ' + error.message + '\x1b[0m\r\n');
+                    term.write(prompt);
+                });
+            }
+
+            // Procesar el comando con lenguaje natural
+            function processCommandWithNLP(text) {
+                fetch('/api/process_natural', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ 
+                        text: text,
+                        user_id: localStorage.getItem('user_id') || 'default'
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        // Si se generó un comando, lo ejecutamos
+                        term.write('\r\n$ ' + data.command + '\r\n');
+                        executeCommand(data.command);
+
+                        // Si el comando modifica archivos, actualizamos el explorador
+                        if (data.refresh_explorer) {
+                            term.write('\r\n\x1b[33mActualizando explorador de archivos...\x1b[0m\r\n');
+
+                            // Enviar evento al explorador de archivos si está disponible
+                            if (window.parent && window.parent.fileActions) {
+                                window.parent.fileActions.refreshFileExplorer();
+                            }
+                        }
+                    } else {
+                        term.write('\r\n\x1b[31mError: ' + (data.error || 'No se pudo procesar la instrucción') + '\x1b[0m\r\n');
+                        term.write('\r\n$ ');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error al procesar con NLP:', error);
+                    term.write('\r\n\x1b[31mError de conexión con el servidor\x1b[0m\r\n');
+                    term.write('\r\n$ ');
+                });
+            }
+
+            // Ejecutar un comando
+            function executeCommand(command) {
+                fetch('/api/execute_command', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ 
+                        command: command, 
+                        mode: 'terminal',
+                        user_id: localStorage.getItem('user_id') || 'default' 
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        // Colorear la salida según sea un error o no
+                        let output = data.output || '';
+
+                        if (data.exit_code === 0) {
+                            term.write(output + '\r\n');
+                        } else {
+                            term.write('\x1b[31m' + output + '\x1b[0m\r\n');
+                        }
+
+                        // Detectar si el comando modifica archivos
+                        const fileCommands = ['mkdir', 'rm', 'touch', 'cp', 'mv', 'ls'];
+                        const isFileCommand = fileCommands.some(cmd => command.startsWith(cmd));
+
+                        if (isFileCommand) {
+                            term.write('\r\n\x1b[33mActualizando explorador de archivos...\x1b[0m\r\n');
+
+                            // Intentar actualizar el explorador de archivos en la ventana principal
+                            const updated = updateParentFileExplorer();
+
+                            if (!updated) {
+                                term.write('\x1b[33mNo se pudo actualizar el explorador automáticamente\x1b[0m\r\n');
+                            }
+                        }
+                    } else {
+                        term.write('\r\n\x1b[31mError: ' + (data.error || 'Error desconocido al ejecutar el comando') + '\x1b[0m\r\n');
+                    }
+
+                    term.write('\r\n$ ');
+                })
+                .catch(error => {
+                    console.error('Error al ejecutar comando:', error);
+                    term.write('\r\n\x1b[31mError de conexión con el servidor\x1b[0m\r\n');
+                    term.write('\r\n$ ');
+                });
+            }
+
+            // Configurar botones
+            document.getElementById('clearButton').addEventListener('click', () => {
+                term.clear();
+                term.write(prompt);
+            });
+
+            document.getElementById('homeButton').addEventListener('click', () => {
+                window.location.href = '/';
+            });
         });
     </script>
 </body>
