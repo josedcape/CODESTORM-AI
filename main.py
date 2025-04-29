@@ -1,12 +1,18 @@
-from flask import Flask, render_template, request, jsonify, session, redirect
+from flask import Flask, render_template, request, jsonify, session, redirect, send_file
 from flask_cors import CORS
-from flask_socketio import SocketIO
+from flask_socketio import SocketIO, emit
 import os
 import logging
 import json
 from dotenv import load_dotenv
 import openai
 import google.generativeai as genai
+import subprocess
+import time
+import shutil
+from pathlib import Path
+import traceback
+
 
 # Configure logging
 logging.basicConfig(level=logging.DEBUG,
@@ -18,7 +24,7 @@ load_dotenv()
 # Initialize Flask app
 app = Flask(__name__)
 CORS(app)
-socketio = SocketIO(app, cors_allowed_origins="*")
+socketio = SocketIO(app, cors_allowed_origins="*", async_mode='threading', ping_timeout=60, ping_interval=25, logger=True, engineio_logger=True)
 
 # Configure API keys
 openai_api_key = os.getenv('OPENAI_API_KEY')
@@ -36,6 +42,79 @@ if gemini_api_key:
     genai.configure(api_key=gemini_api_key)
     logging.info(f"Gemini API key configurada: {gemini_api_key[:5]}...{gemini_api_key[-5:]}")
 
+
+class FileSystemManager:
+    def __init__(self, socketio):
+        self.socketio = socketio
+
+    def get_user_workspace(self, user_id='default'):
+        """Get or create a workspace directory for the user."""
+        workspace_path = Path("./user_workspaces") / user_id
+        workspace_path.mkdir(parents=True, exist_ok=True)
+        return workspace_path
+
+    def notify_terminals(self, user_id, data, exclude_terminal=None):
+        """Notify all terminals of a user about command execution."""
+        self.socketio.emit('command_result', data, room=user_id)
+
+    def execute_command(self, command, user_id='default', notify=True, terminal_id=None):
+        """Ejecuta un comando en el workspace del usuario."""
+        try:
+            workspace_dir = self.get_user_workspace(user_id)
+            current_dir = os.getcwd()
+            os.chdir(workspace_dir)
+
+            logging.info(f"Ejecutando comando: '{command}' en workspace: {workspace_dir}")
+
+            result = subprocess.run(
+                command,
+                shell=True,
+                capture_output=True,
+                text=True,
+                timeout=10
+            )
+
+            os.chdir(current_dir)
+
+            output = result.stdout if result.returncode == 0 else result.stderr
+            success = result.returncode == 0
+
+            if notify and terminal_id:
+                self.notify_terminals(user_id, {
+                    'output': output,
+                    'success': success,
+                    'command': command,
+                    'terminal_id': terminal_id
+                })
+
+            file_modifying_commands = ['mkdir', 'touch', 'rm', 'cp', 'mv']
+            if any(cmd in command.split() for cmd in file_modifying_commands):
+                self.socketio.emit('file_system_changed', {
+                    'user_id': user_id,
+                    'command': command,
+                    'timestamp': time.time()
+                }, room=user_id)
+
+            return {
+                'output': output,
+                'success': success,
+                'command': command
+            }
+
+        except subprocess.TimeoutExpired:
+            logging.error(f"Timeout al ejecutar comando: {command}")
+            return {
+                'output': 'Error: El comando tardó demasiado tiempo en ejecutarse',
+                'success': False,
+                'command': command
+            }
+        except Exception as e:
+            logging.error(f"Error al ejecutar comando: {str(e)}")
+            return {
+                'output': f'Error: {str(e)}',
+                'success': False,
+                'command': command
+            }
 
 @app.route('/')
 def index():
@@ -160,7 +239,7 @@ def api_chat():
 
         elif model_choice == 'gemini' and gemini_api_key:
             try:
-                
+
                 model = genai.GenerativeModel('gemini-1.5-pro')
 
                 # Construir el prompt con contexto
@@ -350,7 +429,7 @@ def process_code_endpoint():
         elif model == 'gemini' and gemini_api_key:
             try:
                 # Usar genai para procesar con Gemini
-                
+
                 gemini_model = genai.GenerativeModel(
                     model_name='gemini-1.5-pro',
                     generation_config={
@@ -362,15 +441,15 @@ def process_code_endpoint():
                 )
 
                 prompt = f"""Eres un experto programador. Tu tarea es corregir el siguiente código en {language} según las instrucciones proporcionadas.
-                
+
                 CÓDIGO:
                 ```{language}
                 {code}
                 ```
-                
+
                 INSTRUCCIONES:
                 {instructions}
-                
+
                 Responde en formato JSON con las siguientes claves:
                 - correctedCode: el código corregido completo
                 - changes: una lista de objetos, cada uno con 'description' y 'lineNumbers'
@@ -463,7 +542,7 @@ def process_natural_command():
                 workspace_dir = get_user_workspace(user_id)
                 current_dir = os.getcwd()
                 os.chdir(workspace_dir)
-                
+
                 result = subprocess.run(
                     command,
                     shell=True,
@@ -471,16 +550,16 @@ def process_natural_command():
                     text=True,
                     timeout=5
                 )
-                
+
                 os.chdir(current_dir)
-                
+
                 command_output = result.stdout if result.returncode == 0 else result.stderr
                 command_success = result.returncode == 0
             except Exception as cmd_error:
                 logging.error(f"Error al ejecutar comando: {str(cmd_error)}")
                 command_output = f"Error: {str(cmd_error)}"
                 command_success = False
-            
+
             # Si es un comando de archivos, enviar notificación por WebSocket
             if is_file_command:
                 # Determinar el tipo de cambio
@@ -507,13 +586,13 @@ def process_natural_command():
                         'file': {'path': file_path},
                         'timestamp': time.time()
                     }, broadcast=True)
-                    
+
                     # Notificación genérica de actualización
                     socketio.emit('file_sync', {
                         'refresh': True,
                         'timestamp': time.time()
                     }, broadcast=True)
-                    
+
                     # Notificación para terminales
                     socketio.emit('file_command', {
                         'command': command,
@@ -521,7 +600,7 @@ def process_natural_command():
                         'file': file_path,
                         'timestamp': time.time()
                     }, broadcast=True)
-                    
+
                     # Notificación de comando ejecutado
                     socketio.emit('command_executed', {
                         'command': command,
@@ -932,6 +1011,52 @@ def api_status():
         'gemini': gemini_key,
         'message': 'Visita esta URL para verificar el estado de las APIs'
     })
+
+@socketio.on('connect')
+def handle_connect():
+    """Manejar conexión de cliente Socket.IO."""
+    logging.info(f"Cliente Socket.IO conectado: {request.sid}")
+    emit('server_info', {'status': 'connected', 'sid': request.sid})
+
+@socketio.on('execute_command')
+def handle_execute_command(data):
+    """Ejecuta un comando en la terminal y devuelve el resultado."""
+    command = data.get('command', '')
+    user_id = data.get('user_id', 'default')
+    terminal_id = data.get('terminal_id', request.sid)
+
+    if not command:
+        emit('command_error', {
+            'error': 'No se proporcionó un comando',
+            'terminal_id': terminal_id
+        }, room=terminal_id)
+        return
+
+    file_system_manager = FileSystemManager(socketio)
+    result = file_system_manager.execute_command(
+        command=command,
+        user_id=user_id,
+        notify=True,
+        terminal_id=terminal_id
+    )
+
+    emit('command_result', {
+        'output': result.get('output', ''),
+        'success': result.get('success', False),
+        'command': command,
+        'terminal_id': terminal_id
+    }, room=terminal_id)
+
+    socketio.emit('file_sync', {
+        'refresh': True,
+        'user_id': user_id,
+        'command': command
+    }, room=user_id)
+
+def process_natural_language_to_command(text):
+    #  This is a placeholder.  A more robust implementation would be needed here.
+    return text
+
 
 if __name__ == '__main__':
     socketio.run(app, host='0.0.0.0', port=5000, debug=True)
