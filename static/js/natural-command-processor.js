@@ -1,356 +1,451 @@
 /**
  * CODESTORM - Procesador de Comandos en Lenguaje Natural
- * Este módulo permite interpretar instrucciones en lenguaje natural
- * y convertirlas en acciones sobre archivos y código.
+ * Este módulo permite interpretar instrucciones en lenguaje natural y convertirlas en comandos ejecutables
  */
 
-// Namespace global para el procesador de comandos
-window.naturalCommandProcessor = (function() {
-    // Patrones de comandos para acciones comunes
-    const commandPatterns = {
-        modifyFile: /modifica|edita|cambia|actualiza|agrega (en|a)|añade (en|a)/i,
-        createFile: /crea|genera|nuevo archivo|nueva archivo/i,
-        deleteFile: /elimina|borra|quita|remueve/i,
-        executeCommand: /ejecuta|corre|lanza|inicia/i,
-        showFile: /muestra|visualiza|ver|abre/i
-    };
+class NaturalCommandProcessor {
+    constructor() {
+        this.commandHistory = [];
+        this.supportedCommands = {
+            file: ['crear', 'nuevo', 'editar', 'abrir', 'eliminar', 'borrar', 'mostrar', 'ver', 'leer'],
+            directory: ['crear', 'nuevo', 'eliminar', 'borrar', 'listar', 'mostrar', 'cambiar a', 'ir a'],
+            package: ['instalar', 'desinstalar', 'actualizar'],
+            system: ['ejecutar', 'correr', 'iniciar', 'detener', 'reiniciar', 'status']
+        };
 
-    // Patrones para identificar archivos
-    const filePatterns = {
-        htmlFile: /\.html$|\.htm$/i,
-        cssFile: /\.css$/i,
-        jsFile: /\.js$/i,
-        pythonFile: /\.py$/i,
-        jsonFile: /\.json$/i
-    };
-
-    // Función para extraer nombres de archivos mencionados en el texto
-    function extractFilename(text) {
-        // Buscar patrones como 'archivo X', 'archivo llamado X', 'el X'
-        const filePatterns = [
-            /(?:archivo|fichero|documento)\s+(?:llamado\s+)?["']?([a-zA-Z0-9_\-\.]+\.[a-zA-Z0-9]+)["']?/i,
-            /(?:en|a|el|la)\s+(?:archivo|fichero)?\s*["']?([a-zA-Z0-9_\-\.]+\.[a-zA-Z0-9]+)["']?/i,
-            /["']([a-zA-Z0-9_\-\.\/]+\.[a-zA-Z0-9]+)["']/i
-        ];
-
-        for (const pattern of filePatterns) {
-            const match = text.match(pattern);
-            if (match && match[1]) {
-                return match[1].trim();
-            }
-        }
-
-        return null;
+        // Patrones de reconocimiento para comandos comunes
+        this.patterns = {
+            createFile: [
+                /crear\s+(?:un\s+)?(?:nuevo\s+)?archivo\s+(?:llamado\s+)?["']?([^"']+)["']?/i,
+                /nuevo\s+archivo\s+(?:llamado\s+)?["']?([^"']+)["']?/i,
+                /crear\s+(?:el\s+)?archivo\s+["']?([^"']+)["']?/i,
+                /generar\s+(?:un\s+)?archivo\s+(?:llamado\s+)?["']?([^"']+)["']?/i
+            ],
+            createFileWithContent: [
+                /crear\s+(?:un\s+)?(?:nuevo\s+)?archivo\s+(?:llamado\s+)?["']?([^"']+)["']?\s+(?:con\s+(?:el\s+)?contenido\s+["'](.+?)["']|con\s+(?:el\s+)?contenido\s+(.+)$)/i,
+                /nuevo\s+archivo\s+(?:llamado\s+)?["']?([^"']+)["']?\s+(?:con\s+(?:el\s+)?contenido\s+["'](.+?)["']|con\s+(?:el\s+)?contenido\s+(.+)$)/i
+            ],
+            createDirectory: [
+                /crear\s+(?:un\s+)?(?:nuevo\s+)?(?:directorio|carpeta)\s+(?:llamad[oa]\s+)?["']?([^"']+)["']?/i,
+                /nuev[oa]\s+(?:directorio|carpeta)\s+(?:llamad[oa]\s+)?["']?([^"']+)["']?/i
+            ],
+            deleteFile: [
+                /(?:eliminar|borrar)\s+(?:el\s+)?archivo\s+(?:llamado\s+)?["']?([^"']+)["']?/i,
+                /(?:eliminar|borrar)\s+["']?([^"']+)["']?/i
+            ],
+            deleteDirectory: [
+                /(?:eliminar|borrar)\s+(?:el\s+)?(?:directorio|carpeta)\s+(?:llamad[oa]\s+)?["']?([^"']+)["']?/i
+            ],
+            listFiles: [
+                /(?:listar|mostrar|ver)\s+(?:los\s+)?archivos/i,
+                /listar\s+(?:el\s+)?(?:directorio|carpeta)/i,
+                /mostrar\s+(?:el\s+)?contenido\s+(?:del\s+)?(?:directorio|carpeta)/i
+            ],
+            changeDirectory: [
+                /(?:cambiar|ir)\s+(?:al|a)\s+(?:directorio|carpeta)\s+["']?([^"']+)["']?/i,
+                /(?:cambiar|ir)\s+(?:al|a)\s+["']?([^"']+)["']?/i,
+                /cd\s+["']?([^"']+)["']?/i
+            ],
+            installPackage: [
+                /instalar\s+(?:el\s+)?(?:paquete|librería|biblioteca|módulo)\s+["']?([^"']+)["']?/i,
+                /instalar\s+["']?([^"']+)["']?/i,
+                /npm\s+install\s+["']?([^"']+)["']?/i,
+                /pip\s+install\s+["']?([^"']+)["']?/i
+            ],
+            uninstallPackage: [
+                /(?:desinstalar|eliminar|quitar)\s+(?:el\s+)?(?:paquete|librería|biblioteca|módulo)\s+["']?([^"']+)["']?/i,
+                /npm\s+(?:uninstall|remove)\s+["']?([^"']+)["']?/i,
+                /pip\s+(?:uninstall|remove)\s+["']?([^"']+)["']?/i
+            ],
+            executeCommand: [
+                /ejecutar\s+(?:el\s+)?comando\s+["']?(.+?)["']?$/i,
+                /correr\s+(?:el\s+)?comando\s+["']?(.+?)["']?$/i,
+                /ejecutar\s+["']?(.+?)["']?$/i
+            ]
+        };
     }
 
-    // Función para extraer el contenido a modificar/agregar
-    function extractContent(text) {
-        // Buscar contenido entre comillas, triples comillas o después de "contenido:", "código:"
-        const contentPatterns = [
-            /(?:contenido|código|texto):\s*["'](.+?)["']/is,
-            /["'](.+?)["']/is,
-            /```(?:\w+)?\s*(.+?)```/is,
-            /contenido|código|texto\s+(?:siguiente|este):\s*(.+)/is
-        ];
+    /**
+     * Procesa una instrucción en lenguaje natural y la convierte en un comando ejecutable
+     * @param {string} instruction - Instrucción en lenguaje natural
+     * @param {string} currentDirectory - Directorio actual
+     * @returns {object} Objeto con el comando y metadatos
+     */
+    processInstruction(instruction, currentDirectory = '.') {
+        // Normalizar directorio actual
+        currentDirectory = currentDirectory === '/' ? '.' : currentDirectory;
 
-        for (const pattern of contentPatterns) {
-            const match = text.match(pattern);
-            if (match && match[1]) {
-                return match[1].trim();
-            }
+        // Intentar identificar el tipo de instrucción
+        let result = this.identifyCommand(instruction, currentDirectory);
+
+        // Si no se pudo identificar con patrones, intentar con análisis semántico básico
+        if (!result.command) {
+            result = this.semanticAnalysis(instruction, currentDirectory);
         }
 
-        return null;
-    }
-
-    // Función para determinar la acción a realizar
-    function determineAction(text) {
-        if (commandPatterns.modifyFile.test(text)) {
-            return 'modify';
-        } else if (commandPatterns.createFile.test(text)) {
-            return 'create';
-        } else if (commandPatterns.deleteFile.test(text)) {
-            return 'delete';
-        } else if (commandPatterns.executeCommand.test(text)) {
-            return 'execute';
-        } else if (commandPatterns.showFile.test(text)) {
-            return 'show';
-        }
-        return null;
-    }
-
-    // Función para extraer un comando de terminal
-    function extractCommand(text) {
-        const commandPatterns = [
-            /(?:comando|instrucción|terminal):\s*["'](.+?)["']/i,
-            /(?:ejecuta|corre|lanza|ejecutar|correr)\s+["'](.+?)["']/i,
-            /(?:ejecuta|corre|lanza|ejecutar|correr)\s+(?:el comando|la instrucción)?\s+(.+)/i
-        ];
-
-        for (const pattern of commandPatterns) {
-            const match = text.match(pattern);
-            if (match && match[1]) {
-                return match[1].trim();
-            }
-        }
-
-        return null;
-    }
-
-    // Función para procesar una petición en lenguaje natural
-    function processRequest(text) {
-        const action = determineAction(text);
-        if (!action) {
-            return {
-                success: false,
-                message: "No se pudo determinar la acción a realizar. Por favor, sé más específico."
+        // Si aún no hay comando, intentar ejecutar directamente como comando del sistema
+        if (!result.command && instruction.trim()) {
+            result = {
+                type: 'direct',
+                command: instruction.trim(),
+                description: 'Ejecutar comando directo',
+                success: true
             };
         }
 
-        let filename = extractFilename(text);
-        let content = extractContent(text);
-        let command = extractCommand(text);
+        // Agregar a historial si es un comando válido
+        if (result.command) {
+            this.commandHistory.push({
+                instruction: instruction,
+                command: result.command,
+                timestamp: new Date()
+            });
+        }
 
-        // Construir respuesta basada en la acción
-        const response = {
-            action: action,
-            success: true
+        return result;
+    }
+
+    /**
+     * Identifica el tipo de comando basado en patrones predefinidos
+     * @param {string} instruction - Instrucción en lenguaje natural
+     * @param {string} currentDirectory - Directorio actual
+     * @returns {object} Objeto con el comando y metadatos
+     */
+    identifyCommand(instruction, currentDirectory) {
+        let result = {
+            type: null,
+            command: null,
+            description: null,
+            success: false,
+            fileUpdated: false
         };
 
-        switch (action) {
-            case 'modify':
-            case 'create':
-                if (!filename) {
-                    return {
-                        success: false,
-                        message: "No se pudo identificar el nombre del archivo. Por favor, especifica claramente el nombre del archivo."
-                    };
-                }
-                if (!content && action === 'create') {
-                    return {
-                        success: false,
-                        message: "No se pudo identificar el contenido para el archivo. Por favor, incluye el contenido entre comillas o después de 'contenido:'."
-                    };
-                }
-                response.filename = filename;
-                response.content = content;
-                break;
-            
-            case 'delete':
-            case 'show':
-                if (!filename) {
-                    return {
-                        success: false,
-                        message: "No se pudo identificar el nombre del archivo. Por favor, especifica claramente el nombre del archivo."
-                    };
-                }
-                response.filename = filename;
-                break;
-            
-            case 'execute':
-                if (!command) {
-                    return {
-                        success: false,
-                        message: "No se pudo identificar el comando a ejecutar. Por favor, especifica claramente el comando."
-                    };
-                }
-                response.command = command;
-                break;
+        // Crear archivo con contenido
+        for (const pattern of this.patterns.createFileWithContent) {
+            const match = instruction.match(pattern);
+            if (match) {
+                const fileName = match[1];
+                const content = match[2] || match[3] || '';
+
+                // Escapar contenido para shell
+                const escapedContent = content.replace(/"/g, '\\"');
+
+                result = {
+                    type: 'file_create',
+                    command: `echo "${escapedContent}" > ${this.joinPath(currentDirectory, fileName)}`,
+                    description: `Crear archivo '${fileName}' con contenido`,
+                    fileName: fileName,
+                    path: this.joinPath(currentDirectory, fileName),
+                    success: true,
+                    fileUpdated: true
+                };
+                return result;
+            }
         }
 
-        return response;
-    }
-
-    // Función para ejecutar la acción procesada
-    function executeAction(parsedRequest) {
-        if (!parsedRequest.success) {
-            return Promise.reject(new Error(parsedRequest.message));
+        // Crear archivo vacío
+        for (const pattern of this.patterns.createFile) {
+            const match = instruction.match(pattern);
+            if (match) {
+                const fileName = match[1];
+                result = {
+                    type: 'file_create',
+                    command: `touch ${this.joinPath(currentDirectory, fileName)}`,
+                    description: `Crear archivo vacío '${fileName}'`,
+                    fileName: fileName,
+                    path: this.joinPath(currentDirectory, fileName),
+                    success: true,
+                    fileUpdated: true
+                };
+                return result;
+            }
         }
 
-        switch (parsedRequest.action) {
-            case 'modify':
-                return modifyFile(parsedRequest.filename, parsedRequest.content);
-            
-            case 'create':
-                return createFile(parsedRequest.filename, parsedRequest.content);
-            
-            case 'delete':
-                return deleteFile(parsedRequest.filename);
-            
-            case 'show':
-                return showFile(parsedRequest.filename);
-            
-            case 'execute':
-                return executeCommand(parsedRequest.command);
-            
-            default:
-                return Promise.reject(new Error("Acción no soportada"));
+        // Crear directorio
+        for (const pattern of this.patterns.createDirectory) {
+            const match = instruction.match(pattern);
+            if (match) {
+                const dirName = match[1];
+                result = {
+                    type: 'directory_create',
+                    command: `mkdir -p ${this.joinPath(currentDirectory, dirName)}`,
+                    description: `Crear directorio '${dirName}'`,
+                    dirName: dirName,
+                    path: this.joinPath(currentDirectory, dirName),
+                    success: true,
+                    fileUpdated: true
+                };
+                return result;
+            }
         }
-    }
 
-    // Implementación de las acciones
-    function modifyFile(filename, content) {
-        return new Promise((resolve, reject) => {
-            // Primero obtener el contenido actual del archivo
-            fetch(`/api/files/view?path=${encodeURIComponent(filename)}`)
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error(`El archivo ${filename} no existe o no se puede acceder a él.`);
-                    }
-                    return response.json();
-                })
-                .then(data => {
-                    // Ahora actualizar el archivo con el contenido nuevo
-                    return fetch('/api/files/save', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify({
-                            path: filename,
-                            content: data.content + '\n' + content // Agregar el nuevo contenido
-                        })
-                    });
-                })
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error(`No se pudo modificar el archivo ${filename}.`);
-                    }
-                    return response.json();
-                })
-                .then(data => {
-                    resolve({
+        // Eliminar archivo
+        for (const pattern of this.patterns.deleteFile) {
+            const match = instruction.match(pattern);
+            if (match) {
+                const fileName = match[1];
+                // Verificar que es un archivo y no un directorio
+                if (!fileName.includes('/') || fileName.includes('.')) {
+                    result = {
+                        type: 'file_delete',
+                        command: `rm ${this.joinPath(currentDirectory, fileName)}`,
+                        description: `Eliminar archivo '${fileName}'`,
+                        fileName: fileName,
+                        path: this.joinPath(currentDirectory, fileName),
                         success: true,
-                        message: `Archivo ${filename} modificado correctamente.`,
-                        data: data
-                    });
-                })
-                .catch(error => {
-                    reject(error);
-                });
-        });
-    }
-
-    function createFile(filename, content) {
-        return new Promise((resolve, reject) => {
-            fetch('/api/files/create', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    path: filename,
-                    content: content || ''
-                })
-            })
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error(`No se pudo crear el archivo ${filename}.`);
+                        fileUpdated: true
+                    };
+                    return result;
                 }
-                return response.json();
-            })
-            .then(data => {
-                resolve({
-                    success: true,
-                    message: `Archivo ${filename} creado correctamente.`,
-                    data: data
-                });
-            })
-            .catch(error => {
-                reject(error);
-            });
-        });
-    }
+            }
+        }
 
-    function deleteFile(filename) {
-        return new Promise((resolve, reject) => {
-            fetch('/api/files/delete', {
-                method: 'DELETE',  // Changed from POST to DELETE
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    file_path: filename  // Also fixed the property name to match backend
-                })
-            })
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error(`No se pudo eliminar el archivo ${filename}.`);
+        // Eliminar directorio
+        for (const pattern of this.patterns.deleteDirectory) {
+            const match = instruction.match(pattern);
+            if (match) {
+                const dirName = match[1];
+                result = {
+                    type: 'directory_delete',
+                    command: `rm -rf ${this.joinPath(currentDirectory, dirName)}`,
+                    description: `Eliminar directorio '${dirName}'`,
+                    dirName: dirName,
+                    path: this.joinPath(currentDirectory, dirName),
+                    success: true,
+                    fileUpdated: true
+                };
+                return result;
+            }
+        }
+
+        // Listar archivos
+        for (const pattern of this.patterns.listFiles) {
+            if (pattern.test(instruction)) {
+                result = {
+                    type: 'list_files',
+                    command: `ls -la ${currentDirectory}`,
+                    description: 'Listar archivos y directorios',
+                    success: true,
+                    fileUpdated: false
+                };
+                return result;
+            }
+        }
+
+        // Cambiar directorio
+        for (const pattern of this.patterns.changeDirectory) {
+            const match = instruction.match(pattern);
+            if (match) {
+                const dirName = match[1];
+                result = {
+                    type: 'change_directory',
+                    command: `cd ${dirName}`,
+                    description: `Cambiar al directorio '${dirName}'`,
+                    dirName: dirName,
+                    success: true,
+                    fileUpdated: false
+                };
+                return result;
+            }
+        }
+
+        // Instalar paquete
+        for (const pattern of this.patterns.installPackage) {
+            const match = instruction.match(pattern);
+            if (match) {
+                const packageName = match[1];
+
+                // Detectar tipo de paquete (npm o pip)
+                let command;
+                if (instruction.toLowerCase().includes('pip') || 
+                    packageName.endsWith('.whl') || 
+                    instruction.toLowerCase().includes('python')) {
+                    command = `pip install ${packageName}`;
+                } else if (instruction.toLowerCase().includes('apt') || 
+                           instruction.toLowerCase().includes('ubuntu') || 
+                           instruction.toLowerCase().includes('debian')) {
+                    command = `apt-get install -y ${packageName}`;
+                } else {
+                    // Por defecto usar npm
+                    command = `npm install ${packageName}`;
                 }
-                return response.json();
-            })
-            .then(data => {
-                resolve({
+
+                result = {
+                    type: 'install_package',
+                    command: command,
+                    description: `Instalar paquete '${packageName}'`,
+                    packageName: packageName,
                     success: true,
-                    message: `Archivo ${filename} eliminado correctamente.`,
-                    data: data
-                });
-            })
-            .catch(error => {
-                reject(error);
-            });
-        });
-    }
+                    fileUpdated: false
+                };
+                return result;
+            }
+        }
 
-    function showFile(filename) {
-        return new Promise((resolve, reject) => {
-            fetch(`/api/files/view?path=${encodeURIComponent(filename)}`)
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error(`El archivo ${filename} no existe o no se puede acceder a él.`);
-                    }
-                    return response.json();
-                })
-                .then(data => {
-                    resolve({
-                        success: true,
-                        message: `Contenido del archivo ${filename}:`,
-                        data: data
-                    });
-                })
-                .catch(error => {
-                    reject(error);
-                });
-        });
-    }
+        // Desinstalar paquete
+        for (const pattern of this.patterns.uninstallPackage) {
+            const match = instruction.match(pattern);
+            if (match) {
+                const packageName = match[1];
 
-    function executeCommand(command) {
-        return new Promise((resolve, reject) => {
-            fetch('/api/terminal/execute', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    command: command
-                })
-            })
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error(`Error al ejecutar el comando: ${command}`);
+                // Detectar tipo de paquete (npm o pip)
+                let command;
+                if (instruction.toLowerCase().includes('pip') || 
+                    packageName.endsWith('.whl') || 
+                    instruction.toLowerCase().includes('python')) {
+                    command = `pip uninstall -y ${packageName}`;
+                } else if (instruction.toLowerCase().includes('apt') || 
+                           instruction.toLowerCase().includes('ubuntu') || 
+                           instruction.toLowerCase().includes('debian')) {
+                    command = `apt-get remove -y ${packageName}`;
+                } else {
+                    // Por defecto usar npm
+                    command = `npm uninstall ${packageName}`;
                 }
-                return response.json();
-            })
-            .then(data => {
-                resolve({
+
+                result = {
+                    type: 'uninstall_package',
+                    command: command,
+                    description: `Desinstalar paquete '${packageName}'`,
+                    packageName: packageName,
                     success: true,
-                    message: `Comando ejecutado correctamente: ${command}`,
-                    data: data
-                });
-            })
-            .catch(error => {
-                reject(error);
-            });
-        });
+                    fileUpdated: false
+                };
+                return result;
+            }
+        }
+
+        // Ejecutar comando directo
+        for (const pattern of this.patterns.executeCommand) {
+            const match = instruction.match(pattern);
+            if (match) {
+                const cmd = match[1];
+                result = {
+                    type: 'execute_command',
+                    command: cmd,
+                    description: `Ejecutar comando: ${cmd}`,
+                    success: true,
+                    fileUpdated: false
+                };
+                return result;
+            }
+        }
+
+        return result;
     }
 
-    // Interfaz pública del módulo
-    return {
-        processRequest: processRequest,
-        executeAction: executeAction,
-        extractFilename: extractFilename,
-        extractContent: extractContent,
-        extractCommand: extractCommand
-    };
-})();
+    /**
+     * Realiza un análisis semántico básico de la instrucción
+     * @param {string} instruction - Instrucción en lenguaje natural
+     * @param {string} currentDirectory - Directorio actual
+     * @returns {object} Objeto con el comando y metadatos
+     */
+    semanticAnalysis(instruction, currentDirectory) {
+        const words = instruction.toLowerCase().split(/\s+/);
+        let result = {
+            type: null,
+            command: null,
+            description: null,
+            success: false,
+            fileUpdated: false
+        };
 
+        // Buscar verbos de acción y sustantivos relevantes
+        const actionVerbs = words.filter(word => 
+            this.supportedCommands.file.includes(word) || 
+            this.supportedCommands.directory.includes(word) || 
+            this.supportedCommands.package.includes(word) || 
+            this.supportedCommands.system.includes(word)
+        );
+
+        if (actionVerbs.length === 0) {
+            return result;
+        }
+
+        const primaryAction = actionVerbs[0];
+
+        // Detectar comandos básicos del sistema
+        if (instruction.toLowerCase().includes('pwd') || 
+            instruction.toLowerCase().includes('directorio actual') || 
+            instruction.toLowerCase().includes('donde estoy')) {
+            return {
+                type: 'system',
+                command: 'pwd',
+                description: 'Mostrar directorio actual',
+                success: true,
+                fileUpdated: false
+            };
+        }
+
+        if (instruction.toLowerCase().includes('ls') || 
+            (instruction.toLowerCase().includes('listar') && !instruction.toLowerCase().includes('directorio'))) {
+            return {
+                type: 'system',
+                command: 'ls -la',
+                description: 'Listar archivos',
+                success: true,
+                fileUpdated: false
+            };
+        }
+
+        // Si parece un comando directo, devolverlo como tal
+        if (instruction.startsWith('git ') || 
+            instruction.startsWith('npm ') || 
+            instruction.startsWith('pip ') || 
+            instruction.startsWith('python ') || 
+            instruction.startsWith('node ') ||
+            instruction.startsWith('./') ||
+            /^[a-z]+\s+-[a-z]+/.test(instruction)) { // Patrones comunes de comandos
+
+            return {
+                type: 'direct',
+                command: instruction,
+                description: 'Ejecutar comando directo',
+                success: true,
+                fileUpdated: false
+            };
+        }
+
+        return result;
+    }
+
+    /**
+     * Une rutas de forma segura
+     * @param {string} base - Ruta base
+     * @param {string} path - Ruta a unir
+     * @returns {string} Ruta unida
+     */
+    joinPath(base, path) {
+        if (base === '.' || base === './') {
+            return path;
+        }
+        // Eliminar slash final si existe
+        base = base.endsWith('/') ? base.slice(0, -1) : base;
+        // Eliminar slash inicial si existe
+        path = path.startsWith('/') ? path.slice(1) : path;
+        return `${base}/${path}`;
+    }
+
+    /**
+     * Obtiene el historial de comandos
+     * @returns {Array} Historial de comandos
+     */
+    getCommandHistory() {
+        return this.commandHistory;
+    }
+
+    /**
+     * Limpia el historial de comandos
+     */
+    clearCommandHistory() {
+        this.commandHistory = [];
+    }
+}
+
+// Exportar la clase para uso en otros módulos
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = NaturalCommandProcessor;
+} else {
+    // Para uso en navegador
+    window.NaturalCommandProcessor = NaturalCommandProcessor;
+}

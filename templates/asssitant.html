@@ -1,0 +1,983 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Codestorm - Asistente IA</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.3/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #6c63ff;
+            --secondary-color: #536dfe;
+            --dark-color: #1e1e2e;
+            --light-color: #f8f9fa;
+            --success-color: #28a745;
+            --warning-color: #ffc107;
+            --danger-color: #dc3545;
+            --info-color: #17a2b8;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--dark-color);
+            color: var(--light-color);
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .navbar {
+            background-color: rgba(30, 30, 46, 0.95);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 0.5rem 1rem;
+        }
+
+        .navbar-brand {
+            font-weight: 600;
+            color: var(--primary-color);
+        }
+
+        .main-container {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+
+        .sidebar {
+            width: 300px;
+            background-color: rgba(30, 30, 46, 0.8);
+            border-right: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .file-explorer {
+            flex: 1;
+            overflow-y: auto;
+            padding: 0.5rem;
+        }
+
+        .file-explorer-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.5rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            font-weight: 600;
+        }
+
+        .file-explorer-item {
+            padding: 0.5rem;
+            cursor: pointer;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            margin-bottom: 2px;
+        }
+
+        .file-explorer-item:hover {
+            background-color: rgba(255, 255, 255, 0.1);
+        }
+
+        .file-explorer-item.directory {
+            color: var(--warning-color);
+        }
+
+        .file-explorer-item.file {
+            color: var(--light-color);
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .file-size {
+            font-size: 0.75rem;
+            color: rgba(255, 255, 255, 0.5);
+            margin-left: auto;
+        }
+
+        .content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .assistant-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            padding: 1rem;
+        }
+
+        .chat-container {
+            flex: 1;
+            overflow-y: auto;
+            padding: 1rem;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .message {
+            max-width: 80%;
+            margin-bottom: 1rem;
+            padding: 0.75rem 1rem;
+            border-radius: 1rem;
+            position: relative;
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .message.user {
+            align-self: flex-end;
+            background-color: var(--primary-color);
+            border-bottom-right-radius: 0.25rem;
+        }
+
+        .message.assistant {
+            align-self: flex-start;
+            background-color: rgba(255, 255, 255, 0.1);
+            border-bottom-left-radius: 0.25rem;
+        }
+
+        .message pre {
+            background-color: rgba(0, 0, 0, 0.3);
+            padding: 0.75rem;
+            border-radius: 0.5rem;
+            overflow-x: auto;
+            margin: 0.5rem 0;
+        }
+
+        .message code {
+            background-color: rgba(0, 0, 0, 0.3);
+            padding: 0.2rem 0.4rem;
+            border-radius: 0.25rem;
+            font-family: 'Consolas', 'Monaco', monospace;
+        }
+
+        .input-container {
+            background-color: rgba(30, 30, 46, 0.8);
+            padding: 1rem;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .input-group {
+            background-color: rgba(255, 255, 255, 0.1);
+            border-radius: 1.5rem;
+            padding: 0.25rem;
+        }
+
+        #user-input {
+            background-color: transparent;
+            border: none;
+            color: var(--light-color);
+            padding: 0.75rem 1rem;
+            resize: none;
+            max-height: 150px;
+            overflow-y: auto;
+        }
+
+        #user-input:focus {
+            outline: none;
+            box-shadow: none;
+        }
+
+        .btn-send {
+            background-color: var(--primary-color);
+            color: white;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            padding: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 0.5rem;
+        }
+
+        .btn-send:hover {
+            background-color: var(--secondary-color);
+        }
+
+        .terminal-container {
+            background-color: #1a1a1a;
+            border-radius: 0.5rem;
+            overflow: hidden;
+            margin-top: 1rem;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .terminal-header {
+            background-color: rgba(0, 0, 0, 0.3);
+            padding: 0.5rem 1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .terminal-title {
+            font-weight: 600;
+            color: var(--light-color);
+        }
+
+        .terminal-controls {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .terminal-control {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            cursor: pointer;
+        }
+
+        .terminal-control.close {
+            background-color: var(--danger-color);
+        }
+
+        .terminal-control.minimize {
+            background-color: var(--warning-color);
+        }
+
+        .terminal-control.maximize {
+            background-color: var(--success-color);
+        }
+
+        .terminal-output {
+            padding: 1rem;
+            font-family: 'Consolas', 'Monaco', monospace;
+            overflow-y: auto;
+            flex: 1;
+            min-height: 150px;
+            max-height: 300px;
+            color: #f0f0f0;
+        }
+
+        .terminal-input-container {
+            display: flex;
+            padding: 0.5rem 1rem;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .terminal-prompt {
+            color: var(--success-color);
+            margin-right: 0.5rem;
+        }
+
+        #command-input {
+            background-color: transparent;
+            border: none;
+            color: var(--light-color);
+            flex: 1;
+            font-family: 'Consolas', 'Monaco', monospace;
+        }
+
+        #command-input:focus {
+            outline: none;
+        }
+
+        .status-indicator {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-left: 0.5rem;
+        }
+
+        .status-connected {
+            background-color: var(--success-color);
+        }
+
+        .status-disconnected {
+            background-color: var(--danger-color);
+        }
+
+        .notification-container {
+            position: fixed;
+            top: 1rem;
+            right: 1rem;
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            max-width: 350px;
+        }
+
+        .notification {
+            background-color: rgba(30, 30, 46, 0.9);
+            border-left: 4px solid var(--info-color);
+            border-radius: 0.25rem;
+            padding: 0.75rem 1rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            transform: translateX(120%);
+            transition: transform 0.3s ease;
+        }
+
+        .notification.show {
+            transform: translateX(0);
+        }
+
+        .notification-success {
+            border-left-color: var(--success-color);
+        }
+
+        .notification-warning {
+            border-left-color: var(--warning-color);
+        }
+
+        .notification-danger {
+            border-left-color: var(--danger-color);
+        }
+
+        .notification-info {
+            border-left-color: var(--info-color);
+        }
+
+        .notification-content {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .notification-icon {
+            font-size: 1.25rem;
+        }
+
+        .notification-close {
+            background: none;
+            border: none;
+            color: var(--light-color);
+            cursor: pointer;
+            font-size: 1.25rem;
+            padding: 0;
+            line-height: 1;
+        }
+
+        .model-selector {
+            padding: 0.5rem 1rem;
+            background-color: rgba(0, 0, 0, 0.2);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        @media (max-width: 768px) {
+            .main-container {
+                flex-direction: column;
+            }
+
+            .sidebar {
+                width: 100%;
+                height: 200px;
+                border-right: none;
+                border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            }
+
+            .message {
+                max-width: 90%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="#">
+                <i class="bi bi-braces me-2"></i>Codestorm
+            </a>
+            <div class="d-flex align-items-center">
+                <span class="me-3">
+                    <i class="bi bi-terminal me-1"></i>Terminal
+                    <span id="status-indicator" class="status-indicator status-disconnected" title="Desconectado"></span>
+                </span>
+                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+            </div>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="/terminal">
+                            <i class="bi bi-terminal me-1"></i>Terminal
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link active" href="/assistant">
+                            <i class="bi bi-robot me-1"></i>Asistente
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/settings">
+                            <i class="bi bi-gear me-1"></i>Configuración
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="main-container">
+        <div class="sidebar">
+            <div class="model-selector">
+                <label for="model-select" class="form-label">Modelo de IA:</label>
+                <select id="model-select" class="form-select form-select-sm">
+                    <option value="gpt-4">OpenAI GPT-4</option>
+                    <option value="gpt-3.5-turbo">OpenAI GPT-3.5 Turbo</option>
+                    <option value="claude-3-opus">Anthropic Claude 3 Opus</option>
+                    <option value="claude-3-sonnet">Anthropic Claude 3 Sonnet</option>
+                    <option value="gemini-pro">Google Gemini Pro</option>
+                </select>
+            </div>
+            <div class="file-explorer-header">
+                <span>Explorador de archivos</span>
+                <span id="directory-path">/</span>
+            </div>
+            <div id="file-explorer" class="file-explorer">
+                <div class="text-center p-3">
+                    <div class="spinner-border spinner-border-sm text-light" role="status">
+                        <span class="visually-hidden">Cargando...</span>
+                    </div>
+                    <p class="mt-2">Cargando archivos...</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="content">
+            <div class="assistant-container">
+                <div id="chat-container" class="chat-container">
+                    <div class="message assistant">
+                        <p>Hola, soy tu asistente de desarrollo. ¿En qué puedo ayudarte hoy?</p>
+                        <p>Puedes pedirme que:</p>
+                        <ul>
+                            <li>Cree archivos y carpetas</li>
+                            <li>Instale paquetes y dependencias</li>
+                            <li>Ejecute comandos en la terminal</li>
+                            <li>Explique conceptos de programación</li>
+                            <li>Genere código para tus proyectos</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="terminal-container">
+                    <div class="terminal-header">
+                        <div class="terminal-controls">
+                            <div class="terminal-control close" id="close-terminal"></div>
+                            <div class="terminal-control minimize" id="minimize-terminal"></div>
+                            <div class="terminal-control maximize" id="maximize-terminal"></div>
+                        </div>
+                        <div class="terminal-title">Terminal</div>
+                        <div>
+                            <button id="clear-button" class="btn btn-sm btn-outline-light">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div id="output-display" class="terminal-output"></div>
+                    <div class="terminal-input-container">
+                        <span class="terminal-prompt">$</span>
+                        <input type="text" id="command-input" placeholder="Ingresa un comando...">
+                        <button id="execute-button" class="btn btn-sm btn-outline-light ms-2">
+                            <i class="bi bi-play-fill"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="input-container">
+                    <div class="input-group">
+                        <textarea id="user-input" class="form-control" placeholder="Escribe tu pregunta o instrucción..."></textarea>
+                        <button id="send-button" class="btn btn-send">
+                            <i class="bi bi-send-fill"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="notification-container" class="notification-container"></div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.socket.io/4.6.0/socket.io.min.js"></script>
+    <script src="/static/js/natural-command-processor.js"></script>
+    <script src="/static/js/terminal-integration.js"></script>
+    <script src="/static/js/websocket.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Elementos de la interfaz
+            const chatContainer = document.getElementById('chat-container');
+            const userInput = document.getElementById('user-input');
+            const sendButton = document.getElementById('send-button');
+            const modelSelect = document.getElementById('model-select');
+
+            // Variables globales
+            let conversationHistory = [];
+            let isProcessing = false;
+
+            // Inicializar procesador de comandos naturales
+            const naturalCommandProcessor = new NaturalCommandProcessor();
+
+            // Función para agregar mensaje al chat
+            function addMessage(content, sender) {
+                const messageDiv = document.createElement('div');
+                messageDiv.className = `message ${sender}`;
+
+                // Procesar markdown básico
+                let processedContent = content
+                    .replace(/```([^`]+)```/g, '<pre><code>$1</code></pre>')
+                    .replace(/`([^`]+)`/g, '<code>$1</code>')
+                    .replace(/\n/g, '<br>');
+
+                messageDiv.innerHTML = processedContent;
+                chatContainer.appendChild(messageDiv);
+
+                // Desplazar al último mensaje
+                chatContainer.scrollTop = chatContainer.scrollHeight;
+
+                // Agregar al historial
+                conversationHistory.push({
+                    role: sender === 'user' ? 'user' : 'assistant',
+                    content: content
+                });
+            }
+
+            // Función para enviar mensaje al asistente
+            function sendMessage() {
+                const message = userInput.value.trim();
+                if (!message || isProcessing) return;
+
+                // Limpiar input
+                userInput.value = '';
+
+                // Mostrar mensaje del usuario
+                addMessage(message, 'user');
+
+                // Indicar que estamos procesando
+                isProcessing = true;
+
+                // Mostrar indicador de carga
+                const loadingDiv = document.createElement('div');
+                loadingDiv.className = 'message assistant';
+                loadingDiv.innerHTML = '<div class="spinner-border spinner-border-sm text-light" role="status"><span class="visually-hidden">Cargando...</span></div> Procesando...';
+                chatContainer.appendChild(loadingDiv);
+                chatContainer.scrollTop = chatContainer.scrollHeight;
+
+                // Primero intentar procesar como comando en lenguaje natural
+                const result = naturalCommandProcessor.processInstruction(message, getCurrentDirectory());
+
+                if (result.success && result.command) {
+                    // Es un comando válido, ejecutarlo
+                    chatContainer.removeChild(loadingDiv);
+
+                    // Agregar respuesta del asistente
+                    addMessage(`Ejecutaré este comando: \`${result.command}\``, 'assistant');
+
+                    // Ejecutar el comando
+                    executeCommand(result.command);
+
+                    isProcessing = false;
+                } else {
+                    // No es un comando, enviar al asistente
+                    fetch('/api/assistant', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            message: message,
+                            model: modelSelect.value,
+                            history: conversationHistory,
+                            directory: getCurrentDirectory()
+                        })
+                    })
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error(`Error: ${response.status}`);
+                        }
+                        return response.json();
+                    })
+                    .then(data => {
+                        // Eliminar indicador de carga
+                        chatContainer.removeChild(loadingDiv);
+
+                        // Mostrar respuesta del asistente
+                        addMessage(data.response, 'assistant');
+
+                        // Si hay un comando para ejecutar
+                        if (data.command) {
+                            executeCommand(data.command);
+                        }
+
+                        isProcessing = false;
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+
+                        // Eliminar indicador de carga
+                        chatContainer.removeChild(loadingDiv);
+
+                        // Mostrar error
+                        addMessage(`Ocurrió un error: ${error.message}. Por favor, intenta de nuevo.`, 'assistant');
+
+                        isProcessing = false;
+                    });
+                }
+            }
+
+            // Función para ejecutar comando
+            function executeCommand(command) {
+                if (window.terminalInterface && typeof window.terminalInterface.executeCommand === 'function') {
+                    window.terminalInterface.executeCommand(command);
+                } else {
+                    // Si no hay interfaz de terminal disponible, usar fetch
+                    fetch('/execute_command', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            command: command,
+                            directory: getCurrentDirectory()
+                        })
+                    })
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error(`Error: ${response.status}`);
+                        }
+                        return response.json();
+                    })
+                    .then(data => {
+                        // Mostrar resultado
+                        const output = data.output || '';
+                        const error = data.error || '';
+
+                        let resultMessage = '';
+                        if (output) {
+                            resultMessage += `Salida:\n\`\`\`\n${output}\n\`\`\`\n`;
+                        }
+                        if (error) {
+                            resultMessage += `Error:\n\`\`\`\n${error}\n\`\`\`\n`;
+                        }
+
+                        if (resultMessage) {
+                            addMessage(resultMessage, 'assistant');
+                        }
+
+                        // Actualizar explorador de archivos
+                        loadFiles(getCurrentDirectory());
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        addMessage(`Error al ejecutar comando: ${error.message}`, 'assistant');
+                    });
+                }
+            }
+
+            // Obtener directorio actual
+            function getCurrentDirectory() {
+                return window.terminalInterface && window.terminalInterface.getCurrentDirectory ? 
+                    window.terminalInterface.getCurrentDirectory() : '.';
+            }
+
+            // Cargar archivos en el explorador
+            function loadFiles(directory) {
+                if (window.terminalInterface && typeof window.terminalInterface.loadFiles === 'function') {
+                    window.terminalInterface.loadFiles(directory);
+                } else if (window.webSocketClient && typeof window.webSocketClient.updateFileExplorer === 'function') {
+                    window.webSocketClient.updateFileExplorer(directory);
+                } else {
+                    // Implementación alternativa
+                    fetch(`/files?directory=${encodeURIComponent(directory)}`)
+                        .then(response => {
+                            if (!response.ok) {
+                                if (response.status === 404) {
+                                    return fetch(`/api/files?path=${encodeURIComponent(directory)}`);
+                                }
+                                throw new Error(`Error: ${response.status}`);
+                            }
+                            return response.json();
+                        })
+                        .then(data => {
+                            // Actualizar explorador de archivos
+                            updateFileExplorer(data);
+                        })
+                        .catch(error => {
+                            console.error('Error:', error);
+                            showNotification(`Error al cargar archivos: ${error.message}`, 'danger');
+                        });
+                }
+            }
+
+            // Actualizar explorador de archivos
+            function updateFileExplorer(data) {
+                const fileExplorer = document.getElementById('file-explorer');
+                if (!fileExplorer) return;
+
+                // Manejar diferentes formatos de respuesta
+                const files = data.files || data.items || [];
+                const directory = data.directory || data.current_path || '.';
+
+                // Actualizar ruta visible
+                const directoryPath = document.getElementById('directory-path');
+                if (directoryPath) {
+                    directoryPath.textContent = directory === '.' ? '/' : directory;
+                }
+
+                // Limpiar explorador
+                fileExplorer.innerHTML = '';
+
+                // Si no estamos en el directorio raíz, agregar opción para subir
+                if (directory !== '.' && directory !== '/') {
+                    const parentDir = directory.split('/').slice(0, -1).join('/') || '.';
+                    const upDirectory = document.createElement('div');
+                    upDirectory.className = 'file-explorer-item directory';
+                    upDirectory.innerHTML = `
+                        <i class="bi bi-arrow-up-circle me-2"></i>
+                        <span>..</span>
+                    `;
+                    upDirectory.addEventListener('click', () => loadFiles(parentDir));
+                    fileExplorer.appendChild(upDirectory);
+                }
+
+                // Ordenar: directorios primero, luego archivos
+                const directories = files.filter(f => f.type === 'directory');
+                const regularFiles = files.filter(f => f.type === 'file');
+
+                // Agregar directorios
+                directories.forEach(dir => {
+                    const dirElement = document.createElement('div');
+                    dirElement.className = 'file-explorer-item directory';
+                    dirElement.innerHTML = `
+                        <i class="bi bi-folder-fill me-2"></i>
+                        <span>${dir.name}</span>
+                    `;
+                    dirElement.addEventListener('click', () => loadFiles(dir.path));
+                    fileExplorer.appendChild(dirElement);
+                });
+
+                // Agregar archivos
+                regularFiles.forEach(file => {
+                    const fileElement = document.createElement('div');
+                    fileElement.className = 'file-explorer-item file';
+
+                    // Determinar icono según extensión
+                    let icon = 'bi-file-earmark';
+                    const ext = file.name.split('.').pop().toLowerCase();
+
+                    if (['html', 'htm'].includes(ext)) icon = 'bi-file-earmark-code';
+                    else if (['js', 'ts'].includes(ext)) icon = 'bi-filetype-js';
+                    else if (['css', 'scss'].includes(ext)) icon = 'bi-filetype-css';
+                    else if (['py'].includes(ext)) icon = 'bi-filetype-py';
+                    else if (['jpg', 'jpeg', 'png', 'gif'].includes(ext)) icon = 'bi-file-earmark-image';
+                    else if (['md'].includes(ext)) icon = 'bi-file-earmark-text';
+
+                    fileElement.innerHTML = `
+                        <i class="bi ${icon} me-2"></i>
+                        <span>${file.name}</span>
+                        <span class="file-size">${formatBytes(file.size || 0)}</span>
+                    `;
+
+                    fileElement.addEventListener('click', () => {
+                        window.location.href = `/edit_file?path=${encodeURIComponent(file.path)}
+                        window.location.href = `/edit_file?path=${encodeURIComponent(file.path)}`;
+                    });
+
+                    fileExplorer.appendChild(fileElement);
+                });
+
+                // Mostrar mensaje si no hay archivos
+                if (files.length === 0) {
+                    const emptyMessage = document.createElement('div');
+                    emptyMessage.className = 'text-center text-muted p-3';
+                    emptyMessage.textContent = 'No hay archivos en este directorio';
+                    fileExplorer.appendChild(emptyMessage);
+                }
+            }
+
+            // Formatear tamaño de archivo
+            function formatBytes(bytes) {
+                if (bytes === 0) return '0 Bytes';
+
+                const k = 1024;
+                const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
+                const i = Math.floor(Math.log(bytes) / Math.log(k));
+
+                return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+            }
+
+            // Mostrar notificación
+            function showNotification(message, type = 'info') {
+                if (window.webSocketClient && typeof window.webSocketClient.showNotification === 'function') {
+                    window.webSocketClient.showNotification(message, type);
+                } else {
+                    // Implementación alternativa
+                    const notificationContainer = document.getElementById('notification-container');
+                    if (!notificationContainer) return;
+
+                    const notification = document.createElement('div');
+                    notification.className = `notification notification-${type}`;
+                    notification.innerHTML = `
+                        <div class="notification-content">
+                            <i class="bi ${getIconForNotificationType(type)} notification-icon"></i>
+                            <span class="notification-message">${message}</span>
+                        </div>
+                        <button class="notification-close">&times;</button>
+                    `;
+
+                    // Agregar al contenedor
+                    notificationContainer.appendChild(notification);
+
+                    // Mostrar con animación
+                    setTimeout(() => {
+                        notification.classList.add('show');
+                    }, 10);
+
+                    // Configurar botón de cierre
+                    const closeButton = notification.querySelector('.notification-close');
+                    closeButton.addEventListener('click', () => {
+                        notification.classList.remove('show');
+                        setTimeout(() => {
+                            notification.remove();
+                        }, 300);
+                    });
+
+                    // Auto-cerrar después de 5 segundos
+                    setTimeout(() => {
+                        if (notification.parentNode) {
+                            notification.classList.remove('show');
+                            setTimeout(() => {
+                                if (notification.parentNode) {
+                                    notification.remove();
+                                }
+                            }, 300);
+                        }
+                    }, 5000);
+                }
+            }
+
+            // Obtener icono para tipo de notificación
+            function getIconForNotificationType(type) {
+                switch (type) {
+                    case 'success': return 'bi-check-circle-fill';
+                    case 'warning': return 'bi-exclamation-triangle-fill';
+                    case 'danger': return 'bi-x-circle-fill';
+                    case 'info':
+                    default: return 'bi-info-circle-fill';
+                }
+            }
+
+            // Configurar eventos
+
+            // Enviar mensaje al hacer clic en el botón
+            sendButton.addEventListener('click', sendMessage);
+
+            // Enviar mensaje al presionar Enter (sin Shift)
+            userInput.addEventListener('keydown', function(event) {
+                if (event.key === 'Enter' && !event.shiftKey) {
+                    event.preventDefault();
+                    sendMessage();
+                }
+            });
+
+            // Ajustar altura del textarea automáticamente
+            userInput.addEventListener('input', function() {
+                this.style.height = 'auto';
+                this.style.height = (this.scrollHeight) + 'px';
+            });
+
+            // Controles de la terminal
+            const closeTerminal = document.getElementById('close-terminal');
+            const minimizeTerminal = document.getElementById('minimize-terminal');
+            const maximizeTerminal = document.getElementById('maximize-terminal');
+            const terminalContainer = document.querySelector('.terminal-container');
+            const outputDisplay = document.getElementById('output-display');
+
+            if (closeTerminal) {
+                closeTerminal.addEventListener('click', function() {
+                    terminalContainer.style.display = 'none';
+                });
+            }
+
+            if (minimizeTerminal) {
+                minimizeTerminal.addEventListener('click', function() {
+                    if (outputDisplay.style.height === '0px') {
+                        outputDisplay.style.height = '150px';
+                    } else {
+                        outputDisplay.style.height = '0px';
+                    }
+                });
+            }
+
+            if (maximizeTerminal) {
+                maximizeTerminal.addEventListener('click', function() {
+                    if (outputDisplay.style.height === '300px') {
+                        outputDisplay.style.height = '150px';
+                    } else {
+                        outputDisplay.style.height = '300px';
+                    }
+                });
+            }
+
+            // Escuchar mensajes de otros componentes
+            window.addEventListener('message', function(event) {
+                // Verificar origen del mensaje por seguridad
+                // if (event.origin !== window.location.origin) return;
+
+                const data = event.data;
+
+                if (data && data.type === 'fileUpdated') {
+                    // Actualizar explorador de archivos
+                    loadFiles(getCurrentDirectory());
+                } else if (data && data.type === 'commandOutput') {
+                    // Mostrar salida de comando
+                    const resultMessage = formatCommandOutput(data.command, data.output, data.error);
+                    if (resultMessage) {
+                        addMessage(resultMessage, 'assistant');
+                    }
+                }
+            });
+
+            // Formatear salida de comando
+            function formatCommandOutput(command, output, error) {
+                let resultMessage = '';
+
+                if (command) {
+                    resultMessage += `Comando ejecutado: \`${command}\`\n\n`;
+                }
+
+                if (output) {
+                    resultMessage += `Salida:\n\`\`\`\n${output}\n\`\`\`\n`;
+                }
+
+                if (error) {
+                    resultMessage += `Error:\n\`\`\`\n${error}\n\`\`\`\n`;
+                }
+
+                return resultMessage;
+            }
+
+            // Exponer funciones para uso externo
+            window.assistantInterface = {
+                addMessage,
+                sendMessage,
+                executeCommand,
+                loadFiles,
+                showNotification
+            };
+
+            // Inicializar
+            loadFiles('.');
+        });
+    </script>
+</body>
+</html>
