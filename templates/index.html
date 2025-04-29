@@ -332,6 +332,10 @@
                 // Show loading
                 spinner.classList.remove('d-none');
                 executeBtn.disabled = true;
+                
+                // Mostrar la instrucción en el área de comandos para feedback inmediato
+                commandDisplay.textContent = `Procesando: ${instruction}`;
+                outputDisplay.textContent = 'Ejecutando...';
 
                 // Process instruction
                 const agent = document.getElementById('agent-select').value;
@@ -342,29 +346,48 @@
                     },
                     body: JSON.stringify({
                         instruction: instruction,
+                        command: instruction, // Enviamos también como comando para mayor compatibilidad
                         model: model,
                         agent_id: agent
                     })
                 })
-                .then(response => response.json())
+                .then(response => {
+                    // Verificar si la respuesta es exitosa
+                    if (!response.ok) {
+                        throw new Error(`Error de servidor: ${response.status} ${response.statusText}`);
+                    }
+                    // Intentar parsear como JSON
+                    return response.json().catch(e => {
+                        throw new Error('Error al parsear respuesta JSON: ' + e.message);
+                    });
+                })
                 .then(data => {
+                    console.log("Respuesta del servidor:", data);
+                    
+                    // Mostrar comando
                     if (data.command) {
                         commandDisplay.textContent = data.command;
-                        outputDisplay.innerHTML = formatOutput(data.result, data.error, data.status);
+                    }
+                    
+                    // Mostrar salida
+                    if (data.output) {
+                        outputDisplay.innerHTML = formatOutput(data.output, data.error, data.status);
                     } else {
-                        commandDisplay.textContent = '';
-                        outputDisplay.textContent = data.result || 'Instrucción procesada correctamente';
+                        outputDisplay.innerHTML = formatOutput(data.stdout, data.stderr, data.status);
                     }
 
-                    // Reload file list
-                    loadFiles(directoryPath.textContent || '.');
+                    // Reload file list si se modificaron archivos
+                    if (data.refresh_explorer || data.success) {
+                        loadFiles(directoryPath.textContent || '.');
+                    }
 
                     // Show success notification
-                    showNotification(data.result || 'Instrucción procesada correctamente', 'success');
+                    showNotification('Instrucción procesada correctamente', 'success');
                 })
                 .catch(error => {
                     console.error('Error:', error);
-                    outputDisplay.textContent = 'Error al procesar instrucción: ' + error.message;
+                    commandDisplay.textContent = instruction;
+                    outputDisplay.innerHTML = `<div class="text-danger">Error: ${error.message}</div>`;
                     showNotification('Error al procesar instrucción: ' + error.message, 'danger');
                 })
                 .finally(() => {
@@ -384,20 +407,32 @@
             function formatOutput(stdout, stderr, status) {
                 let output = '';
 
+                // Si stdout es un objeto o null, manejarlo adecuadamente
                 if (stdout) {
-                    output += `<div class="mb-2"><strong>Salida:</strong><pre class="mb-0 text-success">${stdout}</pre></div>`;
+                    if (typeof stdout === 'object') {
+                        output += `<div class="mb-2"><strong>Salida:</strong><pre class="mb-0 text-success">${JSON.stringify(stdout, null, 2)}</pre></div>`;
+                    } else {
+                        output += `<div class="mb-2"><strong>Salida:</strong><pre class="mb-0 text-success">${stdout}</pre></div>`;
+                    }
                 }
 
+                // Si stderr existe, mostrarlo
                 if (stderr) {
                     output += `<div class="mb-2"><strong>Error:</strong><pre class="mb-0 text-danger">${stderr}</pre></div>`;
                 }
 
+                // Mostrar estado si está disponible
                 if (status !== undefined) {
                     const statusClass = status === 0 ? 'text-success' : 'text-danger';
                     output += `<div><strong>Estado:</strong> <span class="${statusClass}">${status}</span></div>`;
                 }
 
-                return output || 'No hay salida';
+                // Si no hay salida, mostrar mensaje
+                if (!output) {
+                    output = '<div class="text-muted">No hay salida disponible</div>';
+                }
+
+                return output;
             }
 
             function loadFiles(directory) {
