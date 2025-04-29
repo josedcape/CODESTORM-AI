@@ -55,9 +55,21 @@ def init_app(app, socketio):
 
         # Si la respuesta incluye un comando a ejecutar automáticamente
         if result.get('success') and result.get('command') and result.get('auto_execute', False):
+            # Mostrar un mensaje indicando que se ejecutará el comando
+            emit('process_message', {
+                'message': f"Ejecutando comando: {result['command']}",
+                'type': 'info'
+            })
+            
             # Ejecutar el comando
             command_result = execute_command(result['command'], workspace_path)
             emit('command_result', command_result)
+        elif result.get('success') and result.get('command'):
+            # Si el comando existe pero no se ejecuta automáticamente, sugerir al usuario que lo ejecute
+            emit('process_message', {
+                'message': f"Comando sugerido: {result['command']} (Escriba este comando en la terminal para ejecutarlo)",
+                'type': 'suggestion'
+            })
 
     @socketio.on('bash_command')
     def handle_bash_command(data):
@@ -275,6 +287,8 @@ def simple_nl_to_command(text):
     if re.search(r'(?:lista|muestra|ver|visualiza)(?:r)?\s+(?:archivos|ficheros|contenido|contenidos|directorio)', text):
         if 'detalle' in text or 'detallada' in text:
             return "ls -la"
+        elif 'oculto' in text or 'ocultos' in text:
+            return "ls -a"
         else:
             return "ls -l"
 
@@ -291,7 +305,39 @@ def simple_nl_to_command(text):
     if re.search(r'(?:muestra|ver|visualiza|cat)(?:r)?\s+(?:el\s+)?contenido\s+(?:del\s+)?(?:archivo|fichero)\s+["\'`]?([a-zA-Z0-9_\-\.\/]+)["\'`]?', text):
         file_name = re.search(r'(?:muestra|ver|visualiza|cat)(?:r)?\s+(?:el\s+)?contenido\s+(?:del\s+)?(?:archivo|fichero)\s+["\'`]?([a-zA-Z0-9_\-\.\/]+)["\'`]?', text).group(1)
         return f"cat {file_name}"
-
+    
+    # Búsqueda
+    if re.search(r'(?:busca|encuentra|localiza)(?:r)?\s+(?:el\s+)?(?:archivo|fichero)\s+["\'`]?([a-zA-Z0-9_\-\.\/]+)["\'`]?', text):
+        file_name = re.search(r'(?:busca|encuentra|localiza)(?:r)?\s+(?:el\s+)?(?:archivo|fichero)\s+["\'`]?([a-zA-Z0-9_\-\.\/]+)["\'`]?', text).group(1)
+        return f"find . -name \"{file_name}\" -type f"
+    
+    if re.search(r'busca(?:r)?\s+texto\s+["\'`]?([^"\'`]+)["\'`]?', text):
+        search_text = re.search(r'busca(?:r)?\s+texto\s+["\'`]?([^"\'`]+)["\'`]?', text).group(1)
+        return f"grep -r \"{search_text}\" ."
+    
+    # Cambiar de directorio
+    if re.search(r'(?:cambia|ve|ir|navega)(?:r)?\s+(?:a|al)\s+(?:directorio|carpeta)\s+["\'`]?([a-zA-Z0-9_\-\.\/]+)["\'`]?', text):
+        dir_name = re.search(r'(?:cambia|ve|ir|navega)(?:r)?\s+(?:a|al)\s+(?:directorio|carpeta)\s+["\'`]?([a-zA-Z0-9_\-\.\/]+)["\'`]?', text).group(1)
+        return f"cd {dir_name}"
+    
+    # Copiar archivos
+    if re.search(r'copia(?:r)?\s+(?:el\s+)?(?:archivo|fichero)\s+["\'`]?([a-zA-Z0-9_\-\.\/]+)["\'`]?\s+a\s+["\'`]?([a-zA-Z0-9_\-\.\/]+)["\'`]?', text):
+        match = re.search(r'copia(?:r)?\s+(?:el\s+)?(?:archivo|fichero)\s+["\'`]?([a-zA-Z0-9_\-\.\/]+)["\'`]?\s+a\s+["\'`]?([a-zA-Z0-9_\-\.\/]+)["\'`]?', text)
+        source = match.group(1)
+        dest = match.group(2)
+        return f"cp {source} {dest}"
+    
+    # Mover archivos
+    if re.search(r'(?:mueve|mover)\s+(?:el\s+)?(?:archivo|fichero)\s+["\'`]?([a-zA-Z0-9_\-\.\/]+)["\'`]?\s+a\s+["\'`]?([a-zA-Z0-9_\-\.\/]+)["\'`]?', text):
+        match = re.search(r'(?:mueve|mover)\s+(?:el\s+)?(?:archivo|fichero)\s+["\'`]?([a-zA-Z0-9_\-\.\/]+)["\'`]?\s+a\s+["\'`]?([a-zA-Z0-9_\-\.\/]+)["\'`]?', text)
+        source = match.group(1)
+        dest = match.group(2)
+        return f"mv {source} {dest}"
+    
+    # Mostrar directorio actual
+    if re.search(r'(?:muestra|ver|dime|cual\s+es)\s+(?:el\s+)?directorio\s+actual', text):
+        return "pwd"
+    
     # Si no coincide con ninguna regla simple, retornar None
     return None
 
@@ -305,6 +351,17 @@ def process_with_openai(text, workspace_path):
             messages=[
                 {"role": "system", "content": """Eres un asistente especializado en interpretar instrucciones en lenguaje natural y convertirlas en comandos bash para un terminal.
 Tu tarea es analizar la instrucción del usuario y determinar el comando bash que mejor la satisface.
+
+COMANDOS COMUNES DE TERMINAL:
+- Navegación: cd, pwd, ls
+- Manipulación de archivos: touch, mkdir, rm, cp, mv, cat, head, tail, less, more
+- Buscar: find, grep, locate
+- Permisos: chmod, chown
+- Redes: ping, netstat, curl, wget
+- Procesos: ps, top, kill, pkill
+- Compresión: tar, gzip, zip, unzip
+- Otros: echo, date, history, man, nano, vim, sudo
+
 Debes responder en formato JSON con los siguientes campos:
 - command: el comando bash ejecutable para realizar la acción solicitada
 - explanation: explicación clara de lo que hace el comando
@@ -362,6 +419,17 @@ def process_with_anthropic(text, workspace_path):
             temperature=0.2,
             system="""Eres un asistente especializado en interpretar instrucciones en lenguaje natural y convertirlas en comandos bash para un terminal.
 Tu tarea es analizar la instrucción del usuario y determinar el comando bash que mejor la satisface.
+
+COMANDOS COMUNES DE TERMINAL:
+- Navegación: cd, pwd, ls
+- Manipulación de archivos: touch, mkdir, rm, cp, mv, cat, head, tail, less, more
+- Buscar: find, grep, locate
+- Permisos: chmod, chown
+- Redes: ping, netstat, curl, wget
+- Procesos: ps, top, kill, pkill
+- Compresión: tar, gzip, zip, unzip
+- Otros: echo, date, history, man, nano, vim, sudo
+
 Debes responder en formato JSON con los siguientes campos:
 - command: el comando bash ejecutable para realizar la acción solicitada
 - explanation: explicación clara de lo que hace el comando
@@ -435,6 +503,17 @@ def process_with_gemini(text, workspace_path):
         Instrucción del usuario: {text}
 
         Analiza esta instrucción y conviértela en un comando bash que pueda ejecutarse en un terminal.
+        
+        COMANDOS COMUNES DE TERMINAL:
+        - Navegación: cd, pwd, ls
+        - Manipulación de archivos: touch, mkdir, rm, cp, mv, cat, head, tail, less, more
+        - Buscar: find, grep, locate
+        - Permisos: chmod, chown
+        - Redes: ping, netstat, curl, wget
+        - Procesos: ps, top, kill, pkill
+        - Compresión: tar, gzip, zip, unzip
+        - Otros: echo, date, history, man, nano, vim, sudo
+        
         Debes responder ÚNICAMENTE en formato JSON con estos campos:
         - command: el comando bash ejecutable para realizar la acción solicitada
         - explanation: explicación clara de lo que hace el comando
