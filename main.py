@@ -671,6 +671,7 @@ def process_instructions():
             
             instruction_lower = instruction.lower()
             terminal_command = None
+            missing_info = None
             
             # Check for exact matches first
             for key, cmd in command_map.items():
@@ -682,22 +683,40 @@ def process_instructions():
             if not terminal_command:
                 if "crear" in instruction_lower and "carpeta" in instruction_lower:
                     folder_name = instruction_lower.split("carpeta")[-1].strip()
-                    terminal_command = f"mkdir -p {folder_name}"
+                    if not folder_name:
+                        missing_info = "Falta especificar el nombre de la carpeta"
+                    else:
+                        terminal_command = f"mkdir -p {folder_name}"
+                
                 elif "crear" in instruction_lower and "archivo" in instruction_lower:
                     file_name = instruction_lower.split("archivo")[-1].strip()
-                    terminal_command = f"touch {file_name}"
+                    if not file_name:
+                        missing_info = "Falta especificar el nombre del archivo"
+                    else:
+                        terminal_command = f"touch {file_name}"
+                
                 elif "eliminar" in instruction_lower or "borrar" in instruction_lower:
                     target = instruction_lower.replace("eliminar", "").replace("borrar", "").strip()
-                    terminal_command = f"rm -rf {target}"
+                    if not target:
+                        missing_info = "Falta especificar qué elemento eliminar"
+                    else:
+                        terminal_command = f"rm -rf {target}"
+                
                 else:
                     # Default command if nothing else matches
                     terminal_command = "echo 'Comando no reconocido'"
             
             # Log the generated command
-            logging.info(f"Instrucción: '{instruction}' → Comando: '{terminal_command}'")
+            if terminal_command:
+                logging.info(f"Instrucción: '{instruction}' → Comando: '{terminal_command}'")
             
             # Return just the command or with additional context
-            if command_only:
+            if missing_info:
+                return jsonify({
+                    'error': missing_info,
+                    'needs_more_info': True
+                })
+            elif command_only:
                 return jsonify({'command': terminal_command})
             else:
                 return jsonify({

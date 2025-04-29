@@ -20,7 +20,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Socket para comunicación en tiempo real
     let socket;
-    
+
     // Inicializar asistente de comandos si existe
     if (window.commandAssistant && typeof window.commandAssistant.init === 'function') {
         window.commandAssistant.init();
@@ -206,7 +206,7 @@ document.addEventListener('DOMContentLoaded', function() {
             dirElement.dataset.path = dir.path;
             dirElement.dataset.name = dir.name;
             dirElement.dataset.type = 'directory';
-            
+
             dirElement.innerHTML = `
                 <div class="d-flex align-items-center flex-grow-1">
                     <i class="bi bi-folder-fill me-2 text-warning"></i>
@@ -222,11 +222,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 </div>
             `;
             dirElement.style.cursor = 'pointer';
-            
+
             // Solo el área de texto navega al directorio, no los botones
             const textArea = dirElement.querySelector('div:first-child');
             textArea.addEventListener('click', () => loadFiles(dir.path));
-            
+
             // Agregar evento de clic derecho para menú contextual
             dirElement.addEventListener('contextmenu', (e) => {
                 e.preventDefault();
@@ -235,10 +235,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
                 return false;
             });
-            
+
             // Configurar botones de acción
             setupActionButtons(dirElement, dir);
-            
+
             fileExplorer.appendChild(dirElement);
         });
 
@@ -281,10 +281,10 @@ document.addEventListener('DOMContentLoaded', function() {
                     </div>
                 </div>
             `;
-            
+
             // Configurar botones de acción
             setupActionButtons(fileElement, file);
-            
+
             // Clic derecho para menú contextual
             fileElement.addEventListener('contextmenu', (e) => {
                 e.preventDefault();
@@ -293,7 +293,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
                 return false;
             });
-            
+
             fileExplorer.appendChild(fileElement);
         });
 
@@ -301,12 +301,12 @@ document.addEventListener('DOMContentLoaded', function() {
         if (files.length === 0) {
             fileExplorer.innerHTML = '<div class="p-3 text-center text-muted">No hay archivos en este directorio</div>';
         }
-        
+
         // Mejorar display de archivos si está disponible
         if (window.fileActions && typeof window.fileActions.enhanceFileDisplay === 'function') {
             setTimeout(window.fileActions.enhanceFileDisplay, 100);
         }
-        
+
         // Añadir estilos CSS para los botones de acción si no existen
         if (!document.getElementById('file-actions-styles')) {
             const style = document.createElement('style');
@@ -330,7 +330,7 @@ document.addEventListener('DOMContentLoaded', function() {
             document.head.appendChild(style);
         }
     }
-    
+
     // Configurar botones de acción para archivos y carpetas
     function setupActionButtons(element, fileData) {
         // Botón Editar
@@ -341,7 +341,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 window.location.href = `/edit_file?path=${encodeURIComponent(fileData.path)}`;
             });
         }
-        
+
         // Botón Renombrar
         const renameBtn = element.querySelector('.btn-edit-name');
         if (renameBtn) {
@@ -350,7 +350,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 renameFileOrFolder(fileData.path, fileData.name);
             });
         }
-        
+
         // Botón Eliminar
         const deleteBtn = element.querySelector('.btn-delete');
         if (deleteBtn) {
@@ -360,12 +360,12 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         }
     }
-    
+
     // Renombrar archivo o carpeta
     function renameFileOrFolder(path, currentName) {
         const newName = prompt('Ingrese el nuevo nombre:', currentName);
         if (!newName || newName === currentName) return;
-        
+
         // Llamar al endpoint de renombrar
         fetch('/api/file/rename', {
             method: 'POST',
@@ -397,13 +397,13 @@ document.addEventListener('DOMContentLoaded', function() {
             showNotification(error.message, 'danger');
         });
     }
-    
+
     // Eliminar archivo o carpeta
     function deleteFileOrFolder(path, name) {
         if (!confirm(`¿Está seguro de que desea eliminar "${name}"? Esta acción no se puede deshacer.`)) {
             return;
         }
-        
+
         // Llamar al endpoint de eliminar
         fetch('/api/file/delete', {
             method: 'POST',
@@ -514,11 +514,11 @@ document.addEventListener('DOMContentLoaded', function() {
         const pipInstallRegex = /^pip\s+install\s+(.+)$/i;
         const npmInstallRegex = /^npm\s+(?:install|i)\s+(.+)$/i;
         const yarnAddRegex = /^yarn\s+add\s+(.+)$/i;
-        
+
         const pipMatch = command.match(pipInstallRegex);
         const npmMatch = command.match(npmInstallRegex);
         const yarnMatch = command.match(yarnAddRegex);
-        
+
         if (pipMatch) {
             installPackage(pipMatch[1], 'pip');
             return;
@@ -592,23 +592,23 @@ document.addEventListener('DOMContentLoaded', function() {
                 'wget', 'curl', 'unzip', 'tar', 'npm install',
                 'pip install', 'python -m pip', 'npm i', 'yarn add'
             ];
-            
+
             // Si es un comando que podría cambiar archivos, actualizar explorador
             const shouldRefresh = fileModifyingCommands.some(cmd => command.includes(cmd));
             if (shouldRefresh) {
                 // Notificar al sistema que los archivos cambiaron
                 console.log("Detectado cambio en explorador");
-                
+
                 // Actualizar con múltiples métodos para mayor compatibilidad
                 setTimeout(() => {
                     // Método 1: Usando loadFiles
                     loadFiles(currentDirectory);
-                    
+
                     // Método 2: Usando refreshFileExplorer global
                     if (window.refreshFileExplorer && typeof window.refreshFileExplorer === 'function') {
                         window.refreshFileExplorer();
                     }
-                    
+
                     // Método 3: Emitir evento para que otros componentes respondan
                     document.dispatchEvent(new CustomEvent('files_updated', {
                         detail: { directory: currentDirectory }
@@ -713,17 +713,18 @@ document.addEventListener('DOMContentLoaded', function() {
             // Procesar la instrucción
             const result = naturalCommandProcessor.processInstruction(instruction, currentDirectory);
 
-            if (result.success && result.command) {
-                // Mostrar comando generado
-                if (commandDisplay) {
-                    commandDisplay.textContent = result.command;
-                }
-
-                // Ejecutar comando
+            // Ejecutar comando
+            if (result.command) {
                 executeCommand(result.command);
 
-                // Mostrar notificación
-                showNotification(`Instrucción procesada: ${result.description}`, 'success');
+                // Mostrar notificación más específica según el tipo de operación
+                if (result.type === 'file_create' || result.type === 'directory_create') {
+                    showNotification(`Se ha creado un nuevo elemento: ${result.fileName || result.dirName || 'elemento'}`, 'success');
+                } else if (result.type === 'file_delete' || result.type === 'directory_delete') {
+                    showNotification(`Se ha eliminado: ${result.fileName || result.dirName || 'elemento'}`, 'warning');
+                } else {
+                    showNotification(`Instrucción procesada: ${result.description}`, 'success');
+                }
 
                 return true;
             } else {
@@ -914,383 +915,4 @@ function formatUptime(seconds) {
 // Exponer funciones para uso externo
 window.webSocketClient = {
     sendMessage: function(type, data) {
-        if (socket && socket.connected) {
-            socket.emit(type, data);
-            return true;
-        } else if (window.nativeWebSocket && window.nativeWebSocket.readyState === WebSocket.OPEN) {
-            window.nativeWebSocket.send(JSON.stringify({
-                type: type,
-                ...data
-            }));
-            return true;
-        }
-        return false;
-    },
-    reconnect: function() {
-        reconnectAttempts = 0;
-        initializeWebSocket();
-    },
-    showNotification: showNotification,
-    updateFileExplorer: loadFiles
-};
-
-// Terminal integration code
-document.addEventListener('DOMContentLoaded', function() {
-    console.log("Terminal integration module loaded");
-    
-    // Variables globales
-    let currentDirectory = '.';
-    let history = [];
-    let historyIndex = -1;
-    let commandInProgress = false;
-    
-    // Referencias a elementos del DOM
-    const terminalInput = document.getElementById('terminal-input');
-    const terminalOutput = document.getElementById('terminal-output');
-    const sendButton = document.getElementById('send-button');
-    
-    // Configurar Socket.IO
-    let socket = null;
-    if (typeof io !== 'undefined') {
-        socket = io({
-            transports: ['websocket'],
-            reconnection: true,
-            reconnectionAttempts: 5,
-            reconnectionDelay: 1000
-        });
-        
-        // Eventos Socket.IO
-        socket.on('connect', function() {
-            console.log('Terminal: Conectado al servidor WebSocket');
-            appendToTerminal('Conectado al servidor', 'system');
-        });
-        
-        socket.on('disconnect', function() {
-            console.log('Terminal: Desconectado del servidor WebSocket');
-            appendToTerminal('Desconectado del servidor', 'error');
-        });
-        
-        socket.on('connect_error', function(err) {
-            console.error('Terminal: Error de conexión WebSocket', err);
-            appendToTerminal('Error de conexión al servidor: ' + err.message, 'error');
-        });
-        
-        socket.on('command_result', function(data) {
-            commandInProgress = false;
-            
-            if (data.success) {
-                appendToTerminal(data.output || 'Comando ejecutado correctamente', 'output');
-            } else {
-                appendToTerminal(data.output || 'Error al ejecutar el comando', 'error');
-            }
-            
-            // Actualizar explorador si es necesario
-            if (data.refresh_explorer && window.refreshFileExplorer) {
-                window.refreshFileExplorer();
-            }
-        });
-        
-        socket.on('agent_response', function(data) {
-            console.log('Terminal: Respuesta del agente recibida', data);
-            if (data.error) {
-                appendToTerminal('Error: ' + data.error, 'error');
-            } else {
-                appendToTerminal(data.response, 'assistant');
-            }
-        });
-    } else {
-        console.error('Terminal: Socket.IO no está disponible');
-    }
-    
-    // Función para ejecutar un comando
-    function executeCommand(command) {
-        if (!command.trim() || commandInProgress) return;
-        
-        commandInProgress = true;
-        
-        // Agregar comando al historial
-        history.push(command);
-        historyIndex = history.length;
-        
-        // Mostrar comando en la terminal
-        appendToTerminal('$ ' + command, 'command');
-        
-        if (socket && socket.connected) {
-            // Enviar comando vía WebSocket
-            socket.emit('execute_command', {
-                command: command,
-                user_id: localStorage.getItem('user_id') || 'default',
-                terminal_id: 'terminal-' + Math.random().toString(36).substr(2, 9)
-            });
-        } else {
-            // Fallback: enviar mediante HTTP si WebSocket no está disponible
-            fetch('/api/execute_command', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    command: command,
-                    user_id: localStorage.getItem('user_id') || 'default'
-                })
-            })
-            .then(response => response.json())
-            .then(data => {
-                commandInProgress = false;
-                
-                if (data.success) {
-                    appendToTerminal(data.output || 'Comando ejecutado correctamente', 'output');
-                } else {
-                    appendToTerminal(data.error || 'Error al ejecutar el comando', 'error');
-                }
-                
-                // Actualizar explorador si es necesario
-                if (data.refresh_explorer && window.refreshFileExplorer) {
-                    window.refreshFileExplorer();
-                }
-            })
-            .catch(error => {
-                commandInProgress = false;
-                appendToTerminal('Error de conexión: ' + error.message, 'error');
-            });
-        }
-    }
-    
-    // Función para enviar mensaje al asistente
-    function sendToAssistant(message) {
-        if (!message.trim() || commandInProgress) return;
-        
-        commandInProgress = true;
-        
-        // Mostrar mensaje en la terminal
-        appendToTerminal('> ' + message, 'user-message');
-        
-        if (socket && socket.connected) {
-            try {
-                // Enviar mensaje vía WebSocket con promesa para manejar timeout
-                const socketPromise = new Promise((resolve, reject) => {
-                    // Configurar timeout por si el socket no responde
-                    const socketTimeout = setTimeout(() => {
-                        reject(new Error('Tiempo de espera excedido para la respuesta del WebSocket'));
-                    }, 10000); // 10 segundos de timeout
-                    
-                    // Manejador de respuesta única
-                    const responseHandler = (data) => {
-                        clearTimeout(socketTimeout);
-                        resolve(data);
-                        // Eliminar el listener para evitar fugas de memoria
-                        socket.off('assistant_response', responseHandler);
-                    };
-                    
-                    // Registrar manejador de respuesta
-                    socket.once('assistant_response', responseHandler);
-                    
-                    // Enviar mensaje
-                    socket.emit('user_message', {
-                        message: message,
-                        agent: 'developer',
-                        model: 'openai'
-                    });
-                });
-                
-                // Manejar la promesa del socket
-                socketPromise
-                    .then(data => {
-                        commandInProgress = false;
-                        if (data.error) {
-                            appendToTerminal('Error: ' + data.error, 'error');
-                        } else {
-                            appendToTerminal(data.response, 'assistant');
-                        }
-                    })
-                    .catch(error => {
-                        console.error('Error en comunicación WebSocket:', error);
-                        // Si hay error en el socket, usar HTTP como fallback
-                        useFallbackHttp(message);
-                    });
-            } catch (error) {
-                console.error('Error al configurar comunicación WebSocket:', error);
-                useFallbackHttp(message);
-            }
-        } else {
-            // Usar HTTP directamente si el socket no está conectado
-            useFallbackHttp(message);
-        }
-        
-        // Función para usar HTTP como fallback
-        function useFallbackHttp(message) {
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 20000); // 20 segundos de timeout
-            
-            fetch('/api/chat', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    message: message,
-                    agent_id: 'developer',
-                    model: 'openai'
-                }),
-                signal: controller.signal
-            })
-            .then(response => {
-                clearTimeout(timeoutId);
-                if (!response.ok) {
-                    throw new Error(`Error: ${response.status} ${response.statusText}`);
-                }
-                return response.json();
-            })
-            .then(data => {
-                commandInProgress = false;
-                
-                if (data.error) {
-                    appendToTerminal('Error: ' + data.error, 'error');
-                } else {
-                    appendToTerminal(data.response, 'assistant');
-                }
-            })
-            .catch(error => {
-                clearTimeout(timeoutId);
-                commandInProgress = false;
-                appendToTerminal('Error de conexión: ' + error.message, 'error');
-            });
-        }
-    }
-    
-    // Función para agregar texto a la terminal
-    function appendToTerminal(text, className) {
-        if (!terminalOutput) return;
-        
-        const line = document.createElement('div');
-        line.className = `terminal-line ${className || ''}`;
-        
-        // Formatear texto según el tipo
-        if (className === 'assistant') {
-            // Formatear respuesta de asistente con Markdown simple
-            line.innerHTML = formatMarkdown(text);
-        } else {
-            line.textContent = text;
-        }
-        
-        terminalOutput.appendChild(line);
-        terminalOutput.scrollTop = terminalOutput.scrollHeight;
-    }
-    
-    // Formatear texto con Markdown simple
-    function formatMarkdown(text) {
-        if (!text) return '';
-        
-        // Convertir código inline
-        text = text.replace(/`([^`]+)`/g, '<code>$1</code>');
-        
-        // Convertir bloques de código
-        text = text.replace(/```(\w*)\n([\s\S]*?)\n```/g, function(match, language, code) {
-            return `<pre class="code-block ${language}">${code}</pre>`;
-        });
-        
-        // Convertir enlaces
-        text = text.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank">$1</a>');
-        
-        // Convertir negritas
-        text = text.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
-        
-        // Convertir cursivas
-        text = text.replace(/\*([^*]+)\*/g, '<em>$1</em>');
-        
-        return text;
-    }
-    
-    // Manejar entrada del terminal
-    if (terminalInput) {
-        terminalInput.addEventListener('keydown', function(event) {
-            if (event.key === 'Enter') {
-                event.preventDefault();
-                const input = terminalInput.value.trim();
-                
-                if (input) {
-                    // Determinar si es un comando o una pregunta para el asistente
-                    if (input.startsWith('!')) {
-                        // Es un comando explícito (sin el !)
-                        executeCommand(input.substring(1));
-                    } else if (input.startsWith('/') || 
-                              input.startsWith('mkdir') || 
-                              input.startsWith('cd') || 
-                              input.startsWith('ls') || 
-                              input.startsWith('rm') || 
-                              input.startsWith('touch') || 
-                              input.startsWith('cat') || 
-                              input.startsWith('echo')) {
-                        // Es un comando de sistema claramente reconocible
-                        executeCommand(input);
-                    } else {
-                        // Es una pregunta para el asistente
-                        sendToAssistant(input);
-                    }
-                    
-                    // Limpiar input
-                    terminalInput.value = '';
-                }
-            } else if (event.key === 'ArrowUp') {
-                // Navegar historial hacia arriba
-                if (historyIndex > 0) {
-                    historyIndex--;
-                    terminalInput.value = history[historyIndex];
-                    event.preventDefault();
-                }
-            } else if (event.key === 'ArrowDown') {
-                // Navegar historial hacia abajo
-                if (historyIndex < history.length - 1) {
-                    historyIndex++;
-                    terminalInput.value = history[historyIndex];
-                } else {
-                    historyIndex = history.length;
-                    terminalInput.value = '';
-                }
-                event.preventDefault();
-            }
-        });
-    }
-    
-    // Manejar botón de envío
-    if (sendButton) {
-        sendButton.addEventListener('click', function() {
-            const input = terminalInput.value.trim();
-            
-            if (input) {
-                if (input.startsWith('!')) {
-                    executeCommand(input.substring(1));
-                } else if (input.startsWith('/') || 
-                          input.startsWith('mkdir') || 
-                          input.startsWith('cd') || 
-                          input.startsWith('ls') || 
-                          input.startsWith('rm') || 
-                          input.startsWith('touch') || 
-                          input.startsWith('cat') || 
-                          input.startsWith('echo')) {
-                    executeCommand(input);
-                } else {
-                    sendToAssistant(input);
-                }
-                
-                terminalInput.value = '';
-            }
-        });
-    }
-    
-    // Exponer funciones públicas
-    window.terminalInterface = {
-        executeCommand: executeCommand,
-        sendToAssistant: sendToAssistant,
-        appendToTerminal: appendToTerminal
-    };
-    
-    // Agregar mensaje de bienvenida
-    appendToTerminal('Terminal integrada iniciada. Escribe comandos de terminal directamente o consultas para el asistente.', 'system');
-    appendToTerminal('Para ejecutar un comando explícito, inicia con ! (ejemplo: !ls)', 'system');
-    
-    // Enfocar el input
-    if (terminalInput) {
-        terminalInput.focus();
-    }
-});
+        if (socket && socket.connected)(\w*)\n([\s\S]*?)\n

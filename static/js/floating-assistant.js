@@ -214,6 +214,18 @@
                 // Procesar respuesta - solo mostrar el comando
                 if (data.command) {
                     this.addCommandResult(data.command);
+                    
+                    // Mostrar notificación si el comando afecta archivos
+                    if (data.command.includes('mkdir') || data.command.includes('touch')) {
+                        this.showToast('Comando ejecutado: se creará un nuevo elemento', 'success');
+                    }
+                } else if (data.error) {
+                    if (data.needs_more_info) {
+                        // Si falta información, mostrar mensaje claro
+                        this.addErrorMessage(`${data.error}. Por favor, proporciona más detalles.`);
+                    } else {
+                        this.addErrorMessage(data.error);
+                    }
                 } else if (data.response) {
                     // Intentar extraer comando de la respuesta
                     const commandMatch = data.response.match(/```(bash|sh)?\s*([^`]+)```/);
@@ -222,8 +234,6 @@
                     } else {
                         this.addCommandResult(data.response);
                     }
-                } else if (data.error) {
-                    this.addErrorMessage(data.error);
                 } else {
                     this.addErrorMessage('No se pudo generar un comando.');
                 }
