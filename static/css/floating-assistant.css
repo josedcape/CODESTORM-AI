@@ -1,5 +1,5 @@
 
-/* Estilos para el asistente flotante */
+/* Estilos para el asistente flotante de comandos */
 .floating-assistant-btn {
   position: fixed;
   bottom: 30px;
@@ -167,28 +167,48 @@
 }
 
 .command-text {
-  font-family: monospace;
+  font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
   color: #50fa7b;
   word-break: break-all;
+  background-color: #1e1e2e;
+  border-radius: 4px;
+  padding: 8px;
+  margin-bottom: 4px;
+  width: 100%;
+  overflow-x: auto;
+}
+
+.command-text pre {
+  margin: 0;
+  white-space: pre-wrap;
+}
+
+.command-text code {
+  color: #50fa7b;
 }
 
 .command-actions {
   display: flex;
   gap: 5px;
+  justify-content: flex-end;
+  margin-top: 4px;
 }
 
 .command-actions button {
   background: none;
-  border: none;
+  border: 1px solid #4d5bce;
+  border-radius: 4px;
   color: #6272a4;
   cursor: pointer;
-  padding: 2px;
+  padding: 4px 8px;
   font-size: 14px;
-  transition: color 0.2s;
+  transition: all 0.2s;
 }
 
 .command-actions button:hover {
   color: #bd93f9;
+  background-color: rgba(102, 114, 164, 0.2);
+  transform: translateY(-2px);
 }
 
 /* Responsive adjustments */

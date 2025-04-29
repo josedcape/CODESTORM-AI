@@ -1,6 +1,7 @@
 
 /**
- * Floating Assistant - Componente de asistente flotante con botón de acceso rápido
+ * Command Assistant - Asistente flotante para comandos de terminal
+ * Responde únicamente con comandos para terminal sin comentarios adicionales
  */
 
 (function() {
@@ -35,7 +36,7 @@
             const floatingBtn = document.createElement('div');
             floatingBtn.id = 'floating-assistant-btn';
             floatingBtn.className = 'floating-assistant-btn';
-            floatingBtn.innerHTML = '<i class="bi bi-robot"></i>';
+            floatingBtn.innerHTML = '<i class="bi bi-terminal"></i>';
             
             const assistantPanel = document.createElement('div');
             assistantPanel.id = 'assistant-panel';
@@ -43,7 +44,7 @@
             
             assistantPanel.innerHTML = `
                 <div class="assistant-header">
-                    <h5><i class="bi bi-robot"></i> Asistente Flotante</h5>
+                    <h5><i class="bi bi-terminal"></i> Asistente de Comandos</h5>
                     <button id="assistant-close" class="assistant-close">
                         <i class="bi bi-x"></i>
                     </button>
@@ -58,15 +59,15 @@
                     </div>
                     <div id="assistant-result" class="assistant-result">
                         <div class="text-center py-3">
-                            <p class="text-muted mb-1">¡Hola! Soy tu asistente personal.</p>
-                            <small class="text-muted">¿En qué puedo ayudarte hoy?</small>
+                            <p class="text-muted mb-1">Asistente de Comandos</p>
+                            <small class="text-muted">Describe lo que necesitas hacer y te daré el comando exacto</small>
                         </div>
                     </div>
                     <div class="assistant-input-container">
                         <textarea 
                             id="assistant-input" 
                             class="assistant-input" 
-                            placeholder="Escribe tu consulta aquí..."></textarea>
+                            placeholder="Describe lo que quieres hacer en lenguaje natural..."></textarea>
                         <button id="assistant-send" class="assistant-send">
                             <i class="bi bi-send"></i>
                         </button>
@@ -182,14 +183,16 @@
             const requestData = {
                 message: query,
                 model: this.activeModel,
-                agent_id: 'general'
+                agent_id: 'command',
+                format: 'markdown',
+                command_only: true
             };
             
             // Enviar petición al servidor con gestión mejorada de errores y timeout
             const controller = new AbortController();
             const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 segundos de timeout
             
-            fetch('/api/chat', {
+            fetch('/api/process_instructions', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
@@ -208,15 +211,21 @@
                 // Eliminar indicador de carga
                 this.removeLoadingIndicator();
                 
-                // Procesar respuesta
-                if (data.response) {
-                    this.addMessage('assistant', data.response);
-                } else if (data.command) {
+                // Procesar respuesta - solo mostrar el comando
+                if (data.command) {
                     this.addCommandResult(data.command);
+                } else if (data.response) {
+                    // Intentar extraer comando de la respuesta
+                    const commandMatch = data.response.match(/```(bash|sh)?\s*([^`]+)```/);
+                    if (commandMatch && commandMatch[2]) {
+                        this.addCommandResult(commandMatch[2].trim());
+                    } else {
+                        this.addCommandResult(data.response);
+                    }
                 } else if (data.error) {
                     this.addErrorMessage(data.error);
                 } else {
-                    this.addErrorMessage('El servidor respondió pero no envió una respuesta válida.');
+                    this.addErrorMessage('No se pudo generar un comando.');
                 }
             })
             .catch(error => {
@@ -249,27 +258,18 @@
             const messageDiv = document.createElement('div');
             messageDiv.className = `message ${role}-message`;
             
-            // Para mensajes del asistente, procesar markdown si está disponible
-            if (role === 'assistant' && window.marked) {
-                try {
-                    messageDiv.innerHTML = window.marked.parse(content);
-                } catch (e) {
-                    messageDiv.textContent = content;
-                }
-            } else {
-                // Convertir saltos de línea en <br> para mensajes de usuario
+            // Para mensajes del usuario, convertir saltos de línea en <br>
+            if (role === 'user') {
                 messageDiv.innerHTML = content.replace(/\n/g, '<br>');
+            } else {
+                // Para el asistente no mostraremos mensajes de texto, solo comandos
+                return;
             }
             
             result.appendChild(messageDiv);
             
             // Scroll al final
             result.scrollTop = result.scrollHeight;
-            
-            // Procesar bloques de código si es respuesta del asistente
-            if (role === 'assistant') {
-                this.formatCodeBlocks();
-            }
         },
         
         // Añadir mensaje de error
@@ -290,10 +290,16 @@
             const result = document.getElementById('assistant-result');
             if (!result) return;
             
+            // Limpiar resultados anteriores para mostrar solo el comando actual
+            const existingCommands = result.querySelectorAll('.command-item');
+            existingCommands.forEach(item => item.remove());
+            
             const commandDiv = document.createElement('div');
             commandDiv.className = 'command-item';
             commandDiv.innerHTML = `
-                <div class="command-text">${command}</div>
+                <div class="command-text">
+                    <pre><code>${command.trim()}</code></pre>
+                </div>
                 <div class="command-actions">
                     <button title="Copiar comando" class="copy-btn">
                         <i class="bi bi-clipboard"></i>
@@ -310,7 +316,7 @@
             
             if (copyBtn) {
                 copyBtn.addEventListener('click', () => {
-                    navigator.clipboard.writeText(command)
+                    navigator.clipboard.writeText(command.trim())
                         .then(() => this.showToast('Comando copiado al portapapeles'))
                         .catch(err => console.error('Error al copiar:', err));
                 });
@@ -318,7 +324,7 @@
             
             if (executeBtn) {
                 executeBtn.addEventListener('click', () => {
-                    this.executeCommand(command);
+                    this.executeCommand(command.trim());
                 });
             }
             
