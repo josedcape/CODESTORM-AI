@@ -1,0 +1,161 @@
+Solución propuesta
+1. En app.py - Función handle_execute_command
+python
+Copiar
+@socketio.on('execute_command')
+def handle_execute_command(data):
+    """Ejecuta un comando en la terminal y devuelve el resultado."""
+    command = data.get('command', '')
+    user_id = data.get('user_id', 'default')
+    terminal_id = data.get('terminal_id', request.sid)
+    
+    if not command:
+        emit('command_error', {
+            'error': 'No se proporcionó un comando',
+            'terminal_id': terminal_id
+        }, room=terminal_id)
+        return
+    
+    # Ejecutar el comando a través del gestor de sistema de archivos
+    file_system_manager = FileSystemManager(socketio)
+    result = file_system_manager.execute_command(
+        command=command,
+        user_id=user_id,
+        notify=True,
+        terminal_id=terminal_id
+    )
+    
+    # Añadir emisión explícita del resultado para asegurar que el cliente reciba respuesta
+    emit('command_result', {
+        'output': result.get('output', ''),
+        'success': result.get('success', False),
+        'command': command,
+        'terminal_id': terminal_id
+    }, room=terminal_id)
+    
+    # Emitir evento de sincronización de archivos para actualizar el explorador
+    socketio.emit('file_sync', {
+        'refresh': True,
+        'user_id': user_id,
+        'command': command
+    }, room=user_id)
+2. En app.py - Método execute_command de la clase FileSystemManager
+python
+Copiar
+def execute_command(self, command, user_id='default', notify=True, terminal_id=None):
+    """Ejecuta un comando en el workspace del usuario."""
+    try:
+        # Obtener el workspace del usuario
+        workspace_dir = self.get_user_workspace(user_id)
+        
+        # Guardar el directorio actual
+        current_dir = os.getcwd()
+        
+        # Cambiar al directorio del workspace
+        os.chdir(workspace_dir)
+        
+        # Registrar el comando para depuración
+        logging.info(f"Ejecutando comando: '{command}' en workspace: {workspace_dir}")
+        
+        # Ejecutar el comando con timeout para evitar bloqueos
+        result = subprocess.run(
+            command,
+            shell=True,
+            capture_output=True,
+            text=True,
+            timeout=10
+        )
+        
+        # Volver al directorio original
+        os.chdir(current_dir)
+        
+        # Preparar la respuesta
+        output = result.stdout if result.returncode == 0 else result.stderr
+        success = result.returncode == 0
+        
+        # Notificar a las terminales si es necesario
+        if notify and terminal_id:
+            self.notify_terminals(user_id, {
+                'output': output,
+                'success': success,
+                'command': command,
+                'terminal_id': terminal_id
+            }, exclude_terminal=None)  # Notificar a todas las terminales
+            
+        # Verificar si el comando modifica archivos
+        file_modifying_commands = ['mkdir', 'touch', 'rm', 'cp', 'mv']
+        if any(cmd in command.split() for cmd in file_modifying_commands):
+            # Forzar una actualización del explorador de archivos
+            self.socketio.emit('file_system_changed', {
+                'user_id': user_id,
+                'command': command,
+                'timestamp': time.time()
+            }, room=user_id)
+        
+        return {
+            'output': output,
+            'success': success,
+            'command': command
+        }
+        
+    except subprocess.TimeoutExpired:
+        logging.error(f"Timeout al ejecutar comando: {command}")
+        return {
+            'output': 'Error: El comando tardó demasiado tiempo en ejecutarse',
+            'success': False,
+            'command': command
+        }
+    except Exception as e:
+        logging.error(f"Error al ejecutar comando: {str(e)}")
+        return {
+            'output': f'Error: {str(e)}',
+            'success': False,
+            'command': command
+        }
+3. En static/js/terminal.js - Mejorar el manejo de respuestas
+Asegúrate de que el cliente JavaScript esté escuchando correctamente los eventos:
+
+javascript
+Copiar
+// Escuchar el evento de resultado de comando
+socket.on('command_result', function(data) {
+    if (data.terminal_id === terminalId) {
+        // Mostrar el resultado en la terminal
+        term.write('\r\n' + data.output);
+        
+        // Si el comando fue exitoso y es un comando que modifica archivos, actualizar el explorador
+        if (data.success && isFileModifyingCommand(data.command)) {
+            // Solicitar actualización del explorador
+            refreshFileExplorer();
+        }
+        
+        // Mostrar el prompt nuevamente
+        term.write('\r\n$ ');
+    }
+});
+
+// Función para determinar si un comando modifica archivos
+function isFileModifyingCommand(command) {
+    const fileCommands = ['mkdir', 'touch', 'rm', 'cp', 'mv'];
+    const cmdParts = command.trim().split(' ');
+    return fileCommands.includes(cmdParts[0]);
+}
+
+// Función para solicitar actualización del explorador
+function refreshFileExplorer() {
+    // Emitir evento para solicitar actualización del explorador
+    socket.emit('request_file_list', {
+        user_id: userId
+    });
+}
+Verificación adicional
+Además de estos cambios, asegúrate de:
+
+Verificar que los permisos de escritura estén correctamente configurados en el directorio de workspaces
+Comprobar que el usuario bajo el cual se ejecuta la aplicación tenga permisos suficientes
+Revisar los logs del servidor para identificar posibles errores durante la ejecución de comandos
+Estos cambios deberían garantizar que:
+
+Los comandos se ejecuten correctamente en el workspace del usuario
+El cliente reciba respuesta visual de la ejecución del comando
+El explorador de archivos se actualice automáticamente después de comandos que modifican archivos
