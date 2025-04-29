@@ -1344,6 +1344,100 @@
             // Hacer preview arrastrable
             makeDraggable(previewContainer, document.getElementById('preview-header'));
 
+            // Definición de la función initializeWebSocket
+            function initializeWebSocket() {
+                // Obtener la URL del servidor WebSocket desde la misma ubicación que la página
+                const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+                const wsUrl = `${wsProtocol}//${window.location.host}`;
+                
+                console.log("Conectando a WebSocket en:", wsUrl);
+                
+                // Inicializar el socket
+                socket = io(wsUrl, {
+                    transports: ['websocket', 'polling'],
+                    reconnection: true,
+                    reconnectionAttempts: 5,
+                    reconnectionDelay: 1000,
+                    timeout: 20000
+                });
+                
+                // Establecer manejadores de eventos del socket
+                socket.on('connect', function() {
+                    console.log('Conectado al servidor WebSocket');
+                    isConnected = true;
+                    updateConnectionStatus('connected');
+                    
+                    // Unirse a una sala específica para este usuario
+                    socket.emit('join_workspace', {
+                        user_id: userId
+                    });
+                    
+                    // Cargar contenido del directorio actual
+                    loadDirectoryContents(currentDirectory);
+                });
+                
+                socket.on('disconnect', function() {
+                    console.log('Desconectado del servidor WebSocket');
+                    isConnected = false;
+                    updateConnectionStatus('disconnected');
+                });
+                
+                socket.on('connect_error', function(error) {
+                    console.error('Error de conexión al WebSocket:', error);
+                    isConnected = false;
+                    updateConnectionStatus('disconnected');
+                });
+                
+                socket.on('command_result', function(data) {
+                    console.log('Resultado de comando recibido:', data);
+                    
+                    // Mostrar resultado en terminal
+                    terminal.write('\r\n' + (data.output || ''));
+                    
+                    // Si el comando es 'cd', actualizar directorio actual
+                    if (data.command && data.command.startsWith('cd ') && data.success) {
+                        updateCurrentDirectory(data);
+                    }
+                    
+                    // Si el comando modifica archivos, actualizar explorador
+                    if (shouldRefreshExplorer(data.command)) {
+                        setTimeout(() => {
+                            loadDirectoryContents(currentDirectory);
+                        }, 500);
+                    }
+                    
+                    // Escribir nuevo prompt
+                    terminal.write(prompt);
+                });
+                
+                socket.on('file_change', function(data) {
+                    console.log('Cambio en archivos detectado:', data);
+                    
+                    // Actualizar explorador si hay cambios en archivos
+                    loadDirectoryContents(currentDirectory);
+                });
+                
+                socket.on('directory_contents', function(data) {
+                    console.log('Contenido del directorio recibido:', data);
+                    
+                    if (data.success) {
+                        updateExplorer(data.path, data.contents);
+                    } else {
+                        showNotification('Error al cargar directorio: ' + data.error, 'error');
+                    }
+                });
+            }
+            
+            // Función para determinar si un comando debería actualizar el explorador
+            function shouldRefreshExplorer(command) {
+                if (!command) return false;
+                
+                const fileCommands = ['mkdir', 'touch', 'rm', 'cp', 'mv', 'echo', 'cat', 
+                                     'npm', 'pip', 'install', 'git'];
+                                     
+                return fileCommands.some(cmd => command.startsWith(cmd));
+            }
+
             // Inicializar
             initializeWebSocket();
 
