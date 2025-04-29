@@ -1,5 +1,3 @@
-// Codestorm-Assistant main JavaScript file
-
 document.addEventListener('DOMContentLoaded', function() {
     // Initialize app
     window.app = {
@@ -56,9 +54,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     }
 
                     // Update file explorer after session initialization
-                    if (typeof this.updateFileExplorer === 'function') {
-                        this.updateFileExplorer();
-                    }
+                    this.updateFileExplorer();
                 })
                 .catch(error => {
                     console.error('Error initializing session:', error);
@@ -67,9 +63,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     this.workspace = 'default';
 
                     // Still update the file explorer after setting defaults
-                    if (typeof this.updateFileExplorer === 'function') {
-                        this.updateFileExplorer();
-                    }
+                    this.updateFileExplorer();
                 });
         },
 
@@ -109,12 +103,11 @@ document.addEventListener('DOMContentLoaded', function() {
         },
 
         checkServerStatus: function() {
-            fetch('/api/process_instructions', {
-                method: 'POST',
+            fetch('/api/health', {
+                method: 'GET',
                 headers: {
                     'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ instruction: 'echo "Hello"' })
+                }
             })
             .then(response => {
                 if (response.ok) {
@@ -144,7 +137,7 @@ document.addEventListener('DOMContentLoaded', function() {
             this.commandHistory.push(instruction);
             this.historyIndex = this.commandHistory.length;
 
-            // Cache para respuestas comunes (mejora velocidad)
+            // Cache for common responses (improves speed)
             const cachedCommands = {
                 'hola': "echo '¡Hola! ¿En qué puedo ayudarte hoy?'",
                 'mostrar archivos': 'ls -la',
@@ -155,16 +148,16 @@ document.addEventListener('DOMContentLoaded', function() {
                 'ayuda': "echo 'Puedo convertir tus instrucciones en comandos de terminal'"
             };
 
-            // Intenta usar caché local primero antes de llamar al servidor
+            // Try using local cache first before calling the server
             const lowerInstruction = instruction.toLowerCase();
             for (const [key, cmd] of Object.entries(cachedCommands)) {
                 if (lowerInstruction.includes(key)) {
-                    // Mostrar el comando generado
+                    // Show the generated command
                     this.elements.commandDisplay.textContent = cmd;
 
-                    // Ejecutar directamente sin llamar al servidor
+                    // Execute directly without calling the server
                     this.executeCommandDirectly(cmd, instruction);
-                    return; // Termina la función aquí si encuentra coincidencia
+                    return; // End the function here if a match is found
                 }
             }
 
@@ -172,25 +165,24 @@ document.addEventListener('DOMContentLoaded', function() {
             const modelSelect = document.getElementById('model-select');
             const selectedModel = modelSelect ? modelSelect.value : 'openai';
 
-            // Process the instruction through the Flask backend
-            // Mostrar indicador de progreso
+            // Show progress indicator
             this.elements.executeBtn.disabled = true;
-            this.elements.executeBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Procesando...';
+            this.elements.executeBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Processing...';
 
-            // Procesar la instrucción
-            fetch('/api/process_instructions', {
+            // Process the instruction through the Flask backend
+            fetch('/api/process_natural', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({ 
+                body: JSON.stringify({
                     instruction: instruction,
                     model: selectedModel
                 })
             })
             .then(response => {
                 if (!response.ok) {
-                    throw new Error(`Error del servidor: ${response.status} ${response.statusText}`);
+                    throw new Error(`Server error: ${response.status} ${response.statusText}`);
                 }
                 return response.json();
             })
@@ -203,9 +195,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 const command = data.command;
                 this.elements.commandDisplay.textContent = command;
 
-                // Mostrar un mensaje de éxito
+                // Show a success message
                 if (window.fileActions && typeof window.fileActions.showNotification === 'function') {
-                    window.fileActions.showNotification('Comando generado correctamente', 'success');
+                    window.fileActions.showNotification('Command generated successfully', 'success');
                 }
 
                 // Execute the command
@@ -214,7 +206,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     headers: {
                         'Content-Type': 'application/json',
                     },
-                    body: JSON.stringify({ 
+                    body: JSON.stringify({
                         command: command,
                         instruction: instruction,
                         model: selectedModel
@@ -223,7 +215,7 @@ document.addEventListener('DOMContentLoaded', function() {
             })
             .then(response => {
                 if (!response || !response.ok) {
-                    throw new Error(`Error del servidor: ${response ? response.status + ' ' + response.statusText : 'No hay respuesta'}`);
+                    throw new Error(`Server error: ${response ? response.status + ' ' + response.statusText : 'No response'}`);
                 }
                 return response.json();
             })
@@ -252,7 +244,7 @@ document.addEventListener('DOMContentLoaded', function() {
             .finally(() => {
                 // Remove loading indicator
                 this.elements.executeBtn.disabled = false;
-                this.elements.executeBtn.innerHTML = 'Ejecutar';
+                this.elements.executeBtn.innerHTML = 'Execute';
             });
         },
 
@@ -290,16 +282,15 @@ document.addEventListener('DOMContentLoaded', function() {
             // Display loading indicator
             this.elements.fileExplorer.innerHTML = '<div class="loading-spinner"></div>';
 
-            fetch('/api/list_files', {
-                method: 'POST',
+            fetch(`/api/files?directory=${encodeURIComponent(directory)}`, {
+                method: 'GET',
                 headers: {
                     'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ directory: directory })
+                }
             })
             .then(response => {
                 if (!response.ok) {
-                    throw new Error(`Error del servidor: ${response.status} ${response.statusText}`);
+                    throw new Error(`Server error: ${response.status} ${response.statusText}`);
                 }
                 return response.json();
             })
@@ -310,8 +301,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
 
                 // Update current directory display
-                if (data.current_dir) {
-                    this.currentDirectory = data.current_dir;
+                if (data.directory) {
+                    this.currentDirectory = data.directory;
                 }
 
                 this.elements.directoryPath.textContent = this.currentDirectory;
@@ -333,7 +324,7 @@ document.addEventListener('DOMContentLoaded', function() {
             fileExplorer.innerHTML = '';
 
             // Add parent directory navigation if not in root
-            if (this.currentDirectory !== '.') {
+            if (this.currentDirectory !== '/') {
                 const parentItem = this.createFileItem('..', 'directory');
                 parentItem.addEventListener('click', () => {
                     this.navigateToDirectory('..');
@@ -361,8 +352,8 @@ document.addEventListener('DOMContentLoaded', function() {
                         this.navigateToDirectory(file.name);
                     } else {
                         // Open file in editor
-                        const filePath = this.currentDirectory === '/' 
-                            ? file.name 
+                        const filePath = this.currentDirectory === '/'
+                            ? file.name
                             : `${this.currentDirectory.replace(/^\//, '')}/${file.name}`;
                         window.location.href = `/edit/${filePath}`;
                     }
@@ -409,8 +400,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 newPath = dirName;
             } else {
                 // Relative path
-                newPath = this.currentDirectory === '/' 
-                    ? '/' + dirName 
+                newPath = this.currentDirectory === '/'
+                    ? '/' + dirName
                     : `${this.currentDirectory}/${dirName}`;
             }
 
@@ -437,14 +428,14 @@ document.addEventListener('DOMContentLoaded', function() {
         },
 
         createNewFile: function() {
-            const fileName = prompt('Nombre del archivo:');
+            const fileName = prompt('File name:');
             if (!fileName || fileName.trim() === '') return;
 
-            const path = this.currentDirectory === '/' 
-                ? fileName 
+            const path = this.currentDirectory === '/'
+                ? fileName
                 : `${this.currentDirectory.replace(/^\//, '')}/${fileName}`;
 
-            fetch('/api/create_file', {
+            fetch('/api/files/create', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -456,7 +447,7 @@ document.addEventListener('DOMContentLoaded', function() {
             })
             .then(response => {
                 if (!response.ok) {
-                    throw new Error(`Error del servidor: ${response.status} ${response.statusText}`);
+                    throw new Error(`Server error: ${response.status} ${response.statusText}`);
                 }
                 return response.json();
             })
@@ -476,26 +467,26 @@ document.addEventListener('DOMContentLoaded', function() {
         },
 
         createNewFolder: function() {
-            const folderName = prompt('Nombre de la carpeta:');
+            const folderName = prompt('Folder name:');
             if (!folderName || folderName.trim() === '') return;
 
-            const path = this.currentDirectory === '/' 
-                ? folderName 
+            const path = this.currentDirectory === '/'
+                ? folderName
                 : `${this.currentDirectory.replace(/^\//, '')}/${folderName}`;
 
-            fetch('/api/create_file', {
+            fetch('/api/files/create', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
-                    file_path: `${path}/.keep`,
-                    content: ''
+                    file_path: path,
+                    is_directory: true
                 })
             })
             .then(response => {
                 if (!response.ok) {
-                    throw new Error(`Error del servidor: ${response.status} ${response.statusText}`);
+                    throw new Error(`Server error: ${response.status} ${response.statusText}`);
                 }
                 return response.json();
             })
@@ -514,27 +505,27 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         },
 
-        // Función para ejecutar comandos directamente desde el caché
+        // Function to execute commands directly from cache
         executeCommandDirectly: function(command, instruction) {
-            // Mostrar indicador de carga
+            // Show loading indicator
             this.elements.executeBtn.disabled = true;
-            this.elements.executeBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Procesando...';
+            this.elements.executeBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Processing...';
 
-            // Ejecutar el comando directamente (desde caché)
+            // Execute the command directly (from cache)
             fetch('/api/execute_command', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({ 
+                body: JSON.stringify({
                     command: command,
                     instruction: instruction,
-                    model: 'cache' // Indicamos que usamos caché local
+                    model: 'cache' // Indicate using local cache
                 })
             })
             .then(response => {
                 if (!response.ok) {
-                    throw new Error(`Error del servidor: ${response.status} ${response.statusText}`);
+                    throw new Error(`Server error: ${response.status} ${response.statusText}`);
                 }
                 return response.json();
             })
@@ -544,29 +535,29 @@ document.addEventListener('DOMContentLoaded', function() {
                     return;
                 }
 
-                // Mostrar salida del comando
+                // Display command output
                 let output = '';
                 if (data.stdout) output += data.stdout;
                 if (data.stderr) output += '\n' + data.stderr;
 
                 this.elements.outputDisplay.textContent = output;
 
-                // Actualizar explorador de archivos
+                // Update file explorer
                 this.updateFileExplorer();
 
-                // Notificar éxito
+                // Notify success
                 if (window.fileActions && typeof window.fileActions.showNotification === 'function') {
-                    window.fileActions.showNotification('Comando ejecutado correctamente', 'success');
+                    window.fileActions.showNotification('Command executed successfully', 'success');
                 }
             })
             .catch(error => {
                 console.error('Error:', error);
-                this.displayError('Error ejecutando comando: ' + error.message);
+                this.displayError('Error executing command: ' + error.message);
             })
             .finally(() => {
-                // Quitar indicador de carga
+                // Remove loading indicator
                 this.elements.executeBtn.disabled = false;
-                this.elements.executeBtn.innerHTML = 'Ejecutar';
+                this.elements.executeBtn.innerHTML = 'Execute';
             });
         },
 
