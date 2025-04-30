@@ -628,6 +628,182 @@ def handle_chat_internal(data):
         if collaborative_mode:
             agent_prompt += "\n\nEstás trabajando en modo colaborativo con otros agentes especializados. Si la consulta del usuario requiere conocimientos fuera de tu dominio, puedes sugerir consultar a otro agente especializado o solicitar su perspectiva adicional."
 
+def find_available_model():
+    """
+    Encuentra el primer modelo de IA disponible basado en las API keys configuradas.
+    Retorna el nombre del modelo o None si no hay ninguno disponible.
+    """
+    if os.environ.get('OPENAI_API_KEY'):
+        return 'gpt4o'
+    elif os.environ.get('ANTHROPIC_API_KEY'):
+        return 'claude'
+    elif os.environ.get('GEMINI_API_KEY'):
+        return 'gemini'
+    return None
+
+def log_processing_metrics(original_code, corrected_code, language, model):
+    """
+    Registra métricas sobre el procesamiento de código para análisis y mejora.
+    """
+    try:
+        # Calcular métricas básicas
+        original_lines = len(original_code.split('\n'))
+        corrected_lines = len(corrected_code.split('\n'))
+        changed_lines_percent = abs(corrected_lines - original_lines) / original_lines * 100 if original_lines > 0 else 0
+        
+        # Registrar métricas
+        logging.info(f"Métricas de corrección - Modelo: {model}, Lenguaje: {language}")
+        logging.info(f"Líneas originales: {original_lines}, Líneas corregidas: {corrected_lines}")
+        logging.info(f"Cambio porcentual: {changed_lines_percent:.2f}%")
+        
+        # Aquí se podrían implementar métricas más avanzadas como:
+
+def enhance_results(result, original_code, language, static_analysis):
+    """
+    Mejora los resultados con información adicional y validaciones.
+    """
+    enhanced = result.copy()
+    enhanced['success'] = True
+
+    # Asegurarse de que el código corregido sea válido
+    if not enhanced.get('corrected_code'):
+        enhanced['corrected_code'] = original_code
+        enhanced['changes'] = enhanced.get('changes', [])
+        enhanced['changes'].append({
+            'description': 'No se pudieron aplicar correcciones',
+            'lineNumbers': [1],
+            'category': 'error',
+            'importance': 'alta'
+        })
+
+    # Asegurarse de que todos los cambios tengan los campos requeridos
+    if 'changes' in enhanced:
+        normalized_changes = []
+        for change in enhanced['changes']:
+            normalized_change = {
+                'description': change.get('description', 'Sin descripción'),
+                'lineNumbers': change.get('lineNumbers', change.get('line_numbers', [1])),
+                'category': change.get('category', 'general'),
+                'importance': change.get('importance', 'media')
+            }
+            normalized_changes.append(normalized_change)
+        enhanced['changes'] = normalized_changes
+    else:
+        enhanced['changes'] = []
+
+    # Agregar métricas de código si no existen
+    if 'metrics' not in enhanced:
+        enhanced['metrics'] = calculate_code_metrics(original_code, enhanced['corrected_code'], language)
+
+    # Agregar recomendaciones si no existen
+    if 'recommendations' not in enhanced:
+        enhanced['recommendations'] = []
+
+    # Agregar diferencias para visualización
+    enhanced['diff'] = generate_diff(original_code, enhanced['corrected_code'])
+
+    # Agregar información de análisis estático si está disponible
+    if static_analysis and static_analysis.get('issues'):
+        enhanced['static_analysis'] = {
+            'issues_count': len(static_analysis['issues']),
+            'issues_summary': summarize_issues(static_analysis['issues'])
+        }
+
+    return enhanced
+
+def calculate_code_metrics(original_code, corrected_code, language):
+    """
+    Calcula métricas de código para comparar original y corregido.
+    """
+    # Métricas básicas
+    metrics = {
+        'loc': len(corrected_code.split('\n')),
+        'original_loc': len(original_code.split('\n')),
+        'complexity': 0,
+        'errors_fixed': 0,
+        'warnings_fixed': 0,
+        'performance_improvements': 0,
+        'readability_improvements': 0
+    }
+    
+    # Estimar complejidad y otras métricas según el lenguaje
+    try:
+        # Complejidad ciclomática básica
+        control_keywords = {
+            'python': ['if', 'for', 'while', 'except', 'with', 'def'],
+            'javascript': ['if', 'for', 'while', 'try', 'switch', 'function'],
+            'java': ['if', 'for', 'while', 'try', 'switch', 'case', 'catch'],
+            'cpp': ['if', 'for', 'while', 'try', 'switch', 'case', 'catch']
+        }
+        
+        lang_keywords = control_keywords.get(language, control_keywords['python'])
+        complexity = 1
+        
+        for keyword in lang_keywords:
+            complexity += corrected_code.count(f' {keyword} ')
+        
+        metrics['complexity'] = complexity
+        
+        # Estimar errores corregidos contando líneas modificadas
+        orig_lines = original_code.split('\n')
+        corr_lines = corrected_code.split('\n')
+        
+        metrics['errors_fixed'] = abs(len(orig_lines) - len(corr_lines))
+        
+    except Exception as e:
+        logging.warning(f"Error calculando métricas de código: {str(e)}")
+    
+    return metrics
+
+def generate_diff(original_code, corrected_code):
+    """
+    Genera un diff básico entre el código original y el corregido.
+    """
+    try:
+        import difflib
+        orig_lines = original_code.splitlines()
+        corr_lines = corrected_code.splitlines()
+        
+        diff = difflib.unified_diff(
+            orig_lines, 
+            corr_lines,
+            fromfile='original',
+            tofile='corregido',
+            lineterm=''
+        )
+        return '\n'.join(diff)
+    except Exception as e:
+        logging.warning(f"Error generando diff: {str(e)}")
+        return "No se pudo generar el diff"
+
+def summarize_issues(issues):
+    """
+    Genera un resumen de los problemas encontrados en el análisis estático.
+    """
+    if not issues:
+        return "No se encontraron problemas en el análisis estático."
+    
+    categories = {}
+    for issue in issues:
+        category = issue.get('severity', 'unknown')
+        if category not in categories:
+            categories[category] = 0
+        categories[category] += 1
+    
+    summary = []
+    for category, count in categories.items():
+        summary.append(f"{count} {category}")
+    
+    return f"Resumen de problemas: {', '.join(summary)}"
+
+        # - Detección de patrones corregidos comunes
+        # - Comparación de complejidad ciclomática
+        # - Análisis de mejoras específicas por lenguaje
+        
+    except Exception as e:
+        logging.warning(f"Error al registrar métricas de procesamiento: {str(e)}")
+
+
         # Preprocesar contexto para dar formato consistente
         formatted_context = []
         for msg in context:
@@ -1775,32 +1951,229 @@ def process_code():
         )
 
         # Seleccionar el modelo y procesar el código
-        if 'gpt4' in model and os.environ.get('OPENAI_API_KEY'):
-            result = process_with_openai(code, language, detailed_instructions, model)
-        elif 'claude' in model and os.environ.get('ANTHROPIC_API_KEY'):
-            result = process_with_anthropic(code, language, detailed_instructions, model)
-        elif 'gemini' in model and os.environ.get('GEMINI_API_KEY'):
-            result = process_with_gemini(code, language, detailed_instructions, model)
-        else:
-            # Fallback a un modelo disponible si el solicitado no está configurado
-            available_model = find_available_model()
-            if not available_model:
+        if model == 'openai' and os.environ.get('OPENAI_API_KEY'):
+            try:
+                # Usar OpenAI para procesar el código
+                client = openai.OpenAI()
+
+                # Preparar el prompt con el contexto adecuado
+                full_prompt = f"""Eres un experto programador especializado en corregir código. Tu tarea es corregir el siguiente código en {language} según las instrucciones proporcionadas.
+
+CÓDIGO:
+```{language}
+{code}
+```
+
+INSTRUCCIONES:
+{detailed_instructions}
+
+Responde en formato JSON con las siguientes claves:
+- correctedCode: el código corregido completo
+- changes: una lista de objetos, cada uno con 'description' y 'lineNumbers'
+- explanation: una explicación detallada de los cambios
+"""
+
+                # Configurar y hacer la llamada a la API
+                response = client.chat.completions.create(
+                    model="gpt-4o",
+                    messages=[
+                        {"role": "system", "content": "Eres un experto programador especializado en corregir código."},
+                        {"role": "user", "content": full_prompt}
+                    ],
+                    response_format={"type": "json_object"}
+                )
+
+                result = json.loads(response.choices[0].message.content)
+                logging.info("Código corregido con OpenAI")
+
+                # Normalizar nombres de campos si es necesario
+                if 'correctedCode' in result and 'corrected_code' not in result:
+                    result['corrected_code'] = result.pop('correctedCode')
+                
+                result['success'] = True
+                result['model_used'] = 'openai'
+
+            except Exception as e:
+                logging.error(f"Error con API de OpenAI: {str(e)}")
                 return jsonify({
                     'success': False,
-                    'error': 'No hay modelos de IA configurados. Configure al menos una API en las variables de entorno.'
+                    'error': f'Error al conectar con OpenAI: {str(e)}'
+                }), 500
+                
+        elif model == 'anthropic' and os.environ.get('ANTHROPIC_API_KEY'):
+            try:
+                # Importar anthropic si es necesario
+                import anthropic
+                from anthropic import Anthropic
+
+                # Inicializar cliente
+                client = Anthropic(api_key=os.environ.get('ANTHROPIC_API_KEY'))
+
+                prompt = f"""Eres un experto programador. Tu tarea es corregir el siguiente código en {language} según las instrucciones proporcionadas.
+
+CÓDIGO:
+```{language}
+{code}
+```
+
+INSTRUCCIONES:
+{detailed_instructions}
+
+Responde EXACTAMENTE en este formato JSON y nada más:
+```json
+{{
+  "corrected_code": "código corregido aquí",
+  "changes": [
+    {{
+      "description": "descripción del cambio 1",
+      "lineNumbers": [1, 2]
+    }}
+  ],
+  "explanation": "explicación detallada de los cambios"
+}}
+```
+"""
+
+                response = client.messages.create(
+                    model="claude-3-5-sonnet-latest",
+                    max_tokens=4000,
+                    system="Eres un experto programador especializado en corregir código. Siempre respondes en formato JSON válido.",
+                    messages=[{"role": "user", "content": prompt}],
+                    temperature=0.1
+                )
+
+                try:
+                    # Buscar JSON en formato de bloque de código
+                    json_match = re.search(r'```(?:json)?\s*(.*?)\s*```', response.content[0].text, re.DOTALL)
+                    if json_match:
+                        try:
+                            result = json.loads(json_match.group(1).strip())
+                        except json.JSONDecodeError:
+                            # Si el contenido dentro de las comillas triples no es JSON válido
+                            result = {
+                                "corrected_code": code,
+                                "changes": [{"description": "No se pudo procesar el JSON correctamente", "lineNumbers": [1]}],
+                                "explanation": "Error al procesar la respuesta. Probablemente el formato no es correcto."
+                            }
+                    else:
+                        # Intenta extraer cualquier objeto JSON de la respuesta completa
+                        try:
+                            # Buscar un objeto JSON completo en cualquier parte del texto
+                            json_match = re.search(r'(\{.*\})', response.content[0].text, re.DOTALL)
+                            if json_match:
+                                result = json.loads(json_match.group(1))
+                            else:
+                                # Fallback a un formato básico si no hay JSON
+                                result = {
+                                    "corrected_code": code,
+                                    "changes": [],
+                                    "explanation": "No se pudo procesar correctamente la respuesta del modelo."
+                                }
+                        except (json.JSONDecodeError, AttributeError):
+                            result = {
+                                "corrected_code": code,
+                                "changes": [],
+                                "explanation": "No se pudo extraer JSON válido de la respuesta."
+                            }
+                except Exception as e:
+                    logging.error(f"Error procesando respuesta de Anthropic: {str(e)}")
+                    result = {
+                        "corrected_code": code,
+                        "changes": [],
+                        "explanation": f"Error procesando respuesta de Anthropic: {str(e)}"
+                    }
+
+                result['success'] = True
+                result['model_used'] = 'anthropic'
+                logging.info("Código corregido con Anthropic")
+
+            except Exception as e:
+                logging.error(f"Error con API de Anthropic: {str(e)}")
+                return jsonify({
+                    'success': False,
+                    'error': f'Error al conectar con Anthropic: {str(e)}'
                 }), 500
 
-            logging.warning(f"Modelo {model} no disponible, usando {available_model} como alternativa")
+        elif model == 'gemini' and os.environ.get('GEMINI_API_KEY'):
+            try:
+                # Usar genai para procesar con Gemini
+                import google.generativeai as genai
 
-            if 'gpt' in available_model:
-                result = process_with_openai(code, language, detailed_instructions, available_model)
-            elif 'claude' in available_model:
-                result = process_with_anthropic(code, language, detailed_instructions, available_model)
-            elif 'gemini' in available_model:
-                result = process_with_gemini(code, language, detailed_instructions, available_model)
+                if not hasattr(genai, '_configured') or not genai._configured:
+                    genai.configure(api_key=os.environ.get('GEMINI_API_KEY'))
 
-        if not result.get('success'):
-            return jsonify(result), 500
+                gemini_model = genai.GenerativeModel(
+                    model_name='gemini-1.5-pro',
+                    generation_config={
+                        'temperature': 0.2,
+                        'top_p': 0.9,
+                        'top_k': 40,
+                        'max_output_tokens': 4096,
+                    }
+                )
+
+                prompt = f"""Eres un experto programador. Tu tarea es corregir el siguiente código en {language} según las instrucciones proporcionadas.
+
+                CÓDIGO:
+                ```{language}
+                {code}
+                ```
+
+                INSTRUCCIONES:
+                {detailed_instructions}
+
+                Responde en formato JSON con las siguientes claves:
+                - correctedCode: el código corregido completo
+                - changes: una lista de objetos, cada uno con 'description' y 'lineNumbers'
+                - explanation: una explicación detallada de los cambios
+                """
+
+                response = gemini_model.generate_content(prompt)
+
+                # Extraer el JSON de la respuesta de Gemini
+                import re
+                json_match = re.search(r'```json(.*?)```', response.text, re.DOTALL)
+                if json_match:
+                    result = json.loads(json_match.group(1).strip())
+                else:
+                    # Intentar extraer cualquier JSON de la respuesta
+                    json_match = re.search(r'{.*}', response.text, re.DOTALL)
+                    if json_match:
+                        result = json.loads(json_match.group(0))
+                    else:
+                        # Fallback a un formato básico
+                        result = {
+                            "correctedCode": code,
+                            "changes": [],
+                            "explanation": "No se pudo procesar correctamente la respuesta del modelo."
+                        }
+
+                # Normalizar nombres de campos si es necesario
+                if 'correctedCode' in result and 'corrected_code' not in result:
+                    result['corrected_code'] = result.pop('correctedCode')
+                
+                result['success'] = True
+                result['model_used'] = 'gemini'
+                logging.info("Código corregido con Gemini")
+
+            except Exception as e:
+                logging.error(f"Error con API de Gemini: {str(e)}")
+                return jsonify({
+                    'success': False,
+                    'error': f'Error al conectar con Gemini: {str(e)}'
+                }), 500
+        else:
+            return jsonify({
+                'success': False,
+                'error': f'Modelo {model} no soportado o API no configurada'
+            }), 400
+
+        # Verificar que la respuesta contiene los campos necesarios
+        if not result or 'corrected_code' not in result:
+            return jsonify({
+                'success': False,
+                'error': 'La respuesta del modelo no incluye el código corregido'
+            }), 500
 
         # Post-procesar y enriquecer los resultados
         enhanced_result = enhance_results(result, code, language, static_analysis_results)
@@ -1808,13 +2181,20 @@ def process_code():
         # Registrar métricas para seguimiento
         log_processing_metrics(code, enhanced_result.get('corrected_code', ''), language, model)
 
-        return jsonify(enhanced_result)
+        # Devolver resultado en formato esperado por el frontend
+        return jsonify({
+            'success': True,
+            'corrected_code': result.get('corrected_code', ''),
+            'changes': result.get('changes', []),
+            'explanation': result.get('explanation', 'No se proporcionó explicación.')
+        })
 
     except Exception as e:
-        logging.exception(f"Error procesando código: {str(e)}")
+        logging.error(f"Error al procesar la solicitud de código: {str(e)}")
+        logging.error(traceback.format_exc())
         return jsonify({
             'success': False,
-            'error': f'Error interno al procesar el código: {str(e)}'
+            'error': f'Error al procesar la solicitud: {str(e)}'
         }), 500
 
 
