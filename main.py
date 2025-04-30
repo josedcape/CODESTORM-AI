@@ -304,9 +304,14 @@ def handle_chat_internal(request_data):
             else:
                 return {'response': f"El modelo 'openai' no está disponible en este momento. Por favor configura una clave API en el panel de Secrets o selecciona otro modelo.", 'error': None}
 
-            except Exception as e:
-                logging.error(f"Error con API de OpenAI: {str(e)}")
-                return {'error': f"Error con OpenAI: {str(e)}", 'response': None}
+        except Exception as e:
+            command = ''  # Assign an empty string to command if it's not defined
+            logging.error(f"Error al ejecutar comando: {str(e)}")
+            return {
+                'output': f'Error: {str(e)}',
+                'success': False,
+                'command': command
+            }
 
         elif model_choice == 'anthropic':
             if anthropic_api_key:
