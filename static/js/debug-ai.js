@@ -185,6 +185,12 @@ class DebugAI {
      * @returns {Object} Código corregido y detalles
      */
     autoFix(code, language, errorMessage = '') {
+        // Si hay una integración con la API, usar esa
+        if (this.useApiIntegration) {
+            return this._processCodeWithApi(code, language, errorMessage);
+        }
+        
+        // Fallback: usar diagnóstico local
         const diagnosis = this.diagnose(code, language, errorMessage);
         
         // Si no se encontraron problemas o no se pudieron aplicar correcciones
@@ -208,7 +214,60 @@ class DebugAI {
             message: explanation,
             fixes: diagnosis.fixes,
             original: code,
-            fixed: diagnosis.fixedCode
+            fixed: diagnosis.fixedCode || code
+        };
+    },
+    
+    // Método para procesar código mediante la API
+    _processCodeWithApi(code, language, instructions = '') {
+        return new Promise((resolve, reject) => {
+            fetch('/api/process_code', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    code: code,
+                    language: language,
+                    instructions: instructions || 'Corrige errores y mejora la calidad del código',
+                    model: document.getElementById('model-select')?.value || 'openai',
+                    auto_fix: true,
+                    optimize: true,
+                    improve_readability: true
+                })
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`Error en la solicitud: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.error) {
+                    throw new Error(data.error);
+                }
+                
+                // Formatear la respuesta para que coincida con el formato esperado
+                resolve({
+                    success: true,
+                    message: 'Código corregido exitosamente',
+                    original: code,
+                    fixed: data.corrected_code || code,
+                    explanation: data.explanation || '',
+                    changes: data.changes || []
+                });
+            })
+            .catch(error => {
+                console.error('Error al procesar el código:', error);
+                resolve({
+                    success: false,
+                    message: `Error: ${error.message}`,
+                    original: code,
+                    fixed: code
+                });
+            });
+        });
+    }d: diagnosis.fixedCode
         };
     }
 }

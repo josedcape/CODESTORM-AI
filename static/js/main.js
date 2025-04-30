@@ -178,3 +178,144 @@ function formatBytes(bytes, decimals = 2) {
     
     return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
 }
+
+// Inicializar el corrector de código cuando esté en la página correspondiente
+document.addEventListener('DOMContentLoaded', function() {
+    // Comprobar si estamos en la página de corrector de código
+    if (document.getElementById('process-btn') && document.getElementById('code-input')) {
+        console.log('Inicializando corrector de código...');
+        
+        // Configurar el manipulador de eventos para el botón de proceso
+        const processBtn = document.getElementById('process-btn');
+        if (processBtn) {
+            processBtn.addEventListener('click', function() {
+                const codeInput = document.getElementById('code-input');
+                const language = document.getElementById('code-language').value;
+                const instructions = document.getElementById('instructions')?.value || '';
+                const modelSelect = document.getElementById('model-select');
+                
+                if (!codeInput || !codeInput.value.trim()) {
+                    window.showNotification?.('Por favor, ingresa código para corregir', 'warning') || 
+                    alert('Por favor, ingresa código para corregir');
+                    return;
+                }
+                
+                // Mostrar indicador de carga
+                processBtn.disabled = true;
+                processBtn.innerHTML = '<span class="btn-content"><div class="btn-spinner"></div> Procesando...</span>';
+                
+                // Llamar a la API para procesar el código
+                fetch('/api/process_code', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        code: codeInput.value.trim(),
+                        language: language,
+                        instructions: instructions || 'Corrige errores y mejora la calidad del código',
+                        model: modelSelect?.value || 'openai',
+                        auto_fix: true,
+                        optimize: true,
+                        improve_readability: true
+                    })
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`Error en el servidor: ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    // Mostrar resultados
+                    const resultsContainer = document.getElementById('results-container');
+                    if (resultsContainer) {
+                        resultsContainer.style.display = 'block';
+                    }
+                    
+                    // Actualizar código corregido
+                    const correctedCode = document.getElementById('corrected-code');
+                    if (correctedCode && data.corrected_code) {
+                        correctedCode.textContent = data.corrected_code;
+                        
+                        // Resaltar sintaxis si está disponible
+                        if (window.hljs) {
+                            hljs.highlightElement(correctedCode);
+                        }
+                    }
+                    
+                    // Actualizar explicación
+                    const explanationText = document.getElementById('explanation-text');
+                    if (explanationText && data.explanation) {
+                        if (window.marked && typeof window.marked === 'function') {
+                            explanationText.innerHTML = window.marked(data.explanation);
+                        } else {
+                            explanationText.textContent = data.explanation;
+                        }
+                    }
+                    
+                    // Mostrar cambios
+                    if (data.changes && document.getElementById('changes-list')) {
+                        renderChanges(data.changes);
+                    }
+                    
+                    // Actualizar vista de diferencias si hay función definida
+                    if (typeof generateDiff === 'function' && document.getElementById('diff-view')) {
+                        document.getElementById('diff-view').innerHTML = generateDiff(codeInput.value.trim(), data.corrected_code);
+                    }
+                    
+                    window.showNotification?.('Código corregido exitosamente', 'success') || 
+                    console.log('Código corregido exitosamente');
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    window.showNotification?.(`Error: ${error.message}`, 'error') || 
+                    alert(`Error: ${error.message}`);
+                })
+                .finally(() => {
+                    // Restaurar botón
+                    processBtn.disabled = false;
+                    processBtn.innerHTML = '<span class="btn-content"><i class="bi bi-wrench"></i> Corregir código</span>';
+                });
+            });
+        }
+        
+        // Función auxiliar para renderizar cambios
+        window.renderChanges = function(changes) {
+            const changesList = document.getElementById('changes-list');
+            if (!changesList) return;
+            
+            changesList.innerHTML = '';
+            
+            if (changes && changes.length > 0) {
+                changes.forEach((change, index) => {
+                    const item = document.createElement('div');
+                    item.className = 'cyber-list-item';
+                    
+                    // Determinar badge de importancia
+                    let importance = change.importance || 'info';
+                    const badgeClass = importance === 'alta' ? 'cyber-badge-danger' :
+                                      importance === 'media' ? 'cyber-badge-warning' : 'cyber-badge-info';
+                    
+                    // Información de línea
+                    const lineInfo = change.lineNumbers ?
+                        `<span class="cyber-badge cyber-badge-secondary">Línea(s): ${change.lineNumbers.join(', ')}</span>` : '';
+                    
+                    item.innerHTML = `
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div><span class="cyber-badge ${badgeClass}">${importance}</span> ${change.description}</div>
+                            ${lineInfo}
+                        </div>
+                    `;
+                    
+                    changesList.appendChild(item);
+                });
+            } else {
+                const item = document.createElement('div');
+                item.className = 'cyber-list-item';
+                item.innerHTML = 'No se detectaron cambios significativos';
+                changesList.appendChild(item);
+            }
+        };
+    }
+});

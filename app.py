@@ -2418,6 +2418,151 @@ def process_command():
             'error': str(e)
         }), 500
 
+@app.route('/api/process_code', methods=['POST'])
+def process_code():
+    """
+    Procesa código para correcciones y mejoras con modelos especializados en programación.
+    """
+    try:
+        data = request.json
+        code = data.get('code', '')
+        instructions = data.get('instructions', 'Corrige errores y mejora la calidad del código')
+        language = data.get('language', 'python')
+        model = data.get('model', 'openai')
+
+        if not code:
+            return jsonify({'error': 'No code provided'}), 400
+
+        # Si tenemos OpenAI disponible, usarlo para procesar el código
+        if model == 'openai' and os.environ.get('OPENAI_API_KEY'):
+            try:
+                client = openai.OpenAI()
+                completion = client.chat.completions.create(
+                    model="gpt-4o",
+                    messages=[
+                        {"role": "system", "content": "Eres un experto programador especializado en corregir código."},
+                        {"role": "user", "content": f"Aquí está el código en {language} que necesito corregir:\n\n```{language}\n{code}\n```\n\nInstrucciones: {instructions}\n\nResponde en formato JSON con las siguientes claves:\n- corrected_code: el código corregido completo\n- changes: una lista de objetos, cada uno con 'description' y 'lineNumbers'\n- explanation: una explicación detallada de los cambios"}
+                    ],
+                    response_format={"type": "json_object"}
+                )
+
+                result = json.loads(completion.choices[0].message.content)
+                logging.info("Código corregido con OpenAI")
+                
+                return jsonify({
+                    'success': True,
+                    'corrected_code': result.get('corrected_code', code),
+                    'changes': result.get('changes', []),
+                    'explanation': result.get('explanation', 'No se proporcionó explicación detallada.')
+                })
+
+            except Exception as e:
+                logging.error(f"Error con API de OpenAI: {str(e)}")
+                return jsonify({
+                    'success': False,
+                    'error': f'Error al conectar con OpenAI: {str(e)}'
+                }), 500
+                
+        # Si tenemos Anthropic disponible, usarlo como fallback
+        elif model == 'anthropic' or (model == 'openai' and not os.environ.get('OPENAI_API_KEY') and os.environ.get('ANTHROPIC_API_KEY')):
+            try:
+                client = anthropic.Anthropic(api_key=os.environ.get('ANTHROPIC_API_KEY'))
+                
+                response = client.messages.create(
+                    model="claude-3-5-sonnet-latest",
+                    max_tokens=4000,
+                    system=f"Eres un experto programador. Tu tarea es corregir el siguiente código en {language} según las instrucciones proporcionadas. Devuelve el código corregido, una lista de cambios realizados y una explicación clara en formato JSON.",
+                    messages=[
+                        {"role": "user", "content": f"CÓDIGO:\n```{language}\n{code}\n```\n\nINSTRUCCIONES:\n{instructions}\n\nResponde en formato JSON con las siguientes claves:\n- corrected_code: el código corregido completo\n- changes: una lista de objetos, cada uno con 'description' y 'lineNumbers'\n- explanation: una explicación detallada de los cambios"}
+                    ]
+                )
+                
+                # Intentar extraer el JSON de la respuesta
+                result = {}
+                try:
+                    import re
+                    json_match = re.search(r'```json(.*?)```', response.content[0].text, re.DOTALL)
+                    if json_match:
+                        result = json.loads(json_match.group(1).strip())
+                    else:
+                        result = json.loads(response.content[0].text)
+                except Exception as parse_error:
+                    logging.error(f"Error parseando respuesta de Anthropic: {str(parse_error)}")
+                    # Intentar extraer el código al menos
+                    code_match = re.search(r'```(?:{language})?(.*?)```', response.content[0].text, re.DOTALL)
+                    if code_match:
+                        result = {
+                            'corrected_code': code_match.group(1).strip(),
+                            'changes': [],
+                            'explanation': 'Error al parsear la respuesta completa'
+                        }
+                
+                logging.info("Código corregido con Anthropic")
+                
+                return jsonify({
+                    'success': True,
+                    'corrected_code': result.get('corrected_code', code),
+                    'changes': result.get('changes', []),
+                    'explanation': result.get('explanation', 'No se proporcionó explicación detallada.')
+                })
+                
+            except Exception as e:
+                logging.error(f"Error con API de Anthropic: {str(e)}")
+                return jsonify({
+                    'success': False,
+                    'error': f'Error al conectar con Anthropic: {str(e)}'
+                }), 500
+                
+        # Si no tenemos APIs de IA disponibles, intentar una corrección básica
+        else:
+            # Implementar corrector básico para casos comunes
+            corrected_code = code
+            changes = []
+            explanation = "No se pudo realizar una corrección avanzada porque no hay APIs configuradas. Se recomienda configurar las claves de API en el panel de Secrets."
+            
+            # Algunas correcciones básicas para Python
+            if language == 'python':
+                # Corregir indentación inconsistente
+                lines = code.split('\n')
+                for i, line in enumerate(lines):
+                    if line.strip() and line[0] == ' ' and line[1] == ' ' and line[2] != ' ':
+                        corrected_line = '    ' + line.lstrip()
+                        lines[i] = corrected_line
+                        changes.append({
+                            'description': f'Corregida indentación inconsistente en línea {i+1}',
+                            'lineNumbers': [i+1],
+                            'importance': 'media'
+                        })
+                
+                # Corregir errores comunes como print sin paréntesis
+                for i, line in enumerate(lines):
+                    if re.match(r'^\s*print\s+[^(]', line):
+                        content = re.sub(r'^\s*print\s+', '', line)
+                        corrected_line = re.sub(r'^\s*print\s+', 'print(', line) + ')'
+                        lines[i] = corrected_line
+                        changes.append({
+                            'description': f'Corregido print sin paréntesis en línea {i+1}',
+                            'lineNumbers': [i+1],
+                            'importance': 'alta'
+                        })
+                
+                corrected_code = '\n'.join(lines)
+            
+            return jsonify({
+                'success': len(changes) > 0,
+                'corrected_code': corrected_code,
+                'changes': changes,
+                'explanation': explanation
+            })
+
+    except Exception as e:
+        logging.error(f"Error al procesar la solicitud de código: {str(e)}")
+        logging.error(traceback.format_exc())
+        return jsonify({
+            'success': False,
+            'error': f'Error al procesar la solicitud: {str(e)}'
+        }), 500
+
 @app.route('/api/health', methods=['GET'])
 def health_check():
     """Check the health status of the application."""
