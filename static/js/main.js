@@ -97,12 +97,13 @@ document.addEventListener('DOMContentLoaded', function() {
     // Integración markdown automática para elementos con la clase 'markdown-content'
     if (typeof marked !== 'undefined') {
         // Verificamos si marked es un objeto (versión más reciente) o una función (versión antigua)
-        const markdownParser = typeof marked.parse === 'function' ? marked.parse : marked;
+        const markdownParser = typeof marked.parse === 'function' ? marked.parse : (typeof marked === 'function' ? marked : null);
         
-        document.querySelectorAll('.markdown-content').forEach(element => {
-            const markdown = element.textContent || element.innerText;
-            try {
-                element.innerHTML = markdownParser(markdown);
+        if (markdownParser) {
+            document.querySelectorAll('.markdown-content').forEach(element => {
+                const markdown = element.textContent || element.innerText;
+                try {
+                    element.innerHTML = markdownParser(markdown);
                 
                 // Resaltar código si prism está disponible
                 if (typeof Prism !== 'undefined') {
