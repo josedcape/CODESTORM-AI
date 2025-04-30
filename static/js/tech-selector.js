@@ -546,6 +546,7 @@ class TechSelector {
             document.getElementById('generate-button').disabled = false;
         });
     }
+}
 
     // Mostrar mensaje de espera durante la preparación
     showWaitingMessage(message) {
@@ -716,16 +717,20 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 
+// Obtener referencia al formulario de constructor
+    const constructorForm = document.getElementById('constructor-form');
+    
 // Evento de envío del formulario
-    constructorForm.addEventListener('submit', function(e) {
+    if (constructorForm) {
+      constructorForm.addEventListener('submit', function(e) {
         e.preventDefault();
 
         // Obtener valores del formulario
-        const description = projectDescription.value.trim();
-        const agent = document.getElementById('agent-selector').value;
-        const model = document.getElementById('model-selector').value;
-        const includeTests = document.getElementById('include-tests').checked;
-        const includeDocs = document.getElementById('include-docs').checked;
+        const description = document.getElementById('project-description').value.trim();
+        const agent = document.getElementById('agent-selector')?.value || 'developer';
+        const model = document.getElementById('model-selector')?.value || 'openai';
+        const includeTests = document.getElementById('include-tests')?.checked || false;
+        const includeDocs = document.getElementById('include-docs')?.checked || false;
         const includeDeployment = document.getElementById('include-deployment').checked;
         const includeCICD = document.getElementById('include-ci-cd').checked;
         const features = getSelectedFeatures();
