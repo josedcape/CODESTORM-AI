@@ -5,6 +5,36 @@
 document.addEventListener('DOMContentLoaded', function() {
     console.log('Codestorm Assistant inicializado');
     
+    // Variables para controlar el estado de pausa del constructor
+    window.constructorState = {
+        isPaused: false,
+        progress: 0,
+        pauseCallback: null,
+        resumeCallback: null
+    };
+    
+    // Función para pausar el constructor
+    window.pauseConstructor = function(callback) {
+        window.constructorState.isPaused = true;
+        if (callback && typeof callback === 'function') {
+            window.constructorState.pauseCallback = callback;
+            callback();
+        }
+        console.log('Constructor pausado');
+        return window.constructorState.isPaused;
+    };
+    
+    // Función para reanudar el constructor
+    window.resumeConstructor = function(callback) {
+        window.constructorState.isPaused = false;
+        if (callback && typeof callback === 'function') {
+            window.constructorState.resumeCallback = callback;
+            callback();
+        }
+        console.log('Constructor reanudado');
+        return !window.constructorState.isPaused;
+    };
+    
     // Inicializar tooltips de Bootstrap si existen
     if (typeof bootstrap !== 'undefined' && bootstrap.Tooltip) {
         const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
@@ -66,17 +96,43 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Integración markdown automática para elementos con la clase 'markdown-content'
     if (typeof marked !== 'undefined') {
+        // Verificamos si marked es un objeto (versión más reciente) o una función (versión antigua)
+        const markdownParser = typeof marked.parse === 'function' ? marked.parse : marked;
+        
         document.querySelectorAll('.markdown-content').forEach(element => {
             const markdown = element.textContent || element.innerText;
-            element.innerHTML = marked(markdown);
-            
-            // Resaltar código si prism está disponible
-            if (typeof Prism !== 'undefined') {
-                element.querySelectorAll('pre code').forEach(block => {
-                    Prism.highlightElement(block);
-                });
+            try {
+                element.innerHTML = markdownParser(markdown);
+                
+                // Resaltar código si prism está disponible
+                if (typeof Prism !== 'undefined') {
+                    element.querySelectorAll('pre code').forEach(block => {
+                        Prism.highlightElement(block);
+                    });
+                }
+            } catch (e) {
+                console.error('Error al procesar markdown:', e);
             }
         });
+    } else {
+        // Cargar marked dinámicamente si no está disponible
+        const script = document.createElement('script');
+        script.src = 'https://cdn.jsdelivr.net/npm/marked/marked.min.js';
+        script.onload = function() {
+            console.log('Biblioteca marked cargada correctamente');
+            // Volver a intentar procesar el markdown cuando se cargue
+            const markdownParser = typeof marked.parse === 'function' ? marked.parse : marked;
+            
+            document.querySelectorAll('.markdown-content').forEach(element => {
+                const markdown = element.textContent || element.innerText;
+                try {
+                    element.innerHTML = markdownParser(markdown);
+                } catch (e) {
+                    console.error('Error al procesar markdown:', e);
+                }
+            });
+        };
+        document.head.appendChild(script);
     }
     
     // Función para copiar texto al portapapeles

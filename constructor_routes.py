@@ -78,7 +78,7 @@ def generate_application(project_id, description, agent, model, options, feature
                     development_paused[project_id] = False
                     break
                 time.sleep(1)
-            
+
         # Determinar el stack tecnológico basado en la descripción
         frameworks = determine_frameworks(description.lower())
         if frameworks.get('recommended'):
@@ -88,7 +88,7 @@ def generate_application(project_id, description, agent, model, options, feature
                 'frontend': frameworks['recommended']['frontend']['id'],
                 'database': frameworks['recommended']['database']['id'] if frameworks['recommended']['database'] else 'sqlite'
             }
-            
+
             # Añadir mensaje sobre el stack tecnológico
             update_status(
                 8, 
@@ -521,7 +521,7 @@ def analyze_features():
 
         # Determine appropriate frameworks based on description
         frameworks = determine_frameworks(description_lower)
-        
+
         # Limit to a reasonable number of features
         features = features[:10]
 
@@ -548,7 +548,7 @@ def determine_frameworks(description):
         'database': [],
         'recommended': None
     }
-    
+
     # Detectar frameworks de backend
     backend_frameworks = [
         {
@@ -594,37 +594,37 @@ def determine_frameworks(description):
             'score': 0
         }
     ]
-    
+
     # Puntuar frameworks de backend según la descripción
     for framework in backend_frameworks:
         if framework['id'] in description:
             framework['score'] += 10
-        
+
         if 'api' in description and framework['id'] in ['fastapi', 'express', 'flask']:
             framework['score'] += 5
-        
+
         if 'dashboard' in description and framework['id'] in ['streamlit', 'django']:
             framework['score'] += 5
-            
+
         if 'datos' in description and framework['id'] in ['streamlit']:
             framework['score'] += 8
-            
+
         if 'microservicio' in description and framework['id'] in ['fastapi', 'flask', 'express']:
             framework['score'] += 5
-            
+
         if 'admin' in description and framework['id'] in ['django']:
             framework['score'] += 8
-            
+
         if ('simple' in description or 'sencillo' in description) and framework['id'] in ['flask', 'express', 'streamlit']:
             framework['score'] += 3
-            
+
         if 'completo' in description and framework['id'] in ['django', 'nestjs']:
             framework['score'] += 3
-    
+
     # Ordenar y seleccionar los mejores frameworks de backend
     backend_frameworks.sort(key=lambda x: x['score'], reverse=True)
     frameworks['backend'] = backend_frameworks[:3]  # Top 3 backends
-    
+
     # Detectar frameworks de frontend
     frontend_frameworks = [
         {
@@ -663,31 +663,31 @@ def determine_frameworks(description):
             'score': 0
         }
     ]
-    
+
     # Puntuar frameworks de frontend según la descripción
     for framework in frontend_frameworks:
         if framework['id'] in description:
             framework['score'] += 10
-        
+
         if 'móvil' in description and framework['id'] in ['react', 'vue']:
             framework['score'] += 3
-            
+
         if 'responsive' in description and framework['id'] in ['bootstrap']:
             framework['score'] += 5
-            
+
         if 'componentes' in description and framework['id'] in ['react', 'vue', 'angular', 'svelte']:
             framework['score'] += 3
-            
+
         if 'empresarial' in description and framework['id'] in ['angular']:
             framework['score'] += 5
-            
+
         if 'rendimiento' in description and framework['id'] in ['svelte']:
             framework['score'] += 5
-    
+
     # Ordenar y seleccionar los mejores frameworks de frontend
     frontend_frameworks.sort(key=lambda x: x['score'], reverse=True)
     frameworks['frontend'] = frontend_frameworks[:3]  # Top 3 frontends
-    
+
     # Detectar bases de datos
     database_options = [
         {
@@ -726,37 +726,37 @@ def determine_frameworks(description):
             'score': 0
         }
     ]
-    
+
     # Puntuar bases de datos según la descripción
     for db in database_options:
         if db['id'] in description:
             db['score'] += 10
-        
+
         if 'sql' in description and db['id'] in ['mysql', 'postgresql', 'sqlite']:
             db['score'] += 5
-            
+
         if 'nosql' in description and db['id'] in ['mongodb']:
             db['score'] += 8
-            
+
         if 'simple' in description and db['id'] in ['sqlite']:
             db['score'] += 5
-            
+
         if 'escalable' in description and db['id'] in ['postgresql', 'mongodb']:
             db['score'] += 5
-            
+
         if 'tiempo real' in description and db['id'] in ['redis', 'mongodb']:
             db['score'] += 5
-    
+
     # Ordenar y seleccionar las mejores bases de datos
     database_options.sort(key=lambda x: x['score'], reverse=True)
     frameworks['database'] = database_options[:3]  # Top 3 databases
-    
+
     # Recomendar una combinación de tecnologías basada en los puntajes
     if len(frameworks['backend']) > 0 and len(frameworks['frontend']) > 0:
         backend_choice = frameworks['backend'][0]['name']
         frontend_choice = frameworks['frontend'][0]['name']
         database_choice = frameworks['database'][0]['name'] if len(frameworks['database']) > 0 else "SQLite"
-        
+
         frameworks['recommended'] = {
             'name': f"{backend_choice} + {frontend_choice} + {database_choice}",
             'description': f"Stack recomendado basado en tu descripción",
@@ -764,7 +764,7 @@ def determine_frameworks(description):
             'frontend': frameworks['frontend'][0],
             'database': frameworks['database'][0] if len(frameworks['database']) > 0 else None
         }
-    
+
     return frameworks
 
 # Route to start application generation
@@ -869,10 +869,10 @@ def project_status_route(project_id):
         console_message = None
         if status_data.get('console_messages'):
             console_message = status_data['console_messages'][-1]['message']
-            
+
         # Si no tiene framework, añadir uno predeterminado
         if 'framework' not in status_data:
-            status_data['framework'] = 'Flask + Bootstrap + SQLite'
+            status_data['framework'] = ''Flask + Bootstrap + SQLite'
             status_data['techstack'] = {
                 'backend': 'flask',
                 'frontend': 'bootstrap',
@@ -1026,3 +1026,84 @@ def resume_development(project_id):
             'success': False,
             'error': str(e)
         }), 500
+
+@constructor_bp.route('/start_construction', methods=['POST'])
+def start_construction():
+    """Start the construction process based on the plan"""
+    data = request.json
+    plan_id = data.get('plan_id')
+
+    if not plan_id:
+        return jsonify({'error': 'No plan ID provided'}), 400
+
+    # Get the plan from the database or session
+    # For now, we'll just return a mock response
+
+    # Here you would start the actual construction process
+    # This would involve generating files, installing dependencies, etc.
+
+    return jsonify({
+        'success': True,
+        'message': 'Construction started',
+        'plan_id': plan_id,
+        'status': 'in_progress',
+    })
+
+@constructor_bp.route('/pause_construction', methods=['POST'])
+def pause_construction():
+    """Pause the ongoing construction process"""
+    data = request.json
+    plan_id = data.get('plan_id')
+    reason = data.get('reason', 'User requested pause')
+
+    if not plan_id:
+        return jsonify({'error': 'No plan ID provided'}), 400
+
+    # Logic to pause the construction process
+    # This could involve setting a flag in the database
+
+    return jsonify({
+        'success': True,
+        'message': f'Construction paused: {reason}',
+        'plan_id': plan_id,
+        'status': 'paused',
+    })
+
+@constructor_bp.route('/resume_construction', methods=['POST'])
+def resume_construction():
+    """Resume a paused construction process"""
+    data = request.json
+    plan_id = data.get('plan_id')
+
+    if not plan_id:
+        return jsonify({'error': 'No plan ID provided'}), 400
+
+    # Logic to resume the construction process
+
+    return jsonify({
+        'success': True,
+        'message': 'Construction resumed',
+        'plan_id': plan_id,
+        'status': 'in_progress',
+    })
+
+@constructor_bp.route('/construction_status', methods=['GET'])
+def construction_status():
+    """Get the current status of a construction process"""
+    plan_id = request.args.get('plan_id')
+
+    if not plan_id:
+        return jsonify({'error': 'No plan ID provided'}), 400
+
+    # Logic to get the construction status
+
+    # Mock response for demonstration
+    return jsonify({
+        'plan_id': plan_id,
+        'status': 'in_progress',  # or 'paused', 'completed', 'failed'
+        'progress': 60,
+        'current_step': 'Generating application files',
+        'is_paused': False,
+        'time_elapsed': '00:02:45',
+        'estimated_time_remaining': '00:01:30'
+    })
