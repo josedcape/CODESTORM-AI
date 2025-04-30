@@ -267,8 +267,8 @@ class DebugAI {
                 });
             });
         });
-    }d: diagnosis.fixedCode
-        };
+    }
+};
     }
 }
 
