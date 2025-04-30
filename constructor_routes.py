@@ -67,8 +67,8 @@ def generate_application(project_id, description, agent, model, options, feature
 
             # Si está pausado, esperar hasta que se reanude pero con timeout
             pause_start_time = time.time()
-            while (development_paused.get(project_id, False) and 
-                  project_id in project_status and 
+            while (development_paused.get(project_id, False) and
+                  project_id in project_status and
                   project_status[project_id]['status'] == 'in_progress'):
                 # Si ha estado pausado por más de 5 minutos, continuar
                 if time.time() - pause_start_time > 300:
@@ -108,8 +108,8 @@ def generate_application(project_id, description, agent, model, options, feature
         update_status(40, "Generando estructura básica...", "Creando archivos principales")
 
         # Determine if it's a web app or CLI app based on features
-        is_web_app = any(["web" in feature.lower() or 
-                          "ui" in feature.lower() or 
+        is_web_app = any(["web" in feature.lower() or
+                          "ui" in feature.lower() or
                           "interfaz" in feature.lower() or
                           "página" in feature.lower() or
                           "frontend" in feature.lower() or
@@ -278,18 +278,18 @@ def get_{feature_name}_data():
 
                 # Add feature template
                 with open(os.path.join(project_dir, 'templates', f'{feature_name}.html'), 'w') as f:
-                    f.write(f"""{% extends "base.html" %}
+                    f.write(f"""{{% extends "base.html" %}}
 
-{% block title %}{feature}{% endblock %}
+{{% block title %}}{feature}{{% endblock %}}
 
-{% block content %}
+{{% block content %}}
 <div class="feature-container">
     <h1>{feature}</h1>
     <div class="feature-content">
         <p>Esta es la página para la característica {feature}.</p>
     </div>
 </div>
-{% endblock %}""")
+{{% endblock %}}""")
             else:
                 # Add a module for this feature
                 with open(os.path.join(project_dir, f'{feature_name}.py'), 'w') as f:
@@ -336,9 +336,9 @@ class {feature_name.capitalize()}:
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}Aplicación{% endblock %}</title>
+    <title>{{% block title %}}Aplicación{{% endblock %}}</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-    {% block extra_css %}{% endblock %}
+    {{% block extra_css %}}{{% endblock %}}
 </head>
 <body>
     <header>
@@ -346,16 +346,16 @@ class {feature_name.capitalize()}:
         <nav>
             <ul>
                 <li><a href="/">Inicio</a></li>
-                {% for feature in features %}
+                {{% for feature in features %}}
                 <li><a href="/{{ feature.url }}">{{ feature.name }}</a></li>
-                {% endfor %}
+                {{% endfor %}}
             </ul>
         </nav>
     </header>
 
     <main>
         <div class="container">
-            {% block content %}{% endblock %}
+            {{% block content %}}{{% endblock %}}
         </div>
     </main>
 
@@ -364,7 +364,7 @@ class {feature_name.capitalize()}:
     </footer>
 
     <script src="{{ url_for('static', filename='js/main.js') }}"></script>
-    {% block extra_js %}{% endblock %}
+    {{% block extra_js %}}{{% endblock %}}
 </body>
 </html>""")
 
@@ -572,8 +572,7 @@ def project_status_route(project_id):
                 os.makedirs(project_dir, exist_ok=True)
 
                 # Iniciar un nuevo proceso de generación en segundo plano
-                import threading
-                thread = threading.Thread(
+                thread = Thread(
                     target=generate_application,
                     args=(
                         project_id,
