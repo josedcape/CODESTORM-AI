@@ -190,6 +190,28 @@
     .model-selector-container {
         gap: 1rem;
     }
+    
+    /* Estilos para el botón de auto-corrección */
+    #auto-fix-button {
+        background-color: rgba(25, 135, 84, 0.1);
+        border-color: #198754;
+        color: #198754;
+        transition: all 0.3s ease;
+    }
+    
+    #auto-fix-button:hover {
+        background-color: rgba(25, 135, 84, 0.2);
+    }
+    
+    /* Indicador para corrección automática */
+    .auto-fix-badge {
+        font-size: 0.75rem;
+        padding: 0.25rem 0.5rem;
+        border-radius: 12px;
+        background-color: rgba(25, 135, 84, 0.1);
+        color: #198754;
+        margin-left: 0.5rem;
+    }
 
 
     @keyframes spin {
@@ -265,6 +287,9 @@
                         <textarea id="code-input" class="code-textarea" placeholder="Ingresa aquí tu código para revisión..."></textarea>
                     </div>
                     <div class="d-flex justify-content-end">
+                        <button id="auto-fix-button" class="btn btn-outline-success me-2">
+                            <i class="fa-solid fa-robot me-1"></i> Auto-corregir
+                        </button>
                         <button id="clear-button" class="btn btn-outline-secondary me-2">
                             <i class="fa-solid fa-eraser me-1"></i> Limpiar
                         </button>
@@ -354,6 +379,7 @@
         const codeInput = document.getElementById('code-input');
         const instructionsInput = document.getElementById('instructions');
         const correctButton = document.getElementById('correct-button');
+        const autoFixButton = document.getElementById('auto-fix-button');
         const clearButton = document.getElementById('clear-button');
         const copyButton = document.getElementById('copy-button');
         const applyButton = document.getElementById('apply-button');
@@ -377,6 +403,86 @@
             const lineHeight = 20; // altura aproximada por línea
             const calculatedHeight = Math.min(maxHeight, Math.max(minHeight, lineCount * lineHeight));
             codeInput.style.height = calculatedHeight + 'px';
+        }
+        
+        // Función para auto-corrección de código
+        function autoFixCode() {
+            const code = codeInput.value.trim();
+            const language = currentLanguage;
+            
+            if (!code) {
+                alert('Por favor ingresa código para corregir automáticamente.');
+                return;
+            }
+            
+            // Mostrar overlay de carga
+            loadingOverlay.classList.add('active');
+            
+            // Generar instrucciones automáticas enfocadas en corregir errores de sintaxis y formato
+            const autoInstructions = "MODO CORRECCIÓN AUTOMÁTICA: Corrige errores de sintaxis, indentación y problemas menores. " +
+                                    "No cambies la lógica ni la estructura del código, solo arregla problemas técnicos que impidan su ejecución. " +
+                                    "Mejora el formato y la legibilidad.";
+            
+            // Intentar cargar el lenguaje si es necesario
+            loadPrismLanguage(language)
+                .then(() => {
+                    // Enviar solicitud al servidor con la bandera auto_fix activada
+                    return fetch('/api/process_code', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            code: code,
+                            instructions: autoInstructions,
+                            language: language,
+                            model: selectedModel,
+                            auto_fix: true // Indica que es una corrección automática
+                        }),
+                    });
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Error en la respuesta del servidor: ' + response.status);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    if (!data.success && data.error) {
+                        alert('Error: ' + data.error);
+                        return;
+                    }
+                    
+                    // Actualizar vista de código
+                    correctedCode.textContent = data.corrected_code;
+                    updateCodeHighlighting();
+                    
+                    // Mostrar cambios
+                    renderChanges(data.changes || []);
+                    
+                    // Mostrar explicación
+                    explanationContent.innerHTML = data.explanation || 'Código corregido automáticamente.';
+                    
+                    // Mostrar resultado
+                    initialMessage.style.display = 'none';
+                    correctedCodeContainer.style.display = 'block';
+                    
+                    // Mostrar vista de código (no la de cambios)
+                    document.querySelectorAll('.view-toggle-btn').forEach(btn => {
+                        btn.classList.remove('active');
+                    });
+                    document.querySelector('[data-view="code"]').classList.add('active');
+                    codeView.style.display = 'block';
+                    changesView.style.display = 'none';
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('Error al procesar la solicitud: ' + error.message);
+                })
+                .finally(() => {
+                    // Ocultar overlay de carga
+                    loadingOverlay.classList.remove('active');
+                });
         }
 
         // Debounce para optimizar rendimiento
@@ -470,6 +576,9 @@
             return Promise.resolve();
         }
 
+        // Botón para auto-corrección rápida
+        autoFixButton.addEventListener('click', autoFixCode);
+        
         // Botón para corregir código
         correctButton.addEventListener('click', function() {
             const code = codeInput.value.trim();
