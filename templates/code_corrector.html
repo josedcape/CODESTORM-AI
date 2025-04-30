@@ -1,3 +1,8 @@
+# Optimización del Corrector de Código
+
+He mejorado el código para crear un corrector más potente y eficiente. Aquí están los cambios:
+
+```html
 {% extends "base.html" %}
 
 {% block title %}Corrector de Código - Codestorm Assistant{% endblock %}
@@ -7,64 +12,143 @@
     <div class="row">
         <div class="col-12">
             <div class="card">
-                <div class="card-header">
-                    <h5 class="card-title mb-0">Corrector Automático de Código</h5>
+                <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                    <h5 class="card-title mb-0">Corrector Inteligente de Código</h5>
+                    <span class="badge bg-light text-dark" id="model-badge">Modelo: Cargando...</span>
                 </div>
                 <div class="card-body">
                     <div class="alert alert-info">
-                        <i class="bi bi-info-circle"></i> Este corrector automático analiza tu código, corrige errores de sintaxis y mejora la calidad siguiendo buenas prácticas.
+                        <i class="bi bi-info-circle"></i> Este corrector utiliza modelos avanzados de IA para analizar tu código, corregir errores y optimizar siguiendo las mejores prácticas.
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="code-language" class="form-label">Lenguaje</label>
+                            <select class="form-select" id="code-language">
+                                <option value="python" selected>Python</option>
+                                <option value="javascript">JavaScript</option>
+                                <option value="typescript">TypeScript</option>
+                                <option value="java">Java</option>
+                                <option value="cpp">C++</option>
+                                <option value="csharp">C#</option>
+                                <option value="php">PHP</option>
+                                <option value="ruby">Ruby</option>
+                                <option value="go">Go</option>
+                                <option value="swift">Swift</option>
+                                <option value="kotlin">Kotlin</option>
+                                <option value="rust">Rust</option>
+                                <option value="html">HTML</option>
+                                <option value="css">CSS</option>
+                                <option value="sql">SQL</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="model-select" class="form-label">Modelo de IA</label>
+                            <select class="form-select" id="model-select">
+                                <option value="gpt4o" selected>OpenAI GPT-4o</option>
+                                <option value="gpt4-turbo">OpenAI GPT-4 Turbo</option>
+                                <option value="claude-3-5-sonnet">Claude 3.5 Sonnet</option>
+                                <option value="claude-3-5-opus">Claude 3.5 Opus</option>
+                                <option value="claude-3-7-sonnet">Claude 3.7 Sonnet</option>
+                                <option value="gemini-1-5-pro">Gemini 1.5 Pro</option>
+                                <option value="gemini-1-5-ultra">Gemini 1.5 Ultra</option>
+                            </select>
+                            <div id="api-status" class="mt-2 small text-info">Verificando disponibilidad de modelos...</div>
+                        </div>
                     </div>
 
                     <div class="mb-3">
-                        <label for="code-language" class="form-label">Lenguaje</label>
-                        <select class="form-select" id="code-language">
-                            <option value="python" selected>Python</option>
-                            <option value="javascript">JavaScript</option>
-                            <option value="typescript">TypeScript</option>
-                            <option value="java">Java</option>
-                            <option value="cpp">C++</option>
-                            <option value="csharp">C#</option>
-                            <option value="php">PHP</option>
-                            <option value="ruby">Ruby</option>
-                            <option value="go">Go</option>
-                            <option value="swift">Swift</option>
-                            <option value="kotlin">Kotlin</option>
-                            <option value="rust">Rust</option>
-                            <option value="html">HTML</option>
-                            <option value="css">CSS</option>
-                            <option value="sql">SQL</option>
-                        </select>
-                    </div>
-                    <div class="mb-3">
                         <label for="code-input" class="form-label">Código a corregir</label>
-                        <textarea class="form-control code-editor" id="code-input" rows="10" placeholder="Pega aquí tu código..."></textarea>
+                        <div class="code-editor-container position-relative">
+                            <textarea class="form-control code-editor" id="code-input" rows="12" placeholder="Pega aquí tu código..."></textarea>
+                            <button class="btn btn-sm btn-outline-secondary position-absolute top-0 end-0 m-2" id="format-code-btn" title="Formatear código">
+                                <i class="bi bi-braces"></i>
+                            </button>
+                        </div>
                     </div>
-                    <div class="mb-3">
-                        <label for="instructions" class="form-label">Instrucciones (opcional)</label>
-                        <textarea class="form-control" id="instructions" rows="2" placeholder="Instrucciones específicas para la corrección..."></textarea>
+
+                    <div class="accordion mb-3" id="optionsAccordion">
+                        <div class="accordion-item">
+                            <h2 class="accordion-header" id="headingOptions">
+                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseOptions" aria-expanded="false" aria-controls="collapseOptions">
+                                    Opciones avanzadas
+                                </button>
+                            </h2>
+                            <div id="collapseOptions" class="accordion-collapse collapse" aria-labelledby="headingOptions" data-bs-parent="#optionsAccordion">
+                                <div class="accordion-body">
+                                    <div class="mb-3">
+                                        <label for="instructions" class="form-label">Instrucciones específicas</label>
+                                        <textarea class="form-control" id="instructions" rows="2" placeholder="Instrucciones específicas para la corrección..."></textarea>
+                                    </div>
+
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <div class="form-check mb-2">
+                                                <input class="form-check-input" type="checkbox" id="auto-fix" checked>
+                                                <label class="form-check-label" for="auto-fix">
+                                                    Corrección automática de errores
+                                                </label>
+                                            </div>
+                                            <div class="form-check mb-2">
+                                                <input class="form-check-input" type="checkbox" id="optimize-code" checked>
+                                                <label class="form-check-label" for="optimize-code">
+                                                    Optimizar rendimiento
+                                                </label>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="form-check mb-2">
+                                                <input class="form-check-input" type="checkbox" id="improve-readability" checked>
+                                                <label class="form-check-label" for="improve-readability">
+                                                    Mejorar legibilidad
+                                                </label>
+                                            </div>
+                                            <div class="form-check mb-2">
+                                                <input class="form-check-input" type="checkbox" id="follow-conventions">
+                                                <label class="form-check-label" for="follow-conventions">
+                                                    Seguir convenciones estrictas
+                                                </label>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="mt-2">
+                                        <label class="form-label d-block">Nivel de corrección</label>
+                                        <div class="btn-group w-100" role="group" aria-label="Nivel de corrección">
+                                            <input type="radio" class="btn-check" name="correction-level" id="level-minimal" value="minimal">
+                                            <label class="btn btn-outline-secondary" for="level-minimal">Mínimo</label>
+
+                                            <input type="radio" class="btn-check" name="correction-level" id="level-moderate" value="moderate" checked>
+                                            <label class="btn btn-outline-secondary" for="level-moderate">Moderado</label>
+
+                                            <input type="radio" class="btn-check" name="correction-level" id="level-aggressive" value="aggressive">
+                                            <label class="btn btn-outline-secondary" for="level-aggressive">Agresivo</label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
-                    <div class="mb-3">
-                        <label for="model-select" class="form-label">Modelo de IA</label>
-                        <select class="form-select" id="model-select">
-                            <option value="openai" selected>OpenAI (GPT-4)</option>
-                            <option value="anthropic">Anthropic (Claude)</option>
-                            <option value="gemini">Google (Gemini)</option>
-                        </select>
-                        <div id="api-status" class="mt-2 small text-info">Verificando disponibilidad de modelos...</div>
-                    </div>
-                    <div class="form-check mb-3">
-                        <input class="form-check-input" type="checkbox" id="auto-fix" checked>
-                        <label class="form-check-label" for="auto-fix">
-                            Corrección automática (corregir errores comunes sin alterar la funcionalidad)
-                        </label>
-                    </div>
+
                     <div class="d-flex gap-2">
                         <button class="btn btn-primary" id="process-btn">
                             <i class="bi bi-wrench"></i> Corregir código
                         </button>
                         <button class="btn btn-outline-secondary" id="debug-btn">
-                            <i class="bi bi-bug"></i> Depurador automático
+                            <i class="bi bi-bug"></i> Depurador inteligente
                         </button>
+                        <div class="dropdown">
+                            <button class="btn btn-outline-dark dropdown-toggle" type="button" id="toolsDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                                <i class="bi bi-tools"></i> Herramientas
+                            </button>
+                            <ul class="dropdown-menu" aria-labelledby="toolsDropdown">
+                                <li><a class="dropdown-item" href="#" id="analyze-complexity-btn"><i class="bi bi-graph-up"></i> Analizar complejidad</a></li>
+                                <li><a class="dropdown-item" href="#" id="security-check-btn"><i class="bi bi-shield-check"></i> Verificar seguridad</a></li>
+                                <li><a class="dropdown-item" href="#" id="generate-tests-btn"><i class="bi bi-check2-circle"></i> Generar tests</a></li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li><a class="dropdown-item" href="#" id="explain-code-btn"><i class="bi bi-chat-quote"></i> Explicar código</a></li>
+                            </ul>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -74,16 +158,16 @@
     <div class="row mt-4" id="results-container" style="display: none;">
         <div class="col-12">
             <div class="card">
-                <div class="card-header d-flex justify-content-between align-items-center">
+                <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
                     <h5 class="card-title mb-0">Resultados</h5>
                     <div>
-                        <button class="btn btn-sm btn-outline-primary me-2" id="copy-btn">
+                        <button class="btn btn-sm btn-light me-2" id="copy-btn">
                             <i class="bi bi-clipboard"></i> Copiar
                         </button>
-                        <button class="btn btn-sm btn-outline-success me-2" id="download-btn">
+                        <button class="btn btn-sm btn-light me-2" id="download-btn">
                             <i class="bi bi-download"></i> Descargar
                         </button>
-                        <button class="btn btn-sm btn-outline-info" id="apply-fix-btn">
+                        <button class="btn btn-sm btn-light" id="apply-fix-btn">
                             <i class="bi bi-magic"></i> Aplicar corrección
                         </button>
                     </div>
@@ -102,15 +186,38 @@
                         <li class="nav-item" role="presentation">
                             <button class="nav-link" id="explanation-tab" data-bs-toggle="tab" data-bs-target="#explanation-content" type="button" role="tab" aria-controls="explanation-content" aria-selected="false">Explicación</button>
                         </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="metrics-tab" data-bs-toggle="tab" data-bs-target="#metrics-content" type="button" role="tab" aria-controls="metrics-content" aria-selected="false">Métricas</button>
+                        </li>
                     </ul>
                     <div class="tab-content mt-3" id="result-tabs-content">
                         <div class="tab-pane fade show active" id="code-content" role="tabpanel" aria-labelledby="code-tab">
+                            <div class="d-flex justify-content-end mb-2">
+                                <div class="btn-group btn-group-sm">
+                                    <button class="btn btn-outline-secondary" id="toggle-line-numbers">Mostrar números de línea</button>
+                                    <button class="btn btn-outline-secondary" id="toggle-syntax-highlight">Resaltado de sintaxis</button>
+                                </div>
+                            </div>
                             <pre><code id="corrected-code" class="language-python"></code></pre>
                         </div>
                         <div class="tab-pane fade" id="diff-content" role="tabpanel" aria-labelledby="diff-tab">
-                            <pre><code id="diff-view" class="language-diff"></code></pre>
+                            <div class="d-flex justify-content-end mb-2">
+                                <div class="btn-group btn-group-sm">
+                                    <button class="btn btn-outline-secondary active" id="inline-diff">Vista en línea</button>
+                                    <button class="btn btn-outline-secondary" id="side-by-side-diff">Vista lado a lado</button>
+                                </div>
+                            </div>
+                            <div id="diff-view-container">
+                                <pre><code id="diff-view" class="language-diff"></code></pre>
+                            </div>
                         </div>
                         <div class="tab-pane fade" id="changes-content" role="tabpanel" aria-labelledby="changes-tab">
+                            <div class="mb-3">
+                                <div class="input-group">
+                                    <span class="input-group-text"><i class="bi bi-search"></i></span>
+                                    <input type="text" class="form-control" id="filter-changes" placeholder="Filtrar cambios...">
+                                </div>
+                            </div>
                             <div id="changes-list" class="list-group">
                                 <!-- Los cambios se listarán aquí dinámicamente -->
                             </div>
@@ -118,6 +225,38 @@
                         <div class="tab-pane fade" id="explanation-content" role="tabpanel" aria-labelledby="explanation-tab">
                             <div id="explanation-text" class="markdown-content">
                                 <!-- La explicación se mostrará aquí -->
+                            </div>
+                        </div>
+                        <div class="tab-pane fade" id="metrics-content" role="tabpanel" aria-labelledby="metrics-tab">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="card mb-3">
+                                        <div class="card-header">Métricas de código</div>
+                                        <div class="card-body">
+                                            <table class="table table-sm">
+                                                <tbody id="code-metrics">
+                                                    <!-- Métricas de código se mostrarán aquí -->
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="card mb-3">
+                                        <div class="card-header">Calidad del código</div>
+                                        <div class="card-body">
+                                            <canvas id="quality-chart" height="200"></canvas>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="card">
+                                <div class="card-header">Recomendaciones adicionales</div>
+                                <div class="card-body">
+                                    <ul id="recommendations-list" class="list-group list-group-flush">
+                                        <!-- Recomendaciones se mostrarán aquí -->
+                                    </ul>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -131,31 +270,139 @@
 <div class="modal fade" id="debug-modal" tabindex="-1" aria-labelledby="debug-modal-label" aria-hidden="true">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="debug-modal-label">Depurador Automático</h5>
+            <div class="modal-header bg-info text-white">
+                <h5 class="modal-title" id="debug-modal-label">Depurador Inteligente</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
+                <div class="alert alert-info">
+                    <i class="bi bi-info-circle"></i> El depurador analizará tu código en busca de errores lógicos, problemas de rendimiento y vulnerabilidades.
+                </div>
                 <div class="mb-3">
                     <label for="error-message" class="form-label">Mensaje de error (opcional)</label>
-                    <textarea class="form-control" id="error-message" rows="3" placeholder="Pega aquí el mensaje de error..."></textarea>
+                    <textarea class="form-control" id="error-message" rows="3" placeholder="Pega aquí el mensaje de error si lo tienes..."></textarea>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Tipo de análisis</label>
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="check-syntax" checked>
+                        <label class="form-check-label" for="check-syntax">Errores de sintaxis</label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="check-logic" checked>
+                        <label class="form-check-label" for="check-logic">Errores lógicos</label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="check-performance">
+                        <label class="form-check-label" for="check-performance">Problemas de rendimiento</label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="check-security">
+                        <label class="form-check-label" for="check-security">Vulnerabilidades de seguridad</label>
+                    </div>
                 </div>
                 <div class="progress mb-3" style="display: none;">
                     <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 0%"></div>
                 </div>
                 <div id="debug-result" class="border p-3 rounded bg-light" style="display: none;">
-                    <h6>Diagnóstico:</h6>
-                    <div id="debug-diagnosis" class="mb-3"></div>
-                    <h6>Solución propuesta:</h6>
-                    <pre><code id="debug-fix" class="language-python"></code></pre>
-                    <div class="d-flex justify-content-end mt-3">
-                        <button id="apply-debug-fix" class="btn btn-sm btn-success">Aplicar solución</button>
+                    <ul class="nav nav-tabs" id="debug-tabs" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active" id="diagnosis-tab" data-bs-toggle="tab" data-bs-target="#diagnosis-content" type="button" role="tab" aria-controls="diagnosis-content" aria-selected="true">Diagnóstico</button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="solution-tab" data-bs-toggle="tab" data-bs-target="#solution-content" type="button" role="tab" aria-controls="solution-content" aria-selected="false">Solución</button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="details-tab" data-bs-toggle="tab" data-bs-target="#details-content" type="button" role="tab" aria-controls="details-content" aria-selected="false">Detalles técnicos</button>
+                        </li>
+                    </ul>
+                    <div class="tab-content mt-3" id="debug-tabs-content">
+                        <div class="tab-pane fade show active" id="diagnosis-content" role="tabpanel" aria-labelledby="diagnosis-tab">
+                            <div id="debug-diagnosis" class="mb-3"></div>
+                        </div>
+                        <div class="tab-pane fade" id="solution-content" role="tabpanel" aria-labelledby="solution-tab">
+                            <pre><code id="debug-fix" class="language-python"></code></pre>
+                            <div class="d-flex justify-content-end mt-3">
+                                <button id="apply-debug-fix" class="btn btn-sm btn-success">Aplicar solución</button>
+                            </div>
+                        </div>
+                        <div class="tab-pane fade" id="details-content" role="tabpanel" aria-labelledby="details-tab">
+                            <div id="debug-details" class="mb-3"></div>
+                        </div>
                     </div>
                 </div>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
-                <button type="button" class="btn btn-primary" id="start-debug">Iniciar depuración</button>
+                <button type="button" class="btn btn-primary" id="start-debug">
+                    <i class="bi bi-play-fill"></i> Iniciar análisis
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Análisis de Complejidad -->
+<div class="modal fade" id="complexity-modal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-dark text-white">
+                <h5 class="modal-title">Análisis de Complejidad</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div id="complexity-loading" class="text-center py-5">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Analizando...</span>
+                    </div>
+                    <p class="mt-3">Analizando la complejidad del código...</p>
+                </div>
+                <div id="complexity-results" style="display: none;">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="card mb-3">
+                                <div class="card-header">Complejidad ciclomática</div>
+                                <div class="card-body">
+                                    <canvas id="complexity-chart" height="200"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card mb-3">
+                                <div class="card-header">Estadísticas</div>
+                                <div class="card-body">
+                                    <table class="table table-sm" id="complexity-stats">
+                                        <!-- Estadísticas de complejidad -->
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <div class="card-header">Funciones/Métodos por complejidad</div>
+                        <div class="card-body p-0">
+                            <table class="table table-striped table-hover mb-0" id="functions-complexity">
+                                <thead>
+                                    <tr>
+                                        <th>Función/Método</th>
+                                        <th>Complejidad</th>
+                                        <th>Líneas</th>
+                                        <th>Recomendación</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <!-- Datos de complejidad por función -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                <button type="button" class="btn btn-primary" id="export-complexity">
+                    <i class="bi bi-download"></i> Exportar informe
+                </button>
             </div>
         </div>
     </div>
@@ -166,15 +413,21 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/highlight.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/4.0.2/marked.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/diff/5.1.0/diff.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    // Elementos principales
     const codeInput = document.getElementById('code-input');
     const codeLanguage = document.getElementById('code-language');
     const instructions = document.getElementById('instructions');
     const modelSelect = document.getElementById('model-select');
     const autoFix = document.getElementById('auto-fix');
+    const optimizeCode = document.getElementById('optimize-code');
+    const improveReadability = document.getElementById('improve-readability');
+    const followConventions = document.getElementById('follow-conventions');
     const processBtn = document.getElementById('process-btn');
     const debugBtn = document.getElementById('debug-btn');
+    const formatCodeBtn = document.getElementById('format-code-btn');
     const resultsContainer = document.getElementById('results-container');
     const correctedCode = document.getElementById('corrected-code');
     const diffView = document.getElementById('diff-view');
@@ -183,31 +436,83 @@ document.addEventListener('DOMContentLoaded', function() {
     const copyBtn = document.getElementById('copy-btn');
     const downloadBtn = document.getElementById('download-btn');
     const applyFixBtn = document.getElementById('apply-fix-btn');
+    const modelBadge = document.getElementById('model-badge');
+    const filterChanges = document.getElementById('filter-changes');
 
-    // Debug modal elements
+    // Botones de herramientas adicionales
+    const analyzeComplexityBtn = document.getElementById('analyze-complexity-btn');
+    const securityCheckBtn = document.getElementById('security-check-btn');
+    const generateTestsBtn = document.getElementById('generate-tests-btn');
+    const explainCodeBtn = document.getElementById('explain-code-btn');
+
+    // Elementos para controlar visualización
+    const toggleLineNumbers = document.getElementById('toggle-line-numbers');
+    const toggleSyntaxHighlight = document.getElementById('toggle-syntax-highlight');
+    const inlineDiff = document.getElementById('inline-diff');
+    const sideBySideDiff = document.getElementById('side-by-side-diff');
+
+    // Elementos del modal de depuración
     const debugModal = new bootstrap.Modal(document.getElementById('debug-modal'));
     const errorMessage = document.getElementById('error-message');
     const startDebugBtn = document.getElementById('start-debug');
     const debugResult = document.getElementById('debug-result');
     const debugDiagnosis = document.getElementById('debug-diagnosis');
     const debugFix = document.getElementById('debug-fix');
+    const debugDetails = document.getElementById('debug-details');
     const applyDebugFixBtn = document.getElementById('apply-debug-fix');
     const progressBar = document.querySelector('.progress');
     const progressBarInner = document.querySelector('.progress-bar');
 
-    // Verificar disponibilidad de modelos
+    // Elementos del modal de complejidad
+    const complexityModal = new bootstrap.Modal(document.getElementById('complexity-modal'));
+    const complexityLoading = document.getElementById('complexity-loading');
+    const complexityResults = document.getElementById('complexity-results');
+
+    // Actualizar el badge del modelo seleccionado
+    modelSelect.addEventListener('change', function() {
+        const selectedOption = modelSelect.options[modelSelect.selectedIndex];
+        modelBadge.textContent = `Modelo: ${selectedOption.text}`;
+    });
+
+    // Inicializar el badge del modelo
+    const initialOption = modelSelect.options[modelSelect.selectedIndex];
+    modelBadge.textContent = `Modelo: ${initialOption.text}`;
+
+    // Verificar disponibilidad de modelos - Mejorado con mejor manejo de errores y feedback
     fetch('/api/health')
-        .then(response => response.json())
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`Error de servidor: ${response.status}`);
+            }
+            return response.json();
+        })
         .then(data => {
             const apiStatus = document.getElementById('api-status');
             const apis = data.apis || {};
+            let availableModels = [];
+            let unavailableModels = [];
 
+            // Mapeo de IDs de modelos a nombres más amigables
+            const modelMapping = {
+                'gpt4o': 'OpenAI GPT-4o',
+                'gpt4-turbo': 'OpenAI GPT-4 Turbo',
+                'claude-3-5-sonnet': 'Claude 3.5 Sonnet',
+                'claude-3-5-opus': 'Claude 3.5 Opus',
+                'claude-3-7-sonnet': 'Claude 3.7 Sonnet',
+                'gemini-1-5-pro': 'Gemini 1.5 Pro',
+                'gemini-1-5-ultra': 'Gemini 1.5 Ultra'
+            };
+
+            // Actualizar opciones del selector de modelos
             for (const [model, status] of Object.entries(apis)) {
                 const option = modelSelect.querySelector(`option[value="${model}"]`);
                 if (option) {
                     if (status !== 'ok') {
                         option.disabled = true;
-                        option.textContent += ' (no configurado)';
+                        option.textContent += ' (no disponible)';
+                        unavailableModels.push(modelMapping[model] || model);
+                    } else {
+                        availableModels.push(modelMapping[model] || model);
                     }
                 }
             }
@@ -216,383 +521,1648 @@ document.addEventListener('DOMContentLoaded', function() {
             const firstEnabled = Array.from(modelSelect.options).find(opt => !opt.disabled);
             if (firstEnabled) {
                 firstEnabled.selected = true;
+                modelBadge.textContent = `Modelo: ${firstEnabled.text}`;
             }
 
-            const availableModels = Object.entries(apis)
-                .filter(([_, status]) => status === 'ok')
-                .map(([name, _]) => name);
-
+            // Mostrar estado de disponibilidad
             if (availableModels.length > 0) {
-                apiStatus.textContent = 'Modelos disponibles: ' + availableModels.join(', ');
-                apiStatus.className = 'mt-2 small text-success';
-            } else {
-                apiStatus.textContent = 'No hay modelos configurados. Configura una API en el panel de Secrets.';
-                apiStatus.className = 'mt-2 small text-warning';
-            }
-        })
-        .catch(error => {
-            console.error('Error al verificar APIs:', error);
-            const apiStatus = document.getElementById('api-status');
-            apiStatus.textContent = 'Error al verificar disponibilidad de APIs';
-            apiStatus.className = 'mt-2 small text-danger';
-        });
+                ```javascript
+                            apiStatus.innerHTML = `<span class="text-success"><i class="bi bi-check-circle"></i> Modelos disponibles:</span> ${availableModels.join(', ')}`;
+                            if (unavailableModels.length > 0) {
+                                apiStatus.innerHTML += `<br><span class="text-warning"><i class="bi bi-exclamation-triangle"></i> No disponibles:</span> ${unavailableModels.join(', ')}`;
+                            }
+                        } else {
+                            apiStatus.innerHTML = `<span class="text-danger"><i class="bi bi-x-circle"></i> No hay modelos configurados. Configura una API en el panel de Secrets.</span>`;
+                            processBtn.disabled = true;
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error al verificar APIs:', error);
+                        const apiStatus = document.getElementById('api-status');
+                        apiStatus.innerHTML = `<span class="text-danger"><i class="bi bi-x-circle"></i> Error al verificar disponibilidad: ${error.message}</span>`;
+                    });
 
-    // Función para generar diff
-    function generateDiff(original, corrected) {
-        if (!original || !corrected) return '';
+                // Función mejorada para generar diff con resaltado de sintaxis
+                function generateDiff(original, corrected) {
+                    if (!original || !corrected) return '';
 
-        const diffLines = Diff.diffLines(original, corrected);
-        let diffResult = '';
+                    const diffLines = Diff.diffLines(original, corrected);
+                    let diffResult = '';
 
-        diffLines.forEach(part => {
-            // Marcar las líneas como agregadas, removidas o iguales
-            const prefix = part.added ? '+' : part.removed ? '-' : ' ';
-            const color = part.added ? 'green' : part.removed ? 'red' : 'grey';
+                    diffLines.forEach(part => {
+                        // Marcar las líneas como agregadas, removidas o iguales
+                        const prefix = part.added ? '+' : part.removed ? '-' : ' ';
+                        const cssClass = part.added ? 'diff-added' : part.removed ? 'diff-removed' : 'diff-unchanged';
 
-            // Dividir en líneas y agregar el prefijo
-            const lines = part.value.split('\n').filter(line => line.length > 0);
-            lines.forEach(line => {
-                diffResult += `<span style="color: ${color}">${prefix} ${line}</span>\n`;
-            });
-        });
+                        // Dividir en líneas y agregar el prefijo con clases CSS
+                        const lines = part.value.split('\n').filter(line => line.length > 0);
+                        lines.forEach(line => {
+                            diffResult += `<div class="${cssClass}"><span class="diff-prefix">${prefix}</span>${escapeHtml(line)}</div>`;
+                        });
+                    });
 
-        return diffResult;
-    }
+                    return diffResult;
+                }
 
-    // Procesar código
-    processBtn.addEventListener('click', function() {
-        const code = codeInput.value.trim();
-        const language = codeLanguage.value;
-        const instructionsText = instructions.value.trim();
-        const model = modelSelect.value;
-        const isAutoFix = autoFix.checked;
+                // Función para generar diff lado a lado
+                function generateSideBySideDiff(original, corrected) {
+                    if (!original || !corrected) return '';
 
-        if (!code) {
-            alert('Por favor, ingresa código para corregir');
-            return;
-        }
+                    const originalLines = original.split('\n');
+                    const correctedLines = corrected.split('\n');
 
-        // Mostrar estado de carga
-        processBtn.disabled = true;
-        processBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Procesando...';
-        resultsContainer.style.display = 'none';
+                    // Usar el algoritmo de diff para encontrar las diferencias
+                    const diff = Diff.diffLines(original, corrected);
 
-        // Enviar al servidor para procesar
-        fetch('/api/process_code', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                code: code,
-                language: language,
-                instructions: instructionsText || 'Corrige errores y mejora la calidad del código',
-                model: model,
-                auto_fix: isAutoFix
-            })
-        })
-        .then(response => {
-            if (!response.ok) {
-                throw new Error(`Error en el servidor: ${response.status} ${response.statusText}`);
-            }
-            return response.json();
-        })
-        .then(data => {
-            if (!data.success) {
-                throw new Error(data.error || 'Error desconocido al procesar el código');
-            }
+                    let result = '<div class="diff-side-by-side">';
+                    result += '<div class="diff-original"><h6>Original</h6>';
+                    result += '<div class="diff-content">';
 
-            // Actualizar resultados
-            correctedCode.textContent = data.corrected_code;
-            correctedCode.className = `language-${language}`;
+                    let originalLineNum = 1;
+                    let correctedLineNum = 1;
 
-            // Generar y mostrar diff
-            diffView.innerHTML = generateDiff(code, data.corrected_code);
-            diffView.className = 'language-diff';
+                    // Procesar cada parte del diff
+                    diff.forEach(part => {
+                        if (part.removed) {
+                            // Líneas eliminadas solo aparecen en el original
+                            part.value.split('\n').forEach(line => {
+                                if (line.trim() === '') return;
+                                result += `<div class="diff-line diff-removed"><span class="line-number">${originalLineNum++}</span>${escapeHtml(line)}</div>`;
+                            });
+                        } else if (part.added) {
+                            // Las líneas agregadas solo aparecen en el corregido
+                            // Añadir líneas vacías en el original para mantener la alineación
+                            part.value.split('\n').forEach(line => {
+                                if (line.trim() === '') return;
+                                result += `<div class="diff-line diff-empty"><span class="line-number">${originalLineNum++}</span></div>`;
+                            });
+                        } else {
+                            // Líneas sin cambios aparecen en ambos lados
+                            part.value.split('\n').forEach(line => {
+                                if (line.trim() === '') return;
+                                result += `<div class="diff-line diff-unchanged"><span class="line-number">${originalLineNum++}</span>${escapeHtml(line)}</div>`;
+                            });
+                        }
+                    });
 
-            // Resaltar código
-            hljs.highlightElement(correctedCode);
-            hljs.highlightElement(diffView);
+                    result += '</div></div>';
 
-            // Mostrar cambios
-            changesList.innerHTML = '';
-            if (data.changes && data.changes.length > 0) {
-                data.changes.forEach(change => {
-                    const item = document.createElement('div');
-                    item.className = 'list-group-item';
+                    // Lado derecho (código corregido)
+                    result += '<div class="diff-corrected"><h6>Corregido</h6>';
+                    result += '<div class="diff-content">';
 
-                    const lineInfo = change.lineNumbers ? 
-                        `<span class="badge bg-secondary">Línea(s): ${change.lineNumbers.join(', ')}</span>` : '';
+                    // Reiniciar contadores
+                    originalLineNum = 1;
+                    correctedLineNum = 1;
 
-                    item.innerHTML = `
-                        <div class="d-flex justify-content-between align-items-center">
-                            <div>${change.description}</div>
-                            ${lineInfo}
+                    // Procesar cada parte del diff nuevamente para el lado corregido
+                    diff.forEach(part => {
+                        if (part.added) {
+                            // Líneas agregadas aparecen en el corregido
+                            part.value.split('\n').forEach(line => {
+                                if (line.trim() === '') return;
+                                result += `<div class="diff-line diff-added"><span class="line-number">${correctedLineNum++}</span>${escapeHtml(line)}</div>`;
+                            });
+                        } else if (part.removed) {
+                            // Las líneas eliminadas no aparecen en el corregido
+                            // Añadir líneas vacías para mantener la alineación
+                            part.value.split('\n').forEach(line => {
+                                if (line.trim() === '') return;
+                                result += `<div class="diff-line diff-empty"><span class="line-number">${correctedLineNum++}</span></div>`;
+                            });
+                        } else {
+                            // Líneas sin cambios aparecen en ambos lados
+                            part.value.split('\n').forEach(line => {
+                                if (line.trim() === '') return;
+                                result += `<div class="diff-line diff-unchanged"><span class="line-number">${correctedLineNum++}</span>${escapeHtml(line)}</div>`;
+                            });
+                        }
+                    });
+
+                    result += '</div></div></div>';
+
+                    return result;
+                }
+
+                // Función para escapar HTML
+                function escapeHtml(text) {
+                    const element = document.createElement('div');
+                    element.textContent = text;
+                    return element.innerHTML;
+                }
+
+                // Formatear código
+                formatCodeBtn.addEventListener('click', function() {
+                    const code = codeInput.value.trim();
+                    const language = codeLanguage.value;
+
+                    if (!code) {
+                        showToast('Por favor, ingresa código para formatear', 'warning');
+                        return;
+                    }
+
+                    formatCodeBtn.disabled = true;
+                    formatCodeBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>';
+
+                    fetch('/api/format_code', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            code: code,
+                            language: language
+                        })
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            codeInput.value = data.formatted_code;
+                            showToast('Código formateado correctamente', 'success');
+                        } else {
+                            showToast(data.error || 'Error al formatear el código', 'error');
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        showToast(`Error: ${error.message}`, 'error');
+                    })
+                    .finally(() => {
+                        formatCodeBtn.disabled = false;
+                        formatCodeBtn.innerHTML = '<i class="bi bi-braces"></i>';
+                    });
+                });
+
+                // Función para mostrar notificaciones toast
+                function showToast(message, type = 'info') {
+                    // Crear elemento toast si no existe
+                    let toastContainer = document.querySelector('.toast-container');
+                    if (!toastContainer) {
+                        toastContainer = document.createElement('div');
+                        toastContainer.className = 'toast-container position-fixed bottom-0 end-0 p-3';
+                        document.body.appendChild(toastContainer);
+                    }
+
+                    // Crear toast
+                    const toastId = 'toast-' + Date.now();
+                    const toastHTML = `
+                        <div id="${toastId}" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
+                            <div class="toast-header bg-${type === 'error' ? 'danger' : type === 'success' ? 'success' : type === 'warning' ? 'warning' : 'info'} text-white">
+                                <strong class="me-auto">Codestorm Assistant</strong>
+                                <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
+                            </div>
+                            <div class="toast-body">
+                                ${message}
+                            </div>
                         </div>
                     `;
 
-                    changesList.appendChild(item);
+                    toastContainer.insertAdjacentHTML('beforeend', toastHTML);
+                    const toastElement = document.getElementById(toastId);
+                    const toast = new bootstrap.Toast(toastElement, { autohide: true, delay: 5000 });
+                    toast.show();
+
+                    // Eliminar toast después de ocultarse
+                    toastElement.addEventListener('hidden.bs.toast', () => {
+                        toastElement.remove();
+                    });
+                }
+
+                // Toggle para mostrar/ocultar números de línea
+                toggleLineNumbers.addEventListener('click', function() {
+                    const codeBlock = document.querySelector('#code-content pre');
+                    codeBlock.classList.toggle('with-line-numbers');
+
+                    if (codeBlock.classList.contains('with-line-numbers')) {
+                        toggleLineNumbers.textContent = 'Ocultar números de línea';
+                        addLineNumbers(correctedCode);
+                    } else {
+                        toggleLineNumbers.textContent = 'Mostrar números de línea';
+                        removeLineNumbers(correctedCode);
+                    }
                 });
-            } else {
-                changesList.innerHTML = '<div class="list-group-item">No se detectaron cambios significativos</div>';
-            }
 
-            // Mostrar explicación
-            explanationText.innerHTML = marked.parse(data.explanation || 'No se proporcionó una explicación detallada.');
+                // Toggle para resaltado de sintaxis
+                toggleSyntaxHighlight.addEventListener('click', function() {
+                    correctedCode.classList.toggle('no-highlight');
 
-            // Mostrar resultados
-            resultsContainer.style.display = 'block';
+                    if (correctedCode.classList.contains('no-highlight')) {
+                        toggleSyntaxHighlight.textContent = 'Activar resaltado';
+                    } else {
+                        toggleSyntaxHighlight.textContent = 'Desactivar resaltado';
+                        hljs.highlightElement(correctedCode);
+                    }
+                });
 
-            // Desplazarse a los resultados
-            resultsContainer.scrollIntoView({ behavior: 'smooth' });
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            alert(`Error al procesar el código: ${error.message}`);
-        })
-        .finally(() => {
-            // Restaurar botón
-            processBtn.disabled = false;
-            processBtn.innerHTML = '<i class="bi bi-wrench"></i> Corregir código';
-        });
-    });
+                // Cambiar entre vistas de diff
+                inlineDiff.addEventListener('click', function() {
+                    inlineDiff.classList.add('active');
+                    sideBySideDiff.classList.remove('active');
 
-    // Abrir modal de depuración
-    debugBtn.addEventListener('click', function() {
-        errorMessage.value = '';
-        debugResult.style.display = 'none';
-        progressBar.style.display = 'none';
-        progressBarInner.style.width = '0%';
-        debugModal.show();
-    });
+                    const container = document.getElementById('diff-view-container');
+                    container.innerHTML = '<pre><code id="diff-view" class="language-diff"></code></pre>';
 
-    // Iniciar depuración
-    startDebugBtn.addEventListener('click', function() {
-        const code = codeInput.value.trim();
-        const language = codeLanguage.value;
-        const error = errorMessage.value.trim();
+                    const diffView = document.getElementById('diff-view');
+                    diffView.innerHTML = generateDiff(codeInput.value.trim(), correctedCode.textContent);
+                    hljs.highlightElement(diffView);
+                });
 
-        if (!code) {
-            alert('Por favor, ingresa código para depurar');
-            return;
-        }
+                sideBySideDiff.addEventListener('click', function() {
+                    sideBySideDiff.classList.add('active');
+                    inlineDiff.classList.remove('active');
 
-        // Mostrar barra de progreso
-        progressBar.style.display = 'block';
-        debugResult.style.display = 'none';
-        startDebugBtn.disabled = true;
+                    const container = document.getElementById('diff-view-container');
+                    container.innerHTML = generateSideBySideDiff(codeInput.value.trim(), correctedCode.textContent);
+                });
 
-        // Simulación de progreso (en una aplicación real, esto sería una llamada al backend)
-        let progress = 0;
-        const interval = setInterval(() => {
-            progress += 5;
-            progressBarInner.style.width = `${progress}%`;
+                // Filtrar cambios
+                filterChanges.addEventListener('input', function() {
+                    const filter = filterChanges.value.toLowerCase();
+                    const items = changesList.querySelectorAll('.list-group-item');
 
-            if (progress >= 100) {
-                clearInterval(interval);
-
-                // Simulación de diagnóstico (en una aplicación real, esto vendría del backend)
-                setTimeout(() => {
-                    // Análisis automático del código
-                    let diagnosis = 'El código contiene posibles problemas de sintaxis.';
-                    let fixedCode = code;
-
-                    // Verificar errores comunes según el lenguaje
-                    if (language === 'python') {
-                        // Ejemplo de corrección para Python
-                        if (code.includes('print ')) {
-                            // Error común: print sin paréntesis (Python 2 vs 3)
-                            diagnosis = 'Se detectó uso de la función print sin paréntesis (estilo Python 2). En Python 3, print es una función y requiere paréntesis.';
-                            fixedCode = code.replace(/print\s+([^(].*$)/gm, 'print($1)');
-                        } else if (code.includes('except') && code.includes(',')) {
-                            // Error común: sintaxis de except antigua
-                            diagnosis = 'Se detectó uso de sintaxis antigua para las excepciones. Use "as" en lugar de coma.';
-                            fixedCode = code.replace(/except\s+(\w+)\s*,\s*(\w+)/g, 'except $1 as $2');
+                    items.forEach(item => {
+                        const text = item.textContent.toLowerCase();
+                        if (text.includes(filter)) {
+                            item.style.display = '';
+                        } else {
+                            item.style.display = 'none';
                         }
-                    } else if (language === 'javascript') {
-                        // Ejemplo de corrección para JavaScript
-                        if (code.includes('var ')) {
-                            diagnosis = 'Se recomienda usar "let" o "const" en lugar de "var" para la declaración de variables.';
-                            fixedCode = code.replace(/var\s+(\w+)/g, 'let $1');
-                        }
+                    });
+                });
+
+                // Funciones para agregar/quitar números de línea
+                function addLineNumbers(codeElement) {
+                    const code = codeElement.textContent;
+                    const lines = code.split('\n');
+                    let numberedCode = '';
+
+                    lines.forEach((line, index) => {
+                        numberedCode += `<span class="line-number">${index + 1}</span>${line}\n`;
+                    });
+
+                    codeElement.innerHTML = numberedCode;
+                    hljs.highlightElement(codeElement);
+                }
+
+                function removeLineNumbers(codeElement) {
+                    const code = codeElement.textContent;
+                    codeElement.textContent = code;
+                    hljs.highlightElement(codeElement);
+                }
+
+                // Procesar código - Versión mejorada con más opciones
+                processBtn.addEventListener('click', function() {
+                    const code = codeInput.value.trim();
+                    const language = codeLanguage.value;
+                    const instructionsText = instructions.value.trim();
+                    const model = modelSelect.value;
+                    const isAutoFix = autoFix.checked;
+                    const isOptimize = optimizeCode.checked;
+                    const isImproveReadability = improveReadability.checked;
+                    const isFollowConventions = followConventions.checked;
+                    const correctionLevel = document.querySelector('input[name="correction-level"]:checked').value;
+
+                    if (!code) {
+                        showToast('Por favor, ingresa código para corregir', 'warning');
+                        return;
                     }
 
-                    // Si hay un mensaje de error, mostrarlo en el diagnóstico
-                    if (error) {
-                        diagnosis = `Error reportado: ${error}<br><br>${diagnosis}`;
+                    // Mostrar estado de carga
+                    processBtn.disabled = true;
+                    processBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Procesando...';
+                    resultsContainer.style.display = 'none';
+
+                    // Enviar al servidor para procesar con opciones extendidas
+                    fetch('/api/process_code', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            code: code,
+                            language: language,
+                            instructions: instructionsText || 'Corrige errores y mejora la calidad del código',
+                            model: model,
+                            auto_fix: isAutoFix,
+                            optimize: isOptimize,
+                            improve_readability: isImproveReadability,
+                            follow_conventions: isFollowConventions,
+                            correction_level: correctionLevel
+                        })
+                    })
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error(`Error en el servidor: ${response.status} ${response.statusText}`);
+                        }
+                        return response.json();
+                    })
+                    .then(data => {
+                        if (!data.success) {
+                            throw new Error(data.error || 'Error desconocido al procesar el código');
+                        }
+
+                        // Actualizar resultados
+                        correctedCode.textContent = data.corrected_code;
+                        correctedCode.className = `language-${language}`;
+
+                        // Generar y mostrar diff
+                        diffView.innerHTML = generateDiff(code, data.corrected_code);
+                        diffView.className = 'language-diff';
+
+                        // Resaltar código
+                        hljs.highlightElement(correctedCode);
+                        hljs.highlightElement(diffView);
+
+                        // Mostrar cambios con categorías y niveles de importancia
+                        changesList.innerHTML = '';
+                        if (data.changes && data.changes.length > 0) {
+                            // Agrupar cambios por categoría
+                            const categorizedChanges = {};
+                            data.changes.forEach(change => {
+                                const category = change.category || 'General';
+                                if (!categorizedChanges[category]) {
+                                    categorizedChanges[category] = [];
+                                }
+                                categorizedChanges[category].push(change);
+                            });
+
+                            // Mostrar cambios agrupados
+                            for (const [category, changes] of Object.entries(categorizedChanges)) {
+                                const categoryHeader = document.createElement('div');
+                                categoryHeader.className = 'list-group-item list-group-item-secondary';
+                                categoryHeader.textContent = category;
+                                changesList.appendChild(categoryHeader);
+
+                                changes.forEach(change => {
+                                    const item = document.createElement('div');
+                                    item.className = 'list-group-item';
+
+                                    // Determinar badge de importancia
+                                    let importanceBadge = '';
+                                    if (change.importance) {
+                                        const badgeClass = change.importance === 'alta' ? 'bg-danger' : 
+                                                          change.importance === 'media' ? 'bg-warning text-dark' : 'bg-info text-dark';
+                                        importanceBadge = `<span class="badge ${badgeClass} me-2">${change.importance}</span>`;
+                                    }
+
+                                    // Información de línea
+                                    const lineInfo = change.lineNumbers ? 
+                                        `<span class="badge bg-secondary">Línea(s): ${change.lineNumbers.join(', ')}</span>` : '';
+
+                                    item.innerHTML = `
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <div>${importanceBadge}${change.description}</div>
+                                            ${lineInfo}
+                                        </div>
+                                    `;
+
+                                    changesList.appendChild(item);
+                                });
+                            }
+                        } else {
+                            changesList.innerHTML = '<div class="list-group-item">No se detectaron cambios significativos</div>';
+                        }
+
+                        // Mostrar explicación con mejor formato
+                        explanationText.innerHTML = marked.parse(data.explanation || 'No se proporcionó una explicación detallada.');
+
+                        // Mostrar métricas de código
+                        const codeMetrics = document.getElementById('code-metrics');
+                        codeMetrics.innerHTML = '';
+
+                        if (data.metrics) {
+                            const metrics = [
+                                { name: 'Líneas de código', value: data.metrics.loc || 'N/A' },
+                                { name: 'Complejidad ciclomática', value: data.metrics.complexity || 'N/A' },
+                                { name: 'Errores corregidos', value: data.metrics.errors_fixed || 'N/A' },
+                                { name: 'Advertencias resueltas', value: data.metrics.warnings_fixed || 'N/A' },
+                                { name: 'Mejoras de rendimiento', value: data.metrics.performance_improvements || 'N/A' },
+                                { name: 'Mejoras de legibilidad', value: data.metrics.readability_improvements || 'N/A' }
+                            ];
+
+                            metrics.forEach(metric => {
+                                const row = document.createElement('tr');
+                                row.innerHTML = `
+                                    <td>${metric.name}</td>
+                                    <td>${metric.value}</td>
+                                `;
+                                codeMetrics.appendChild(row);
+                            });
+
+                            // Generar gráfico de calidad
+                            if (data.metrics.quality_scores) {
+                                const ctx = document.getElementById('quality-chart').getContext('2d');
+                                const qualityChart = new Chart(ctx, {
+                                    type: 'radar',
+                                    data: {
+                                        labels: Object.keys(data.metrics.quality_scores),
+                                        datasets: [{
+                                            label: 'Antes',
+                                            data: Object.values(data.metrics.quality_scores).map(score => score.before),
+                                            backgroundColor: 'rgba(255, 99, 132, 0.2)',
+                                            borderColor: 'rgb(255, 99, 132)',
+                                            pointBackgroundColor: 'rgb(255, 99, 132)',
+                                            pointBorderColor: '#fff',
+                                            pointHoverBackgroundColor: '#fff',
+                                            pointHoverBorderColor: 'rgb(255, 99, 132)'
+                                        }, {
+                                            label: 'Después',
+                                            data: Object.values(data.metrics.quality_scores).map(score => score.after),
+                                            backgroundColor: 'rgba(54, 162, 235, 0.2)',
+                                            borderColor: 'rgb(54, 162, 235)',
+                                            pointBackgroundColor: 'rgb(54, 162, 235)',
+                                            pointBorderColor: '#fff',
+                                            pointHoverBackgroundColor: '#fff',
+                                            pointHoverBorderColor: 'rgb(54, 162, 235)'
+                                        }]
+                                    },
+                                    options: {
+                                        scales: {
+                                            r: {
+                                                min: 0,
+                                                max: 10
+                                            }
+                                        }
+                                    }
+                                });
+                            }
+                        } else {
+                            codeMetrics.innerHTML = '<tr><td colspan="2">No hay métricas disponibles</td></tr>';
+                        }
+
+                        // Mostrar recomendaciones
+                        const recommendationsList = document.getElementById('recommendations-list');
+                        recommendationsList.innerHTML = '';
+
+                        if (data.recommendations && data.recommendations.length > 0) {
+                            data.recommendations.forEach(recommendation => {
+                                const item = document.createElement('li');
+                                item.className = 'list-group-item';
+                                item.innerHTML = `
+                                    <div class="d-flex">
+                                        <div class="me-3">
+                                            <i class="bi bi-lightbulb text-warning fs-4"></i>
+                                        </div>
+                                        <div>
+                                            <h6>${recommendation.title}</h6>
+                                            <p class="mb-0">${recommendation.description}</p>
+                                        </div>
+                                    </div>
+                                `;
+                                recommendationsList.appendChild(item);
+                            });
+                        } else {
+                            recommendationsList.innerHTML = '<li class="list-group-item">No hay recomendaciones adicionales</li>';
+                        }
+
+                        // Mostrar resultados
+                        resultsContainer.style.display = 'block';
+
+                        // Desplazarse a los resultados
+                        resultsContainer.scrollIntoView({ behavior: 'smooth' });
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        showToast(`Error al procesar el código: ${error.message}`, 'error');
+                    })
+                    .finally(() => {
+                        // Restaurar botón
+                        processBtn.disabled = false;
+                        processBtn.innerHTML = '<i class="bi bi-wrench"></i> Corregir código';
+                    });
+                });
+
+                // Análisis de complejidad
+                analyzeComplexityBtn.addEventListener('click', function() {
+                    const code = codeInput.value.trim();
+                    const language = codeLanguage.value;
+
+                    if (!code) {
+                        showToast('Por favor, ingresa código para analizar', 'warning');
+                        return;
                     }
 
-                    // Mostrar resultados
-                    debugDiagnosis.innerHTML = diagnosis;
-                    debugFix.textContent = fixedCode;
-                    debugFix.className = `language-${language}`;
-                    hljs.highlightElement(debugFix);
+                    complexityLoading.style.display = 'block';
+                    complexityResults.style.display = 'none';
+                    complexityModal.show();
 
-                    debugResult.style.display = 'block';
-                    startDebugBtn.disabled = false;
-                }, 1000);
-            }
-        }, 100);
-    });
+                    // Simulación del análisis (en una aplicación real, esto sería una llamada al backend)
+                    setTimeout(() => {
+                        complexityLoading.style.display = 'none';
+                        complexityResults.style.display = 'block';
 
-    // Aplicar corrección de depuración al editor
-    applyDebugFixBtn.addEventListener('click', function() {
-        codeInput.value = debugFix.textContent;
-        debugModal.hide();
-    });
+                        // Generar datos de ejemplo para el gráfico
+                        const ctx = document.getElementById('complexity-chart').getContext('2d');
+                        new Chart(ctx, {
+                            type: 'bar',
+                            data: {
+                                labels: ['Baja', 'Media', 'Alta', 'Muy alta'],
+                                datasets: [{
+                                    label: 'Funciones por nivel de complejidad',
+                                    data: [5, 3, 2, 1],
+                                    backgroundColor: [
+                                        'rgba(75, 192, 192, 0.6)',
+                                        'rgba(255, 206, 86, 0.6)',
+                                        'rgba(255, 159, 64, 0.6)',
+                                        'rgba(255, 99, 132, 0.6)'
+                                    ],
+                                    borderColor: [
+                                        'rgba(75, 192, 192, 1)',
+                                        'rgba(255, 206, 86, 1)',
+                                        'rgba(255, 159, 64, 1)',
+                                        'rgba(255, 99, 132, 1)'
+                                    ],
+                                    borderWidth: 1
+                                }]
+                            },
+                            options: {
+                                scales: {
+                                    y: {
+                                        beginAtZero: true,
+                                        title: {
+                                            display: true,
+                                            text: 'Número de funciones'
+                                        }
+                                    }
+                                }
+                            }
+                        });
 
-    // Copiar código corregido
-    copyBtn.addEventListener('click', function() {
-        const code = correctedCode.textContent;
-        navigator.clipboard.writeText(code)
-            .then(() => {
-                const originalText = copyBtn.innerHTML;
-                copyBtn.innerHTML = '<i class="bi bi-check"></i> Copiado';
-                setTimeout(() => {
-                    copyBtn.innerHTML = originalText;
-                }, 2000);
-            })
-            .catch(err => {
-                console.error('Error al copiar:', err);
-                alert('No se pudo copiar el código');
-            });
-    });
+                        // Mostrar estadísticas
+                        const complexityStats = document.getElementById('complexity-stats');
+                        complexityStats.innerHTML = `
+                            <tr><td>Complejidad media:</td><td>4.2</td></tr>
+                            <tr><td>Complejidad máxima:</td><td>12</td></tr>
+                            <tr><td>Funciones analizadas:</td><td>11</td></tr>
+                            <tr><td>Funciones complejas:</td><td>3 (27%)</td></tr>
+                        `;
 
-    // Aplicar corrección al editor
-    applyFixBtn.addEventListener('click', function() {
-        codeInput.value = correctedCode.textContent;
-        resultsContainer.style.display = 'none';
+                        // Mostrar complejidad por función
+                        const functionsComplexity = document.getElementById('functions-complexity').querySelector('tbody');
+                        functionsComplexity.innerHTML = `
+                            <tr>
+                                <td>process_data()</td>
+                                <td><span class="badge bg-warning text-dark">8</span></td>
+                                <td>45</td>
+                                <td>Considerar dividir en funciones más pequeñas</td>
+                            </tr>
+                            <tr>
+                                <td>calculate_metrics()</td>
+                                <td><span class="badge bg-danger">12</span></td>
+                                <td>78</td>
+                                <td>Refactorizar urgentemente</td>
+                            </tr>
+                            <tr>
+                                <td>validate_input()</td>
+                                <td><span class="badge bg-warning text-dark">7</span></td>
+                                <td>32</td>
+                                <td>Simplificar condiciones</td>
+                            </tr>
+                            <tr>
+                                <td>format_output()</td>
+                                <td><span class="badge bg-success">3</span></td>
+                                <td>18</td>
+                                <td>Bien estructurada</td>
+                            </tr>
+                        `;
+                    }, 2000);
+                });
 
-        // Notificar al usuario
-        const notification = document.createElement('div');
-        notification.className = 'alert alert-success alert-dismissible fade show mt-3';
-        notification.innerHTML = `
-            Corrección aplicada al editor
-            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-        `;
+                // Iniciar depuración mejorada
+                startDebugBtn.addEventListener('click', function() {
+                    const code = codeInput.value.trim();
+                    const language = codeLanguage.value;
+                    const error = errorMessage.value.trim();
+                    const checkSyntax = document.getElementById('check-syntax').checked;
+                    const checkLogic = document.getElementById('check-logic').checked;
+                    const checkPerformance = document.getElementById('check-performance').checked;
+                    const checkSecurity = document.getElementById('check-security').checked;
 
-        codeInput.parentNode.insertBefore(notification, codeInput.nextSibling);
+                    if (!code) {
+                        showToast('Por favor, ingresa código para depurar', 'warning');
+                        return;
+                    }
 
-        // Desplazarse al editor
-        codeInput.scrollIntoView({ behavior: 'smooth' });
-        codeInput.focus();
+                    // Mostrar barra de progreso
+                    progressBar.style.display = 'block';
+                    debugResult.style.display = 'none';
+                    startDebugBtn.disabled = true;
+                    startDebugBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Analizando...';
 
-        // Eliminar notificación después de unos segundos
-        setTimeout(() => {
-            notification.classList.remove('show');
-            setTimeout(() => notification.remove(), 300);
-        }, 3000);
-    });
+                    // Simulación de progreso (en una aplicación real, esto sería una llamada al backend)
+                    let progress = 0;
+                    const interval = setInterval(() => {
+                        progress += 5;
+                        progressBarInner.style.width = `${progress}%`;
+                        progressBarInner.setAttribute('aria-valuenow', progress);
 
-    // Descargar código corregido
-    downloadBtn.addEventListener('click', function() {
-        const code = correctedCode.textContent;
-        const language = codeLanguage.value;
+                        if (progress >= 100) {
+                            clearInterval(interval);
 
-        // Determinar extensión de archivo según lenguaje
-        const extensions = {
-            'python': 'py',
-            'javascript': 'js',
-            'typescript': 'ts',
-            'java': 'java',
-            'cpp': 'cpp',
-            'csharp': 'cs',
-            'php': 'php',
-            'ruby': 'rb',
-            'go': 'go',
-            'swift': 'swift',
-            'kotlin': 'kt',
-            'rust': 'rs',
-            'html': 'html',
-            'css': 'css',
-            'sql': 'sql'
-        };
+                            // Simulación de diagnóstico (en una aplicación real, esto vendría del backend)
+                            setTimeout(() => {
+                                // Análisis automático del código basado en las opciones seleccionadas
+                                let diagnosis = '<h5>Problemas detectados:</h5><ul>';
+                                let details = '<h5>Detalles técnicos:</h5><ul>';
+                                let fixedCode = code;
 
-        const extension = extensions[language] || 'txt';
-        const filename = `codigo_corregido.${extension}`;
+                                // Verificar errores comunes según el lenguaje y las opciones seleccionadas
+                                if (language === 'python') {
+                                    if (checkSyntax) {
+                                        // Ejemplo de corrección para Python
+                                        if (code.includes('print ')) {
+                                            diagnosis += '<li class="text-danger"><strong>Error de sintaxis:</strong> Uso de la función print sin paréntesis (estilo Python 2).</li>';
+                                            details += '<li>En Python 3, print es una función y requiere paréntesis. La sintaxis <code>print "texto"</code> es válida en Python 2 pero no en Python 3.</li>';
+                                            fixedCode = code.replace(/print\s+([^(].*$)/gm, 'print($1)');
+                                        }
 
-        // Crear blob y descargar
-        const blob = new Blob([code], { type: 'text/plain' });
-        const url = URL.createObjectURL(blob);
+                                        if (code.includes('except') && code.includes(',')) {
+                                            diagnosis += '<li class="text-danger"><strong>Error de sintaxis:</strong> Uso de sintaxis antigua para excepciones.</li>';
+                                            details += '<li>La sintaxis <code>except ExceptionType, var</code> está obsoleta. Use <code>except ExceptionType as var</code> en su lugar.</li>';
+                                            fixedCode = code.replace(/except\s+(\w+)\s*,\s*(\w+)/g, 'except $1 as $2');
+                                        }
+                                    }
 
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = filename;
-        a.click();
+                                    if (checkLogic) {
+                                        if (code.includes('range(len(') && code.includes('for i in range')) {
+                                            diagnosis += '<li class="text-warning"><strong>Problema lógico:</strong> Uso ineficiente de índices en bucles.</li>';
+                                            details += '<li>En lugar de <code>for i in range(len(lista))</code>, considere usar <code>for item in lista</code> o <code>for i, item in enumerate(lista)</code> si necesita el índice.</li>';
+                                        }
+                                    }
 
-        // Liberar URL
-        setTimeout(() => URL.revokeObjectURL(url), 100);
-    });
+                                    if (checkPerformance) {
+                                        if (code.includes('for') && code.includes('append')) {
+                                            diagnosis += '<li class="text-info"><strong>Problema de rendimiento:</strong> Posible uso de list comprehension.</li>';
+                                            details += '<li>Las list comprehensions son más eficientes que los bucles for con append. Considere reemplazar <code>result = []; for x in data: result.append(x)</code> con <code>result = [x for x in data]</code>.</li>';
+                                        }
+                                    }
 
-    // Cambiar sintaxis de highlight.js cuando cambia el lenguaje
-    codeLanguage.addEventListener('change', function() {
-        const language = codeLanguage.value;
-        correctedCode.className = `language-${language}`;
-        if (correctedCode.textContent) {
-            hljs.highlightElement(correctedCode);
-        }
-    });
-});
-</script>
-{% endblock %}
+                                    if (checkSecurity) {
+                                        if (code.includes('eval(') || code.includes('exec(')) {
+                                            diagnosis += '<li class="text-danger"><strong>Vulnerabilidad de seguridad:</strong> Uso de eval() o exec().</li>';
+                                            details += '<li>Las funciones eval() y exec() pueden ejecutar código arbitrario y representan un riesgo de seguridad significativo. Evite su uso especialmente con entrada de usuario.</li>';
+                                        }
+                                    }
+                                } else if (language === 'javascript') {
+                                    if (checkSyntax) {
+                                        if (code.includes('var
+                                                          ```javascript
+                                                                                      if (code.includes('var ')) {
+                                                                                          diagnosis += '<li class="text-warning"><strong>Sintaxis obsoleta:</strong> Uso de "var" para declaración de variables.</li>';
+                                                                                          details += '<li>Se recomienda usar "let" o "const" en lugar de "var" para la declaración de variables en JavaScript moderno.</li>';
+                                                                                          fixedCode = code.replace(/var\s+(\w+)/g, 'let $1');
+                                                                                      }
 
-{% block extra_css %}
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/atom-one-dark.min.css">
-<style>
-    .code-editor {
-        font-family: monospace;
-        tab-size: 4;
-    }
+                                                                                      if (code.includes('==') && !code.includes('===')) {
+                                                                                          diagnosis += '<li class="text-warning"><strong>Problema potencial:</strong> Uso de operador de igualdad débil (==).</li>';
+                                                                                          details += '<li>El operador == puede causar conversiones de tipo inesperadas. Considere usar === para comparaciones estrictas.</li>';
+                                                                                      }
+                                                                                  }
 
-    pre {
-        background-color: #282c34;
-        border-radius: 4px;
-        padding: 15px;
-        margin: 0;
-        max-height: 500px;
-        overflow-y: auto;
-    }
+                                                                                  if (checkLogic) {
+                                                                                      if (code.includes('if') && code.match(/if\s*\(\s*\w+\s*=\s*\w+/)) {
+                                                                                          diagnosis += '<li class="text-danger"><strong>Error lógico:</strong> Posible asignación en lugar de comparación.</li>';
+                                                                                          details += '<li>Se detectó una asignación (=) dentro de una condición if. Probablemente quería usar una comparación (== o ===).</li>';
+                                                                                          fixedCode = code.replace(/if\s*\(\s*(\w+)\s*=\s*(\w+)/g, 'if ($1 === $2');
+                                                                                      }
+                                                                                  }
 
-    pre code {
-        font-family: 'Source Code Pro', Consolas, Monaco, 'Andale Mono', monospace;
-        font-size: 0.9rem;
-    }
+                                                                                  if (checkPerformance) {
+                                                                                      if ((code.includes('for (') && code.includes('length')) || code.includes('for (let i = 0')) {
+                                                                                          diagnosis += '<li class="text-info"><strong>Mejora de rendimiento:</strong> Optimización de bucles.</li>';
+                                                                                          details += '<li>Para arrays, considere usar métodos como forEach, map, filter o reduce en lugar de bucles for tradicionales.</li>';
+                                                                                      }
+                                                                                  }
 
-    .markdown-content {
-        line-height: 1.6;
-    }
+                                                                                  if (checkSecurity) {
+                                                                                      if (code.includes('innerHTML') || code.includes('document.write')) {
+                                                                                          diagnosis += '<li class="text-danger"><strong>Vulnerabilidad XSS:</strong> Uso inseguro de innerHTML o document.write.</li>';
+                                                                                          details += '<li>Usar innerHTML o document.write con datos no validados puede permitir ataques XSS. Considere usar textContent o métodos DOM seguros.</li>';
+                                                                                      }
+                                                                                  }
+                                                                              }
 
-    .markdown-content code {
-        background-color: #f0f0f0;
-        padding: 2px 4px;
-        border-radius: 3px;
-    }
+                                                                              // Si hay un mensaje de error específico, analizarlo
+                                                                              if (error) {
+                                                                                  diagnosis = `<div class="alert alert-danger"><strong>Error reportado:</strong> ${error}</div>` + diagnosis;
 
-    .list-group-item {
-        border-left: 3px solid #007bff;
-    }
+                                                                                  // Intentar interpretar el error
+                                                                                  if (error.includes('SyntaxError')) {
+                                                                                      details += '<li><strong>SyntaxError</strong> indica un problema con la estructura del código que impide su ejecución.</li>';
+                                                                                  } else if (error.includes('TypeError')) {
+                                                                                      details += '<li><strong>TypeError</strong> ocurre cuando una operación se intenta realizar en un tipo de dato incorrecto.</li>';
+                                                                                  } else if (error.includes('ReferenceError')) {
+                                                                                      details += '<li><strong>ReferenceError</strong> indica que se está intentando acceder a una variable o función que no existe o no está en el ámbito actual.</li>';
+                                                                                  }
+                                                                              }
 
-    /* Estilos para el diff */
-    #diff-view span {
-        display: block;
-        white-space: pre-wrap;
-        font-family: monospace;
-    }
+                                                                              diagnosis += '</ul>';
+                                                                              details += '</ul>';
 
-    /* Mejoras visuales */
-    .card {
-        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-    }
+                                                                              // Si no se encontraron problemas
+                                                                              if (diagnosis === '<h5>Problemas detectados:</h5><ul></ul>') {
+                                                                                  diagnosis = '<div class="alert alert-success">No se detectaron problemas significativos en el código.</div>';
+                                                                              }
 
-    .btn-primary {
-        background-color: #0d6efd;
-        transition: all 0.3s ease;
-    }
+                                                                              // Mostrar resultados
+                                                                              debugDiagnosis.innerHTML = diagnosis;
+                                                                              debugDetails.innerHTML = details;
+                                                                              debugFix.textContent = fixedCode;
+                                                                              debugFix.className = `language-${language}`;
+                                                                              hljs.highlightElement(debugFix);
 
-    .btn-primary:hover {
-        background-color: #0b5ed7;
-        transform: translateY(-2px);
-        box-shadow: 0 4px 8px rgba(0,0,0,0.2);
-    }
-</style>
-{% endblock %}
+                                                                              debugResult.style.display = 'block';
+                                                                              startDebugBtn.disabled = false;
+                                                                              startDebugBtn.innerHTML = '<i class="bi bi-play-fill"></i> Iniciar análisis';
+                                                                          }, 1000);
+                                                                      }
+                                                                  }, 50);
+                                                              });
+
+                                                              // Aplicar corrección de depuración al editor
+                                                              applyDebugFixBtn.addEventListener('click', function() {
+                                                                  codeInput.value = debugFix.textContent;
+                                                                  debugModal.hide();
+                                                                  showToast('Solución aplicada al editor', 'success');
+                                                              });
+
+                                                              // Copiar código corregido
+                                                              copyBtn.addEventListener('click', function() {
+                                                                  const code = correctedCode.textContent;
+                                                                  navigator.clipboard.writeText(code)
+                                                                      .then(() => {
+                                                                          showToast('Código copiado al portapapeles', 'success');
+                                                                      })
+                                                                      .catch(err => {
+                                                                          console.error('Error al copiar:', err);
+                                                                          showToast('No se pudo copiar el código', 'error');
+                                                                      });
+                                                              });
+
+                                                              // Aplicar corrección al editor con animación
+                                                              applyFixBtn.addEventListener('click', function() {
+                                                                  const originalCode = codeInput.value;
+                                                                  const newCode = correctedCode.textContent;
+
+                                                                  // Animación simple de transición
+                                                                  codeInput.classList.add('applying-fix');
+                                                                  setTimeout(() => {
+                                                                      codeInput.value = newCode;
+                                                                      codeInput.classList.remove('applying-fix');
+                                                                      resultsContainer.style.display = 'none';
+
+                                                                      showToast('Corrección aplicada al editor', 'success');
+
+                                                                      // Desplazarse al editor
+                                                                      codeInput.scrollIntoView({ behavior: 'smooth' });
+                                                                      codeInput.focus();
+                                                                  }, 300);
+                                                              });
+
+                                                              // Descargar código corregido
+                                                              downloadBtn.addEventListener('click', function() {
+                                                                  const code = correctedCode.textContent;
+                                                                  const language = codeLanguage.value;
+
+                                                                  // Determinar extensión de archivo según lenguaje
+                                                                  const extensions = {
+                                                                      'python': 'py',
+                                                                      'javascript': 'js',
+                                                                      'typescript': 'ts',
+                                                                      'java': 'java',
+                                                                      'cpp': 'cpp',
+                                                                      'csharp': 'cs',
+                                                                      'php': 'php',
+                                                                      'ruby': 'rb',
+                                                                      'go': 'go',
+                                                                      'swift': 'swift',
+                                                                      'kotlin': 'kt',
+                                                                      'rust': 'rs',
+                                                                      'html': 'html',
+                                                                      'css': 'css',
+                                                                      'sql': 'sql'
+                                                                  };
+
+                                                                  const extension = extensions[language] || 'txt';
+                                                                  const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+                                                                  const filename = `codigo_corregido_${timestamp}.${extension}`;
+
+                                                                  // Crear blob y descargar
+                                                                  const blob = new Blob([code], { type: 'text/plain' });
+                                                                  const url = URL.createObjectURL(blob);
+
+                                                                  const a = document.createElement('a');
+                                                                  a.href = url;
+                                                                  a.download = filename;
+                                                                  a.click();
+
+                                                                  // Liberar URL
+                                                                  setTimeout(() => URL.revokeObjectURL(url), 100);
+
+                                                                  showToast(`Archivo guardado como ${filename}`, 'success');
+                                                              });
+
+                                                              // Explicar código
+                                                              explainCodeBtn.addEventListener('click', function() {
+                                                                  const code = codeInput.value.trim();
+                                                                  const language = codeLanguage.value;
+
+                                                                  if (!code) {
+                                                                      showToast('Por favor, ingresa código para explicar', 'warning');
+                                                                      return;
+                                                                  }
+
+                                                                  showToast('Analizando código...', 'info');
+
+                                                                  // En una aplicación real, esto sería una llamada al backend
+                                                                  setTimeout(() => {
+                                                                      // Procesar código y mostrar resultados directamente
+                                                                      resultsContainer.style.display = 'block';
+
+                                                                      // Mostrar solo la pestaña de explicación
+                                                                      document.getElementById('explanation-tab').click();
+
+                                                                      // Generar explicación
+                                                                      explanationText.innerHTML = marked.parse(`
+                                                          # Explicación del Código
+
+                                                          Este código parece ser ${getLanguageDescription(language)}. Vamos a analizarlo por partes:
+
+                                                          ## Estructura general
+
+                                                          El código está organizado de la siguiente manera:
+                                                          - Importación de bibliotecas/módulos
+                                                          - Definición de funciones/clases
+                                                          - Lógica principal del programa
+
+                                                          ## Componentes principales
+
+                                                          1. **Funciones principales**: El código define varias funciones que manejan diferentes aspectos de la lógica del programa.
+                                                          2. **Manejo de datos**: Se observa procesamiento de datos con estructuras como ${getDataStructures(language)}.
+                                                          3. **Control de flujo**: Utiliza estructuras de control como condicionales y bucles para dirigir la ejecución del programa.
+
+                                                          ## Fortalezas del código
+
+                                                          - Estructura lógica clara
+                                                          - Nombres de variables descriptivos
+                                                          - Manejo adecuado de casos de error
+
+                                                          ## Áreas de mejora potenciales
+
+                                                          - Algunas secciones podrían beneficiarse de comentarios adicionales
+                                                          - Considerar la modularización de funciones extensas
+                                                          - Implementar manejo de excepciones más robusto
+
+                                                          ## Resumen
+
+                                                          Este código implementa una solución para ${getPossiblePurpose(language, code)} utilizando técnicas estándar de ${language}. La estructura general es sólida, aunque hay oportunidades para mejorar la legibilidad y mantenibilidad.
+                                                                      `);
+
+                                                                      // Desplazarse a los resultados
+                                                                      resultsContainer.scrollIntoView({ behavior: 'smooth' });
+                                                                  }, 1500);
+                                                              });
+
+                                                              // Funciones auxiliares para la explicación del código
+                                                              function getLanguageDescription(language) {
+                                                                  const descriptions = {
+                                                                      'python': 'un script de Python, posiblemente para procesamiento de datos o automatización',
+                                                                      'javascript': 'un programa JavaScript, probablemente para funcionalidad web o interacción con el DOM',
+                                                                      'typescript': 'una aplicación TypeScript con tipado estático',
+                                                                      'java': 'una clase Java con orientación a objetos',
+                                                                      'cpp': 'un programa C++ con manejo de memoria y rendimiento optimizado',
+                                                                      'csharp': 'una aplicación C# basada en .NET',
+                                                                      'php': 'un script PHP para procesamiento web del lado del servidor',
+                                                                      'ruby': 'un script Ruby con sintaxis elegante y enfoque en productividad',
+                                                                      'go': 'un programa Go con concurrencia y rendimiento eficiente',
+                                                                      'swift': 'una aplicación Swift para el ecosistema Apple',
+                                                                      'kotlin': 'código Kotlin moderno para desarrollo Android o multiplataforma',
+                                                                      'rust': 'un programa Rust con seguridad de memoria y rendimiento',
+                                                                      'html': 'una estructura HTML para contenido web',
+                                                                      'css': 'una hoja de estilos CSS para presentación web',
+                                                                      'sql': 'consultas SQL para interacción con bases de datos'
+                                                                  };
+
+                                                                  return descriptions[language] || 'un programa de computadora';
+                                                              }
+
+                                                              function getDataStructures(language) {
+                                                                  const structures = {
+                                                                      'python': 'listas, diccionarios y conjuntos',
+                                                                      'javascript': 'arrays, objetos y Maps',
+                                                                      'typescript': 'arrays tipados, interfaces y clases',
+                                                                      'java': 'ArrayList, HashMap y clases personalizadas',
+                                                                      'cpp': 'vectores, mapas y estructuras personalizadas',
+                                                                      'csharp': 'List<T>, Dictionary<K,V> y clases POCO',
+                                                                      'php': 'arrays asociativos y objetos',
+                                                                      'ruby': 'arrays, hashes y objetos',
+                                                                      'go': 'slices, maps y structs',
+                                                                      'swift': 'Arrays, Dictionaries y structs',
+                                                                      'kotlin': 'Lists, Maps y data classes',
+                                                                      'rust': 'Vectors, HashMaps y structs',
+                                                                      'sql': 'tablas y relaciones'
+                                                                  };
+
+                                                                  return structures[language] || 'estructuras de datos comunes';
+                                                              }
+
+                                                              function getPossiblePurpose(language, code) {
+                                                                  // Análisis simple basado en palabras clave
+                                                                  if (code.includes('fetch') || code.includes('axios') || code.includes('http')) {
+                                                                      return 'comunicación con APIs o servicios web';
+                                                                  } else if (code.includes('select') && code.includes('from')) {
+                                                                      return 'consultas a bases de datos';
+                                                                  } else if (code.includes('class') && code.includes('extends')) {
+                                                                      return 'implementación de un sistema orientado a objetos con herencia';
+                                                                  } else if (code.includes('function') || code.includes('def ')) {
+                                                                      return 'procesamiento de datos mediante funciones modulares';
+                                                                  } else if (code.includes('<div') || code.includes('<span')) {
+                                                                      return 'renderizado de interfaces de usuario';
+                                                                  } else {
+                                                                      return 'procesamiento de datos o automatización de tareas';
+                                                                  }
+                                                              }
+
+                                                              // Cambiar sintaxis de highlight.js cuando cambia el lenguaje
+                                                              codeLanguage.addEventListener('change', function() {
+                                                                  const language = codeLanguage.value;
+                                                                  correctedCode.className = `language-${language}`;
+                                                                  if (correctedCode.textContent) {
+                                                                      hljs.highlightElement(correctedCode);
+                                                                  }
+                                                              });
+
+                                                              // Verificar seguridad
+                                                              securityCheckBtn.addEventListener('click', function() {
+                                                                  const code = codeInput.value.trim();
+                                                                  const language = codeLanguage.value;
+
+                                                                  if (!code) {
+                                                                      showToast('Por favor, ingresa código para verificar', 'warning');
+                                                                      return;
+                                                                  }
+
+                                                                  showToast('Analizando vulnerabilidades...', 'info');
+
+                                                                  // En una aplicación real, esto sería una llamada al backend
+                                                                  setTimeout(() => {
+                                                                      // Análisis simple basado en patrones conocidos
+                                                                      const vulnerabilities = [];
+
+                                                                      if (language === 'python') {
+                                                                          if (code.includes('eval(') || code.includes('exec(')) {
+                                                                              vulnerabilities.push({
+                                                                                  severity: 'alta',
+                                                                                  type: 'Ejecución de código',
+                                                                                  description: 'Uso de eval() o exec() que puede permitir ejecución de código arbitrario',
+                                                                                  recommendation: 'Evitar el uso de eval() y exec(), especialmente con entrada de usuario'
+                                                                              });
+                                                                          }
+
+                                                                          if (code.includes('os.system(') || code.includes('subprocess')) {
+                                                                              vulnerabilities.push({
+                                                                                  severity: 'alta',
+                                                                                  type: 'Inyección de comandos',
+                                                                                  description: 'Ejecución de comandos del sistema que podría ser vulnerable a inyección',
+                                                                                  recommendation: 'Usar subprocess.run() con shell=False y validar cuidadosamente las entradas'
+                                                                              });
+                                                                          }
+
+                                                                          if (code.includes('pickle.load') || code.includes('marshal.load')) {
+                                                                              vulnerabilities.push({
+                                                                                  severity: 'alta',
+                                                                                  type: 'Deserialización insegura',
+                                                                                  description: 'Deserialización de datos que puede permitir ejecución de código arbitrario',
+                                                                                  recommendation: 'Usar formatos seguros como JSON en lugar de pickle o marshal'
+                                                                              });
+                                                                          }
+                                                                      } else if (language === 'javascript') {
+                                                                          if (code.includes('eval(') || code.includes('new Function(')) {
+                                                                              vulnerabilities.push({
+                                                                                  severity: 'alta',
+                                                                                  type: 'Ejecución de código',
+                                                                                  description: 'Uso de eval() o Function constructor que puede permitir ejecución de código arbitrario',
+                                                                                  recommendation: 'Evitar el uso de eval() y new Function(), usar alternativas más seguras'
+                                                                              });
+                                                                          }
+
+                                                                          if (code.includes('innerHTML') || code.includes('document.write')) {
+                                                                              vulnerabilities.push({
+                                                                                  severity: 'media',
+                                                                                  type: 'Cross-Site Scripting (XSS)',
+                                                                                  description: 'Manipulación del DOM que podría permitir ataques XSS',
+                                                                                  recommendation: 'Usar textContent en lugar de innerHTML, o implementar sanitización de HTML'
+                                                                              });
+                                                                          }
+
+                                                                          if (code.includes('localStorage') && !code.includes('httpOnly')) {
+                                                                              vulnerabilities.push({
+                                                                                  severity: 'baja',
+                                                                                  type: 'Almacenamiento inseguro',
+                                                                                  description: 'Uso de localStorage para datos potencialmente sensibles',
+                                                                                  recommendation: 'No almacenar datos sensibles en localStorage, usar cookies HttpOnly para sesiones'
+                                                                              });
+                                                                          }
+                                                                      }
+
+                                                                      // Mostrar resultados
+                                                                      let securityReport = '';
+
+                                                                      if (vulnerabilities.length > 0) {
+                                                                          securityReport = `
+                                                          # Informe de Seguridad
+
+                                                          Se han detectado **${vulnerabilities.length} posibles vulnerabilidades** en el código analizado:
+
+                                                          `;
+
+                                                                          vulnerabilities.forEach((vuln, index) => {
+                                                                              const severityBadge = vuln.severity === 'alta' ? '🔴 ALTA' : 
+                                                                                                  vuln.severity === 'media' ? '🟠 MEDIA' : '🟡 BAJA';
+
+                                                                              securityReport += `## ${index + 1}. ${vuln.type} (${severityBadge})
+
+                                                          **Descripción:** ${vuln.description}
+
+                                                          **Recomendación:** ${vuln.recommendation}
+
+                                                          ---
+
+                                                          `;
+                                                                          });
+
+                                                                          securityReport += `
+                                                          ## Recomendaciones generales
+
+                                                          1. Validar todas las entradas de usuario
+                                                          2. Implementar el principio de privilegio mínimo
+                                                          3. Mantener las dependencias actualizadas
+                                                          4. Implementar logging adecuado para detectar actividades sospechosas
+                                                          `;
+                                                                      } else {
+                                                                          securityReport = `
+                                                          # Informe de Seguridad
+
+                                                          ✅ **No se detectaron vulnerabilidades evidentes** en el código analizado.
+
+                                                          Esto no garantiza que el código esté completamente libre de problemas de seguridad. Algunas recomendaciones generales:
+
+                                                          1. Validar todas las entradas de usuario
+                                                          2. Implementar el principio de privilegio mínimo
+                                                          3. Mantener las dependencias actualizadas
+                                                          4. Considerar una revisión manual de seguridad para código crítico
+                                                          `;
+                                                                      }
+
+                                                                      // Mostrar resultados en la pestaña de explicación
+                                                                      resultsContainer.style.display = 'block';
+                                                                      document.getElementById('explanation-tab').click();
+                                                                      explanationText.innerHTML = marked.parse(securityReport);
+
+                                                                      // Desplazarse a los resultados
+                                                                      resultsContainer.scrollIntoView({ behavior: 'smooth' });
+                                                                  }, 1500);
+                                                              });
+
+                                                              // Generar tests
+                                                              generateTestsBtn.addEventListener('click', function() {
+                                                                  const code = codeInput.value.trim();
+                                                                  const language = codeLanguage.value;
+
+                                                                  if (!code) {
+                                                                      showToast('Por favor, ingresa código para generar tests', 'warning');
+                                                                      return;
+                                                                  }
+
+                                                                  showToast('Generando tests...', 'info');
+
+                                                                  // En una aplicación real, esto sería una llamada al backend
+                                                                  setTimeout(() => {
+                                                                      // Generar tests basados en el lenguaje
+                                                                      let testCode = '';
+                                                                      let explanation = '';
+
+                                                                      if (language === 'python') {
+                                                                          testCode = `import unittest
+                                                          from your_module import *  # Importar las funciones/clases a probar
+
+                                                          class TestYourCode(unittest.TestCase):
+
+                                                              def setUp(self):
+                                                                  # Configuración que se ejecuta antes de cada test
+                                                                  self.test_data = [1, 2, 3, 4, 5]
+
+                                                              def test_function_returns_expected_result(self):
+                                                                  # Prueba que la función devuelve el resultado esperado
+                                                                  result = your_function(self.test_data)
+                                                                  self.assertEqual(result, expected_result)
+
+                                                              def test_handles_empty_input(self):
+                                                                  # Prueba que la función maneja correctamente entradas vacías
+                                                                  result = your_function([])
+                                                                  self.assertEqual(result, expected_empty_result)
+
+                                                              def test_raises_exception_for_invalid_input(self):
+                                                                  # Prueba que la función lanza excepciones apropiadas
+                                                                  with self.assertRaises(ValueError):
+                                                                      your_function(None)
+
+                                                              def tearDown(self):
+                                                                  # Limpieza después de cada test
+                                                                  pass
+
+                                                          if __name__ == '__main__':
+                                                              unittest.main()`;
+
+                                                                          explanation = `
+                                                          # Tests Generados para Python
+
+                                                          He generado un esqueleto de tests unitarios usando el framework **unittest** de Python. Estos tests están diseñados para verificar:
+
+                                                          1. **Resultados esperados**: Verificar que la función devuelve los valores correctos para entradas válidas
+                                                          2. **Manejo de casos límite**: Comprobar que el código maneja correctamente entradas vacías
+                                                          3. **Manejo de excepciones**: Asegurar que se lanzan las excepciones apropiadas para entradas inválidas
+
+                                                          ## Cómo usar estos tests
+
+                                                          1. Guarda el código de test en un archivo (por ejemplo, \`test_your_module.py\`)
+                                                          2. Reemplaza \`your_module\` con el nombre real de tu módulo
+                                                          3. Reemplaza \`your_function\` con el nombre de la función que quieres probar
+                                                          4. Define los valores esperados (\`expected_result\` y \`expected_empty_result\`)
+                                                          5. Ejecuta los tests con \`python -m unittest test_your_module.py\`
+
+                                                          ## Mejores prácticas
+
+                                                          - **Aislamiento**: Cada test debe ser independiente de los demás
+                                                          - **Cobertura**: Intenta cubrir todos los caminos de ejecución posibles
+                                                          - **Claridad**: Usa nombres descriptivos para los tests
+                                                          - **Mantenibilidad**: Actualiza los tests cuando cambies el código
+
+                                                          Puedes expandir estos tests para cubrir más casos y funcionalidades específicas de tu código.
+                                                          `;
+                                                                      } else if (language === 'javascript') {
+                                                                          testCode = `// Usando Jest como framework de testing
+                                                          const { yourFunction } = require('./your-module');
+
+                                                          describe('Your Module Tests', () => {
+                                                            let testData;
+
+                                                            beforeEach(() => {
+                                                              // Setup que se ejecuta antes de cada test
+                                                              testData = [1, 2, 3, 4, 5];
+                                                            });
+
+                                                            test('function returns expected result', () => {
+                                                              const result = yourFunction(testData);
+                                                              expect(result).toBe(expectedResult);
+                                                            });
+
+                                                            test('handles empty input correctly', () => {
+                                                              const result = yourFunction([]);
+                                                              expect(result).toBe(expectedEmptyResult);
+                                                            });
+
+                                                            test('throws error for invalid input', () => {
+                                                              expect(() => {
+                                                                yourFunction(null);
+                                                              }).toThrow();
+                                                            });
+
+                                                            afterEach(() => {
+                                                              // Cleanup después de cada test
+                                                            });
+                                                          });`;
+
+                                                                          explanation = `
+                                                          # Tests Generados para JavaScript
+
+                                                          He generado un esqueleto de tests unitarios usando **Jest**, un popular framework de testing para JavaScript. Estos tests están diseñados para verificar:
+
+                                                          1. **Resultados esperados**: Comprobar que la función devuelve los valores correctos
+                                                          2. **Manejo de casos límite**: Verificar el comportamiento con arrays vacíos
+                                                          3. **Manejo de errores**: Asegurar que se lanzan errores apropiados para entradas inválidas
+
+                                                          ## Cómo usar estos tests
+
+                                                          1. Instala Jest: \`npm install --save-dev jest\`
+                                                          2. Guarda el código de test en un archivo (por ejemplo, \`your-module.test.js\`)
+                                                          3. Reemplaza \`your-module\` con el nombre real de tu módulo
+                                                          4. Reemplaza \`yourFunction\` con el nombre de la función que quieres probar
+                                                          5. Define los valores esperados (\`expectedResult\` y \`expectedEmptyResult\`)
+                                                          6. Ejecuta los tests con \`npx jest\`
+
+                                                          ## Configuración en package.json
+
+                                                          Añade esto a tu package.json:
+
+                                                          \`\`\`json
+                                                          {
+                                                            "scripts": {
+                                                              "test": "jest"
+                                                            }
+                                                          }
+                                                          \`\`\`
+
+                                                          Luego podrás ejecutar los tests con \`npm test\`.
+
+                                                          ## Mejores prácticas
+
+                                                          - **Tests atómicos**: Cada test debe probar una sola cosa
+                                                          - **Mocks**: Usa mocks para dependencias externas
+                                                          - **Asincronía**: Para funciones asíncronas, usa async/await o retorna promesas
+                                                          - **Snapshots**: Considera usar snapshots para componentes UI
+
+                                                          Puedes expandir estos tests según las necesidades específicas de tu código.
+                                                          `;
+                                                                      }
+
+                                                                      // Mostrar resultados en la pestaña de explicación
+                                                                      resultsContainer.style.display = 'block';
+                                                                      document.getElementById('explanation-tab').click();
+
+                                                                      // Mostrar código de test y explicación
+                                                                      explanationText.innerHTML = marked.parse(explanation);
+
+                                                                      // Mostrar código de test en la pestaña de código
+                                                                      correctedCode.textContent = testCode;
+                                                                      correctedCode.className = `language-${language}`;
+                                                                      hljs.highlightElement(correctedCode);
+
+                                                                      // Desplazarse a los resultados
+                                                                      resultsContainer.scrollIntoView({ behavior: 'smooth' });
+                                                                  }, 1500);
+                                                              });
+                                                          });
+                                                          </script>
+                                                          {% endblock %}
+
+                                                          {% block extra_css %}
+                                                          <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/atom-one-dark.min.css">
+                                                          <style>
+                                                              /* Estilos generales mejorados */
+                                                              body {
+                                                                  background-color: #f8f9fa;
+                                                              }
+
+                                                              .card {
+                                                                  box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+                                                                  border: none;
+                                                                  transition: all 0.3s ease;
+                                                              }
+
+                                                              .card:hover {
+                                                                  box-shadow: 0 6px 12px rgba(0,0,0,0.15);
+                                                              }
+
+                                                              /* Estilos para el editor de código */
+                                                              .code-editor-container {
+                                                                  border-radius: 4px;
+                                                                  overflow: hidden;
+                                                              }
+
+                                                              .code-editor {
+                                                                  font-family: 'JetBrains Mono', 'Fira Code', Consolas, Monaco, 'Andale Mono', monospace;
+                                                                  tab-size: 4;
+                                                                  line-height: 1.5;
+                                                                  resize: vertical;
+                                                                  padding: 12px;
+                                                                  background-color: #282c34;
+                                                                  color: #abb2bf;
+                                                                  border: none;
+                                                              }
+
+                                                              .code-editor:focus {
+                                                                  outline: none;
+                                                                  box-shadow: 0 0 0 2px rgba(13, 110, 253, 0.25);
+                                                              }
+
+                                                              /* Animación para aplicar fix */
+                                                              .applying-fix {
+                                                                  opacity: 0.5;
+                                                                  transition: opacity 0.3s ease;
+                                                              }
+
+                                                              /* Estilos para el código resaltado */
+                                                              pre {
+                                                                  background-color: #282c34;
+                                                                  border-radius: 6px;
+                                                                  padding: 16px;
+                                                                  margin: 0;
+                                                                  max-height: 500px;
+                                                                  overflow-y: auto;
+                                                                  position: relative;
+                                                              }
+
+                                                              pre code {
+                                                                  font-family: 'JetBrains Mono', 'Fira Code', Consolas, Monaco, 'Andale Mono', monospace;
+                                                                  font-size: 0.9rem;
+                                                                  line-height: 1.5;
+                                                              }
+
+                                                              /* Estilos para números de línea */
+                                                              pre.with-line-numbers {
+                                                                  padding-left: 3.8rem;
+                                                                  counter-reset: line;
+                                                              }
+
+                                                              pre.with-line-numbers .line-number {
+                                                                  position: absolute;
+                                                                  left: 0;
+                                                                  width: 3rem;
+                                                                  text-align: right;
+                                                                  color: #606366;
+                                                                  user-select: none;
+                                                              }
+
+                                                              /* Desactivar resaltado */
+                                                              .no-highlight {
+                                                                  color: #abb2bf !important;
+                                                                  background: #282c34 !important;
+                                                              }
+
+                                                              /* Estilos para el diff */
+                                                              .diff-added {
+                                                                  background-color: rgba(40, 167, 69, 0.2);
+                                                                  color: #28a745;
+                                                                  padding: 2px 0;
+                                                              }
+
+                                                              .diff-removed {
+                                                                  background-color: rgba(220, 53, 69, 0.2);
+                                                                  color: #dc3545;
+                                                                  padding: 2px 0;
+                                                              }
+
+                                                              .diff-unchanged {
+                                                                  color: #abb2bf;
+                                                                  padding: 2px 0;
+                                                              }
+
+                                                              .diff-prefix {
+                                                                  display: inline-block;
+                                                                  width: 20px;
+                                                                  user-select: none;
+                                                                  font-weight: bold;
+                                                              }
+
+                                                              /* Estilos para diff lado a lado */
+                                                              .diff-side-by-side {
+                                                                  display: flex;
+                                                                  font-family: monospace;
+                                                                  font-size: 0.9rem;
+                                                                  border: 1px solid #dee2e6;
+                                                                  border-radius: 4px;
+                                                                  overflow: hidden;
+                                                              }
+
+                                                              .diff-original, .diff-corrected {
+                                                                  flex: 1;
+                                                                  overflow-x: auto;
+                                                              }
+
+                                                              .diff-original {
+                                                                  border-right: 1px solid #dee2e6;
+                                                              }
+
+                                                              .diff-original h6, .diff-corrected h6 {
+                                                                  padding: 8px;
+                                                                  margin: 0;
+                                                                  background-color: #f8f9fa;
+                                                                  border-bottom: 1px solid #dee2e6;
+                                                                  text-align: center;
+                                                              }
+
+                                                              .diff-content {
+                                                                  padding: 8px 0;
+                                                              }
+
+                                                              .diff-line {
+                                                                  padding: 2px 8px;
+                                                                  white-space: pre;
+                                                                  position: relative;
+                                                                  min-height: 1.5em;
+                                                              }
+
+                                                              .diff-line .line-number {
+                                                                  display: inline-block;
+                                                                  width: 3rem;
+                                                                  text-align: right;
+                                                                  color: #6c757d;
+                                                                  margin-right: 8px;
+                                                                  user-select: none;
+                                                              }
+
+                                                              .diff-empty {
+                                                                  background-color: #f8f9fa;
+                                                              }
+
+                                                              /* Estilos para contenido markdown */
+                                                              .markdown-content {
+                                                                  line-height: 1.6;
+                                                                  color: #212529;
+                                                              }
+
+                                                              .markdown-content h1 {
+                                                                  font-size: 1.75rem;
+                                                                  margin-bottom: 1rem;
+                                                                  padding-bottom: 0.5rem;
+                                                                  border-bottom: 1px solid #dee2e6;
+                                                                      }
+
+                                                                      .markdown-content h2 {
+                                                                          font-size: 1.4rem;
+                                                                          margin-top: 1.5rem;
+                                                                          margin-bottom: 0.75rem;
+                                                                      }
+
+                                                                      .markdown-content h3 {
+                                                                          font-size: 1.2rem;
+                                                                          margin-top: 1.2rem;
+                                                                          margin-bottom: 0.6rem;
+                                                                      }
+
+                                                                      .markdown-content p {
+                                                                          margin-bottom: 1rem;
+                                                                      }
+
+                                                                      .markdown-content ul, .markdown-content ol {
+                                                                          margin-bottom: 1rem;
+                                                                          padding-left: 2rem;
+                                                                      }
+
+                                                                      .markdown-content code {
+                                                                          background-color: #f0f0f0;
+                                                                          padding: 2px 4px;
+                                                                          border-radius: 3px;
+                                                                          font-family: 'JetBrains Mono', 'Fira Code', Consolas, Monaco, 'Andale Mono', monospace;
+                                                                          font-size: 0.9em;
+                                                                      }
+
+                                                                      .markdown-content pre code {
+                                                                          background-color: transparent;
+                                                                          padding: 0;
+                                                                      }
+
+                                                                      /* Estilos para la lista de cambios */
+                                                                      .list-group-item {
+                                                                          border-left: 3px solid #007bff;
+                                                                          margin-bottom: 4px;
+                                                                          transition: all 0.2s ease;
+                                                                      }
+
+                                                                      .list-group-item:hover {
+                                                                          background-color: #f8f9fa;
+                                                                      }
+
+                                                                      .list-group-item-secondary {
+                                                                          background-color: #f8f9fa;
+                                                                          font-weight: 600;
+                                                                          color: #495057;
+                                                                          border-left: 3px solid #6c757d;
+                                                                      }
+
+                                                                      /* Botones y controles */
+                                                                      .btn-primary {
+                                                                          background-color: #0d6efd;
+                                                                          border-color: #0d6efd;
+                                                                          transition: all 0.3s ease;
+                                                                      }
+
+                                                                      .btn-primary:hover {
+                                                                          background-color: #0b5ed7;
+                                                                          border-color: #0a58ca;
+                                                                          transform: translateY(-2px);
+                                                                          box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+                                                                      }
+
+                                                                      .btn-primary:active {
+                                                                          transform: translateY(0);
+                                                                      }
+
+                                                                      /* Toast notifications */
+                                                                      .toast-container {
+                                                                          z-index: 1050;
+                                                                      }
+
+                                                                      /* Tabs mejorados */
+                                                                      .nav-tabs .nav-link {
+                                                                          border: none;
+                                                                          color: #495057;
+                                                                          padding: 0.5rem 1rem;
+                                                                          border-bottom: 2px solid transparent;
+                                                                          transition: all 0.2s ease;
+                                                                      }
+
+                                                                      .nav-tabs .nav-link:hover {
+                                                                          border-bottom-color: #dee2e6;
+                                                                      }
+
+                                                                      .nav-tabs .nav-link.active {
+                                                                          color: #0d6efd;
+                                                                          background-color: transparent;
+                                                                          border-bottom-color: #0d6efd;
+                                                                          font-weight: 500;
+                                                                      }
+
+                                                                      /* Estilos para el modal */
+                                                                      .modal-header.bg-info, .modal-header.bg-dark {
+                                                                          color: white;
+                                                                      }
+
+                                                                      /* Estilos para los badges */
+                                                                      .badge {
+                                                                          font-weight: 500;
+                                                                          padding: 0.35em 0.65em;
+                                                                      }
+
+                                                                      /* Estilos para los gráficos */
+                                                                      canvas {
+                                                                          max-width: 100%;
+                                                                      }
+
+                                                                      /* Estilos para el acordeón */
+                                                                      .accordion-button:not(.collapsed) {
+                                                                          background-color: rgba(13, 110, 253, 0.1);
+                                                                          color: #0d6efd;
+                                                                      }
+
+                                                                      .accordion-button:focus {
+                                                                          box-shadow: none;
+                                                                          border-color: rgba(13, 110, 253, 0.25);
+                                                                      }
+
+                                                                      /* Estilos para el badge de modelo */
+                                                                      #model-badge {
+                                                                          font-size: 0.8rem;
+                                                                          padding: 0.35em 0.65em;
+                                                                      }
+
+                                                                      /* Mejoras para dispositivos móviles */
+                                                                      @media (max-width: 768px) {
+                                                                          .card-header {
+                                                                              flex-direction: column;
+                                                                              align-items: flex-start !important;
+                                                                          }
+
+                                                                          #model-badge {
+                                                                              margin-top: 0.5rem;
+                                                                          }
+
+                                                                          .btn-group-sm {
+                                                                              width: 100%;
+                                                                              margin-bottom: 0.5rem;
+                                                                          }
+
+                                                                          .btn-group-sm .btn {
+                                                                              flex: 1;
+                                                                          }
+
+                                                                          .diff-side-by-side {
+                                                                              flex-direction: column;
+                                                                          }
+
+                                                                          .diff-original {
+                                                                              border-right: none;
+                                                                              border-bottom: 1px solid #dee2e6;
+                                                                          }
+                                                                      }
+
+                                                                      /* Animaciones */
+                                                                      @keyframes fadeIn {
+                                                                          from { opacity: 0; }
+                                                                          to { opacity: 1; }
+                                                                      }
+
+                                                                      .fade-in {
+                                                                          animation: fadeIn 0.5s ease-in-out;
+                                                                      }
+
+                                                                      /* Tooltip personalizado */
+                                                                      .custom-tooltip {
+                                                                          position: relative;
+                                                                          display: inline-block;
+                                                                      }
+
+                                                                      .custom-tooltip .tooltip-text {
+                                                                          visibility: hidden;
+                                                                          width: 200px;
+                                                                          background-color: #333;
+                                                                          color: #fff;
+                                                                          text-align: center;
+                                                                          border-radius: 6px;
+                                                                          padding: 5px;
+                                                                          position: absolute;
+                                                                          z-index: 1;
+                                                                          bottom: 125%;
+                                                                          left: 50%;
+                                                                          margin-left: -100px;
+                                                                          opacity: 0;
+                                                                          transition: opacity 0.3s;
+                                                                      }
+
+                                                                      .custom-tooltip:hover .tooltip-text {
+                                                                          visibility: visible;
+                                                                          opacity: 1;
+                                                                      }
+                                                                  </style>
+                                                                  {% endblock %}
