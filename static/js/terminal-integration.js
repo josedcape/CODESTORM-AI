@@ -1,4 +1,10 @@
 document.addEventListener('DOMContentLoaded', function() {
+    // Comprobar si NaturalCommandProcessor está disponible
+    if (typeof NaturalCommandProcessor === 'undefined') {
+        console.error('NaturalCommandProcessor no está disponible. Asegúrate de que natural-command-processor.js esté cargado correctamente.');
+        return;
+    }
+
     // Inicializar componentes
     const terminalContainer = document.getElementById('terminal-container');
     const commandInput = document.getElementById('command-input');
@@ -10,7 +16,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const directoryPath = document.getElementById('directory-path');
     const statusIndicator = document.getElementById('status-indicator');
 
-    // Instanciar el procesador de comandos naturales
+    // Inicializar el procesador de comandos naturales 
     const naturalCommandProcessor = new NaturalCommandProcessor();
 
     // Historial de comandos
@@ -632,7 +638,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
                     // Actualizar directorio y cargar archivos
                     currentDirectory = targetDir;
-                    loadFiles(currentDirectory);
+                    loadFiles(targetDir);
                 }
             }
         })

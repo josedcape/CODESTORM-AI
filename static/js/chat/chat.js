@@ -288,10 +288,15 @@ function setupDocumentFeatures() {
 async function sendMessage() {
     const {messageInput, sendButton} = window.app.chat.elements;
 
-    if (!messageInput) return;
+    if (!messageInput) {
+        console.error("Elemento de entrada de mensaje no encontrado");
+        return;
+    }
 
     const userMessage = messageInput.value.trim();
     if (!userMessage) return;
+
+    console.log("Enviando mensaje:", userMessage); // Debug
 
     // Añadir mensaje del usuario al chat y contexto
     addUserMessage(userMessage);
@@ -317,13 +322,81 @@ async function sendMessage() {
     // Preparar datos para enviar al servidor
     const requestData = {
         message: userMessage,
-        agent_id: window.app.chat.activeAgent,
-        model: window.app.chat.activeModel,
+        agent_id: window.app.chat.activeAgent || 'general',
+        model: window.app.chat.activeModel || 'gemini',
         context: contextToSend
     };
 
     // Mostrar indicador de carga
     const loadingMessageId = addLoadingMessage();
+
+    try {
+        // No mostrar el debug en la interfaz
+        silentLog('Enviando mensaje al servidor:', requestData);
+
+        const response = await fetch('/api/chat', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(requestData)
+        });
+
+        // Verificar si hubo error HTTP
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({
+                error: `${response.status} ${response.statusText}`
+            }));
+            throw new Error(errorData.error || `Error del servidor: ${response.status} ${response.statusText}`);
+        }
+
+        const data = await response.json();
+        silentLog('Respuesta recibida:', data);
+
+        // Eliminar indicador de carga
+        removeLoadingMessage(loadingMessageId);
+
+        // Habilitar botón de envío
+        if (sendButton) {
+            sendButton.disabled = false;
+            sendButton.style.opacity = '1';
+        }
+
+        if (data.response) {
+            // Añadir respuesta al contexto
+            window.app.chat.context.push({
+                role: 'assistant',
+                content: data.response
+            });
+
+            // Añadir mensaje del agente al chat
+            addAgentMessage(data.response, data.agent || window.app.chat.activeAgent);
+        } else if (data.error) {
+            addSystemMessage(`Error: ${data.error}`);
+
+            // Sugerir probar otro modelo si hay error de API
+            if (data.error.includes("API") || data.error.includes("OpenAI") || 
+                data.error.includes("Anthropic") || data.error.includes("Gemini")) {
+
+                addSystemMessage(`Sugerencia: Prueba con otro modelo de IA desde el menú de selección o verifica la configuración de la API.`);
+            }
+        } else {
+            addSystemMessage("El servidor respondió pero no envió ningún mensaje");
+        }
+    } catch (error) {
+        // Eliminar indicador de carga y habilitar botón
+        removeLoadingMessage(loadingMessageId);
+
+        if (sendButton) {
+            sendButton.disabled = false;
+            sendButton.style.opacity = '1';
+        }
+
+        silentLog('Error al enviar mensaje:', error);
+        addSystemMessage(`Error de conexión: ${error.message}`);
+    }
+    
+    console.log("Datos de solicitud:", requestData); // Debug
 
     try {
         // No mostrar el debug en la interfaz

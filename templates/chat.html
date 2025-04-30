@@ -624,8 +624,60 @@ code {
 <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/python.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/css.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/xml.min.js"></script>
+
+<!-- Asegurarse de que los scripts principales se cargan en orden -->
+<script>
+    // Verificar si window.app existe y crear si no
+    window.app = window.app || {};
+    window.app.chat = window.app.chat || {};
+    
+    // Configuración predeterminada del chat
+    window.app.chat = {
+        context: [],
+        chatMessageId: 0,
+        activeModel: 'gemini',
+        activeAgent: 'developer',
+        debugMode: false,
+        availableAgents: {
+            'developer': {
+                name: 'Agente de Desarrollo',
+                description: 'Especialista en optimización y edición de código en tiempo real',
+                capabilities: [
+                    'Programación en múltiples lenguajes',
+                    'Depuración de código y resolución de errores'
+                ],
+                icon: 'code-slash'
+            },
+            'general': {
+                name: 'Asistente General',
+                description: 'Asistente versátil para diversas tareas de programación',
+                capabilities: [
+                    'Resolución de consultas generales',
+                    'Asistencia en proyectos diversos'
+                ],
+                icon: 'person-check'
+            }
+        },
+        availableModels: {
+            'openai': 'OpenAI (GPT-4o)',
+            'anthropic': 'Anthropic (Claude)',
+            'gemini': 'Google (Gemini)'
+        },
+        apiEndpoints: {
+            chat: '/api/chat',
+            fallback: '/api/generate',
+            health: '/api/health',
+            processCode: '/api/process_code',
+            execute: '/api/execute_command',
+            files: '/api/files'
+        }
+    };
+</script>
+
 <script>
     document.addEventListener('DOMContentLoaded', () => {
+        console.log("DOM cargado, inicializando chat...");
+        
         // Registrar un callback para aplicar highlight.js cuando se añadan mensajes nuevos
         const observer = new MutationObserver((mutations) => {
             mutations.forEach((mutation) => {
@@ -637,16 +689,29 @@ code {
             });
         });
 
-        const chatMessages = document.getElementById('chat-messages');
+        const chatMessages = document.getElementById('messages-container');
         if (chatMessages) {
             observer.observe(chatMessages, { childList: true, subtree: true });
+            console.log("Observer para mensajes de chat configurado");
+        } else {
+            console.error("No se encontró el contenedor de mensajes");
         }
 
         // Aplicar resaltado inicial
         document.querySelectorAll('pre code').forEach((block) => {
             hljs.highlightElement(block);
         });
+        
+        // Verificar que el script de chat se cargó correctamente
+        if (typeof initializeChat === 'function') {
+            console.log("Iniciando chat...");
+            initializeChat();
+        } else {
+            console.error("La función initializeChat no está disponible. Verifica que chat.js se cargó correctamente.");
+        }
     });
 </script>
+
+<!-- Cargar script principal de chat -->
 <script src="{{ url_for('static', filename='js/chat/chat.js') }}"></script>
 {% endblock %}
