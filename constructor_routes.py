@@ -872,7 +872,7 @@ def project_status_route(project_id):
 
         # Si no tiene framework, añadir uno predeterminado
         if 'framework' not in status_data:
-            status_data['framework'] = ''Flask + Bootstrap + SQLite'
+            status_data['framework'] = 'Flask + Bootstrap + SQLite'
             status_data['techstack'] = {
                 'backend': 'flask',
                 'frontend': 'bootstrap',
