@@ -1,3 +1,5 @@
+# Corrección del código completo
+
 from flask import Flask, render_template, request, jsonify, session, redirect, send_file
 from flask_cors import CORS
 from flask_socketio import SocketIO, emit
@@ -24,6 +26,7 @@ load_dotenv()
 
 # Inicializar app Flask
 app = Flask(__name__)
+app.secret_key = os.getenv('SECRET_KEY', 'default_secret_key')  # Añadido secret_key para session
 CORS(app)
 socketio = SocketIO(app, cors_allowed_origins="*", async_mode='threading',
                    ping_timeout=60, ping_interval=25, logger=True, engineio_logger=True)
@@ -158,6 +161,12 @@ def process_natural_language_to_command(text):
             return f"rm -rf {target}"
 
     return text
+
+def get_user_workspace(user_id='default'):
+    """Obtener o crear un directorio de trabajo para el usuario."""
+    workspace_path = Path("./user_workspaces") / user_id
+    workspace_path.mkdir(parents=True, exist_ok=True)
+    return workspace_path
 
 @app.route('/api/session', methods=['GET'])
 def session_info():
@@ -304,15 +313,6 @@ def handle_chat_internal(request_data):
             else:
                 return {'response': f"El modelo 'openai' no está disponible en este momento. Por favor configura una clave API en el panel de Secrets o selecciona otro modelo.", 'error': None}
 
-        except Exception as e:
-            command = ''  # Assign an empty string to command if it's not defined
-            logging.error(f"Error al ejecutar comando: {str(e)}")
-            return {
-                'output': f'Error: {str(e)}',
-                'success': False,
-                'command': command
-            }
-
         elif model_choice == 'anthropic':
             if anthropic_api_key:
                 try:
@@ -344,10 +344,6 @@ def handle_chat_internal(request_data):
             else:
                 return {'response': f"El modelo 'anthropic' no está disponible en este momento. Por favor configura una clave API en el panel de Secrets o selecciona otro modelo.", 'error': None}
 
-            except Exception as e:
-                logging.error(f"Error con API de Anthropic: {str(e)}")
-                return {'error': f"Error con Anthropic: {str(e)}", 'response': None}
-
         elif model_choice == 'gemini':
             if gemini_api_key:
                 try:
@@ -373,15 +369,6 @@ def handle_chat_internal(request_data):
                     return {'response': f"Error con Gemini API: {str(e)}", 'error': None}
             else:
                 return {'response': f"El modelo 'gemini' no está disponible en este momento. Por favor configura una clave API en el panel de Secrets o selecciona otro modelo.", 'error': None}
-
-            except Exception as e:
-                logging.error(f"Error con API de Gemini: {str(e)}")
-
-                # Fallback to a more graceful response
-                return {
-                    'response': f"Lo siento, hubo un problema con el servicio de IA. Por favor intenta nuevamente o selecciona un modelo diferente. Error: {str(e)}",
-                    'error': None
-                }
         else:
             # Mensaje descriptivo que orienta al usuario
             available_models = []
@@ -391,13 +378,13 @@ def handle_chat_internal(request_data):
                 available_models.append("'anthropic'")
             if gemini_api_key:
                 available_models.append("'gemini'")
-                
+
             if available_models:
                 available_models_text = ", ".join(available_models)
                 message = f"El modelo '{model_choice}' no está soportado. Por favor, selecciona uno de los siguientes modelos disponibles: {available_models_text}."
             else:
                 message = "No hay modelos disponibles en este momento. Por favor configura al menos una API key en el panel de Secrets (OpenAI, Anthropic o Gemini)."
-                
+
             logging.warning(f"Modelo no disponible: {model_choice}")
             return {
                 'response': message,
@@ -667,776 +654,749 @@ def process_code_endpoint():
             'success': False,
             'error': f'Error al procesar la solicitud: {str(e)}'
         }), 500
-
-@app.route('/api/process_natural', methods=['POST'])
-def process_natural_command():
-    """Process natural language input and return corresponding command."""
-    try:
-        data = request.json
-        text = data.get('text', '')
-        user_id = data.get('user_id', 'default')
-
-        if not text:
-            return jsonify({
-                'success': False,
-                'error': 'No se proporcionó texto'
-            }), 400
-
-        command = process_natural_language_to_command(text)
-
-        if command:
-            file_modifying_commands = ['mkdir', 'touch', 'rm', 'cp', 'mv', 'ls']
-            is_file_command = any(cmd in command for cmd in file_modifying_commands)
-
+        @app.route('/api/process_natural', methods=['POST'])
+        def process_natural_command():
+            """Process natural language input and return corresponding command."""
             try:
-                workspace_dir = get_user_workspace(user_id)
-                current_dir = os.getcwd()
-                os.chdir(workspace_dir)
+                data = request.json
+                text = data.get('text', '')
+                user_id = data.get('user_id', 'default')
 
-                result = subprocess.run(
-                    command,
-                    shell=True,
-                    capture_output=True,
-                    text=True,
-                    timeout=5
-                )
+                if not text:
+                    return make_response(jsonify({
+                        'success': False,
+                        'error': 'No se proporcionó texto'
+                    })), 400
 
-                os.chdir(current_dir)
+                command = process_natural_language_to_command(text)
 
-                command_output = result.stdout if result.returncode == 0 else result.stderr
-                command_success = result.returncode == 0
+                if command:
+                    file_modifying_commands = ['mkdir', 'touch', 'rm', 'cp', 'mv', 'ls']
+                    is_file_command = any(cmd in command.split() for cmd in file_modifying_commands)
 
-            except Exception as cmd_error:
-                logging.error(f"Error al ejecutar comando: {str(cmd_error)}")
-                command_output = f"Error: {str(cmd_error)}"
-                command_success = False
+                    try:
+                        workspace_dir = get_user_workspace(user_id)
+                        current_dir = os.getcwd()
+                        os.chdir(workspace_dir)
 
-            if is_file_command:
-                change_type = 'unknown'
-                file_path = ''
+                        result = subprocess.run(
+                            command,
+                            shell=True,
+                            capture_output=True,
+                            text=True,
+                            timeout=5
+                        )
 
-                if 'mkdir' in command:
-                    change_type = 'create'
-                    file_path = command.split('mkdir ')[1].strip().replace('-p', '').strip()
-                elif 'touch' in command:
-                    change_type = 'create'
-                    file_path = command.split('touch ')[1].strip()
-                elif 'rm' in command:
-                    change_type = 'delete'
-                    parts = command.split('rm ')
-                    if len(parts) > 1:
-                        file_path = parts[1].replace('-rf', '').strip()
+                        os.chdir(current_dir)
 
-                try:
-                    socketio.emit('file_change', {
-                        'type': change_type,
-                        'file': {'path': file_path},
-                        'timestamp': time.time()
-                    }, broadcast=True)
+                        command_output = result.stdout if result.returncode == 0 else result.stderr
+                        command_success = result.returncode == 0
+
+                    except Exception as cmd_error:
+                        logging.error(f"Error al ejecutar comando: {str(cmd_error)}")
+                        command_output = f"Error: {str(cmd_error)}"
+                        command_success = False
+
+                    if is_file_command:
+                        change_type = 'unknown'
+                        file_path = ''
+
+                        if 'mkdir' in command:
+                            change_type = 'create'
+                            file_path = command.split('mkdir ')[1].strip().replace('-p', '').strip()
+                        elif 'touch' in command:
+                            change_type = 'create'
+                            file_path = command.split('touch ')[1].strip()
+                        elif 'rm' in command:
+                            change_type = 'delete'
+                            parts = command.split('rm ')
+                            if len(parts) > 1:
+                                file_path = parts[1].replace('-rf', '').strip()
+
+                        try:
+                            socketio.emit('file_change', {
+                                'type': change_type,
+                                'file': {'path': file_path},
+                                'timestamp': time.time()
+                            }, broadcast=True)
+
+                            socketio.emit('file_sync', {
+                                'refresh': True,
+                                'timestamp': time.time()
+                            }, broadcast=True)
+
+                            socketio.emit('file_command', {
+                                'command': command,
+                                'type': change_type,
+                                'file': file_path,
+                                'timestamp': time.time()
+                            }, broadcast=True)
+
+                            socketio.emit('command_executed', {
+                                'command': command,
+                                'output': command_output,
+                                'success': command_success,
+                                'timestamp': time.time()
+                            }, broadcast=True)
+
+                            logging.info(f"Notificaciones de cambio enviadas: {change_type} - {file_path}")
+                        except Exception as ws_error:
+                            logging.error(f"Error al enviar notificación WebSocket: {str(ws_error)}")
+
+                        return make_response(jsonify({
+                            'success': True,
+                            'command': command,
+                            'refresh_explorer': is_file_command,
+                            'output': command_output,
+                            'success': command_success
+                        }))
+                    else:
+                        return make_response(jsonify({
+                            'success': False,
+                            'error': 'No se pudo generar un comando para esa instrucción'
+                        })), 400
+
+            except Exception as e:
+                logging.error(f"Error processing natural language: {str(e)}")
+                return make_response(jsonify({
+                    'success': False,
+                    'error': str(e)
+                })), 500
+
+                    @app.route('/api/process_instructions', methods=['POST'])
+                    def process_instructions():
+                    """Process natural language instructions and convert to terminal commands."""
+                    try:
+                    data = request.json
+                    instruction = data.get('message', '') or data.get('instruction', '')
+                    model_choice = data.get('model', 'openai')
+
+                    if not instruction:
+                    return jsonify({'error': 'No instruction provided'}), 400
+
+                    command_only = data.get('command_only', False)
+
+                    command_map = {
+                    "listar": "ls -la",
+                    "mostrar archivos": "ls -la",
+                    "mostrar directorio": "ls -la",
+                    "ver archivos": "ls -la",
+                    "archivos": "ls -la",
+                    "dir": "ls -la",
+                    "fecha": "date",
+                    "hora": "date +%H:%M:%S",
+                    "calendario": "cal",
+                    "quien soy": "whoami",
+                    "donde estoy": "pwd",
+                    "limpiar": "clear",
+                    "sistema": "uname -a",
+                    "memoria": "free -h",
+                    "espacio": "df -h",
+                    "procesos": "ps aux"
+                    }
+
+                    instruction_lower = instruction.lower()
+                    terminal_command = None
+                    missing_info = None
+
+                    for key, cmd in command_map.items():
+                    if key in instruction_lower:
+                    terminal_command = cmd
+                    break
+
+                    if not terminal_command:
+                    if "crear" in instruction_lower and "carpeta" in instruction_lower:
+                    folder_name = instruction_lower.split("carpeta")[-1].strip()
+                    if not folder_name:
+                        missing_info = "Falta especificar el nombre de la carpeta"
+                    else:
+                        terminal_command = f"mkdir -p {folder_name}"
+
+                    elif "crear" in instruction_lower and "archivo" in instruction_lower:
+                    file_name = instruction_lower.split("archivo")[-1].strip()
+                    if not file_name:
+                        missing_info = "Falta especificar el nombre del archivo"
+                    else:
+                        terminal_command = f"touch {file_name}"
+
+                    elif "eliminar" in instruction_lower or "borrar" in instruction_lower:
+                    target = instruction_lower.replace("eliminar", "").replace("borrar", "").strip()
+                    if not target:
+                        missing_info = "Falta especificar qué elemento eliminar"
+                    else:
+                        terminal_command = f"rm -rf {target}"
+
+                    else:
+                    terminal_command = "echo 'Comando no reconocido'"
+
+                    if terminal_command:
+                    logging.info(f"Instrucción: '{instruction}' → Comando: '{terminal_command}'")
+
+                    if missing_info:
+                    return jsonify({
+                    'error': missing_info,
+                    'needs_more_info': True
+                    })
+                    elif command_only:
+                    return jsonify({'command': terminal_command})
+                    else:
+                    return jsonify({
+                    'command': terminal_command,
+                    'original_instruction': instruction,
+                    'model_used': model_choice
+                    })
+
+                    except Exception as e:
+                    logging.error(f"Error generating command: {str(e)}")
+                    return jsonify({'error': f"Error generating command: {str(e)}"}), 500
+
+                    @app.route('/api/health', methods=['GET'])
+                    def health_check():
+                    """Health check endpoint for the application."""
+                    try:
+                    apis = {
+                    "openai": "ok" if openai_api_key else "not configured",
+                    "anthropic": "ok" if anthropic_api_key else "not configured",
+                    "gemini": "ok" if gemini_api_key else "not configured"
+                    }
+
+                    return jsonify({
+                    "status": "ok",
+                    "timestamp": time.time(),
+                    "version": "1.0.0",
+                    "apis": apis
+                    })
+                    except Exception as e:
+                    logging.error(f"Error in health check: {str(e)}")
+                    return jsonify({
+                    "status": "error",
+                    "error": str(e),
+                    "timestamp": time.time()
+                    }), 500
+
+                    @app.route('/api/files', methods=['GET'])
+                    def list_files():
+                    """API para listar archivos del workspace del usuario."""
+                    try:
+                    directory = request.args.get('directory', '.')
+                    user_id = request.args.get('user_id', 'default')
+
+                    user_workspace = get_user_workspace(user_id)
+
+                    if directory == '.':
+                    full_directory = user_workspace
+                    relative_dir = '.'
+                    else:
+                    directory = directory.replace('..', '').strip('/')
+                    full_directory = os.path.join(user_workspace, directory)
+                    relative_dir = directory
+
+                    if not os.path.exists(full_directory):
+                    if directory == '.':
+                    os.makedirs(full_directory, exist_ok=True)
+                    else:
+                    return jsonify({
+                        'success': False,
+                        'error': 'Directorio no encontrado'
+                    }), 404
+
+                    files = []
+                    try:
+                    for item in os.listdir(full_directory):
+                    item_path = os.path.join(full_directory, item)
+                    relative_path = os.path.join(relative_dir, item) if relative_dir != '.' else item
+
+                    extension = os.path.splitext(item)[1].lower()[1:] if os.path.isfile(item_path) and '.' in item else ''
+
+                    if os.path.isdir(item_path):
+                        files.append({
+                            'name': item,
+                            'path': relative_path,
+                            'type': 'directory',
+                            'size': 0,
+                            'modified': os.path.getmtime(item_path),
+                            'extension': ''
+                        })
+                    else:
+                        file_size = os.path.getsize(item_path)
+                        files.append({
+                            'name': item,
+                            'path': relative_path,
+                            'type': 'file',
+                            'size': file_size,
+                            'modified': os.path.getmtime(item_path),
+                            'extension': extension
+                        })
+                    except Exception as e:
+                    logging.error(f"Error al listar archivos: {str(e)}")
+                    return jsonify({
+                    'success': False,
+                    'error': f'Error al listar archivos: {str(e)}'
+                    }), 500
+
+                    return jsonify({
+                    'success': True,
+                    'files': files,
+                    'directory': relative_dir
+                    })
+                    except Exception as e:
+                    logging.error(f"Error en endpoint de archivos: {str(e)}")
+                    return jsonify({
+                    'success': False,
+                    'error': str(e)
+                    }), 500
+
+                    @app.route('/api/files/read', methods=['GET'])
+                    def read_file():
+                    """API para leer el contenido de un archivo en el workspace del usuario."""
+                    try:
+                    file_path = request.args.get('file_path')
+                    user_id = request.args.get('user_id', 'default')
+
+                    if not file_path:
+                    return jsonify({
+                    'success': False,
+                    'error': 'No se proporcionó ruta de archivo'
+                    }), 400
+
+                    user_workspace = get_user_workspace(user_id)
+
+                    file_path = file_path.replace('..', '').strip('/')
+                    full_path = os.path.join(user_workspace, file_path)
+
+                    if not os.path.exists(full_path):
+                    return jsonify({
+                    'success': False,
+                    'error': 'Archivo no encontrado'
+                    }), 404
+
+                    if os.path.isdir(full_path):
+                    return jsonify({
+                    'success': False,
+                    'error': 'La ruta especificada es un directorio'
+                    }), 400
+
+                    try:
+                    binary_extensions = ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'zip', 'pdf', 'doc', 'docx', 'xls', 'xlsx']
+                    file_ext = os.path.splitext(file_path)[1].lower()[1:] if '.' in file_path else ''
+
+                    if file_ext in binary_extensions:
+                    return jsonify({
+                        'success': True,
+                        'is_binary': True,
+                        'file_path': file_path,
+                        'file_url': f'/api/files/download?file_path={file_path}&user_id={user_id}'
+                    })
+
+                    with open(full_path, 'r', encoding='utf-8', errors='replace') as f:
+                    content = f.read()
+
+                    return jsonify({
+                    'success': True,
+                    'content': content,
+                    'file_path': file_path,
+                    'is_binary': False
+                    })
+                    except Exception as e:
+                    logging.error(f"Error al leer archivo: {str(e)}")
+                    return jsonify({
+                    'success': False,
+                    'error': f'Error al leer archivo: {str(e)}'
+                    }), 500
+
+                    except Exception as e:
+                    logging.error(f"Error en endpoint de lectura de archivo: {str(e)}")
+                    return jsonify({
+                    'success': False,
+                    'error': str(e)
+                    }), 500
+
+                    @app.route('/api/files/create', methods=['POST'])
+                    def create_file():
+                    """API para crear un archivo o directorio en el workspace del usuario."""
+                    try:
+                    data = request.json
+                    if not data:
+                    return jsonify({
+                    'success': False,
+                    'error': 'No se proporcionaron datos'
+                    }), 400
+
+                    file_path = data.get('file_path')
+                    content = data.get('content', '')
+                    is_directory = data.get('is_directory', False)
+                    user_id = data.get('user_id', 'default')
+
+                    if not file_path:
+                    return jsonify({
+                    'success': False,
+                    'error': 'No se proporcionó ruta de archivo'
+                    }), 400
+
+                    user_workspace = get_user_workspace(user_id)
+
+                    file_path = file_path.replace('..', '').strip('/')
+                    full_path = os.path.join(user_workspace, file_path)
+
+                    if os.path.exists(full_path):
+                    return jsonify({
+                    'success': False,
+                    'error': f'Ya existe un{"a carpeta" if is_directory else " archivo"} con ese nombre'
+                    }), 400
+
+                    try:
+                    if is_directory:
+                    os.makedirs(full_path, exist_ok=True)
+                    message = f'Directorio {file_path} creado exitosamente'
+                    else:
+                    parent_dir = os.path.dirname(full_path)
+                    if parent_dir and not os.path.exists(parent_dir):
+                        os.makedirs(parent_dir, exist_ok=True)
+
+                    with open(full_path, 'w', encoding='utf-8') as f:
+                        f.write(content)
+
+                    message = f'Archivo {file_path} creado exitosamente'
+
+                    return jsonify({
+                    'success': True,
+                    'message': message,
+                    'file_path': file_path,
+                    'is_directory': is_directory
+                    })
+                    except Exception as e:
+                    logging.error(f"Error al crear archivo/directorio: {str(e)}")
+                    return jsonify({
+                    'success': False,
+                    'error': f'Error al crear: {str(e)}'
+                    }), 500
+
+                    except Exception as e:
+                    logging.error(f"Error en endpoint de creación: {str(e)}")
+                    return jsonify({
+                    'success': False,
+                    'error': str(e)
+                    }), 500
+
+                    @app.route('/api/files/delete', methods=['DELETE'])
+                    def delete_file():
+                    """API para eliminar un archivo o directorio del workspace del usuario."""
+                    try:
+                    data = request.json
+                    if not data:
+                    return jsonify({
+                    'success': False,
+                    'error': 'No se proporcionaron datos'
+                    }), 400
+
+                    file_path = data.get('file_path')
+                    user_id = data.get('user_id', 'default')
+
+                    if not file_path:
+                    return jsonify({
+                    'success': False,
+                    'error': 'No se proporcionó ruta de archivo'
+                    }), 400
+
+                    user_workspace = get_user_workspace(user_id)
+
+                    file_path = file_path.replace('..', '').strip('/')
+                    full_path = os.path.join(user_workspace, file_path)
+
+                    if not os.path.exists(full_path):
+                    return jsonify({
+                    'success': False,
+                    'error': 'Archivo o directorio no encontrado'
+                    }), 404
+
+                    try:
+                    if os.path.isdir(full_path):
+                    shutil.rmtree(full_path)
+                    message = f'Directorio {file_path} eliminado exitosamente'
+                    else:
+                    os.remove(full_path)
+                    message = f'Archivo {file_path} eliminado exitosamente'
+
+                    return jsonify({
+                    'success': True,
+                    'message': message,
+                    'file_path': file_path,
+                    'is_directory': os.path.isdir(full_path)
+                    })
+                    except Exception as e:
+                    logging.error(f"Error al eliminar: {str(e)}")
+                    return jsonify({
+                    'success': False,
+                    'error': f'Error al eliminar: {str(e)}'
+                    }), 500
+
+                    except Exception as e:
+                    logging.error(f"Error en endpoint de eliminación: {str(e)}")
+                    return jsonify({
+                    'success': False,
+                    'error': str(e)
+                    }), 500
+
+                    @app.route('/api/files/download', methods=['GET'])
+                    def download_file():
+                    """API para descargar un archivo desde el workspace del usuario."""
+                    try:
+                    file_path = request.args.get('file_path')
+                    user_id = request.args.get('user_id', 'default')
+
+                    if not file_path:
+                    return jsonify({
+                    'success': False,
+                    'error': 'No se proporcionó ruta de archivo'
+                    }), 400
+
+                    user_workspace = get_user_workspace(user_id)
+
+                    file_path = file_path.replace('..', '').strip('/')
+                    full_path = os.path.join(user_workspace, file_path)
+
+                    if not os.path.exists(full_path):
+                    return jsonify({
+                    'success': False,
+                    'error': 'Archivo no encontrado'
+                    }), 404
+
+                    return send_file(full_path, as_attachment=True, download_name=os.path.basename(file_path))
+
+                    except Exception as e:
+                    logging.error(f"Error al descargar archivo: {str(e)}")
+                    return jsonify({
+                    'success': False,
+                    'error': f'Error al descargar archivo: {str(e)}'
+                    }), 500
+
+                    @app.route('/api/constructor/generate', methods=['POST'])
+                    def generate_project():
+                    """API endpoint para iniciar la generación de un proyecto."""
+                    try:
+                    data = request.json
+                    description = data.get('description', '')
+
+                    if not description:
+                    return jsonify({
+                    'success': False,
+                    'error': 'Se requiere una descripción del proyecto'
+                    }), 400
+
+                    return jsonify({
+                    'success': True,
+                    'message': 'Generación de proyecto iniciada',
+                    'project_id': f"proj_{int(time.time())}",
+                    'estimated_time': '5-10 minutos'
+                    })
+
+                    except Exception as e:
+                    logging.error(f"Error al generar proyecto: {str(e)}")
+                    return jsonify({
+                    'success': False,
+                    'error': str(e)
+                    }), 500
+
+                    @app.route('/api/constructor/status/<project_id>', methods=['GET'])
+                    def project_status(project_id):
+                    """API endpoint para consultar el estado de un proyecto."""
+                    try:
+                    return jsonify({
+                    'success': True,
+                    'project_id': project_id,
+                    'status': 'in_progress',
+                    'progress': 45,
+                    'current_stage': 'Generación de código',
+                    'next_stage': 'Pruebas y optimización'
+                    })
+
+                    except Exception as e:
+                    logging.error(f"Error al consultar estado del proyecto: {str(e)}")
+                    return jsonify({
+                    'success': False,
+                    'error': str(e)
+                    }), 500
+
+                    @app.route('/api/constructor/download/<project_id>', methods=['GET'])
+                    def download_project(project_id):
+                    """API endpoint para descargar un proyecto generado."""
+                    try:
+                    return jsonify({
+                    'success': True,
+                    'project_id': project_id,
+                    'download_url': f"/api/download/{project_id}.zip",
+                    'expires_in': '24 horas'
+                    })
+
+                    except Exception as e:
+                    logging.error(f"Error al preparar descarga del proyecto: {str(e)}")
+                    return jsonify({
+                    'success': False,
+                    'error': str(e)
+                    }), 500
+
+                    @app.route('/api_status')
+                    def api_status():
+                    """Muestra el estado de las claves API configuradas."""
+                    openai_key = os.environ.get('OPENAI_API_KEY', 'No configurada')
+                    anthropic_key = os.environ.get('ANTHROPIC_API_KEY', 'No configurada')
+                    gemini_key = os.environ.get('GEMINI_API_KEY', 'No configurada')
+
+                    if openai_key != 'No configurada':
+                    openai_key = openai_key[:5] + "..." + openai_key[-5:] if len(openai_key) > 10 else "***configurada***"
+
+                    if anthropic_key != 'No configurada':
+                    anthropic_key = anthropic_key[:5] + "..." + anthropic_key[-5:] if len(anthropic_key) > 10 else "***configurada***"
+
+                    if gemini_key != 'No configurada':
+                    gemini_key = gemini_key[:5] + "..." + gemini_key[-5:] if len(gemini_key) > 10 else "***configurada***"
+
+                    return jsonify({
+                    'openai': openai_key,
+                    'anthropic': anthropic_key,
+                    'gemini': gemini_key,
+                    'message': 'Visita esta URL para verificar el estado de las APIs'
+                    })
+
+                    @socketio.on('connect')
+                    def handle_connect():
+                    """Manejar conexión de cliente Socket.IO."""
+                    logging.info(f"Cliente Socket.IO conectado: {request.sid}")
+                    emit('server_info', {'status': 'connected', 'sid': request.sid})
+
+                    @socketio.on('execute_command')
+                    def handle_execute_command(data):
+                    """Ejecuta un comando en la terminal y devuelve el resultado."""
+                    command = data.get('command', '')
+                    user_id = data.get('user_id', 'default')
+                    terminal_id = data.get('terminal_id', request.sid)
+
+                    if not command:
+                    emit('command_error', {
+                    'error': 'No se proporcionó un comando',
+                    'terminal_id': terminal_id
+                    }, room=terminal_id)
+                    return
+
+                    file_system_manager = FileSystemManager(socketio)
+                    result = file_system_manager.execute_command(
+                    command=command,
+                    user_id=user_id,
+                    notify=True,
+                    terminal_id=terminal_id
+                    )
+
+                    emit('command_result', {
+                    'output': result.get('output', ''),
+                    'success': result.get('success', False),
+                    'command': command,
+                    'terminal_id': terminal_id
+                    }, room=terminal_id)
 
                     socketio.emit('file_sync', {
-                        'refresh': True,
-                        'timestamp': time.time()
-                    }, broadcast=True)
+                    'refresh': True,
+                    'user_id': user_id,
+                    'command': command
+                    }, room=user_id)
 
-                    socketio.emit('file_command', {
-                        'command': command,
-                        'type': change_type,
-                        'file': file_path,
-                        'timestamp': time.time()
-                    }, broadcast=True)
+                    @socketio.on('user_message')
+                    def handle_user_message(data):
+                    """Manejar mensajes del usuario a través de Socket.IO."""
+                    try:
+                    logging.info(f"Mensaje recibido vía Socket.IO: {data}")
+                    user_message = data.get('message', '')
+                    agent_id = data.get('agent', 'developer')
+                    model = data.get('model', 'openai')
+                    document = data.get('document', '')
+                    terminal_id = data.get('terminal_id', '')
 
-                    socketio.emit('command_executed', {
-                        'command': command,
-                        'output': command_output,
-                        'success': command_success,
-                        'timestamp': time.time()
-                    }, broadcast=True)
+                    if not user_message:
+                    emit('error', {'message': 'Mensaje vacío'})
+                    return
 
-                    logging.info(f"Notificaciones de cambio enviadas: {change_type} - {file_path}")
-                except Exception as ws_error:
-                    logging.error(f"Error al enviar notificación WebSocket: {str(ws_error)}")
+                    logging.info(f"Procesando mensaje Socket.IO: '{user_message[:30]}...' usando agente {agent_id} y modelo {model}")
 
-            return jsonify({
-                'success': True,
-                'command': command,
-                'refresh_explorer': is_file_command,
-                'output': command_output,
-                'success': command_success
-            })
-        else:
-            return jsonify({
-                'success': False,
-                'error': 'No se pudo generar un comando para esa instrucción'
-            }), 400
+                    request_data = {
+                    'message': user_message,
+                    'agent_id': agent_id,
+                    'model': model,
+                    'context': data.get('context', [])
+                    }
 
-    except Exception as e:
-        logging.error(f"Error processing natural language: {str(e)}")
-        return jsonify({
-            'success': False,
-            'error': str(e)
-        }), 500
+                    try:
+                    if model == 'openai' and openai_api_key:
+                    messages = [
+                        {"role": "system", "content": f"Eres un asistente de {agent_id} experto y útil."},
+                        {"role": "user", "content": user_message}
+                    ]
 
-@app.route('/api/process_instructions', methods=['POST'])
-def process_instructions():
-    """Process natural language instructions and convert to terminal commands."""
-    try:
-        data = request.json
-        instruction = data.get('message', '') or data.get('instruction', '')
-        model_choice = data.get('model', 'openai')
+                    completion = openai.ChatCompletion.create(
+                        model="gpt-4o",
+                        messages=messages,
+                        temperature=0.7,
+                        max_tokens=2000
+                    )
 
-        if not instruction:
-            return jsonify({'error': 'No instruction provided'}), 400
+                    response = completion.choices[0].message.content
+                    logging.info(f"Respuesta generada directamente con OpenAI: {response[:100]}...")
 
-        command_only = data.get('command_only', False)
-
-        command_map = {
-            "listar": "ls -la",
-            "mostrar archivos": "ls -la",
-            "mostrar directorio": "ls -la",
-            "ver archivos": "ls -la",
-            "archivos": "ls -la",
-            "dir": "ls -la",
-            "fecha": "date",
-            "hora": "date +%H:%M:%S",
-            "calendario": "cal",
-            "quien soy": "whoami",
-            "donde estoy": "pwd",
-            "limpiar": "clear",
-            "sistema": "uname -a",
-            "memoria": "free -h",
-            "espacio": "df -h",
-            "procesos": "ps aux"
-        }
-
-        instruction_lower = instruction.lower()
-        terminal_command = None
-        missing_info = None
-
-        for key, cmd in command_map.items():
-            if key in instruction_lower:
-                terminal_command = cmd
-                break
-
-        if not terminal_command:
-            if "crear" in instruction_lower and "carpeta" in instruction_lower:
-                folder_name = instruction_lower.split("carpeta")[-1].strip()
-                if not folder_name:
-                    missing_info = "Falta especificar el nombre de la carpeta"
-                else:
-                    terminal_command = f"mkdir -p {folder_name}"
-
-            elif "crear" in instruction_lower and "archivo" in instruction_lower:
-                file_name = instruction_lower.split("archivo")[-1].strip()
-                if not file_name:
-                    missing_info = "Falta especificar el nombre del archivo"
-                else:
-                    terminal_command = f"touch {file_name}"
-
-            elif "eliminar" in instruction_lower or "borrar" in instruction_lower:
-                target = instruction_lower.replace("eliminar", "").replace("borrar", "").strip()
-                if not target:
-                    missing_info = "Falta especificar qué elemento eliminar"
-                else:
-                    terminal_command = f"rm -rf {target}"
-
-            else:
-                terminal_command = "echo 'Comando no reconocido'"
-
-        if terminal_command:
-            logging.info(f"Instrucción: '{instruction}' → Comando: '{terminal_command}'")
-
-        if missing_info:
-            return jsonify({
-                'error': missing_info,
-                'needs_more_info': True
-            })
-        elif command_only:
-            return jsonify({'command': terminal_command})
-        else:
-            return jsonify({
-                'command': terminal_command,
-                'original_instruction': instruction,
-                'model_used': model_choice
-            })
-
-    except Exception as e:
-        logging.error(f"Error generating command: {str(e)}")
-        return jsonify({'error': f"Error generating command: {str(e)}"}), 500
-
-from flask import Flask, render_template, jsonify
-import time
-import logging
-
-app = Flask(__name__)
-
-# Assuming these API keys are defined somewhere in your application
-openai_api_key = "your_openai_api_key"
-anthropic_api_key = "your_anthropic_api_key"
-gemini_api_key = "your_gemini_api_key"
-
-@app.route('/constructor', methods=['GET'])
-def constructor():
-    """Render the task constructor page."""
-    return render_template('constructor.html')
-
-@app.route('/api/health', methods=['GET'])
-def health_check():
-    """Health check endpoint for the application."""
-    try:
-        apis = {
-            "openai": "ok" if openai_api_key else "not configured",
-            "anthropic": "ok" if anthropic_api_key else "not configured",
-            "gemini": "ok" if gemini_api_key else "not configured"
-        }
-
-        return jsonify({
-            "status": "ok",
-            "timestamp": time.time(),
-            "version": "1.0.0",
-            "apis": apis
-        })
-    except Exception as e:
-        logging.error(f"Error in health check: {str(e)}")
-        return jsonify({
-            "status": "error",
-            "error": str(e),
-            "timestamp": time.time()
-        }), 500
-
-if __name__ == '__main__':
-    app.run(debug=True)
-
-@app.route('/api/files', methods=['GET'])
-def list_files():
-    """API para listar archivos del workspace del usuario."""
-    try:
-        directory = request.args.get('directory', '.')
-        user_id = request.args.get('user_id', 'default')
-
-        user_workspace = get_user_workspace(user_id)
-
-        if directory == '.':
-            full_directory = user_workspace
-            relative_dir = '.'
-        else:
-            directory = directory.replace('..', '').strip('/')
-            full_directory = os.path.join(user_workspace, directory)
-            relative_dir = directory
-
-        if not os.path.exists(full_directory):
-            if directory == '.':
-                os.makedirs(full_directory, exist_ok=True)
-            else:
-                return jsonify({
-                    'success': False,
-                    'error': 'Directorio no encontrado'
-                }), 404
-
-        files = []
-        try:
-            for item in os.listdir(full_directory):
-                item_path = os.path.join(full_directory, item)
-                relative_path = os.path.join(relative_dir, item) if relative_dir != '.' else item
-
-                extension = os.path.splitext(item)[1].lower()[1:] if os.path.isfile(item_path) and '.' in item else ''
-
-                if os.path.isdir(item_path):
-                    files.append({
-                        'name': item,
-                        'path': relative_path,
-                        'type': 'directory',
-                        'size': 0,
-                        'modified': os.path.getmtime(item_path),
-                        'extension': ''
+                    emit('agent_response', {
+                        'response': response,
+                        'agent': agent_id,
+                        'model': model,
+                        'error': None
                     })
-                else:
-                    file_size = os.path.getsize(item_path)
-                    files.append({
-                        'name': item,
-                        'path': relative_path,
-                        'type': 'file',
-                        'size': file_size,
-                        'modified': os.path.getmtime(item_path),
-                        'extension': extension
-                    })
-        except Exception as e:
-            logging.error(f"Error al listar archivos: {str(e)}")
-            return jsonify({
-                'success': False,
-                'error': f'Error al listar archivos: {str(e)}'
-            }), 500
-
-        return jsonify({
-            'success': True,
-            'files': files,
-            'directory': relative_dir
-        })
-    except Exception as e:
-        logging.error(f"Error en endpoint de archivos: {str(e)}")
-        return jsonify({
-            'success': False,
-            'error': str(e)
-        }), 500
-
-@app.route('/api/files/read', methods=['GET'])
-def read_file():
-    """API para leer el contenido de un archivo en el workspace del usuario."""
-    try:
-        file_path = request.args.get('file_path')
-        user_id = request.args.get('user_id', 'default')
-
-        if not file_path:
-            return jsonify({
-                'success': False,
-                'error': 'No se proporcionó ruta de archivo'
-            }), 400
-
-        user_workspace = get_user_workspace(user_id)
-
-        file_path = file_path.replace('..', '').strip('/')
-        full_path = os.path.join(user_workspace, file_path)
-
-        if not os.path.exists(full_path):
-            return jsonify({
-                'success': False,
-                'error': 'Archivo no encontrado'
-            }), 404
-
-        if os.path.isdir(full_path):
-            return jsonify({
-                'success': False,
-                'error': 'La ruta especificada es un directorio'
-            }), 400
-
-        try:
-            binary_extensions = ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'zip', 'pdf', 'doc', 'docx', 'xls', 'xlsx']
-            file_ext = os.path.splitext(file_path)[1].lower()[1:] if '.' in file_path else ''
-
-            if file_ext in binary_extensions:
-                is_binary = True
-                return jsonify({
-                    'success': True,
-                    'is_binary': True,
-                    'file_path': file_path,
-                    'file_url': f'/api/files/download?file_path={file_path}&user_id={user_id}'
-                })
-
-            with open(full_path, 'r', encoding='utf-8', errors='replace') as f:
-                content = f.read()
-
-            return jsonify({
-                'success': True,
-                'content': content,
-                'file_path': file_path,
-                'is_binary': False
-            })
-        except Exception as e:
-            logging.error(f"Error al leer archivo: {str(e)}")
-            return jsonify({
-                'success': False,
-                'error': f'Error al leer archivo: {str(e)}'
-            }), 500
-
-    except Exception as e:
-        logging.error(f"Error en endpoint de lectura de archivo: {str(e)}")
-        return jsonify({
-            'success': False,
-            'error': str(e)
-        }), 500
-
-@app.route('/api/files/create', methods=['POST'])
-def create_file():
-    """API para crear un archivo o directorio en el workspace del usuario."""
-    try:
-        data = request.json
-        if not data:
-            return jsonify({
-                'success': False,
-                'error': 'No se proporcionaron datos'
-            }), 400
-
-        file_path = data.get('file_path')
-        content = data.get('content', '')
-        is_directory = data.get('is_directory', False)
-        user_id = data.get('user_id', 'default')
-
-        if not file_path:
-            return jsonify({
-                'success': False,
-                'error': 'No se proporcionó ruta de archivo'
-            }), 400
-
-        user_workspace = get_user_workspace(user_id)
-
-        file_path = file_path.replace('..', '').strip('/')
-        full_path = os.path.join(user_workspace, file_path)
-
-        if os.path.exists(full_path):
-            return jsonify({
-                'success': False,
-                'error': f'Ya existe un{"a carpeta" if is_directory else " archivo"} con ese nombre'
-            }), 400
-
-        try:
-            if is_directory:
-                os.makedirs(full_path, exist_ok=True)
-                message = f'Directorio {file_path} creado exitosamente'
-            else:
-                parent_dir = os.path.dirname(full_path)
-                if parent_dir and not os.path.exists(parent_dir):
-                    os.makedirs(parent_dir, exist_ok=True)
-
-                with open(full_path, 'w', encoding='utf-8') as f:
-                    f.write(content)
-
-                message = f'Archivo {file_path} creado exitosamente'
-
-            return jsonify({
-                'success': True,
-                'message': message,
-                'file_path': file_path,
-                'is_directory': is_directory
-            })
-        except Exception as e:
-            logging.error(f"Error al crear archivo/directorio: {str(e)}")
-            return jsonify({
-                'success': False,
-                'error': f'Error al crear: {str(e)}'
-            }), 500
-
-    except Exception as e:
-        logging.error(f"Error en endpoint de creación: {str(e)}")
-        return jsonify({
-            'success': False,
-            'error': str(e)
-        }), 500
-
-@app.route('/api/files/delete', methods=['DELETE'])
-def delete_file():
-    """API para eliminar un archivo o directorio del workspace del usuario."""
-    try:
-        data = request.json
-        if not data:
-            return jsonify({
-                'success': False,
-                'error': 'No se proporcionaron datos'
-            }), 400
-
-        file_path = data.get('file_path')
-        user_id = data.get('user_id', 'default')
-
-        if not file_path:
-            return jsonify({
-                'success': False,
-                'error': 'No se proporcionó ruta de archivo'
-            }), 400
-
-        user_workspace = get_user_workspace(user_id)
-
-        file_path = file_path.replace('..', '').strip('/')
-        full_path = os.path.join(user_workspace, file_path)
-
-        if not os.path.exists(full_path):
-            return jsonify({
-                'success': False,
-                'error': 'Archivo o directorio no encontrado'
-            }), 404
-
-        try:
-            if os.path.isdir(full_path):
-                shutil.rmtree(full_path)
-                message = f'Directorio {file_path} eliminado exitosamente'
-            else:
-                os.remove(full_path)
-                message = f'Archivo {file_path} eliminado exitosamente'
-
-            return jsonify({
-                'success': True,
-                'message': message,
-                'file_path': file_path,
-                'is_directory': os.path.isdir(full_path)
-            })
-        except Exception as e:
-            logging.error(f"Error al eliminar: {str(e)}")
-            return jsonify({
-                'success': False,
-                'error': f'Error al eliminar: {str(e)}'
-            }), 500
-
-    except Exception as e:
-        logging.error(f"Error en endpoint de eliminación: {str(e)}")
-        return jsonify({
-            'success': False,
-            'error': str(e)
-        }), 500
-
-@app.route('/api/files/download', methods=['GET'])
-def download_file():
-    """API para descargar un archivo desde el workspace del usuario."""
-    try:
-        file_path = request.args.get('file_path')
-        user_id = request.args.get('user_id', 'default')
-
-        if not file_path:
-            return jsonify({
-                'success': False,
-                'error': 'No se proporcionó ruta de archivo'
-            }), 400
-
-        user_workspace = get_user_workspace(user_id)
-
-        file_path = file_path.replace('..', '').strip('/')
-        full_path = os.path.join(user_workspace, file_path)
-
-        if not os.path.exists(full_path):
-            return jsonify({
-                'success': False,
-                'error': 'Archivo no encontrado'
-            }), 404
-
-        return send_file(full_path, as_attachment=True, download_name=os.path.basename(file_path))
-
-    except Exception as e:
-        logging.error(f"Error al descargar archivo: {str(e)}")
-        return jsonify({
-            'success': False,
-            'error': f'Error al descargar archivo: {str(e)}'
-        }), 500
-
-@app.route('/api/constructor/generate', methods=['POST'])
-def generate_project():
-    """API endpoint para iniciar la generación de un proyecto."""
-    try:
-        data = request.json
-        description = data.get('description', '')
-
-        if not description:
-            return jsonify({
-                'success': False,
-                'error': 'Se requiere una descripción del proyecto'
-            }), 400
-
-        return jsonify({
-            'success': True,
-            'message': 'Generación de proyecto iniciada',
-            'project_id': f"proj_{int(time.time())}",
-            'estimated_time': '5-10 minutos'
-        })
-
-    except Exception as e:
-        logging.error(f"Error al generar proyecto: {str(e)}")
-        return jsonify({
-            'success': False,
-            'error': str(e)
-        }), 500
-
-@app.route('/api/constructor/status/<project_id>', methods=['GET'])
-def project_status(project_id):
-    """API endpoint para consultar el estado de un proyecto."""
-    try:
-        return jsonify({
-            'success': True,
-            'project_id': project_id,
-            'status': 'in_progress',
-            'progress': 45,
-            'current_stage': 'Generación de código',
-            'next_stage': 'Pruebas y optimización'
-        })
-
-    except Exception as e:
-        logging.error(f"Error al consultar estado del proyecto: {str(e)}")
-        return jsonify({
-            'success': False,
-            'error': str(e)
-        }), 500
-
-@app.route('/api/constructor/download/<project_id>', methods=['GET'])
-def download_project(project_id):
-    """API endpoint para descargar un proyecto generado."""
-    try:
-        return jsonify({
-            'success': True,
-            'project_id': project_id,
-            'download_url': f"/api/download/{project_id}.zip",
-            'expires_in': '24 horas'
-        })
-
-    except Exception as e:
-        logging.error(f"Error al preparar descarga del proyecto: {str(e)}")
-        return jsonify({
-            'success': False,
-            'error': str(e)
-        }), 500
-
-@app.route('/api_status')
-def api_status():
-    """Muestra el estado de las claves API configuradas."""
-    openai_key = os.environ.get('OPENAI_API_KEY', 'No configurada')
-    anthropic_key = os.environ.get('ANTHROPIC_API_KEY', 'No configurada')
-    gemini_key = os.environ.get('GEMINI_API_KEY', 'No configurada')
-
-    if openai_key != 'No configurada':
-        openai_key = openai_key[:5] + "..." + openai_key[-5:] if len(openai_key) > 10 else "***configurada***"
-
-    if anthropic_key != 'No configurada':
-        anthropic_key = anthropic_key[:5] + "..." + anthropic_key[-5:] if len(anthropic_key) > 10 else "***configurada***"
-
-    if gemini_key != 'No configurada':
-        gemini_key = gemini_key[:5] + "..." + gemini_key[-5:] if len(gemini_key) > 10 else "***configurada***"
-
-    return jsonify({
-        'openai': openai_key,
-        'anthropic': anthropic_key,
-        'gemini': gemini_key,
-        'message': 'Visita esta URL para verificar el estado de las APIs'
-    })
-
-@socketio.on('connect')
-def handle_connect():
-    """Manejar conexión de cliente Socket.IO."""
-    logging.info(f"Cliente Socket.IO conectado: {request.sid}")
-    emit('server_info', {'status': 'connected', 'sid': request.sid})
-
-@socketio.on('execute_command')
-def handle_execute_command(data):
-    """Ejecuta un comando en la terminal y devuelve el resultado."""
-    command = data.get('command', '')
-    user_id = data.get('user_id', 'default')
-    terminal_id = data.get('terminal_id', request.sid)
-
-    if not command:
-        emit('command_error', {
-            'error': 'No se proporcionó un comando',
-            'terminal_id': terminal_id
-        }, room=terminal_id)
-        return
-
-    file_system_manager = FileSystemManager(socketio)
-    result = file_system_manager.execute_command(
-        command=command,
-        user_id=user_id,
-        notify=True,
-        terminal_id=terminal_id
-    )
-
-    emit('command_result', {
-        'output': result.get('output', ''),
-        'success': result.get('success', False),
-        'command': command,
-        'terminal_id': terminal_id
-    }, room=terminal_id)
-
-    socketio.emit('file_sync', {
-        'refresh': True,
-        'user_id': user_id,
-        'command': command
-    }, room=user_id)
-
-@socketio.on('user_message')
-def handle_user_message(data):
-    """Manejar mensajes del usuario a través de Socket.IO."""
-    try:
-        logging.info(f"Mensaje recibido vía Socket.IO: {data}")
-        user_message = data.get('message', '')
-        agent_id = data.get('agent', 'developer')
-        model = data.get('model', 'openai')
-        document = data.get('document', '')
-        terminal_id = data.get('terminal_id', '')
-
-        if not user_message:
-            emit('error', {'message': 'Mensaje vacío'})
-            return
-
-        logging.info(f"Procesando mensaje Socket.IO: '{user_message[:30]}...' usando agente {agent_id} y modelo {model}")
-
-        request_data = {
-            'message': user_message,
-            'agent_id': agent_id,
-            'model': model,
-            'context': data.get('context', [])
-        }
-
-        try:
-            if model == 'openai' and openai_api_key:
-                messages = [
-                    {"role": "system", "content": f"Eres un asistente de {agent_id} experto y útil."},
-                    {"role": "user", "content": user_message}
-                ]
-
-                completion = openai.ChatCompletion.create(
-                    model="gpt-4o",
-                    messages=messages,
-                    temperature=0.7,
-                    max_tokens=2000
-                )
-
-                response = completion.choices[0].message.content
-                logging.info(f"Respuesta generada directamente con OpenAI: {response[:100]}...")
-
-                emit('agent_response', {
-                    'response': response,
+                    return
+                    except Exception as api_error:
+                    logging.warning(f"Error en API directa: {str(api_error)}, usando handle_chat_internal")
+
+                    result = handle_chat_internal(request_data)
+
+                    logging.info(f"Enviando respuesta Socket.IO: '{result.get('response', '')[:30]}...'")
+                    emit('agent_response', {
+                    'response': result.get('response', ''),
                     'agent': agent_id,
                     'model': model,
-                    'error': None
-                })
-                return
-        except Exception as api_error:
-            logging.warning(f"Error en API directa: {str(api_error)}, usando handle_chat_internal")
+                    'error': result.get('error', None),
+                    'terminal_id': terminal_id
+                    })
 
-        result = handle_chat_internal(request_data)
+                    except Exception as e:
+                    logging.error(f"Error en Socket.IO user_message: {str(e)}")
+                    logging.error(traceback.format_exc())
+                    emit('error', {'message': str(e)})
 
-        logging.info(f"Enviando respuesta Socket.IO: '{result.get('response', '')[:30]}...'")
-        emit('agent_response', {
-            'response': result.get('response', ''),
-            'agent': agent_id,
-            'model': model,
-            'error': result.get('error', None),
-            'terminal_id': terminal_id
-        })
+                    if __name__ == '__main__':
+                    try:
+                    logging.info("Iniciando servidor CODESTORM Assistant...")
 
-    except Exception as e:
-        logging.error(f"Error en Socket.IO user_message: {str(e)}")
-        logging.error(traceback.format_exc())
-        emit('error', {'message': str(e)})
+                    if not openai_api_key:
+                    logging.warning("OPENAI_API_KEY no configurada - funcionalidades de OpenAI estarán deshabilitadas")
+                    if not anthropic_api_key:
+                    logging.warning("ANTHROPIC_API_KEY no configurada - funcionalidades de Anthropic estarán deshabilitadas")
+                    if not gemini_api_key:
+                    logging.warning("GEMINI_API_KEY no configurada - funcionalidades de Gemini estarán deshabilitadas")
 
-def get_user_workspace(user_id='default'):
-    """Obtener o crear un directorio de trabajo para el usuario."""
-    workspace_path = Path("./user_workspaces") / user_id
-    workspace_path.mkdir(parents=True, exist_ok=True)
-    return workspace_path
+                    if not any([openai_api_key, anthropic_api_key, gemini_api_key]):
+                    logging.error("¡ADVERTENCIA! Ninguna API está configurada. El sistema funcionará en modo degradado.")
 
-if __name__ == '__main__':
-    try:
-        logging.info("Iniciando servidor CODESTORM Assistant...")
+                    try:
+                    if 'watch_workspace_files' in globals():
+                    file_watcher_thread = threading.Thread(target=watch_workspace_files, daemon=True)
+                    file_watcher_thread.start()
+                    logging.info("Observador de archivos iniciado correctamente")
+                    except Exception as watcher_error:
+                    logging.warning(f"No se pudo iniciar el observador de archivos: {str(watcher_error)}")
 
-        if not openai_api_key:
-            logging.warning("OPENAI_API_KEY no configurada - funcionalidades de OpenAI estarán deshabilitadas")
-        if not anthropic_api_key:
-            logging.warning("ANTHROPIC_API_KEY no configurada - funcionalidades de Anthropic estarán deshabilitadas")
-        if not gemini_api_key:
-            logging.warning("GEMINI_API_KEY no configurada - funcionalidades de Gemini estarán deshabilitadas")
+                    logging.info("Servidor listo para recibir conexiones en puerto 5000")
 
-        if not any([openai_api_key, anthropic_api_key, gemini_api_key]):
-            logging.error("¡ADVERTENCIA! Ninguna API está configurada. El sistema funcionará en modo degradado.")
-
-        try:
-            if 'watch_workspace_files' in globals():
-                file_watcher_thread = threading.Thread(target=watch_workspace_files, daemon=True)
-                file_watcher_thread.start()
-                logging.info("Observador de archivos iniciado correctamente")
-        except Exception as watcher_error:
-            logging.warning(f"No se pudo iniciar el observador de archivos: {str(watcher_error)}")
-
-        logging.info("Servidor listo para recibir conexiones en puerto 5000")
-
-        socketio.run(
-            app,
-            host='0.0.0.0',
-            port=5000,
-            debug=True,
-            allow_unsafe_werkzeug=True
-        )
-    except Exception as e:
-        logging.critical(f"Error fatal al iniciar el servidor: {str(e)}")
-        logging.critical(traceback.format_exc())
+                    socketio.run(
+                    app,
+                    host='0.0.0.0',
+                    port=5000,
+                    debug=True,
+                    allow_unsafe_werkzeug=True
+                    )
+                    except Exception as e:
+                    logging.critical(f"Error fatal al iniciar el servidor: {str(e)}")
+                    logging.critical(traceback.format_exc())
