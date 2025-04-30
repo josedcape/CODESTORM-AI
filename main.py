@@ -826,13 +826,24 @@ def process_instructions():
         logging.error(f"Error generating command: {str(e)}")
         return jsonify({'error': f"Error generating command: {str(e)}"}), 500
 
+from flask import Flask, render_template, jsonify
+import time
+import logging
+
+app = Flask(__name__)
+
+# Assuming these API keys are defined somewhere in your application
+openai_api_key = "your_openai_api_key"
+anthropic_api_key = "your_anthropic_api_key"
+gemini_api_key = "your_gemini_api_key"
+
 @app.route('/constructor', methods=['GET'])
 def constructor():
     """Render the task constructor page."""
     return render_template('constructor.html')
 
 @app.route('/api/health', methods=['GET'])
-defhealth_check():
+def health_check():
     """Health check endpoint for the application."""
     try:
         apis = {
@@ -854,6 +865,9 @@ defhealth_check():
             "error": str(e),
             "timestamp": time.time()
         }), 500
+
+if __name__ == '__main__':
+    app.run(debug=True)
 
 @app.route('/api/files', methods=['GET'])
 def list_files():
