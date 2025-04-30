@@ -73,3 +73,42 @@ body {
 .file i {
     color: #6c7293;
 }
+
+/* Mejoras para móvil */
+@media (max-width: 768px) {
+    .horizontal-scroll-container {
+        overflow-x: auto;
+        white-space: nowrap;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: thin;
+        margin-bottom: 10px;
+        padding-bottom: 5px;
+    }
+    
+    .horizontal-scroll-container::-webkit-scrollbar {
+        height: 4px;
+    }
+    
+    .horizontal-scroll-container::-webkit-scrollbar-track {
+        background: rgba(26, 26, 26, 0.5);
+        border-radius: 2px;
+    }
+    
+    .horizontal-scroll-container::-webkit-scrollbar-thumb {
+        background-color: #6c7293;
+        border-radius: 2px;
+    }
+    
+    .file-actions-mobile {
+        display: flex;
+        gap: 10px;
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        padding: 8px 5px;
+    }
+    
+    .file-actions-mobile button {
+        flex-shrink: 0;
+        white-space: nowrap;
+    }
+}

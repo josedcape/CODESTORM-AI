@@ -64,7 +64,8 @@
             scrollbar-width: thin;
             -webkit-overflow-scrolling: touch;
             white-space: nowrap;
-            gap: 5px;
+            gap: 8px;
+            position: relative;
         }
 
         .device-controls::-webkit-scrollbar {
@@ -78,6 +79,33 @@
         .device-controls::-webkit-scrollbar-thumb {
             background-color: var(--primary-blue);
             border-radius: 4px;
+        }
+        
+        /* Indicadores de scroll para móvil */
+        .device-controls::after {
+            content: '';
+            position: absolute;
+            right: 0;
+            top: 0;
+            height: 100%;
+            width: 30px;
+            background: linear-gradient(90deg, transparent, var(--dark-blue));
+            pointer-events: none;
+            opacity: 0.8;
+            display: none;
+        }
+        
+        @media (max-width: 768px) {
+            .device-controls::after {
+                display: block;
+            }
+            
+            .device-controls button {
+                flex-shrink: 0;
+                padding: 8px 12px;
+                font-size: 0.9rem;
+            }
+        }
         }
 
         .device-button {

@@ -359,3 +359,38 @@
 ::-webkit-scrollbar-thumb:hover {
   background-color: var(--bs-gray-600);
 }
+
+/* Mejoras para móvil */
+@media (max-width: 768px) {
+  .chat-container {
+    max-height: calc(100vh - 170px);
+  }
+  
+  .horizontal-scroll-menu {
+    display: flex;
+    overflow-x: auto;
+    white-space: nowrap;
+    -webkit-overflow-scrolling: touch;
+    padding: 8px 0;
+    margin-bottom: 10px;
+    scrollbar-width: thin;
+  }
+  
+  .horizontal-scroll-menu::-webkit-scrollbar {
+    height: 4px;
+  }
+  
+  .horizontal-scroll-menu::-webkit-scrollbar-track {
+    background: rgba(33, 37, 41, 0.2);
+  }
+  
+  .horizontal-scroll-menu::-webkit-scrollbar-thumb {
+    background-color: var(--bs-primary);
+  }
+  
+  .horizontal-scroll-menu .btn {
+    flex-shrink: 0;
+    margin-right: 8px;
+  }
+};
+}

@@ -514,6 +514,40 @@ body {
     .preview-container {
         height: 400px;
     }
+    
+    /* Mejorar scroll horizontal para navegación */
+    .overflow-x-scroll {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        white-space: nowrap;
+        scrollbar-width: thin;
+        padding-bottom: 5px;
+    }
+    
+    .overflow-x-scroll::-webkit-scrollbar {
+        height: 6px;
+    }
+    
+    .overflow-x-scroll::-webkit-scrollbar-track {
+        background: rgba(13, 36, 60, 0.5);
+        border-radius: 3px;
+    }
+    
+    .overflow-x-scroll::-webkit-scrollbar-thumb {
+        background-color: var(--primary-blue);
+        border-radius: 3px;
+    }
+    
+    /* Navegación móvil mejorada */
+    .nav-container-mobile {
+        display: flex;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        white-space: nowrap;
+        width: 100%;
+        padding: 10px 0;
+        margin-bottom: 10px;
+    }
 }
 
 @media (max-width: 576px) {
