@@ -1,358 +1,124 @@
 {% extends "base.html" %}
 
-{% block title %}CODESTORM - Corrector de Código{% endblock %}
-
-{% block extra_css %}
-<link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet" />
-<link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/line-numbers/prism-line-numbers.min.css" rel="stylesheet" />
-<style>
-    .code-correction-container {
-        border-radius: 8px;
-        overflow: hidden;
-        height: calc(100vh - 200px);
-        display: flex;
-        flex-direction: column;
-    }
-
-    .code-editor-pane, .correction-result-pane {
-        background-color: var(--bg-tertiary);
-        border: 1px solid var(--accent-primary);
-        border-radius: 8px;
-        overflow: hidden;
-        height: 100%;
-    }
-
-    .code-editor-header, .correction-result-header {
-        background-color: var(--bg-secondary);
-        border-bottom: 1px solid var(--accent-primary);
-        color: var(--text-primary);
-        padding: 0.75rem 1rem;
-        font-weight: 500;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-    }
-
-    .code-editor-body, .correction-result-body {
-        padding: 1rem;
-        overflow-y: auto;
-        height: calc(100% - 50px);
-    }
-
-    .code-textarea {
-        width: 100%;
-        height: 500px;
-        background-color: var(--bg-tertiary);
-        color: var(--text-primary);
-        border: 1px solid var(--accent-primary);
-        border-radius: 4px;
-        font-family: 'JetBrains Mono', monospace;
-        padding: 0.75rem;
-        resize: vertical;
-        max-height: 2000px;
-        font-size: 14px;
-        line-height: 1.5;
-        tab-size: 4;
-    }
-
-    .instructions-textarea {
-        width: 100%;
-        height: 100px;
-        background-color: var(--bg-tertiary);
-        color: var(--text-primary);
-        border: 1px solid var(--accent-primary);
-        border-radius: 4px;
-        padding: 0.75rem;
-        resize: vertical;
-        margin-bottom: 1rem;
-    }
-
-    .language-selector {
-        background-color: var(--bg-tertiary);
-        color: var(--text-primary);
-        border: 1px solid var(--accent-primary);
-        border-radius: 4px;
-        padding: 0.5rem;
-        margin-bottom: 1rem;
-    }
-
-    .changes-container {
-        border-left: 2px solid var(--accent-primary);
-        padding-left: 1rem;
-        margin-bottom: 1.5rem;
-    }
-
-    .change-description {
-        font-weight: 500;
-        color: var(--text-primary);
-    }
-
-    .change-lines {
-        font-size: 0.85rem;
-        color: var(--text-secondary);
-    }
-
-    .view-toggle-buttons {
-        display: flex;
-        gap: 0.5rem;
-    }
-
-    .view-toggle-btn {
-        background-color: var(--bg-tertiary);
-        color: var(--text-secondary);
-        border: 1px solid var(--accent-primary);
-        border-radius: 4px;
-        padding: 0.25rem 0.75rem;
-        font-size: 0.85rem;
-        cursor: pointer;
-        transition: all var(--transition-fast);
-    }
-
-    .view-toggle-btn:hover, .view-toggle-btn.active {
-        background-color: var(--accent-primary);
-        color: var(--bg-primary);
-    }
-
-    .diff-line {
-        display: block;
-        margin: 0;
-        padding: 0 5px;
-        font-family: 'JetBrains Mono', monospace;
-    }
-
-    .diff-line-add {
-        background-color: rgba(40, 167, 69, 0.2);
-    }
-
-    .diff-line-remove {
-        background-color: rgba(220, 53, 69, 0.2);
-    }
-
-    .diff-line-context {
-        color: var(--text-secondary);
-    }
-
-    .loading-overlay {
-        position: absolute;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background-color: rgba(10, 25, 47, 0.8);
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        z-index: 1000;
-        visibility: hidden;
-        opacity: 0;
-        transition: opacity 0.3s, visibility 0s 0.3s;
-    }
-
-    .loading-overlay.active {
-        visibility: visible;
-        opacity: 1;
-        transition: opacity 0.3s;
-    }
-
-    .loading-spinner {
-        width: 50px;
-        height: 50px;
-        border: 5px solid var(--accent-primary);
-        border-top-color: var(--accent-secondary);
-        border-radius: 50%;
-        animation: spin 1s linear infinite;
-    }
-
-    pre[class*="language-"] {
-        max-height: 600px;
-        overflow-y: auto;
-        margin: 0;
-    }
-
-    .code-output-wrapper {
-        position: relative;
-        max-height: 600px;
-        overflow: auto;
-    }
-
-    .line-numbers .line-numbers-rows {
-        position: absolute;
-        pointer-events: none;
-        top: 0;
-        font-size: 100%;
-        left: -3.8em;
-        width: 3em;
-        letter-spacing: -1px;
-        border-right: 1px solid #999;
-        user-select: none;
-    }
-
-    .model-selector-container {
-        gap: 1rem;
-    }
-    
-    /* Estilos para el botón de auto-corrección */
-    #auto-fix-button {
-        background-color: rgba(25, 135, 84, 0.1);
-        border-color: #198754;
-        color: #198754;
-        transition: all 0.3s ease;
-    }
-    
-    #auto-fix-button:hover {
-        background-color: rgba(25, 135, 84, 0.2);
-    }
-    
-    /* Indicador para corrección automática */
-    .auto-fix-badge {
-        font-size: 0.75rem;
-        padding: 0.25rem 0.5rem;
-        border-radius: 12px;
-        background-color: rgba(25, 135, 84, 0.1);
-        color: #198754;
-        margin-left: 0.5rem;
-    }
-
-
-    @keyframes spin {
-        to { transform: rotate(360deg); }
-    }
-</style>
-{% endblock %}
+{% block title %}Corrector de Código - Codestorm Assistant{% endblock %}
 
 {% block content %}
-<div class="content-container">
-    <div class="mb-4">
-        <h2 class="mb-2"><i class="fa-solid fa-code me-2"></i>Corrector de Código</h2>
-        <p class="text-muted">Mejora y optimiza tu código con asistencia inteligente de IA. Proporciona instrucciones específicas para obtener correcciones precisas.</p>
-    </div>
-
+<div class="container mt-4">
     <div class="row">
-        <div class="col-lg-6">
-            <div class="code-editor-pane">
-                <div class="code-editor-header">
-                    <span>Código a corregir</span>
-                    <div class="dropdown">
-                        <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" id="languageDropdown" data-bs-toggle="dropdown" aria-expanded="false">
-                            <i class="fa-solid fa-code me-1"></i> Python
-                        </button>
-                        <ul class="dropdown-menu" aria-labelledby="languageDropdown">
-                            <li><a class="dropdown-item" href="#" data-language="python">Python</a></li>
-                            <li><a class="dropdown-item" href="#" data-language="javascript">JavaScript</a></li>
-                            <li><a class="dropdown-item" href="#" data-language="html">HTML</a></li>
-                            <li><a class="dropdown-item" href="#" data-language="css">CSS</a></li>
-                            <li><a class="dropdown-item" href="#" data-language="java">Java</a></li>
-                            <li><a class="dropdown-item" href="#" data-language="cpp">C++</a></li>
-                            <li><a class="dropdown-item" href="#" data-language="csharp">C#</a></li>
-                            <li><a class="dropdown-item" href="#" data-language="php">PHP</a></li>
-                            <li><a class="dropdown-item" href="#" data-language="ruby">Ruby</a></li>
-                            <li><a class="dropdown-item" href="#" data-language="go">Go</a></li>
-                            <li><a class="dropdown-item" href="#" data-language="rust">Rust</a></li>
-                            <li><a class="dropdown-item" href="#" data-language="swift">Swift</a></li>
-                        </ul>
-                    </div>
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Corrector Automático de Código</h5>
                 </div>
-                <div class="code-editor-body">
+                <div class="card-body">
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle"></i> Este corrector automático analiza tu código, corrige errores de sintaxis y mejora la calidad siguiendo buenas prácticas.
+                    </div>
+
                     <div class="mb-3">
-                        <label for="instructions" class="form-label">Instrucciones para la corrección:</label>
-                        <textarea id="instructions" class="instructions-textarea" placeholder="Describe qué correcciones necesitas en el código. Por ejemplo: 'Corrige el manejo de errores y optimiza el rendimiento'"></textarea>
+                        <label for="code-language" class="form-label">Lenguaje</label>
+                        <select class="form-select" id="code-language">
+                            <option value="python" selected>Python</option>
+                            <option value="javascript">JavaScript</option>
+                            <option value="typescript">TypeScript</option>
+                            <option value="java">Java</option>
+                            <option value="cpp">C++</option>
+                            <option value="csharp">C#</option>
+                            <option value="php">PHP</option>
+                            <option value="ruby">Ruby</option>
+                            <option value="go">Go</option>
+                            <option value="swift">Swift</option>
+                            <option value="kotlin">Kotlin</option>
+                            <option value="rust">Rust</option>
+                            <option value="html">HTML</option>
+                            <option value="css">CSS</option>
+                            <option value="sql">SQL</option>
+                        </select>
                     </div>
                     <div class="mb-3">
-                        <label for="model-selector" class="form-label">Modelo de IA:</label>
-                        <div class="d-flex model-selector-container">
-                            <div class="form-check form-check-inline">
-                                <input class="form-check-input" type="radio" name="model-selector" id="model-openai" value="openai" checked>
-                                <label class="form-check-label" for="model-openai">
-                                    <i class="fa-solid fa-robot me-1"></i> OpenAI
-                                </label>
-                            </div>
-                            <div class="form-check form-check-inline">
-                                <input class="form-check-input" type="radio" name="model-selector" id="model-gemini" value="gemini">
-                                <label class="form-check-label" for="model-gemini">
-                                    <i class="fa-solid fa-microchip me-1"></i> Gemini
-                                </label>
-                            </div>
-                            <!-- Temporalmente deshabilitado mientras se resuelven problemas
-                            <div class="form-check form-check-inline">
-                                <input class="form-check-input" type="radio" name="model-selector" id="model-claude" value="anthropic" disabled>
-                                <label class="form-check-label" for="model-claude">
-                                    <i class="fa-solid fa-brain me-1"></i> Claude
-                                </label>
-                            </div>
-                            -->
-                        </div>
+                        <label for="code-input" class="form-label">Código a corregir</label>
+                        <textarea class="form-control code-editor" id="code-input" rows="10" placeholder="Pega aquí tu código..."></textarea>
                     </div>
                     <div class="mb-3">
-                        <label for="code-input" class="form-label">Código a corregir:</label>
-                        <textarea id="code-input" class="code-textarea" placeholder="Ingresa aquí tu código para revisión..."></textarea>
+                        <label for="instructions" class="form-label">Instrucciones (opcional)</label>
+                        <textarea class="form-control" id="instructions" rows="2" placeholder="Instrucciones específicas para la corrección..."></textarea>
                     </div>
-                    <div class="d-flex justify-content-end">
-                        <button id="auto-fix-button" class="btn btn-outline-success me-2">
-                            <i class="fa-solid fa-robot me-1"></i> Auto-corregir
+                    <div class="mb-3">
+                        <label for="model-select" class="form-label">Modelo de IA</label>
+                        <select class="form-select" id="model-select">
+                            <option value="openai" selected>OpenAI (GPT-4)</option>
+                            <option value="anthropic">Anthropic (Claude)</option>
+                            <option value="gemini">Google (Gemini)</option>
+                        </select>
+                        <div id="api-status" class="mt-2 small text-info">Verificando disponibilidad de modelos...</div>
+                    </div>
+                    <div class="form-check mb-3">
+                        <input class="form-check-input" type="checkbox" id="auto-fix" checked>
+                        <label class="form-check-label" for="auto-fix">
+                            Corrección automática (corregir errores comunes sin alterar la funcionalidad)
+                        </label>
+                    </div>
+                    <div class="d-flex gap-2">
+                        <button class="btn btn-primary" id="process-btn">
+                            <i class="bi bi-wrench"></i> Corregir código
                         </button>
-                        <button id="clear-button" class="btn btn-outline-secondary me-2">
-                            <i class="fa-solid fa-eraser me-1"></i> Limpiar
-                        </button>
-                        <button id="correct-button" class="btn btn-primary">
-                            <i class="fa-solid fa-wand-magic-sparkles me-1"></i> Corregir código
+                        <button class="btn btn-outline-secondary" id="debug-btn">
+                            <i class="bi bi-bug"></i> Depurador automático
                         </button>
                     </div>
                 </div>
             </div>
         </div>
+    </div>
 
-        <div class="col-lg-6 mt-4 mt-lg-0">
-            <div class="correction-result-pane">
-                <div class="correction-result-header">
-                    <span>Resultado de la corrección</span>
-                    <div class="view-toggle-buttons">
-                        <button class="view-toggle-btn active" data-view="code">
-                            <i class="fa-solid fa-code me-1"></i> Ver código
+    <div class="row mt-4" id="results-container" style="display: none;">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="card-title mb-0">Resultados</h5>
+                    <div>
+                        <button class="btn btn-sm btn-outline-primary me-2" id="copy-btn">
+                            <i class="bi bi-clipboard"></i> Copiar
                         </button>
-                        <button class="view-toggle-btn" data-view="changes">
-                            <i class="fa-solid fa-list-check me-1"></i> Ver cambios
+                        <button class="btn btn-sm btn-outline-success me-2" id="download-btn">
+                            <i class="bi bi-download"></i> Descargar
+                        </button>
+                        <button class="btn btn-sm btn-outline-info" id="apply-fix-btn">
+                            <i class="bi bi-magic"></i> Aplicar corrección
                         </button>
                     </div>
                 </div>
-                <div class="correction-result-body position-relative">
-                    <div class="loading-overlay" id="loading-overlay">
-                        <div class="text-center">
-                            <div class="loading-spinner mb-3"></div>
-                            <p class="text-light">Procesando código...</p>
+                <div class="card-body">
+                    <ul class="nav nav-tabs" id="result-tabs" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active" id="code-tab" data-bs-toggle="tab" data-bs-target="#code-content" type="button" role="tab" aria-controls="code-content" aria-selected="true">Código corregido</button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="diff-tab" data-bs-toggle="tab" data-bs-target="#diff-content" type="button" role="tab" aria-controls="diff-content" aria-selected="false">Diferencias</button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="changes-tab" data-bs-toggle="tab" data-bs-target="#changes-content" type="button" role="tab" aria-controls="changes-content" aria-selected="false">Cambios</button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="explanation-tab" data-bs-toggle="tab" data-bs-target="#explanation-content" type="button" role="tab" aria-controls="explanation-content" aria-selected="false">Explicación</button>
+                        </li>
+                    </ul>
+                    <div class="tab-content mt-3" id="result-tabs-content">
+                        <div class="tab-pane fade show active" id="code-content" role="tabpanel" aria-labelledby="code-tab">
+                            <pre><code id="corrected-code" class="language-python"></code></pre>
                         </div>
-                    </div>
-
-                    <div id="code-view" class="view-content">
-                        <div id="initial-message" class="text-center py-5">
-                            <i class="fa-solid fa-code text-muted mb-3" style="font-size: 3rem;"></i>
-                            <h4 class="text-muted">Esperando código para corregir</h4>
-                            <p class="text-muted">Ingresa tu código y las instrucciones de corrección para comenzar.</p>
+                        <div class="tab-pane fade" id="diff-content" role="tabpanel" aria-labelledby="diff-tab">
+                            <pre><code id="diff-view" class="language-diff"></code></pre>
                         </div>
-
-                        <div id="corrected-code-container" style="display: none;">
-                            <div class="code-output-wrapper">
-                                <pre><code id="corrected-code"></code></pre>
+                        <div class="tab-pane fade" id="changes-content" role="tabpanel" aria-labelledby="changes-tab">
+                            <div id="changes-list" class="list-group">
+                                <!-- Los cambios se listarán aquí dinámicamente -->
                             </div>
-                            <div class="d-flex justify-content-end mt-3">
-                                <button id="copy-button" class="btn btn-sm btn-outline-secondary me-2">
-                                    <i class="fa-regular fa-copy me-1"></i> Copiar
-                                </button>
-                                <button id="apply-button" class="btn btn-sm btn-primary">
-                                    <i class="fa-solid fa-check me-1"></i> Aplicar cambios
-                                </button>
+                        </div>
+                        <div class="tab-pane fade" id="explanation-content" role="tabpanel" aria-labelledby="explanation-tab">
+                            <div id="explanation-text" class="markdown-content">
+                                <!-- La explicación se mostrará aquí -->
                             </div>
-                        </div>
-                    </div>
-
-                    <div id="changes-view" class="view-content" style="display: none;">
-                        <h5 class="mb-3">Cambios realizados:</h5>
-                        <div id="changes-list">
-                            <!-- Los cambios se insertarán aquí dinámicamente -->
-                        </div>
-
-                        <h5 class="mt-4 mb-3">Explicación:</h5>
-                        <div id="explanation-content" class="p-3 border border-1 rounded">
-                            <!-- La explicación se insertará aquí dinámicamente -->
                         </div>
                     </div>
                 </div>
@@ -360,365 +126,473 @@
         </div>
     </div>
 </div>
+
+<!-- Modal de Debugger -->
+<div class="modal fade" id="debug-modal" tabindex="-1" aria-labelledby="debug-modal-label" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="debug-modal-label">Depurador Automático</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label for="error-message" class="form-label">Mensaje de error (opcional)</label>
+                    <textarea class="form-control" id="error-message" rows="3" placeholder="Pega aquí el mensaje de error..."></textarea>
+                </div>
+                <div class="progress mb-3" style="display: none;">
+                    <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 0%"></div>
+                </div>
+                <div id="debug-result" class="border p-3 rounded bg-light" style="display: none;">
+                    <h6>Diagnóstico:</h6>
+                    <div id="debug-diagnosis" class="mb-3"></div>
+                    <h6>Solución propuesta:</h6>
+                    <pre><code id="debug-fix" class="language-python"></code></pre>
+                    <div class="d-flex justify-content-end mt-3">
+                        <button id="apply-debug-fix" class="btn btn-sm btn-success">Aplicar solución</button>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                <button type="button" class="btn btn-primary" id="start-debug">Iniciar depuración</button>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block extra_js %}
-<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/line-numbers/prism-line-numbers.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-python.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-javascript.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-css.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-markup.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-java.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/highlight.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/marked/4.0.2/marked.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/diff/5.1.0/diff.min.js"></script>
 <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        let currentLanguage = 'python';
-        let selectedModel = 'openai'; // Default model
+document.addEventListener('DOMContentLoaded', function() {
+    const codeInput = document.getElementById('code-input');
+    const codeLanguage = document.getElementById('code-language');
+    const instructions = document.getElementById('instructions');
+    const modelSelect = document.getElementById('model-select');
+    const autoFix = document.getElementById('auto-fix');
+    const processBtn = document.getElementById('process-btn');
+    const debugBtn = document.getElementById('debug-btn');
+    const resultsContainer = document.getElementById('results-container');
+    const correctedCode = document.getElementById('corrected-code');
+    const diffView = document.getElementById('diff-view');
+    const changesList = document.getElementById('changes-list');
+    const explanationText = document.getElementById('explanation-text');
+    const copyBtn = document.getElementById('copy-btn');
+    const downloadBtn = document.getElementById('download-btn');
+    const applyFixBtn = document.getElementById('apply-fix-btn');
 
-        // Elementos del DOM
-        const codeInput = document.getElementById('code-input');
-        const instructionsInput = document.getElementById('instructions');
-        const correctButton = document.getElementById('correct-button');
-        const autoFixButton = document.getElementById('auto-fix-button');
-        const clearButton = document.getElementById('clear-button');
-        const copyButton = document.getElementById('copy-button');
-        const applyButton = document.getElementById('apply-button');
-        const languageDropdown = document.getElementById('languageDropdown');
-        const loadingOverlay = document.getElementById('loading-overlay');
-        const initialMessage = document.getElementById('initial-message');
-        const correctedCodeContainer = document.getElementById('corrected-code-container');
-        const correctedCode = document.getElementById('corrected-code');
-        const changesView = document.getElementById('changes-view');
-        const codeView = document.getElementById('code-view');
-        const changesList = document.getElementById('changes-list');
-        const explanationContent = document.getElementById('explanation-content');
-        const modelSelector = document.getElementsByName('model-selector');
+    // Debug modal elements
+    const debugModal = new bootstrap.Modal(document.getElementById('debug-modal'));
+    const errorMessage = document.getElementById('error-message');
+    const startDebugBtn = document.getElementById('start-debug');
+    const debugResult = document.getElementById('debug-result');
+    const debugDiagnosis = document.getElementById('debug-diagnosis');
+    const debugFix = document.getElementById('debug-fix');
+    const applyDebugFixBtn = document.getElementById('apply-debug-fix');
+    const progressBar = document.querySelector('.progress');
+    const progressBarInner = document.querySelector('.progress-bar');
 
-        // Función para manejar código grande
-        function handleLargeCode() {
-            // Ajustar altura del editor de código basado en el número de líneas
-            const lineCount = codeInput.value.split('\n').length;
-            const minHeight = 300;
-            const maxHeight = 700;
-            const lineHeight = 20; // altura aproximada por línea
-            const calculatedHeight = Math.min(maxHeight, Math.max(minHeight, lineCount * lineHeight));
-            codeInput.style.height = calculatedHeight + 'px';
-        }
-        
-        // Función para auto-corrección de código
-        function autoFixCode() {
-            const code = codeInput.value.trim();
-            const language = currentLanguage;
-            
-            if (!code) {
-                alert('Por favor ingresa código para corregir automáticamente.');
-                return;
-            }
-            
-            // Mostrar overlay de carga
-            loadingOverlay.classList.add('active');
-            
-            // Generar instrucciones automáticas enfocadas en corregir errores de sintaxis y formato
-            const autoInstructions = "MODO CORRECCIÓN AUTOMÁTICA: Corrige errores de sintaxis, indentación y problemas menores. " +
-                                    "No cambies la lógica ni la estructura del código, solo arregla problemas técnicos que impidan su ejecución. " +
-                                    "Mejora el formato y la legibilidad.";
-            
-            // Intentar cargar el lenguaje si es necesario
-            loadPrismLanguage(language)
-                .then(() => {
-                    // Enviar solicitud al servidor con la bandera auto_fix activada
-                    return fetch('/api/process_code', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({
-                            code: code,
-                            instructions: autoInstructions,
-                            language: language,
-                            model: selectedModel,
-                            auto_fix: true // Indica que es una corrección automática
-                        }),
-                    });
-                })
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error('Error en la respuesta del servidor: ' + response.status);
+    // Verificar disponibilidad de modelos
+    fetch('/api/health')
+        .then(response => response.json())
+        .then(data => {
+            const apiStatus = document.getElementById('api-status');
+            const apis = data.apis || {};
+
+            for (const [model, status] of Object.entries(apis)) {
+                const option = modelSelect.querySelector(`option[value="${model}"]`);
+                if (option) {
+                    if (status !== 'ok') {
+                        option.disabled = true;
+                        option.textContent += ' (no configurado)';
                     }
-                    return response.json();
-                })
-                .then(data => {
-                    if (!data.success && data.error) {
-                        alert('Error: ' + data.error);
-                        return;
-                    }
-                    
-                    // Actualizar vista de código
-                    correctedCode.textContent = data.corrected_code;
-                    updateCodeHighlighting();
-                    
-                    // Mostrar cambios
-                    renderChanges(data.changes || []);
-                    
-                    // Mostrar explicación
-                    explanationContent.innerHTML = data.explanation || 'Código corregido automáticamente.';
-                    
-                    // Mostrar resultado
-                    initialMessage.style.display = 'none';
-                    correctedCodeContainer.style.display = 'block';
-                    
-                    // Mostrar vista de código (no la de cambios)
-                    document.querySelectorAll('.view-toggle-btn').forEach(btn => {
-                        btn.classList.remove('active');
-                    });
-                    document.querySelector('[data-view="code"]').classList.add('active');
-                    codeView.style.display = 'block';
-                    changesView.style.display = 'none';
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                    alert('Error al procesar la solicitud: ' + error.message);
-                })
-                .finally(() => {
-                    // Ocultar overlay de carga
-                    loadingOverlay.classList.remove('active');
-                });
-        }
-
-        // Debounce para optimizar rendimiento
-        function debounce(func, wait) {
-            let timeout;
-            return function(...args) {
-                clearTimeout(timeout);
-                timeout = setTimeout(() => func.apply(this, args), wait);
-            };
-        }
-
-        // Aplicar función debounced para input
-        const debouncedHandleLargeCode = debounce(handleLargeCode, 300);
-        codeInput.addEventListener('input', debouncedHandleLargeCode);
-
-        // Cambiar entre vistas (código/cambios)
-        document.querySelectorAll('.view-toggle-btn').forEach(button => {
-            button.addEventListener('click', function() {
-                const view = this.getAttribute('data-view');
-
-                // Actualizar botones
-                document.querySelectorAll('.view-toggle-btn').forEach(btn => {
-                    btn.classList.remove('active');
-                });
-                this.classList.add('active');
-
-                // Mostrar la vista correspondiente
-                if (view === 'code') {
-                    codeView.style.display = 'block';
-                    changesView.style.display = 'none';
-                } else {
-                    codeView.style.display = 'none';
-                    changesView.style.display = 'block';
                 }
+            }
+
+            // Seleccionar el primer modelo disponible
+            const firstEnabled = Array.from(modelSelect.options).find(opt => !opt.disabled);
+            if (firstEnabled) {
+                firstEnabled.selected = true;
+            }
+
+            const availableModels = Object.entries(apis)
+                .filter(([_, status]) => status === 'ok')
+                .map(([name, _]) => name);
+
+            if (availableModels.length > 0) {
+                apiStatus.textContent = 'Modelos disponibles: ' + availableModels.join(', ');
+                apiStatus.className = 'mt-2 small text-success';
+            } else {
+                apiStatus.textContent = 'No hay modelos configurados. Configura una API en el panel de Secrets.';
+                apiStatus.className = 'mt-2 small text-warning';
+            }
+        })
+        .catch(error => {
+            console.error('Error al verificar APIs:', error);
+            const apiStatus = document.getElementById('api-status');
+            apiStatus.textContent = 'Error al verificar disponibilidad de APIs';
+            apiStatus.className = 'mt-2 small text-danger';
+        });
+
+    // Función para generar diff
+    function generateDiff(original, corrected) {
+        if (!original || !corrected) return '';
+
+        const diffLines = Diff.diffLines(original, corrected);
+        let diffResult = '';
+
+        diffLines.forEach(part => {
+            // Marcar las líneas como agregadas, removidas o iguales
+            const prefix = part.added ? '+' : part.removed ? '-' : ' ';
+            const color = part.added ? 'green' : part.removed ? 'red' : 'grey';
+
+            // Dividir en líneas y agregar el prefijo
+            const lines = part.value.split('\n').filter(line => line.length > 0);
+            lines.forEach(line => {
+                diffResult += `<span style="color: ${color}">${prefix} ${line}</span>\n`;
             });
         });
 
-        // Selección de lenguaje
-        document.querySelectorAll('[data-language]').forEach(item => {
-            item.addEventListener('click', function(e) {
-                e.preventDefault();
-                currentLanguage = this.getAttribute('data-language');
-                languageDropdown.innerHTML = `<i class="fa-solid fa-code me-1"></i> ${currentLanguage.charAt(0).toUpperCase() + currentLanguage.slice(1)}`;
+        return diffResult;
+    }
 
-                // Actualizar el resaltado de sintaxis si hay código
-                if (correctedCode.textContent) {
-                    updateCodeHighlighting();
-                }
-            });
-        });
+    // Procesar código
+    processBtn.addEventListener('click', function() {
+        const code = codeInput.value.trim();
+        const language = codeLanguage.value;
+        const instructionsText = instructions.value.trim();
+        const model = modelSelect.value;
+        const isAutoFix = autoFix.checked;
 
-        // Modelo de IA seleccionado
-        for (let i = 0; i < modelSelector.length; i++) {
-            modelSelector[i].addEventListener('change', function() {
-                selectedModel = this.value;
-            });
+        if (!code) {
+            alert('Por favor, ingresa código para corregir');
+            return;
         }
 
-        // Función para actualizar el resaltado de sintaxis de manera segura
-        function updateCodeHighlighting() {
-            try {
-                // Limpiar clases anteriores
-                correctedCode.className = '';
+        // Mostrar estado de carga
+        processBtn.disabled = true;
+        processBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Procesando...';
+        resultsContainer.style.display = 'none';
 
-                // Aplicar nueva clase si el lenguaje está soportado
-                if (Prism.languages[currentLanguage]) {
-                    correctedCode.className = `language-${currentLanguage}`;
-                    Prism.highlightElement(correctedCode);
-                }
-            } catch (e) {
-                console.warn("Error al aplicar resaltado de sintaxis:", e);
+        // Enviar al servidor para procesar
+        fetch('/api/process_code', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                code: code,
+                language: language,
+                instructions: instructionsText || 'Corrige errores y mejora la calidad del código',
+                model: model,
+                auto_fix: isAutoFix
+            })
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`Error en el servidor: ${response.status} ${response.statusText}`);
             }
-        }
-
-        // Función para cargar bibliotecas adicionales de Prism bajo demanda
-        function loadPrismLanguage(language) {
-            if (!Prism.languages[language] && language !== 'cpp') {
-                try {
-                    const script = document.createElement('script');
-                    script.src = `https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-${language}.min.js`;
-                    document.head.appendChild(script);
-                    return new Promise((resolve) => {
-                        script.onload = resolve;
-                        script.onerror = resolve; // Continue even if loading fails
-                    });
-                } catch (e) {
-                    console.warn(`No se pudo cargar el lenguaje: ${language}`, e);
-                    return Promise.resolve();
-                }
-            }
-            return Promise.resolve();
-        }
-
-        // Botón para auto-corrección rápida
-        autoFixButton.addEventListener('click', autoFixCode);
-        
-        // Botón para corregir código
-        correctButton.addEventListener('click', function() {
-            const code = codeInput.value.trim();
-            const instructions = instructionsInput.value.trim();
-
-            if (!code) {
-                alert('Por favor ingresa código para corregir.');
-                return;
+            return response.json();
+        })
+        .then(data => {
+            if (!data.success) {
+                throw new Error(data.error || 'Error desconocido al procesar el código');
             }
 
-            if (!instructions) {
-                alert('Por favor ingresa instrucciones para la corrección.');
-                return;
-            }
+            // Actualizar resultados
+            correctedCode.textContent = data.corrected_code;
+            correctedCode.className = `language-${language}`;
 
-            // Mostrar overlay de carga
-            loadingOverlay.classList.add('active');
+            // Generar y mostrar diff
+            diffView.innerHTML = generateDiff(code, data.corrected_code);
+            diffView.className = 'language-diff';
 
-            // Intentar cargar el lenguaje si es necesario
-            loadPrismLanguage(currentLanguage)
-                .then(() => {
-                    // Enviar solicitud al servidor
-                    return fetch('/api/process_code', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({
-                            code: code,
-                            instructions: instructions,
-                            language: currentLanguage,
-                            model: selectedModel
-                        }),
-                    });
-                })
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error('Error en la respuesta del servidor: ' + response.status);
-                    }
-                    return response.json();
-                })
-                .then(data => {
-                    console.log("Respuesta del servidor:", data);
+            // Resaltar código
+            hljs.highlightElement(correctedCode);
+            hljs.highlightElement(diffView);
 
-                    // Verificar si hay error en la respuesta
-                    if (!data.success && data.error) {
-                        alert('Error: ' + data.error);
-                        return;
-                    }
-
-                    // Manejar la respuesta según el formato del endpoint /api/process_code
-                    if (data.corrected_code) {
-                        // Actualizar vista de código
-                        correctedCode.textContent = data.corrected_code;
-                        updateCodeHighlighting();
-
-                        // Crear estructuras de cambios si no existen
-                        const changes = data.changes || [];
-                        renderChanges(changes);
-
-                        // Mostrar explicación
-                        if (data.explanation && typeof data.explanation === 'string') {
-                            explanationContent.innerHTML = data.explanation;
-                        } else if (data.explanation) {
-                            // Si no es una cadena, convertirlo a texto
-                            explanationContent.innerHTML = JSON.stringify(data.explanation, null, 2);
-                        } else {
-                            explanationContent.innerHTML = 'Código corregido con éxito.';
-                        }
-
-                        // Mostrar resultado
-                        initialMessage.style.display = 'none';
-                        correctedCodeContainer.style.display = 'block';
-                    } else {
-                        // Si la respuesta no tiene el formato esperado pero parece válida
-                        correctedCode.textContent = JSON.stringify(data, null, 2);
-                        updateCodeHighlighting();
-                        explanationContent.innerHTML = 'Respuesta recibida en formato inesperado.';
-                        initialMessage.style.display = 'none';
-                        correctedCodeContainer.style.display = 'block';
-                    }
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                    alert('Error al procesar la solicitud: ' + error.message);
-                })
-                .finally(() => {
-                    // Ocultar overlay de carga
-                    loadingOverlay.classList.remove('active');
-                });
-        });
-
-        // Botón para limpiar
-        clearButton.addEventListener('click', function() {
-            codeInput.value = '';
-            instructionsInput.value = '';
-            codeInput.style.height = '300px';
-        });
-
-        // Botón para copiar código corregido
-        copyButton.addEventListener('click', function() {
-            navigator.clipboard.writeText(correctedCode.textContent)
-                .then(() => {
-                    const originalText = this.innerHTML;
-                    this.innerHTML = '<i class="fa-solid fa-check me-1"></i> Copiado!';
-                    setTimeout(() => {
-                        this.innerHTML = originalText;
-                    }, 2000);
-                })
-                .catch(err => {
-                    console.error('Error al copiar:', err);
-                    alert('No se pudo copiar el código.');
-                });
-        });
-
-        // Botón para aplicar cambios
-        applyButton.addEventListener('click', function() {
-            codeInput.value = correctedCode.textContent;
-            handleLargeCode();
-            alert('Cambios aplicados al editor.');
-        });
-
-        // Función para renderizar los cambios
-        function renderChanges(changes) {
+            // Mostrar cambios
             changesList.innerHTML = '';
+            if (data.changes && data.changes.length > 0) {
+                data.changes.forEach(change => {
+                    const item = document.createElement('div');
+                    item.className = 'list-group-item';
 
-            if (changes && changes.length > 0) {
-                changes.forEach((change, index) => {
-                    const changeElement = document.createElement('div');
-                    changeElement.className = 'changes-container';
-                    changeElement.innerHTML = `
-                        <p class="change-description">${index + 1}. ${change.description}</p>
-                        ${change.lineNumbers && change.lineNumbers.length > 0 ? `<p class="change-lines">Líneas: ${change.lineNumbers.join(', ')}</p>` : ''}
+                    const lineInfo = change.lineNumbers ? 
+                        `<span class="badge bg-secondary">Línea(s): ${change.lineNumbers.join(', ')}</span>` : '';
+
+                    item.innerHTML = `
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>${change.description}</div>
+                            ${lineInfo}
+                        </div>
                     `;
-                    changesList.appendChild(changeElement);
+
+                    changesList.appendChild(item);
                 });
             } else {
-                changesList.innerHTML = '<p class="text-muted fst-italic">No se especificaron cambios detallados.</p>';
+                changesList.innerHTML = '<div class="list-group-item">No se detectaron cambios significativos</div>';
             }
+
+            // Mostrar explicación
+            explanationText.innerHTML = marked.parse(data.explanation || 'No se proporcionó una explicación detallada.');
+
+            // Mostrar resultados
+            resultsContainer.style.display = 'block';
+
+            // Desplazarse a los resultados
+            resultsContainer.scrollIntoView({ behavior: 'smooth' });
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert(`Error al procesar el código: ${error.message}`);
+        })
+        .finally(() => {
+            // Restaurar botón
+            processBtn.disabled = false;
+            processBtn.innerHTML = '<i class="bi bi-wrench"></i> Corregir código';
+        });
+    });
+
+    // Abrir modal de depuración
+    debugBtn.addEventListener('click', function() {
+        errorMessage.value = '';
+        debugResult.style.display = 'none';
+        progressBar.style.display = 'none';
+        progressBarInner.style.width = '0%';
+        debugModal.show();
+    });
+
+    // Iniciar depuración
+    startDebugBtn.addEventListener('click', function() {
+        const code = codeInput.value.trim();
+        const language = codeLanguage.value;
+        const error = errorMessage.value.trim();
+
+        if (!code) {
+            alert('Por favor, ingresa código para depurar');
+            return;
+        }
+
+        // Mostrar barra de progreso
+        progressBar.style.display = 'block';
+        debugResult.style.display = 'none';
+        startDebugBtn.disabled = true;
+
+        // Simulación de progreso (en una aplicación real, esto sería una llamada al backend)
+        let progress = 0;
+        const interval = setInterval(() => {
+            progress += 5;
+            progressBarInner.style.width = `${progress}%`;
+
+            if (progress >= 100) {
+                clearInterval(interval);
+
+                // Simulación de diagnóstico (en una aplicación real, esto vendría del backend)
+                setTimeout(() => {
+                    // Análisis automático del código
+                    let diagnosis = 'El código contiene posibles problemas de sintaxis.';
+                    let fixedCode = code;
+
+                    // Verificar errores comunes según el lenguaje
+                    if (language === 'python') {
+                        // Ejemplo de corrección para Python
+                        if (code.includes('print ')) {
+                            // Error común: print sin paréntesis (Python 2 vs 3)
+                            diagnosis = 'Se detectó uso de la función print sin paréntesis (estilo Python 2). En Python 3, print es una función y requiere paréntesis.';
+                            fixedCode = code.replace(/print\s+([^(].*$)/gm, 'print($1)');
+                        } else if (code.includes('except') && code.includes(',')) {
+                            // Error común: sintaxis de except antigua
+                            diagnosis = 'Se detectó uso de sintaxis antigua para las excepciones. Use "as" en lugar de coma.';
+                            fixedCode = code.replace(/except\s+(\w+)\s*,\s*(\w+)/g, 'except $1 as $2');
+                        }
+                    } else if (language === 'javascript') {
+                        // Ejemplo de corrección para JavaScript
+                        if (code.includes('var ')) {
+                            diagnosis = 'Se recomienda usar "let" o "const" en lugar de "var" para la declaración de variables.';
+                            fixedCode = code.replace(/var\s+(\w+)/g, 'let $1');
+                        }
+                    }
+
+                    // Si hay un mensaje de error, mostrarlo en el diagnóstico
+                    if (error) {
+                        diagnosis = `Error reportado: ${error}<br><br>${diagnosis}`;
+                    }
+
+                    // Mostrar resultados
+                    debugDiagnosis.innerHTML = diagnosis;
+                    debugFix.textContent = fixedCode;
+                    debugFix.className = `language-${language}`;
+                    hljs.highlightElement(debugFix);
+
+                    debugResult.style.display = 'block';
+                    startDebugBtn.disabled = false;
+                }, 1000);
+            }
+        }, 100);
+    });
+
+    // Aplicar corrección de depuración al editor
+    applyDebugFixBtn.addEventListener('click', function() {
+        codeInput.value = debugFix.textContent;
+        debugModal.hide();
+    });
+
+    // Copiar código corregido
+    copyBtn.addEventListener('click', function() {
+        const code = correctedCode.textContent;
+        navigator.clipboard.writeText(code)
+            .then(() => {
+                const originalText = copyBtn.innerHTML;
+                copyBtn.innerHTML = '<i class="bi bi-check"></i> Copiado';
+                setTimeout(() => {
+                    copyBtn.innerHTML = originalText;
+                }, 2000);
+            })
+            .catch(err => {
+                console.error('Error al copiar:', err);
+                alert('No se pudo copiar el código');
+            });
+    });
+
+    // Aplicar corrección al editor
+    applyFixBtn.addEventListener('click', function() {
+        codeInput.value = correctedCode.textContent;
+        resultsContainer.style.display = 'none';
+
+        // Notificar al usuario
+        const notification = document.createElement('div');
+        notification.className = 'alert alert-success alert-dismissible fade show mt-3';
+        notification.innerHTML = `
+            Corrección aplicada al editor
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        `;
+
+        codeInput.parentNode.insertBefore(notification, codeInput.nextSibling);
+
+        // Desplazarse al editor
+        codeInput.scrollIntoView({ behavior: 'smooth' });
+        codeInput.focus();
+
+        // Eliminar notificación después de unos segundos
+        setTimeout(() => {
+            notification.classList.remove('show');
+            setTimeout(() => notification.remove(), 300);
+        }, 3000);
+    });
+
+    // Descargar código corregido
+    downloadBtn.addEventListener('click', function() {
+        const code = correctedCode.textContent;
+        const language = codeLanguage.value;
+
+        // Determinar extensión de archivo según lenguaje
+        const extensions = {
+            'python': 'py',
+            'javascript': 'js',
+            'typescript': 'ts',
+            'java': 'java',
+            'cpp': 'cpp',
+            'csharp': 'cs',
+            'php': 'php',
+            'ruby': 'rb',
+            'go': 'go',
+            'swift': 'swift',
+            'kotlin': 'kt',
+            'rust': 'rs',
+            'html': 'html',
+            'css': 'css',
+            'sql': 'sql'
+        };
+
+        const extension = extensions[language] || 'txt';
+        const filename = `codigo_corregido.${extension}`;
+
+        // Crear blob y descargar
+        const blob = new Blob([code], { type: 'text/plain' });
+        const url = URL.createObjectURL(blob);
+
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        a.click();
+
+        // Liberar URL
+        setTimeout(() => URL.revokeObjectURL(url), 100);
+    });
+
+    // Cambiar sintaxis de highlight.js cuando cambia el lenguaje
+    codeLanguage.addEventListener('change', function() {
+        const language = codeLanguage.value;
+        correctedCode.className = `language-${language}`;
+        if (correctedCode.textContent) {
+            hljs.highlightElement(correctedCode);
         }
     });
+});
 </script>
+{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/atom-one-dark.min.css">
+<style>
+    .code-editor {
+        font-family: monospace;
+        tab-size: 4;
+    }
+
+    pre {
+        background-color: #282c34;
+        border-radius: 4px;
+        padding: 15px;
+        margin: 0;
+        max-height: 500px;
+        overflow-y: auto;
+    }
+
+    pre code {
+        font-family: 'Source Code Pro', Consolas, Monaco, 'Andale Mono', monospace;
+        font-size: 0.9rem;
+    }
+
+    .markdown-content {
+        line-height: 1.6;
+    }
+
+    .markdown-content code {
+        background-color: #f0f0f0;
+        padding: 2px 4px;
+        border-radius: 3px;
+    }
+
+    .list-group-item {
+        border-left: 3px solid #007bff;
+    }
+
+    /* Estilos para el diff */
+    #diff-view span {
+        display: block;
+        white-space: pre-wrap;
+        font-family: monospace;
+    }
+
+    /* Mejoras visuales */
+    .card {
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+
+    .btn-primary {
+        background-color: #0d6efd;
+        transition: all 0.3s ease;
+    }
+
+    .btn-primary:hover {
+        background-color: #0b5ed7;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+    }
+</style>
 {% endblock %}

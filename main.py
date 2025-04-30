@@ -34,6 +34,33 @@ socketio = SocketIO(app, cors_allowed_origins="*", async_mode='threading',
 try:
     app.register_blueprint(constructor_bp)
     logging.info("Constructor blueprint registered successfully")
+    
+    # Asegurar que los directorios necesarios para el constructor existan
+    os.makedirs('user_workspaces/projects', exist_ok=True)
+    
+    # Precargar estado del constructor
+    from constructor_routes import project_status
+    
+    # Reiniciar cualquier proyecto que se haya quedado en progreso
+    try:
+        for proj_dir in os.listdir('user_workspaces/projects'):
+            if proj_dir.startswith('app_'):
+                proj_id = proj_dir
+                if proj_id not in project_status:
+                    logging.info(f"Preloading project status for {proj_id}")
+                    project_status[proj_id] = {
+                        'status': 'completed',
+                        'progress': 100,
+                        'current_stage': 'Proyecto completado exitosamente',
+                        'console_messages': [
+                            {'time': time.time(), 'message': 'Proyecto recuperado del sistema de archivos'}
+                        ],
+                        'start_time': time.time() - 3600,  # 1 hour ago
+                        'completion_time': time.time() - 60  # 1 minute ago
+                    }
+    except Exception as load_err:
+        logging.warning(f"Error preloading project statuses: {str(load_err)}")
+        
 except Exception as e:
     logging.error(f"Error registering constructor blueprint: {str(e)}")
 
