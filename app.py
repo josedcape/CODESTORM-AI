@@ -347,6 +347,72 @@ def process_natural_language_internal(instruction):
             }
 
         # Fallback: Ejecutar como comando
+
+@app.route('/api/format_code', methods=['POST'])
+def format_code():
+    """Formatea el código del usuario basado en el lenguaje especificado."""
+    try:
+        data = request.json
+        code = data.get('code', '')
+        language = data.get('language', 'python')
+
+        if not code:
+            return jsonify({'success': False, 'error': 'No se proporcionó código para formatear'}), 400
+
+        # Formatear según el lenguaje
+        formatted_code = code
+        
+        if language == 'python':
+            try:
+                # Intenta usar black para formatear
+                import black
+                mode = black.Mode()
+                formatted_code = black.format_str(code, mode=mode)
+            except Exception as e:
+                logging.warning(f"Error usando black: {str(e)}, usando formato básico")
+                # Formateo básico para Python
+                import autopep8
+                formatted_code = autopep8.fix_code(code)
+                
+        elif language in ['javascript', 'typescript', 'js', 'ts']:
+            # Formateo básico para JavaScript/TypeScript
+            try:
+                import jsbeautifier
+                opts = jsbeautifier.default_options()
+                opts.indent_size = 2
+                formatted_code = jsbeautifier.beautify(code, opts)
+            except Exception as e:
+                logging.warning(f"Error formateando JavaScript: {str(e)}")
+                
+        elif language in ['html', 'xml']:
+            try:
+                from bs4 import BeautifulSoup
+                soup = BeautifulSoup(code, 'html.parser')
+                formatted_code = soup.prettify()
+            except Exception as e:
+                logging.warning(f"Error formateando HTML: {str(e)}")
+                
+        elif language == 'css':
+            try:
+                import cssbeautifier
+                opts = cssbeautifier.default_options()
+                formatted_code = cssbeautifier.beautify(code, opts)
+            except Exception as e:
+                logging.warning(f"Error formateando CSS: {str(e)}")
+        
+        return jsonify({
+            'success': True,
+            'formatted_code': formatted_code
+        })
+        
+    except Exception as e:
+        logging.error(f"Error al formatear código: {str(e)}")
+        logging.error(traceback.format_exc())
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
         else:
             return execute_command_internal(instruction)
 

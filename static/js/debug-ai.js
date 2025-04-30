@@ -1,4 +1,3 @@
-
 /**
  * debug-ai.js - Script para el depurador automático de código con IA
  * 
@@ -14,12 +13,12 @@ class DebugAI {
             suggestFixes: true,
             ...options
         };
-        
+
         this.supportedLanguages = [
             'python', 'javascript', 'typescript', 'java', 
             'cpp', 'csharp', 'php', 'ruby', 'go'
         ];
-        
+
         // Common error patterns by language
         this.errorPatterns = {
             python: {
@@ -56,7 +55,7 @@ class DebugAI {
             }
         };
     }
-    
+
     /**
      * Analiza el código y detecta posibles errores
      * @param {string} code - El código a analizar
@@ -71,7 +70,7 @@ class DebugAI {
                 message: `El lenguaje ${language} no está soportado para diagnóstico automático.`
             };
         }
-        
+
         // Resultados del diagnóstico
         const result = {
             success: true,
@@ -82,21 +81,21 @@ class DebugAI {
             diagnosis: '',
             fixedCode: code
         };
-        
+
         // Si hay un mensaje de error, intentar identificar el tipo
         if (errorMessage) {
             // Extraer tipo de error y línea si es posible
             const errorTypeMatch = errorMessage.match(/([A-Za-z]+Error):/);
             const lineMatch = errorMessage.match(/line\s+(\d+)/);
-            
+
             if (errorTypeMatch) {
                 result.errorType = errorTypeMatch[1];
             }
-            
+
             if (lineMatch) {
                 result.errorLocation = parseInt(lineMatch[1]);
             }
-            
+
             // Buscar patrones de error conocidos para el lenguaje
             if (this.errorPatterns[language]) {
                 // Buscar en cada patrón de error para este lenguaje
@@ -121,7 +120,7 @@ class DebugAI {
             // Sin mensaje de error, intentar detectar problemas comunes
             // Esto podría ser una inspección general de buenas prácticas
             result.diagnosis = 'No se proporcionó un mensaje de error específico. Realizado diagnóstico general.';
-            
+
             // Ejemplo de diagnóstico general para Python
             if (language === 'python') {
                 // Verificar imports no utilizados
@@ -130,17 +129,17 @@ class DebugAI {
                     const module = imp.replace('import ', '').trim();
                     return !new RegExp(`(?<!["'])${module}\\.`).test(code);
                 });
-                
+
                 if (unusedImports.length > 0) {
                     result.fixes.push({
                         description: `Encontrados ${unusedImports.length} imports no utilizados`,
                         applied: false
                     });
                 }
-                
+
                 // Verificar variables no utilizadas
                 // (Simplificado, en la realidad necesitaría un análisis AST)
-                
+
                 // Verificar indentación inconsistente
                 const indentations = code.match(/^(\s+)\w+/gm) || [];
                 const uniqueIndentations = new Set(indentations.map(i => i.match(/^(\s+)/)[1].length));
@@ -151,7 +150,7 @@ class DebugAI {
                     });
                 }
             }
-            
+
             // Ejemplo para JavaScript
             if (language === 'javascript') {
                 // Verificar uso de var en lugar de let/const
@@ -163,7 +162,7 @@ class DebugAI {
                     });
                     result.fixedCode = fixedCode;
                 }
-                
+
                 // Verificar falta de punto y coma
                 if (!/;\s*$/.test(code)) {
                     result.fixes.push({
@@ -173,10 +172,10 @@ class DebugAI {
                 }
             }
         }
-        
+
         return result;
     }
-    
+
     /**
      * Intenta corregir automáticamente el código basado en el diagnóstico
      * @param {string} code - El código a corregir
@@ -189,10 +188,10 @@ class DebugAI {
         if (this.useApiIntegration) {
             return this._processCodeWithApi(code, language, errorMessage);
         }
-        
+
         // Fallback: usar diagnóstico local
         const diagnosis = this.diagnose(code, language, errorMessage);
-        
+
         // Si no se encontraron problemas o no se pudieron aplicar correcciones
         if (!diagnosis.success || diagnosis.fixes.length === 0) {
             return {
@@ -202,13 +201,13 @@ class DebugAI {
                 fixed: code
             };
         }
-        
+
         // Generar explicación de los cambios
         const appliedFixes = diagnosis.fixes.filter(fix => fix.applied);
         const explanation = appliedFixes.length > 0 
             ? `Se aplicaron ${appliedFixes.length} correcciones: ${appliedFixes.map(f => f.description).join(', ')}`
             : 'No se pudieron aplicar correcciones automáticas';
-        
+
         return {
             success: appliedFixes.length > 0,
             message: explanation,
@@ -217,7 +216,7 @@ class DebugAI {
             fixed: diagnosis.fixedCode || code
         };
     },
-    
+
     // Método para procesar código mediante la API
     _processCodeWithApi(code, language, instructions = '') {
         return new Promise((resolve, reject) => {
@@ -246,7 +245,7 @@ class DebugAI {
                 if (data.error) {
                     throw new Error(data.error);
                 }
-                
+
                 // Formatear la respuesta para que coincida con el formato esperado
                 resolve({
                     success: true,
