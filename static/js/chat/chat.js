@@ -961,5 +961,8 @@ function addMessageToChat(sender, content, timestamp = null) {
         timeStr = date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
     } else {
         const now = new Date();
-        timeStr = now.toLocaleTimeString([], {hour: 'language)
-    const codeBlockRegex = /```([a-zA-Z]+)?\s*([\s\S]*?)
+        timeStr = now.toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'});
+    }
+    
+    // Regular expression to identify code blocks
+    const codeBlockRegex = /```([a-zA-Z]+)?\s*([\s\S]*?)```/g;
