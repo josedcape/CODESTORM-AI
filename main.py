@@ -655,296 +655,296 @@ def process_code_endpoint():
             'error': f'Error al procesar la solicitud: {str(e)}'
         }), 500
         @app.route('/api/process_natural', methods=['POST'])
-        def process_natural_command():
-            """Process natural language input and return corresponding command."""
+def process_natural_command():
+    """Process natural language input and return corresponding command."""
+    try:
+        data = request.json
+        text = data.get('text', '')
+        user_id = data.get('user_id', 'default')
+
+        if not text:
+            return make_response(jsonify({
+                'success': False,
+                'error': 'No se proporcionó texto'
+            })), 400
+
+        command = process_natural_language_to_command(text)
+
+        if command:
+            file_modifying_commands = ['mkdir', 'touch', 'rm', 'cp', 'mv', 'ls']
+            is_file_command = any(cmd in command.split() for cmd in file_modifying_commands)
+
             try:
-                data = request.json
-                text = data.get('text', '')
-                user_id = data.get('user_id', 'default')
+                workspace_dir = get_user_workspace(user_id)
+                current_dir = os.getcwd()
+                os.chdir(workspace_dir)
 
-                if not text:
-                    return make_response(jsonify({
-                        'success': False,
-                        'error': 'No se proporcionó texto'
-                    })), 400
+                result = subprocess.run(
+                    command,
+                    shell=True,
+                    capture_output=True,
+                    text=True,
+                    timeout=5
+                )
 
-                command = process_natural_language_to_command(text)
+                os.chdir(current_dir)
 
-                if command:
-                    file_modifying_commands = ['mkdir', 'touch', 'rm', 'cp', 'mv', 'ls']
-                    is_file_command = any(cmd in command.split() for cmd in file_modifying_commands)
+                command_output = result.stdout if result.returncode == 0 else result.stderr
+                command_success = result.returncode == 0
 
-                    try:
-                        workspace_dir = get_user_workspace(user_id)
-                        current_dir = os.getcwd()
-                        os.chdir(workspace_dir)
+            except Exception as cmd_error:
+                logging.error(f"Error al ejecutar comando: {str(cmd_error)}")
+                command_output = f"Error: {str(cmd_error)}"
+                command_success = False
 
-                        result = subprocess.run(
-                            command,
-                            shell=True,
-                            capture_output=True,
-                            text=True,
-                            timeout=5
-                        )
+            if is_file_command:
+                change_type = 'unknown'
+                file_path = ''
 
-                        os.chdir(current_dir)
+                if 'mkdir' in command:
+                    change_type = 'create'
+                    file_path = command.split('mkdir ')[1].strip().replace('-p', '').strip()
+                elif 'touch' in command:
+                    change_type = 'create'
+                    file_path = command.split('touch ')[1].strip()
+                elif 'rm' in command:
+                    change_type = 'delete'
+                    parts = command.split('rm ')
+                    if len(parts) > 1:
+                        file_path = parts[1].replace('-rf', '').strip()
 
-                        command_output = result.stdout if result.returncode == 0 else result.stderr
-                        command_success = result.returncode == 0
+                try:
+                    socketio.emit('file_change', {
+                        'type': change_type,
+                        'file': {'path': file_path},
+                        'timestamp': time.time()
+                    }, broadcast=True)
 
-                    except Exception as cmd_error:
-                        logging.error(f"Error al ejecutar comando: {str(cmd_error)}")
-                        command_output = f"Error: {str(cmd_error)}"
-                        command_success = False
+                    socketio.emit('file_sync', {
+                        'refresh': True,
+                        'timestamp': time.time()
+                    }, broadcast=True)
 
-                    if is_file_command:
-                        change_type = 'unknown'
-                        file_path = ''
+                    socketio.emit('file_command', {
+                        'command': command,
+                        'type': change_type,
+                        'file': file_path,
+                        'timestamp': time.time()
+                    }, broadcast=True)
 
-                        if 'mkdir' in command:
-                            change_type = 'create'
-                            file_path = command.split('mkdir ')[1].strip().replace('-p', '').strip()
-                        elif 'touch' in command:
-                            change_type = 'create'
-                            file_path = command.split('touch ')[1].strip()
-                        elif 'rm' in command:
-                            change_type = 'delete'
-                            parts = command.split('rm ')
-                            if len(parts) > 1:
-                                file_path = parts[1].replace('-rf', '').strip()
+                    socketio.emit('command_executed', {
+                        'command': command,
+                        'output': command_output,
+                        'success': command_success,
+                        'timestamp': time.time()
+                    }, broadcast=True)
 
-                        try:
-                            socketio.emit('file_change', {
-                                'type': change_type,
-                                'file': {'path': file_path},
-                                'timestamp': time.time()
-                            }, broadcast=True)
+                    logging.info(f"Notificaciones de cambio enviadas: {change_type} - {file_path}")
+                except Exception as ws_error:
+                    logging.error(f"Error al enviar notificación WebSocket: {str(ws_error)}")
 
-                            socketio.emit('file_sync', {
-                                'refresh': True,
-                                'timestamp': time.time()
-                            }, broadcast=True)
-
-                            socketio.emit('file_command', {
-                                'command': command,
-                                'type': change_type,
-                                'file': file_path,
-                                'timestamp': time.time()
-                            }, broadcast=True)
-
-                            socketio.emit('command_executed', {
-                                'command': command,
-                                'output': command_output,
-                                'success': command_success,
-                                'timestamp': time.time()
-                            }, broadcast=True)
-
-                            logging.info(f"Notificaciones de cambio enviadas: {change_type} - {file_path}")
-                        except Exception as ws_error:
-                            logging.error(f"Error al enviar notificación WebSocket: {str(ws_error)}")
-
-                        return make_response(jsonify({
-                            'success': True,
-                            'command': command,
-                            'refresh_explorer': is_file_command,
-                            'output': command_output,
-                            'success': command_success
-                        }))
-                    else:
-                        return make_response(jsonify({
-                            'success': False,
-                            'error': 'No se pudo generar un comando para esa instrucción'
-                        })), 400
-
-            except Exception as e:
-                logging.error(f"Error processing natural language: {str(e)}")
+                return make_response(jsonify({
+                    'success': True,
+                    'command': command,
+                    'refresh_explorer': is_file_command,
+                    'output': command_output,
+                    'success': command_success
+                }))
+            else:
                 return make_response(jsonify({
                     'success': False,
-                    'error': str(e)
-                })), 500
+                    'error': 'No se pudo generar un comando para esa instrucción'
+                })), 400
 
-                    @app.route('/api/process_instructions', methods=['POST'])
-                    def process_instructions():
-                    """Process natural language instructions and convert to terminal commands."""
-                    try:
-                    data = request.json
-                    instruction = data.get('message', '') or data.get('instruction', '')
-                    model_choice = data.get('model', 'openai')
+    except Exception as e:
+        logging.error(f"Error processing natural language: {str(e)}")
+        return make_response(jsonify({
+            'success': False,
+            'error': str(e)
+        })), 500
 
-                    if not instruction:
-                    return jsonify({'error': 'No instruction provided'}), 400
+@app.route('/api/process_instructions', methods=['POST'])
+def process_instructions():
+    """Process natural language instructions and convert to terminal commands."""
+    try:
+        data = request.json
+        instruction = data.get('message', '') or data.get('instruction', '')
+        model_choice = data.get('model', 'openai')
 
-                    command_only = data.get('command_only', False)
+        if not instruction:
+            return jsonify({'error': 'No instruction provided'}), 400
 
-                    command_map = {
-                    "listar": "ls -la",
-                    "mostrar archivos": "ls -la",
-                    "mostrar directorio": "ls -la",
-                    "ver archivos": "ls -la",
-                    "archivos": "ls -la",
-                    "dir": "ls -la",
-                    "fecha": "date",
-                    "hora": "date +%H:%M:%S",
-                    "calendario": "cal",
-                    "quien soy": "whoami",
-                    "donde estoy": "pwd",
-                    "limpiar": "clear",
-                    "sistema": "uname -a",
-                    "memoria": "free -h",
-                    "espacio": "df -h",
-                    "procesos": "ps aux"
-                    }
+        command_only = data.get('command_only', False)
 
-                    instruction_lower = instruction.lower()
-                    terminal_command = None
-                    missing_info = None
+        command_map = {
+            "listar": "ls -la",
+            "mostrar archivos": "ls -la",
+            "mostrar directorio": "ls -la",
+            "ver archivos": "ls -la",
+            "archivos": "ls -la",
+            "dir": "ls -la",
+            "fecha": "date",
+            "hora": "date +%H:%M:%S",
+            "calendario": "cal",
+            "quien soy": "whoami",
+            "donde estoy": "pwd",
+            "limpiar": "clear",
+            "sistema": "uname -a",
+            "memoria": "free -h",
+            "espacio": "df -h",
+            "procesos": "ps aux"
+        }
 
-                    for key, cmd in command_map.items():
-                    if key in instruction_lower:
-                    terminal_command = cmd
-                    break
+        instruction_lower = instruction.lower()
+        terminal_command = None
+        missing_info = None
 
-                    if not terminal_command:
-                    if "crear" in instruction_lower and "carpeta" in instruction_lower:
-                    folder_name = instruction_lower.split("carpeta")[-1].strip()
-                    if not folder_name:
-                        missing_info = "Falta especificar el nombre de la carpeta"
-                    else:
-                        terminal_command = f"mkdir -p {folder_name}"
+        for key, cmd in command_map.items():
+            if key in instruction_lower:
+                terminal_command = cmd
+                break
 
-                    elif "crear" in instruction_lower and "archivo" in instruction_lower:
-                    file_name = instruction_lower.split("archivo")[-1].strip()
-                    if not file_name:
-                        missing_info = "Falta especificar el nombre del archivo"
-                    else:
-                        terminal_command = f"touch {file_name}"
+        if not terminal_command:
+            if "crear" in instruction_lower and "carpeta" in instruction_lower:
+                folder_name = instruction_lower.split("carpeta")[-1].strip()
+                if not folder_name:
+                    missing_info = "Falta especificar el nombre de la carpeta"
+                else:
+                    terminal_command = f"mkdir -p {folder_name}"
 
-                    elif "eliminar" in instruction_lower or "borrar" in instruction_lower:
-                    target = instruction_lower.replace("eliminar", "").replace("borrar", "").strip()
-                    if not target:
-                        missing_info = "Falta especificar qué elemento eliminar"
-                    else:
-                        terminal_command = f"rm -rf {target}"
+            elif "crear" in instruction_lower and "archivo" in instruction_lower:
+                file_name = instruction_lower.split("archivo")[-1].strip()
+                if not file_name:
+                    missing_info = "Falta especificar el nombre del archivo"
+                else:
+                    terminal_command = f"touch {file_name}"
 
-                    else:
-                    terminal_command = "echo 'Comando no reconocido'"
+            elif "eliminar" in instruction_lower or "borrar" in instruction_lower:
+                target = instruction_lower.replace("eliminar", "").replace("borrar", "").strip()
+                if not target:
+                    missing_info = "Falta especificar qué elemento eliminar"
+                else:
+                    terminal_command = f"rm -rf {target}"
 
-                    if terminal_command:
-                    logging.info(f"Instrucción: '{instruction}' → Comando: '{terminal_command}'")
+            else:
+                terminal_command = "echo 'Comando no reconocido'"
 
-                    if missing_info:
-                    return jsonify({
-                    'error': missing_info,
-                    'needs_more_info': True
-                    })
-                    elif command_only:
-                    return jsonify({'command': terminal_command})
-                    else:
-                    return jsonify({
-                    'command': terminal_command,
-                    'original_instruction': instruction,
-                    'model_used': model_choice
-                    })
+        if terminal_command:
+            logging.info(f"Instrucción: '{instruction}' → Comando: '{terminal_command}'")
 
-                    except Exception as e:
-                    logging.error(f"Error generating command: {str(e)}")
-                    return jsonify({'error': f"Error generating command: {str(e)}"}), 500
+        if missing_info:
+            return jsonify({
+                'error': missing_info,
+                'needs_more_info': True
+            })
+        elif command_only:
+            return jsonify({'command': terminal_command})
+        else:
+            return jsonify({
+                'command': terminal_command,
+                'original_instruction': instruction,
+                'model_used': model_choice
+            })
+
+    except Exception as e:
+        logging.error(f"Error generating command: {str(e)}")
+        return jsonify({'error': f"Error generating command: {str(e)}"}), 500
 
                     @app.route('/api/health', methods=['GET'])
-                    def health_check():
-                    """Health check endpoint for the application."""
-                    try:
-                    apis = {
-                    "openai": "ok" if openai_api_key else "not configured",
-                    "anthropic": "ok" if anthropic_api_key else "not configured",
-                    "gemini": "ok" if gemini_api_key else "not configured"
-                    }
+def health_check():
+    """Health check endpoint for the application."""
+    try:
+        apis = {
+            "openai": "ok" if openai_api_key else "not configured",
+            "anthropic": "ok" if anthropic_api_key else "not configured",
+            "gemini": "ok" if gemini_api_key else "not configured"
+        }
 
-                    return jsonify({
-                    "status": "ok",
-                    "timestamp": time.time(),
-                    "version": "1.0.0",
-                    "apis": apis
-                    })
-                    except Exception as e:
-                    logging.error(f"Error in health check: {str(e)}")
-                    return jsonify({
-                    "status": "error",
-                    "error": str(e),
-                    "timestamp": time.time()
-                    }), 500
+        return jsonify({
+            "status": "ok",
+            "timestamp": time.time(),
+            "version": "1.0.0",
+            "apis": apis
+        })
+    except Exception as e:
+        logging.error(f"Error in health check: {str(e)}")
+        return jsonify({
+            "status": "error",
+            "error": str(e),
+            "timestamp": time.time()
+        }), 500
 
                     @app.route('/api/files', methods=['GET'])
-                    def list_files():
-                    """API para listar archivos del workspace del usuario."""
-                    try:
-                    directory = request.args.get('directory', '.')
-                    user_id = request.args.get('user_id', 'default')
+def list_files_api():
+    """API para listar archivos del workspace del usuario."""
+    try:
+        directory = request.args.get('directory', '.')
+        user_id = request.args.get('user_id', 'default')
 
-                    user_workspace = get_user_workspace(user_id)
+        user_workspace = get_user_workspace(user_id)
 
-                    if directory == '.':
-                    full_directory = user_workspace
-                    relative_dir = '.'
-                    else:
-                    directory = directory.replace('..', '').strip('/')
-                    full_directory = os.path.join(user_workspace, directory)
-                    relative_dir = directory
+        if directory == '.':
+            full_directory = user_workspace
+            relative_dir = '.'
+        else:
+            directory = directory.replace('..', '').strip('/')
+            full_directory = os.path.join(user_workspace, directory)
+            relative_dir = directory
 
-                    if not os.path.exists(full_directory):
-                    if directory == '.':
-                    os.makedirs(full_directory, exist_ok=True)
-                    else:
-                    return jsonify({
-                        'success': False,
-                        'error': 'Directorio no encontrado'
-                    }), 404
-
-                    files = []
-                    try:
-                    for item in os.listdir(full_directory):
-                    item_path = os.path.join(full_directory, item)
-                    relative_path = os.path.join(relative_dir, item) if relative_dir != '.' else item
-
-                    extension = os.path.splitext(item)[1].lower()[1:] if os.path.isfile(item_path) and '.' in item else ''
-
-                    if os.path.isdir(item_path):
-                        files.append({
-                            'name': item,
-                            'path': relative_path,
-                            'type': 'directory',
-                            'size': 0,
-                            'modified': os.path.getmtime(item_path),
-                            'extension': ''
-                        })
-                    else:
-                        file_size = os.path.getsize(item_path)
-                        files.append({
-                            'name': item,
-                            'path': relative_path,
-                            'type': 'file',
-                            'size': file_size,
-                            'modified': os.path.getmtime(item_path),
-                            'extension': extension
-                        })
-                    except Exception as e:
-                    logging.error(f"Error al listar archivos: {str(e)}")
-                    return jsonify({
+        if not os.path.exists(full_directory):
+            if directory == '.':
+                os.makedirs(full_directory, exist_ok=True)
+            else:
+                return jsonify({
                     'success': False,
-                    'error': f'Error al listar archivos: {str(e)}'
-                    }), 500
+                    'error': 'Directorio no encontrado'
+                }), 404
 
-                    return jsonify({
-                    'success': True,
-                    'files': files,
-                    'directory': relative_dir
+        files = []
+        try:
+            for item in os.listdir(full_directory):
+                item_path = os.path.join(full_directory, item)
+                relative_path = os.path.join(relative_dir, item) if relative_dir != '.' else item
+
+                extension = os.path.splitext(item)[1].lower()[1:] if os.path.isfile(item_path) and '.' in item else ''
+
+                if os.path.isdir(item_path):
+                    files.append({
+                        'name': item,
+                        'path': relative_path,
+                        'type': 'directory',
+                        'size': 0,
+                        'modified': os.path.getmtime(item_path),
+                        'extension': ''
                     })
-                    except Exception as e:
-                    logging.error(f"Error en endpoint de archivos: {str(e)}")
-                    return jsonify({
-                    'success': False,
-                    'error': str(e)
-                    }), 500
+                else:
+                    file_size = os.path.getsize(item_path)
+                    files.append({
+                        'name': item,
+                        'path': relative_path,
+                        'type': 'file',
+                        'size': file_size,
+                        'modified': os.path.getmtime(item_path),
+                        'extension': extension
+                    })
+        except Exception as e:
+            logging.error(f"Error al listar archivos: {str(e)}")
+            return jsonify({
+                'success': False,
+                'error': f'Error al listar archivos: {str(e)}'
+            }), 500
+
+        return jsonify({
+            'success': True,
+            'files': files,
+            'directory': relative_dir
+        })
+    except Exception as e:
+        logging.error(f"Error en endpoint de archivos: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
 
                     @app.route('/api/files/read', methods=['GET'])
                     def read_file():
