@@ -662,109 +662,115 @@ def process_natural_command():
     """Process natural language input and return corresponding command."""
     try:
         data = request.json
-        text = data.get('text', '')
+        # Support both 'text' and 'instruction' for backward compatibility
+        text = data.get('text', '') or data.get('instruction', '')
+        model_choice = data.get('model', 'openai')
         user_id = data.get('user_id', 'default')
 
         if not text:
-            return make_response(jsonify({
+            return jsonify({
                 'success': False,
                 'error': 'No se proporcionó texto'
-            })), 400
+            }), 400
 
         command = process_natural_language_to_command(text)
 
-        if command:
-            file_modifying_commands = ['mkdir', 'touch', 'rm', 'cp', 'mv', 'ls']
-            is_file_command = any(cmd in command.split() for cmd in file_modifying_commands)
+        if not command:
+            return jsonify({
+                'success': False,
+                'error': 'No se pudo generar un comando para esa instrucción'
+            }), 400
+
+        # Execute command
+        file_modifying_commands = ['mkdir', 'touch', 'rm', 'cp', 'mv', 'ls']
+        is_file_command = any(cmd in command.split() for cmd in file_modifying_commands)
+
+        try:
+            workspace_dir = get_user_workspace(user_id)
+            current_dir = os.getcwd()
+            os.chdir(workspace_dir)
+
+            result = subprocess.run(
+                command,
+                shell=True,
+                capture_output=True,
+                text=True,
+                timeout=5
+            )
+
+            os.chdir(current_dir)
+
+            command_output = result.stdout if result.returncode == 0 else result.stderr
+            command_success = result.returncode == 0
+
+        except Exception as cmd_error:
+            logging.error(f"Error al ejecutar comando: {str(cmd_error)}")
+            command_output = f"Error: {str(cmd_error)}"
+            command_success = False
+
+        # Notify websocket clients if file command
+        if is_file_command:
+            change_type = 'unknown'
+            file_path = ''
+
+            if 'mkdir' in command:
+                change_type = 'create'
+                file_path = command.split('mkdir ')[1].strip().replace('-p', '').strip()
+            elif 'touch' in command:
+                change_type = 'create'
+                file_path = command.split('touch ')[1].strip()
+            elif 'rm' in command:
+                change_type = 'delete'
+                parts = command.split('rm ')
+                if len(parts) > 1:
+                    file_path = parts[1].replace('-rf', '').strip()
 
             try:
-                workspace_dir = get_user_workspace(user_id)
-                current_dir = os.getcwd()
-                os.chdir(workspace_dir)
+                socketio.emit('file_change', {
+                    'type': change_type,
+                    'file': {'path': file_path},
+                    'timestamp': time.time()
+                }, broadcast=True)
 
-                result = subprocess.run(
-                    command,
-                    shell=True,
-                    capture_output=True,
-                    text=True,
-                    timeout=5
-                )
+                socketio.emit('file_sync', {
+                    'refresh': True,
+                    'timestamp': time.time()
+                }, broadcast=True)
 
-                os.chdir(current_dir)
-
-                command_output = result.stdout if result.returncode == 0 else result.stderr
-                command_success = result.returncode == 0
-
-            except Exception as cmd_error:
-                logging.error(f"Error al ejecutar comando: {str(cmd_error)}")
-                command_output = f"Error: {str(cmd_error)}"
-                command_success = False
-
-            if is_file_command:
-                change_type = 'unknown'
-                file_path = ''
-
-                if 'mkdir' in command:
-                    change_type = 'create'
-                    file_path = command.split('mkdir ')[1].strip().replace('-p', '').strip()
-                elif 'touch' in command:
-                    change_type = 'create'
-                    file_path = command.split('touch ')[1].strip()
-                elif 'rm' in command:
-                    change_type = 'delete'
-                    parts = command.split('rm ')
-                    if len(parts) > 1:
-                        file_path = parts[1].replace('-rf', '').strip()
-
-                try:
-                    socketio.emit('file_change', {
-                        'type': change_type,
-                        'file': {'path': file_path},
-                        'timestamp': time.time()
-                    }, broadcast=True)
-
-                    socketio.emit('file_sync', {
-                        'refresh': True,
-                        'timestamp': time.time()
-                    }, broadcast=True)
-
-                    socketio.emit('file_command', {
-                        'command': command,
-                        'type': change_type,
-                        'file': file_path,
-                        'timestamp': time.time()
-                    }, broadcast=True)
-
-                    socketio.emit('command_executed', {
-                        'command': command,
-                        'output': command_output,
-                        'success': command_success,
-                        'timestamp': time.time()
-                    }, broadcast=True)
-
-                    logging.info(f"Notificaciones de cambio enviadas: {change_type} - {file_path}")
-                except Exception as ws_error:
-                    logging.error(f"Error al enviar notificación WebSocket: {str(ws_error)}")
-
-                return make_response(jsonify({
-                    'success': True,
+                socketio.emit('file_command', {
                     'command': command,
-                    'refresh_explorer': is_file_command,
+                    'type': change_type,
+                    'file': file_path,
+                    'timestamp': time.time()
+                }, broadcast=True)
+
+                socketio.emit('command_executed', {
+                    'command': command,
                     'output': command_output,
-                    'success': command_success
-                }))
-            else:
-                return make_response(jsonify({
-                    'success': False,
-                    'error': 'No se pudo generar un comando para esa instrucción'
-                })), 400
+                    'success': command_success,
+                    'timestamp': time.time()
+                }, broadcast=True)
+
+                logging.info(f"Notificaciones de cambio enviadas: {change_type} - {file_path}")
+            except Exception as ws_error:
+                logging.error(f"Error al enviar notificación WebSocket: {str(ws_error)}")
+
+        # Return the response in a consistent format
+        return jsonify({
+            'success': True,
+            'command': command,
+            'refresh_explorer': is_file_command,
+            'output': command_output,
+            'success': command_success
+        })
 
     except Exception as e:
         logging.error(f"Error processing natural language: {str(e)}")
-        return make_response(jsonify({
+        logging.error(traceback.format_exc())
+        return jsonify({
             'success': False,
-            'error': str(e)
-        })), 500
+            'error': f"Error al procesar instrucción: {str(e)}"
+        }), 500
 
 @app.route('/api/process_instructions', methods=['POST'])
 def process_instructions():

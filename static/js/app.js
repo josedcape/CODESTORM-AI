@@ -176,8 +176,10 @@ document.addEventListener('DOMContentLoaded', function() {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
+                    text: instruction,
                     instruction: instruction,
-                    model: selectedModel
+                    model: selectedModel,
+                    user_id: this.userId || 'default'
                 })
             })
             .then(response => {
