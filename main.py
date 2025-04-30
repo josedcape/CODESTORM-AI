@@ -421,8 +421,13 @@ def files():
 
 @app.route('/code_corrector')
 def code_corrector():
-    """Render the code corrector page."""
+    """Ruta al corrector de código."""
     return render_template('code_corrector.html')
+
+@app.route('/constructor')
+def constructor():
+    """Ruta al constructor de aplicaciones."""
+    return render_template('constructor.html')
 
 @app.route('/preview')
 def preview():
@@ -827,7 +832,7 @@ def constructor():
     return render_template('constructor.html')
 
 @app.route('/api/health', methods=['GET'])
-def health_check():
+defhealth_check():
     """Health check endpoint for the application."""
     try:
         apis = {

@@ -1,0 +1,298 @@
+
+{% extends "base.html" %}
+
+{% block title %}Constructor de Aplicaciones - Codestorm Assistant{% endblock %}
+
+{% block extra_css %}
+<style>
+    .card-futuristic {
+        background-color: #222;
+        color: #eee;
+        border-radius: 10px;
+        box-shadow: 0 0 20px rgba(0, 0, 0, 0.2);
+        overflow: hidden;
+    }
+
+    .card-header-futuristic {
+        background-color: #333;
+        color: #fff;
+        border-bottom: 1px solid #444;
+        padding: 1rem;
+    }
+
+    .futuristic-input {
+        background-color: #333;
+        color: #eee;
+        border: 1px solid #555;
+        border-radius: 5px;
+        padding: 0.5rem;
+    }
+
+    .futuristic-select {
+        background-color: #333;
+        color: #eee;
+        border: 1px solid #555;
+        border-radius: 5px;
+    }
+
+    .btn-futuristic {
+        background-color: #1E88E5;
+        color: white;
+        border: none;
+        border-radius: 5px;
+        padding: 0.8rem 1.5rem;
+        transition: all 0.3s ease;
+    }
+
+    .btn-futuristic:hover {
+        background-color: #2196F3;
+        box-shadow: 0 5px 15px rgba(30, 136, 229, 0.3);
+    }
+
+    .btn-outline-primary.btn-futuristic {
+        background-color: transparent;
+        border: 2px solid #1E88E5;
+        color: #1E88E5;
+    }
+
+    .btn-outline-primary.btn-futuristic:hover {
+        background-color: #1E88E5;
+        color: white;
+    }
+
+    .btn-outline-secondary.btn-futuristic {
+        background-color: transparent;
+        border: 2px solid #6c757d;
+        color: #6c757d;
+    }
+
+    .btn-outline-secondary.btn-futuristic:hover {
+        background-color: #6c757d;
+        color: white;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="row">
+        <div class="col-lg-8 mx-auto">
+            <div class="card card-futuristic">
+                <div class="card-header card-header-futuristic">
+                    <i class="bi bi-building me-2"></i> Constructor de Aplicaciones con IA
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle me-2"></i> El Constructor utiliza agentes especializados para generar tu aplicación completa basada en tu descripción.
+                    </div>
+
+                    <!-- Formulario de Construcción -->
+                    <form id="constructor-form">
+                        <div class="mb-4">
+                            <label for="project-description" class="form-label">Describe tu aplicación</label>
+                            <textarea id="project-description" class="form-control futuristic-input" rows="5" 
+                                placeholder="Describe en detalle la aplicación que deseas crear. Por ejemplo: 'Una aplicación para gestionar inventario con login, dashboard y reportes en PDF'"></textarea>
+                        </div>
+
+                        <!-- Selección de Agente -->
+                        <div class="mb-3">
+                            <label class="form-label">Selecciona el Agente Especializado:</label>
+                            <select id="agent-selector" class="form-select form-select-sm futuristic-select">
+                                <option value="developer" selected>Desarrollador de Código</option>
+                                <option value="architect">Arquitecto de Software</option>
+                                <option value="advanced">Experto Avanzado</option>
+                                <option value="general">Asistente General</option>
+                            </select>
+                            <div class="form-text">El agente determina el enfoque para la generación de tu aplicación</div>
+                        </div>
+
+                        <!-- Selección de Modelo de IA -->
+                        <div class="mb-3">
+                            <label class="form-label">Selecciona el Modelo de IA:</label>
+                            <select id="model-selector" class="form-select form-select-sm futuristic-select">
+                                <option value="openai" selected>OpenAI (GPT-4o)</option>
+                                <option value="anthropic">Anthropic (Claude)</option>
+                                <option value="gemini">Google (Gemini)</option>
+                            </select>
+                            <div class="form-text">Diferentes modelos pueden tener distintas capacidades</div>
+                        </div>
+
+                        <!-- Opciones Adicionales -->
+                        <div class="mb-4">
+                            <label class="form-label">Opciones Adicionales:</label>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="include-tests" checked>
+                                <label class="form-check-label" for="include-tests">Incluir pruebas automatizadas</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="include-docs" checked>
+                                <label class="form-check-label" for="include-docs">Generar documentación</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="include-deployment" checked>
+                                <label class="form-check-label" for="include-deployment">Configuración para despliegue</label>
+                            </div>
+                        </div>
+
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary btn-futuristic" id="generate-btn">
+                                <i class="bi bi-stars me-2"></i> Generar Aplicación
+                            </button>
+                        </div>
+                    </form>
+
+                    <!-- Indicador de Progreso (oculto inicialmente) -->
+                    <div id="generation-progress" class="mt-4" style="display: none;">
+                        <h5>Generando tu aplicación...</h5>
+                        <div class="progress" style="height: 25px;">
+                            <div id="progress-bar" class="progress-bar progress-bar-striped progress-bar-animated" 
+                                role="progressbar" style="width: 0%;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">0%</div>
+                        </div>
+                        <div id="current-stage" class="mt-2 small text-center">Inicializando agentes...</div>
+                    </div>
+
+                    <!-- Resultado (oculto inicialmente) -->
+                    <div id="generation-result" class="mt-4" style="display: none;">
+                        <div id="result-message" class="alert alert-success">
+                            <i class="bi bi-check-circle me-2"></i> ¡Tu aplicación ha sido generada exitosamente!
+                        </div>
+                        <div class="d-grid gap-2">
+                            <button id="view-app-btn" class="btn btn-outline-primary btn-futuristic">
+                                <i class="bi bi-eye me-2"></i> Ver Aplicación
+                            </button>
+                            <button id="download-app-btn" class="btn btn-outline-secondary btn-futuristic">
+                                <i class="bi bi-download me-2"></i> Descargar Código
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// JavaScript for form submission and progress updates
+document.addEventListener('DOMContentLoaded', function() {
+    const constructorForm = document.getElementById('constructor-form');
+    const generateBtn = document.getElementById('generate-btn');
+    const progressSection = document.getElementById('generation-progress');
+    const resultSection = document.getElementById('generation-result');
+    const progressBar = document.getElementById('progress-bar');
+    const currentStage = document.getElementById('current-stage');
+    const viewAppBtn = document.getElementById('view-app-btn');
+    const downloadAppBtn = document.getElementById('download-app-btn');
+    
+    constructorForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        // Get form values
+        const description = document.getElementById('project-description').value;
+        const agent = document.getElementById('agent-selector').value;
+        const model = document.getElementById('model-selector').value;
+        const includeTests = document.getElementById('include-tests').checked;
+        const includeDocs = document.getElementById('include-docs').checked;
+        const includeDeployment = document.getElementById('include-deployment').checked;
+        
+        if (!description.trim()) {
+            alert('Por favor, describe tu aplicación');
+            return;
+        }
+        
+        // Show progress section
+        progressSection.style.display = 'block';
+        resultSection.style.display = 'none';
+        generateBtn.disabled = true;
+        
+        // Simulate progress (for demo, replace with actual API call)
+        simulateProgress();
+        
+        // In a real application, you would make an API call to your backend here
+        // For example:
+        /*
+        fetch('/api/generate_application', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                description,
+                agent,
+                model,
+                options: {
+                    includeTests,
+                    includeDocs,
+                    includeDeployment
+                }
+            }),
+        })
+        .then(response => response.json())
+        .then(data => {
+            progressSection.style.display = 'none';
+            resultSection.style.display = 'block';
+            // Update UI with results
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Ocurrió un error al generar la aplicación: ' + error.message);
+        })
+        .finally(() => {
+            generateBtn.disabled = false;
+        });
+        */
+    });
+    
+    // For demo purposes only - simulates progress updates
+    function simulateProgress() {
+        let progress = 0;
+        const stages = [
+            'Analizando descripción...',
+            'Generando estructura de archivos...',
+            'Codificando componentes principales...',
+            'Implementando lógica de negocio...',
+            'Creando pruebas unitarias...',
+            'Generando documentación...',
+            'Preparando configuración de despliegue...',
+            'Optimizando código...',
+            'Finalizando proyecto...'
+        ];
+        
+        const interval = setInterval(() => {
+            progress += Math.floor(Math.random() * 10) + 1;
+            if (progress >= 100) {
+                progress = 100;
+                clearInterval(interval);
+                
+                // Show completion after a brief delay
+                setTimeout(() => {
+                    progressSection.style.display = 'none';
+                    resultSection.style.display = 'block';
+                    generateBtn.disabled = false;
+                }, 1000);
+            }
+            
+            progressBar.style.width = progress + '%';
+            progressBar.setAttribute('aria-valuenow', progress);
+            progressBar.textContent = progress + '%';
+            
+            // Update current stage based on progress
+            const stageIndex = Math.min(Math.floor(progress / (100 / stages.length)), stages.length - 1);
+            currentStage.textContent = stages[stageIndex];
+        }, 500);
+    }
+    
+    // Button handlers for result actions
+    viewAppBtn.addEventListener('click', function() {
+        // In a real app, redirect to the generated application
+        alert('Esta funcionalidad estaría conectada a la visualización de la aplicación generada.');
+    });
+    
+    downloadAppBtn.addEventListener('click', function() {
+        // In a real app, trigger download of the generated code
+        alert('Esta funcionalidad estaría conectada a la descarga del código generado.');
+    });
+});
+</script>
+{% endblock %}
