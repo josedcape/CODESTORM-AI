@@ -361,7 +361,7 @@ def format_code():
 
         # Formatear según el lenguaje
         formatted_code = code
-        
+
         if language == 'python':
             try:
                 # Intenta usar black para formatear
@@ -373,7 +373,7 @@ def format_code():
                 # Formateo básico para Python
                 import autopep8
                 formatted_code = autopep8.fix_code(code)
-                
+
         elif language in ['javascript', 'typescript', 'js', 'ts']:
             # Formateo básico para JavaScript/TypeScript
             try:
@@ -383,7 +383,7 @@ def format_code():
                 formatted_code = jsbeautifier.beautify(code, opts)
             except Exception as e:
                 logging.warning(f"Error formateando JavaScript: {str(e)}")
-                
+
         elif language in ['html', 'xml']:
             try:
                 from bs4 import BeautifulSoup
@@ -391,7 +391,7 @@ def format_code():
                 formatted_code = soup.prettify()
             except Exception as e:
                 logging.warning(f"Error formateando HTML: {str(e)}")
-                
+
         elif language == 'css':
             try:
                 import cssbeautifier
@@ -399,12 +399,12 @@ def format_code():
                 formatted_code = cssbeautifier.beautify(code, opts)
             except Exception as e:
                 logging.warning(f"Error formateando CSS: {str(e)}")
-        
+
         return jsonify({
             'success': True,
             'formatted_code': formatted_code
         })
-        
+
     except Exception as e:
         logging.error(f"Error al formatear código: {str(e)}")
         logging.error(traceback.format_exc())
@@ -449,7 +449,7 @@ def generate_complex_file_internal(description, file_type="html", filename="", a
             else:
                 filename += '.txt'
 
-        # Asegurar extensión
+        # Asegurarse de que la extensión existe
         if '.' not in filename:
             filename += f'.{file_type}'
 
@@ -662,13 +662,13 @@ def delete_file():
                 'success': False,
                 'error': 'Se requiere ruta de archivo'
             }), 400
-            
+
         file_path = data['file_path']
-        
+
         # Obtener workspace del usuario
         user_id = session.get('user_id', 'default')
         workspace_path = get_user_workspace(user_id)
-        
+
         # Crear ruta completa y verificar seguridad
         target_path = (workspace_path / file_path).resolve()
         if not str(target_path).startswith(str(workspace_path.resolve())):
@@ -676,13 +676,13 @@ def delete_file():
                 'success': False,
                 'error': 'Acceso denegado: No se puede acceder a archivos fuera del workspace'
             }), 403
-            
+
         # Eliminar archivo o directorio
         if target_path.is_dir():
             shutil.rmtree(target_path)
         else:
             target_path.unlink()
-            
+
         # Notificar cambio si es posible
         try:
             file_data = {
@@ -693,12 +693,12 @@ def delete_file():
             notify_file_change(user_id, 'delete', file_data)
         except Exception as e:
             logging.warning(f"Error al notificar cambio de archivo: {str(e)}")
-            
+
         return jsonify({
             'success': True,
             'message': f'{"Directorio" if target_path.is_dir() else "Archivo"} eliminado correctamente'
         })
-        
+
     except Exception as e:
         logging.error(f"Error al eliminar archivo: {str(e)}")
         logging.error(traceback.format_exc())
@@ -717,14 +717,14 @@ def rename_file():
                 'success': False,
                 'error': 'Se requiere ruta de archivo y nuevo nombre'
             }), 400
-            
+
         file_path = data['file_path']
         new_name = data['new_name']
-        
+
         # Obtener workspace del usuario
         user_id = session.get('user_id', 'default')
         workspace_path = get_user_workspace(user_id)
-        
+
         # Crear ruta completa y verificar seguridad
         source_path = (workspace_path / file_path).resolve()
         if not str(source_path).startswith(str(workspace_path.resolve())):
@@ -732,20 +732,20 @@ def rename_file():
                 'success': False,
                 'error': 'Acceso denegado: No se puede acceder a archivos fuera del workspace'
             }), 403
-            
+
         # Crear ruta de destino
         target_path = source_path.parent / new_name
-        
+
         # Verificar que el destino no existe
         if target_path.exists():
             return jsonify({
                 'success': False,
                 'error': f'Ya existe un archivo o directorio con el nombre {new_name}'
             }), 400
-            
+
         # Renombrar archivo o directorio
         source_path.rename(target_path)
-        
+
         # Notificar cambio si es posible
         try:
             file_data = {
@@ -757,13 +757,13 @@ def rename_file():
             notify_file_change(user_id, 'rename', file_data)
         except Exception as e:
             logging.warning(f"Error al notificar cambio de archivo: {str(e)}")
-            
+
         return jsonify({
             'success': True,
             'message': f'{"Directorio" if target_path.is_dir() else "Archivo"} renombrado correctamente',
             'new_path': str(target_path.relative_to(workspace_path))
         })
-        
+
     except Exception as e:
         logging.error(f"Error al renombrar archivo: {str(e)}")
         logging.error(traceback.format_exc())
@@ -789,8 +789,7 @@ def rename_file():
                     response_message = f"He ejecutado el comando: `{terminal_command}`\n\n"
 
                     # Mostrar la salida del comando
-                    if result.get('stdout'):
-                        response_message += f"**Salida del comando:**\n```\n{result['stdout']}\n```\n\n"
+                    \n{result['stdout']}\n```\n\n"
 
                     # Mostrar errores si existen
                     if result.get('stderr'):
@@ -933,10 +932,10 @@ def rename_file():
                 for msg in formatted_context:
                     prefix = "Usuario: " if msg['role'] == 'user' else "Asistente: "
                     full_prompt += prefix + msg['content']
-                
+
                 # Añadir instrucciones para corrección de código al prompt
                 full_prompt += f"\n```{language}\n{code}\n```\n\nINSTRUCCIONES:\n{instructions}\n\nResponde en formato JSON con las siguientes claves:\n- correctedCode: el código corregido completo\n- changes: una lista de objetos, cada uno con 'description' y 'lineNumbers'\n- explanation: una explicación detallada de los cambios"
-                
+
                 # Configurar y hacer la llamada a la API
                 response = client.chat.completions.create(
                     model="gpt-4o",
@@ -1403,7 +1402,7 @@ def process_code():
                     content = completion.choices[0].message.content
 
                     # Buscar código entre marcadores de código
-                    code_blocks = re.findall(r'```(?:\w+)?\s*([\s\S]*?)\s*```', content)
+                    code_blocks = re.findall(r'```(?:\w+)?\s*([\s\S]*?)\s*', content)
 
                     # Identificar el bloque de código más relevante
                     corrected_code = max(code_blocks, key=len) if code_blocks else code
@@ -1461,6 +1460,7 @@ def process_code():
         try:
             if language.lower() in ['python', 'py']:
                 # Verificar sintaxis básica de Python
+                import ast
                 ast.parse(response['corrected_code'])
             elif language.lower() in ['javascript', 'js', 'typescript', 'ts']:
                 # Verificación básica para JavaScript/TypeScript
@@ -1576,13 +1576,13 @@ def process_instructions():
                         folder_name = user_input_lower.split("carpeta")[-1].strip()
                         # Limpiar posibles palabras adicionales
                         folder_name = re.sub(r'\s+con\s+.*$|\s+y\s+.*$|\s+que\s+.*$', '', folder_name)
-                    
+
                     terminal_command = f"mkdir -p {folder_name}"
                 elif "crear" in user_input_lower and "archivo" in user_input_lower:
                     # Extraer el nombre del archivo de forma más inteligente
                     file_match = re.search(r'(?:llamad[ao]|nombrad[ao]|con\s+nombre)\s+["\']?([a-zA-Z0-9_\-\.\/]+)["\']?', user_input_lower)
                     content_match = re.search(r'(?:con\s+(?:el\s+)?contenido|con\s+texto|que\s+diga)\s+["\'](.+?)["\']', user_input, re.IGNORECASE)
-                    
+
                     if file_match:
                         file_name = file_match.group(1).strip()
                     else:
@@ -1593,7 +1593,7 @@ def process_instructions():
                             file_name = re.sub(r'\s+con\s+.*$|\s+y\s+.*$|\s+que\s+.*$', '', file_name)
                         else:
                             file_name = "nuevo_archivo.txt"
-                    
+
                     if content_match:
                         content = content_match.group(1)
                         # Escapar para shell
@@ -1609,7 +1609,7 @@ def process_instructions():
                     else:
                         parts = user_input_lower.replace("mostrar", "").replace("contenido", "").replace("del", "").replace("de", "").strip()
                         file_name = parts
-                    
+
                     terminal_command = f"cat {file_name}"
                 elif "eliminar" in user_input_lower or "borrar" in user_input_lower:
                     # Extraer el nombre del archivo/carpeta de forma más inteligente
@@ -1647,7 +1647,7 @@ def process_instructions():
                     # Intentar extraer el nombre original y el nuevo nombre
                     old_file_match = re.search(r'(?:el|la|los|las)?\s*(?:archivo|carpeta|directorio|fichero)?\s*["\']?([a-zA-Z0-9_\-\.\/]+)["\']?', user_input_lower)
                     new_file_match = re.search(r'(?:a|como|por)\s*["\']?([a-zA-Z0-9_\-\.\/]+)["\']?', user_input_lower)
-                    
+
                     if old_file_match and new_file_match:
                         old_name = old_file_match.group(1).strip()
                         new_name = new_file_match.group(1).strip()
@@ -1673,7 +1673,7 @@ def process_instructions():
                     terminal_command = response.choices[0].message.content.strip()
                     # Limpiamos los bloques de código que a veces devuelve
                     terminal_command = terminal_command.replace("```bash", "").replace("```", "").strip()
-                    
+
                     # Verificar si el comando es seguro (no destructivo)
                     dangerous_patterns = ["rm -rf /", "rm -rf ~", "> /dev/sda", "mkfs", ":(){:|:&};:"]
                     if any(pattern in terminal_command for pattern in dangerous_patterns):
@@ -1703,13 +1703,13 @@ def process_instructions():
                 )
 
                 terminal_command = response.content[0].text.strip()
-                
+
                 # Limpiar posibles explicaciones o bloques de código
                 if "```" in terminal_command:
                     terminal_command = re.search(r'```(?:\w+)?\n(.*?)\n```', terminal_command, re.DOTALL)
                     if terminal_command:
                         terminal_command = terminal_command.group(1).strip()
-                
+
                 # Verificar si el comando es seguro (no destructivo)
                 dangerous_patterns = ["rm -rf /", "rm -rf ~", "> /dev/sda", "mkfs", ":(){:|:&};:"]
                 if any(pattern in terminal_command for pattern in dangerous_patterns):
@@ -1753,13 +1753,13 @@ def process_instructions():
                         f"Convert this instruction to a terminal command without any explanation or markdown formatting: {user_input}"
                     )
                     terminal_command = response.text.strip()
-                    
+
                     # Limpiar posibles explicaciones o bloques de código
                     if "```" in terminal_command:
-                        terminal_command = re.search(r'```(?:\w+)?\n(.*?)\n```', terminal_command, re.DOTALL)
+                        terminal_command = re.search(r'```(?:\w+)?\n(.*?)\n', terminal_command, re.DOTALL)
                         if terminal_command:
                             terminal_command = terminal_command.group(1).strip()
-                    
+
                     # Verificar si el comando es seguro (no destructivo)
                     dangerous_patterns = ["rm -rf /", "rm -rf ~", "> /dev/sda", "mkfs", ":(){:|:&};:"]
                     if any(pattern in terminal_command for pattern in dangerous_patterns):
@@ -1836,20 +1836,20 @@ def execute_command():
     try:
         data = request.json
         command = data.get('command', '')
-        
+
         if not command:
             return jsonify({'error': 'No command provided'}), 400
 
         # Get the user workspace
         user_id = session.get('user_id', 'default')
         workspace_path = get_user_workspace(user_id)
-        
+
         # Execute command
         result = execute_command_internal(command)
-        
+
         # Force explorer refresh for file-modifying commands
         should_refresh = any(cmd in command.split()[0] for cmd in ['mkdir', 'touch', 'rm', 'mv', 'cp', 'echo'])
-        
+
         response = {
             'success': result.get('success', False),
             'output': result.get('output', ''),
@@ -2023,16 +2023,16 @@ def process_instructions():
                 "espacio": "df -h",
                 "procesos": "ps aux"
             }
-            
+
             instruction_lower = instruction.lower()
             terminal_command = None
-            
+
             # Check for exact matches first
             for key, cmd in command_map.items():
                 if key in instruction_lower:
                     terminal_command = cmd
                     break
-                    
+
             # If no direct match, use pattern matching
             if not terminal_command:
                 if "crear" in instruction_lower and "carpeta" in instruction_lower:
@@ -2047,10 +2047,10 @@ def process_instructions():
                 else:
                     # Default command if nothing else matches
                     terminal_command = "echo 'Comando no reconocido'"
-            
+
             # Log the generated command
             logging.info(f"Instrucción: '{instruction}' → Comando: '{terminal_command}'")
-            
+
             # Return just the command or with additional context
             if command_only:
                 return jsonify({'command': terminal_command})
@@ -2060,7 +2060,7 @@ def process_instructions():
                     'original_instruction': instruction,
                     'model_used': model_choice
                 })
-                
+
         except Exception as e:
             logging.error(f"Error generating command: {str(e)}")
             return jsonify({'error': f"Error generating command: {str(e)}"}), 500
@@ -2080,394 +2080,28 @@ def process_command():
                 'success': False,
                 'error': 'No data provided'
             }), 400
-            
+
         # Aceptar tanto 'command' como 'instruction'
         command = data.get('command', '')
         instruction = data.get('instruction', '')
-        
+
         # Si se proporciona instrucción pero no comando, usar la instrucción
         if not command and instruction:
             command = instruction
-        
+
         if not command:
             return jsonify({
                 'success': False,
                 'error': 'No command provided'
             }), 400
-            
+
         # Execute the command using our existing function
         result = execute_command_internal(command)
-        
-        # Para comandos que modifican archivos, actualizar explorador
-        should_refresh = any(cmd in command.split()[0] for cmd in ['mkdir', 'touch', 'rm', 'mv', 'cp', 'echo'])
-        
-        return jsonify({
-            'success': result.get('success', False),
-            'output': result.get('stdout', '') + (result.get('stderr', '') if result.get('stderr') else ''),
-            'status': result.get('status', 1),
-            'command': command,
-            'refresh_explorer': should_refresh
-        })
-        
-    except Exception as e:
-        logging.error(f"Error processing command: {str(e)}")
-        logging.error(traceback.format_exc())
-        return jsonify({
-            'success': False,
-            'error': str(e)
-        }), 500
 
-@app.route('/api/file/delete', methods=['POST'])
-def delete_file():
-    """Eliminar un archivo o carpeta."""
-    try:
-        data = request.json
-        if not data or 'file_path' not in data:
-            return jsonify({
-                'success': False,
-                'error': 'Se requiere ruta de archivo'
-            }), 400
-            
-        file_path = data['file_path']
-        
-        # Obtener workspace del usuario
-        user_id = session.get('user_id', 'default')
-        workspace_path = get_user_workspace(user_id)
-        
-        # Crear ruta completa y verificar seguridad
-        target_path = (workspace_path / file_path).resolve()
-        if not str(target_path).startswith(str(workspace_path.resolve())):
-            return jsonify({
-                'success': False,
-                'error': 'Acceso denegado: No se puede acceder a archivos fuera del workspace'
-            }), 403
-            
-        # Eliminar archivo o directorio
-        if target_path.is_dir():
-            shutil.rmtree(target_path)
-        else:
-            target_path.unlink()
-            
-        # Notificar cambio si es posible
-        try:
-            file_data = {
-                'path': file_path,
-                'name': target_path.name,
-                'type': 'directory' if target_path.is_dir() else 'file'
-            }
-            notify_file_change(user_id, 'delete', file_data)
-        except Exception as e:
-            logging.warning(f"Error al notificar cambio de archivo: {str(e)}")
-            
-        return jsonify({
-            'success': True,
-            'message': f'{"Directorio" if target_path.is_dir() else "Archivo"} eliminado correctamente'
-        })
-        
-    except Exception as e:
-        logging.error(f"Error al eliminar archivo: {str(e)}")
-        logging.error(traceback.format_exc())
-        return jsonify({
-            'success': False,
-            'error': str(e)
-        }), 500
-
-@app.route('/api/file/edit', methods=['POST'])
-def edit_file():
-    """Editar contenido de un archivo."""
-    try:
-        data = request.json
-        if not data or 'file_path' not in data or 'content' not in data:
-            return jsonify({
-                'success': False,
-                'error': 'Se requiere ruta de archivo y contenido'
-            }), 400
-            
-        file_path = data['file_path']
-        content = data['content']
-        
-        # Obtener workspace del usuario
-        user_id = session.get('user_id', 'default')
-        workspace_path = get_user_workspace(user_id)
-        
-        # Crear ruta completa y verificar seguridad
-        target_path = (workspace_path / file_path).resolve()
-        if not str(target_path).startswith(str(workspace_path.resolve())):
-            return jsonify({
-                'success': False,
-                'error': 'Acceso denegado: No se puede acceder a archivos fuera del workspace'
-            }), 403
-            
-        # No permitir editar directorios
-        if target_path.is_dir():
-            return jsonify({
-                'success': False,
-                'error': 'No se puede editar un directorio'
-            }), 400
-            
-        # Escribir contenido al archivo
-        with open(target_path, 'w') as f:
-            f.write(content)
-            
-        # Notificar cambio si es posible
-        try:
-            file_data = {
-                'path': file_path,
-                'name': target_path.name,
-                'type': 'file'
-            }
-            notify_file_change(user_id, 'update', file_data)
-        except Exception as e:
-            logging.warning(f"Error al notificar cambio de archivo: {str(e)}")
-            
-        return jsonify({
-            'success': True,
-            'message': 'Archivo editado correctamente'
-        })
-        
-    except Exception as e:
-        logging.error(f"Error al editar archivo: {str(e)}")
-        logging.error(traceback.format_exc())
-        return jsonify({
-            'success': False,
-            'error': str(e)
-        }), 500
-
-@app.route('/api/file/rename', methods=['POST'])
-def rename_file():
-    """Renombrar un archivo o carpeta."""
-    try:
-        data = request.json
-        if not data or 'file_path' not in data or 'new_name' not in data:
-            return jsonify({
-                'success': False,
-                'error': 'Se requiere ruta de archivo y nuevo nombre'
-            }), 400
-            
-        file_path = data['file_path']
-        new_name = data['new_name']
-        
-        # Obtener workspace del usuario
-        user_id = session.get('user_id', 'default')
-        workspace_path = get_user_workspace(user_id)
-        
-        # Crear ruta completa y verificar seguridad
-        source_path = (workspace_path / file_path).resolve()
-        if not str(source_path).startswith(str(workspace_path.resolve())):
-            return jsonify({
-                'success': False,
-                'error': 'Acceso denegado: No se puede acceder a archivos fuera del workspace'
-            }), 403
-            
-        # Crear ruta de destino
-        target_path = source_path.parent / new_name
-        
-        # Verificar que el destino no existe
-        if target_path.exists():
-            return jsonify({
-                'success': False,
-                'error': f'Ya existe un archivo o directorio con el nombre {new_name}'
-            }), 400
-            
-        # Renombrar archivo o directorio
-        source_path.rename(target_path)
-        
-        # Notificar cambio si es posible
-        try:
-            file_data = {
-                'path': str(target_path.relative_to(workspace_path)),
-                'name': target_path.name,
-                'type': 'directory' if target_path.is_dir() else 'file',
-                'old_path': file_path
-            }
-            notify_file_change(user_id, 'rename', file_data)
-        except Exception as e:
-            logging.warning(f"Error al notificar cambio de archivo: {str(e)}")
-            
-        return jsonify({
-            'success': True,
-            'message': f'{"Directorio" if target_path.is_dir() else "Archivo"} renombrado correctamente',
-            'new_path': str(target_path.relative_to(workspace_path))
-        })
-        
-    except Exception as e:
-        logging.error(f"Error al renombrar archivo: {str(e)}")
-        logging.error(traceback.format_exc())
-        return jsonify({
-            'success': False,
-            'error': str(e)
-        }), 500
-
-@app.route('/api/file/create', methods=['POST'])
-def create_file():
-    """Crear un nuevo archivo o carpeta."""
-    try:
-        data = request.json
-        if not data or 'file_path' not in data:
-            return jsonify({
-                'success': False,
-                'error': 'Se requiere ruta de archivo'
-            }), 400
-            
-        file_path = data['file_path']
-        is_directory = data.get('is_directory', False)
-        content = data.get('content', '')
-        
-        # Obtener workspace del usuario
-        user_id = session.get('user_id', 'default')
-        workspace_path = get_user_workspace(user_id)
-        
-        # Crear ruta completa y verificar seguridad
-        target_path = (workspace_path / file_path).resolve()
-        if not str(target_path).startswith(str(workspace_path.resolve())):
-            return jsonify({
-                'success': False,
-                'error': 'Acceso denegado: No se puede acceder a archivos fuera del workspace'
-            }), 403
-            
-        # Verificar que el destino no existe
-        if target_path.exists():
-            return jsonify({
-                'success': False,
-                'error': f'Ya existe un archivo o directorio en {file_path}'
-            }), 400
-            
-        # Crear directorio o archivo
-        if is_directory:
-            target_path.mkdir(parents=True, exist_ok=True)
-        else:
-            # Asegurarse de que el directorio padre existe
-            target_path.parent.mkdir(parents=True, exist_ok=True)
-            # Crear archivo
-            with open(target_path, 'w') as f:
-                f.write(content)
-                
-        # Notificar cambio si es posible
-        try:
-            file_data = {
-                'path': file_path,
-                'name': target_path.name,
-                'type': 'directory' if is_directory else 'file'
-            }
-            notify_file_change(user_id, 'create', file_data)
-        except Exception as e:
-            logging.warning(f"Error al notificar cambio de archivo: {str(e)}")
-            
-        return jsonify({
-            'success': True,
-            'message': f'{"Directorio" if is_directory else "Archivo"} creado correctamente'
-        })
-        
-    except Exception as e:
-        logging.error(f"Error al crear archivo: {str(e)}")
-        logging.error(traceback.format_exc())
-        return jsonify({
-            'success': False,
-            'error': str(e)
-        }), 500
-
-@app.route('/api/package/install', methods=['POST'])
-def install_package():
-    """Instalar un paquete o dependencia."""
-    try:
-        data = request.json
-        if not data or 'package' not in data:
-            return jsonify({
-                'success': False,
-                'error': 'Se requiere nombre del paquete'
-            }), 400
-            
-        package_name = data['package']
-        package_manager = data.get('manager', 'pip')  # Por defecto pip, pero puede ser npm, yarn, etc.
-        
-        # Obtener workspace del usuario
-        user_id = session.get('user_id', 'default')
-        workspace_path = get_user_workspace(user_id)
-        
-        # Construir el comando según el gestor de paquetes
-        if package_manager == 'pip':
-            command = f"pip install {package_name}"
-        elif package_manager == 'npm':
-            command = f"npm install {package_name}"
-        elif package_manager == 'yarn':
-            command = f"yarn add {package_name}"
-        elif package_manager == 'poetry':
-            command = f"poetry add {package_name}"
-        elif package_manager == 'apt':
-            command = f"apt-get install -y {package_name}"
-        else:
-            return jsonify({
-                'success': False,
-                'error': f'Gestor de paquetes no soportado: {package_manager}'
-            }), 400
-            
-        # Ejecutar el comando
-        process = subprocess.Popen(
-            command,
-            shell=True,
-            cwd=str(workspace_path),
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=True
-        )
-        stdout, stderr = process.communicate()
-        
-        # Verificar si la instalación fue exitosa
-        if process.returncode == 0:
-            return jsonify({
-                'success': True,
-                'message': f'Paquete {package_name} instalado correctamente',
-                'stdout': stdout,
-                'stderr': stderr
-            })
-        else:
-            return jsonify({
-                'success': False,
-                'error': f'Error al instalar paquete: {stderr}',
-                'stdout': stdout,
-                'stderr': stderr
-            })
-            
-    except Exception as e:
-        logging.error(f"Error al instalar paquete: {str(e)}")
-        logging.error(traceback.format_exc())
-        return jsonify({
-            'success': False,
-            'error': str(e)
-        }), 500
-
-@app.route('/api/process', methods=['POST'])
-def process_command():
-    """Process commands from the terminal interface."""
-    try:
-        data = request.json
-        if not data:
-            return jsonify({
-                'success': False,
-                'error': 'No data provided'
-            }), 400
-            
-        # Aceptar tanto 'command' como 'instruction'
-        command = data.get('command', '')
-        instruction = data.get('instruction', '')
-        
-        # Si se proporciona instrucción pero no comando, usar la instrucción
-        if not command and instruction:
-            command = instruction
-        
-        if not command:
-            return jsonify({
-                'success': False,
-                'error': 'No command provided'
-            }), 400
-            
-        # Execute the command using our existing function
-        result = execute_command_internal(command)
-        
         # Para comandos que modifican archivos, actualizar explorador
         file_modify_cmds = ['mkdir', 'touch', 'rm', 'mv', 'cp', 'echo', 'cat', 'git', 'npm', 'pip']
         should_refresh = any(cmd in command.split()[0] for cmd in file_modify_cmds)
-        
+
         return jsonify({
             'success': result.get('success', False),
             'output': result.get('stdout', '') + (result.get('stderr', '') if result.get('stderr') else ''),
@@ -2475,7 +2109,7 @@ def process_command():
             'command': command,
             'refresh_explorer': should_refresh
         })
-        
+
     except Exception as e:
         logging.error(f"Error processing command: {str(e)}")
         logging.error(traceback.format_exc())
@@ -2514,7 +2148,7 @@ def process_code():
 
                 result = json.loads(completion.choices[0].message.content)
                 logging.info("Código corregido con OpenAI")
-                
+
                 return jsonify({
                     'success': True,
                     'corrected_code': result.get('corrected_code', code),
@@ -2528,12 +2162,12 @@ def process_code():
                     'success': False,
                     'error': f'Error al conectar con OpenAI: {str(e)}'
                 }), 500
-                
+
         # Si tenemos Anthropic disponible, usarlo como fallback
         elif model == 'anthropic' or (model == 'openai' and not os.environ.get('OPENAI_API_KEY') and os.environ.get('ANTHROPIC_API_KEY')):
             try:
                 client = anthropic.Anthropic(api_key=os.environ.get('ANTHROPIC_API_KEY'))
-                
+
                 response = client.messages.create(
                     model="claude-3-5-sonnet-latest",
                     max_tokens=4000,
@@ -2542,7 +2176,7 @@ def process_code():
                         {"role": "user", "content": f"CÓDIGO:\n```{language}\n{code}\n```\n\nINSTRUCCIONES:\n{instructions}\n\nResponde en formato JSON con las siguientes claves:\n- corrected_code: el código corregido completo\n- changes: una lista de objetos, cada uno con 'description' y 'lineNumbers'\n- explanation: una explicación detallada de los cambios"}
                     ]
                 )
-                
+
                 # Intentar extraer el JSON de la respuesta
                 result = {}
                 try:
@@ -2555,282 +2189,4 @@ def process_code():
                 except Exception as parse_error:
                     logging.error(f"Error parseando respuesta de Anthropic: {str(parse_error)}")
                     # Intentar extraer el código al menos
-                    code_match = re.search(r'```(?:{language})?(.*?)```', response.content[0].text, re.DOTALL)
-                    if code_match:
-                        result = {
-                            'corrected_code': code_match.group(1).strip(),
-                            'changes': [],
-                            'explanation': 'Error al parsear la respuesta completa'
-                        }
-                
-                logging.info("Código corregido con Anthropic")
-                
-                return jsonify({
-                    'success': True,
-                    'corrected_code': result.get('corrected_code', code),
-                    'changes': result.get('changes', []),
-                    'explanation': result.get('explanation', 'No se proporcionó explicación detallada.')
-                })
-                
-            except Exception as e:
-                logging.error(f"Error con API de Anthropic: {str(e)}")
-                return jsonify({
-                    'success': False,
-                    'error': f'Error al conectar con Anthropic: {str(e)}'
-                }), 500
-                
-        # Si no tenemos APIs de IA disponibles, intentar una corrección básica
-        else:
-            # Implementar corrector básico para casos comunes
-            corrected_code = code
-            changes = []
-            explanation = "No se pudo realizar una corrección avanzada porque no hay APIs configuradas. Se recomienda configurar las claves de API en el panel de Secrets."
-            
-            # Algunas correcciones básicas para Python
-            if language == 'python':
-                # Corregir indentación inconsistente
-                lines = code.split('\n')
-                for i, line in enumerate(lines):
-                    if line.strip() and line[0] == ' ' and line[1] == ' ' and line[2] != ' ':
-                        corrected_line = '    ' + line.lstrip()
-                        lines[i] = corrected_line
-                        changes.append({
-                            'description': f'Corregida indentación inconsistente en línea {i+1}',
-                            'lineNumbers': [i+1],
-                            'importance': 'media'
-                        })
-                
-                # Corregir errores comunes como print sin paréntesis
-                for i, line in enumerate(lines):
-                    if re.match(r'^\s*print\s+[^(]', line):
-                        content = re.sub(r'^\s*print\s+', '', line)
-                        corrected_line = re.sub(r'^\s*print\s+', 'print(', line) + ')'
-                        lines[i] = corrected_line
-                        changes.append({
-                            'description': f'Corregido print sin paréntesis en línea {i+1}',
-                            'lineNumbers': [i+1],
-                            'importance': 'alta'
-                        })
-                
-                corrected_code = '\n'.join(lines)
-            
-            return jsonify({
-                'success': len(changes) > 0,
-                'corrected_code': corrected_code,
-                'changes': changes,
-                'explanation': explanation
-            })
-
-    except Exception as e:
-        logging.error(f"Error al procesar la solicitud de código: {str(e)}")
-        logging.error(traceback.format_exc())
-        return jsonify({
-            'success': False,
-            'error': f'Error al procesar la solicitud: {str(e)}'
-        }), 500
-
-@app.route('/api/health', methods=['GET'])
-def health_check():
-    """Check the health status of the application."""
-    try:
-        # Check database connection
-        db_status = "ok"
-        try:
-            from sqlalchemy import text
-            db.session.execute(text('SELECT 1'))
-            db.session.commit()
-        except Exception as e:
-            db_status = f"error: {str(e)}"
-            logging.error(f"Database error: {str(e)}")
-
-        # Check API configurations
-        apis = {
-            "openai": "ok" if os.environ.get('OPENAI_API_KEY') else "not configured",
-            "anthropic": "ok" if os.environ.get('ANTHROPIC_API_KEY') else "not configured",
-            "gemini": "ok" if os.environ.get('GEMINI_API_KEY') else "not configured"
-        }
-
-        return jsonify({
-            "status": "ok",
-            "timestamp": datetime.now().isoformat(),
-            "version": "1.0.0",
-            "database": db_status,
-            "apis": apis
-        })
-    except Exception as e:
-        logging.error(f"Error in health check: {str(e)}")
-        return jsonify({
-            "status": "error",
-            "error": str(e),
-            "timestamp": datetime.now().isoformat()
-        }), 500
-
-# Endpoint simplificado para la verificación del servidor
-@app.route('/health', methods=['GET'])
-def simple_health_check():
-    """Simple health check endpoint."""
-    return jsonify({"status": "ok"})
-
-@app.route('/api/health', methods=['GET'])
-def api_health_check():
-    """API health check endpoint."""
-    return jsonify({
-        "status": "ok",
-        "apis": {
-            "openai": "ok" if os.environ.get('OPENAI_API_KEY') else "not configured",
-            "anthropic": "ok" if os.environ.get('ANTHROPIC_API_KEY') else "not configured",
-            "gemini": "ok" if os.environ.get('GEMINI_API_KEY') else "not configured"
-        }
-    })
-
-@app.route('/api/generate', methods=['POST'])
-def generate():
-    """Fallback endpoint for content generation."""
-    try:
-        data = request.json
-        message = data.get('message', '')
-        model_choice = data.get('model', 'openai')
-
-        if not message:
-            return jsonify({
-                'success': False,
-                'error': 'Message is required'
-            }), 400
-
-        # Default to OpenAI if no other model is available
-        try:
-            client = openai.OpenAI()
-            completion = client.chat.completions.create(
-                model="gpt-4o",
-                messages=[
-                    {"role": "system", "content": "You are a helpful assistant."},
-                    {"role": "user", "content": message}
-                ],
-                temperature=0.7,
-                max_tokens=1000
-            )
-            response = completion.choices[0].message.content
-        except Exception as e:
-            logging.error(f"Error in content generation: {str(e)}")
-            return jsonify({
-                'success': False,
-                'error': str(e)
-            }), 500
-
-        return jsonify({
-            'success': True,
-            'response': response
-        })
-
-    except Exception as e:
-        logging.error(f"Error in generate endpoint: {str(e)}")
-        return jsonify({
-            'success': False,
-            'error': str(e)
-        }), 500
-
-# Socket.IO setup
-socketio = SocketIO(app, cors_allowed_origins="*", async_mode='threading', ping_timeout=60, ping_interval=25, logger=True, engineio_logger=True)
-
-# Socket.IO event handlers
-@socketio.on('connect')
-def handle_connect():
-    """Manejar conexión de cliente Socket.IO."""
-    logging.info(f"Cliente Socket.IO conectado: {request.sid}")
-    emit('server_info', {'status': 'connected', 'sid': request.sid})
-
-@socketio.on('disconnect')
-def handle_disconnect():
-    """Manejar desconexión de cliente Socket.IO."""
-    logging.info(f"Cliente Socket.IO desconectado: {request.sid}")
-
-@socketio.on('user_message')
-def handle_user_message(data):
-    """Manejar mensajes del usuario a través de Socket.IO."""
-    try:
-        logging.info(f"Mensaje recibido vía Socket.IO: {data}")
-        user_message = data.get('message', '')
-        agent_id = data.get('agent', 'architect')
-        model = data.get('model', 'gemini')
-        document = data.get('document', '')
-
-        if not user_message:
-            emit('error', {'message': 'Mensaje vacío'})
-            return
-
-        logging.info(f"Procesando mensaje Socket.IO: '{user_message[:30]}...' usando agente {agent_id} y modelo {model}")
-
-        # Preparar datos para procesamiento
-        request_data = {
-            'message': user_message,
-            'agent_id': agent_id,
-            'model': model,
-            'context': data.get('context', [])
-        }
-
-        # Procesar el mensaje usando la lógica existente
-        result = handle_chat_internal(request_data)
-
-        # Enviar respuesta al cliente
-        logging.info(f"Enviando respuesta Socket.IO: '{result.get('response', '')[:30]}...'")
-        emit('agent_response', {
-            'response': result.get('response', ''),
-            'agent': agent_id,
-            'model': model,
-            'error': result.get('error', None)
-        })
-
-    except Exception as e:
-        logging.error(f"Error en Socket.IO user_message: {str(e)}")
-        logging.error(traceback.format_exc())
-        emit('error', {'message': str(e)})
-
-# Función para notificar cambios de archivos
-def notify_file_change(workspace_id, change_type, file_data):
-    """Send real-time notification about file changes."""
-    try:
-        socketio.emit('file_change', {
-            'type': change_type,  # 'create', 'update', 'delete'
-            'workspace': workspace_id,
-            'file': file_data
-        })
-        logging.debug(f"Notificación de cambio de archivo enviada: {change_type} {file_data['path']}")
-    except Exception as e:
-        logging.error(f"Error al notificar cambio de archivo: {str(e)}")
-
-# Función para servir archivos estáticos
-@app.route('/static/<path:filename>')
-def serve_static(filename):
-    return app.send_static_file(filename)
-
-# Start server when running directly
-if __name__ == '__main__':
-    try:
-        logging.info("Iniciando servidor CODESTORM Assistant...")
-
-        # Comprobar claves de API
-        if not openai_api_key:
-            logging.warning("OPENAI_API_KEY no configurada - funcionalidades de OpenAI estarán deshabilitadas")
-        if not anthropic_api_key:
-            logging.warning("ANTHROPIC_API_KEY no configurada - funcionalidades de Anthropic estarán deshabilitadas")
-        if not gemini_api_key:
-            logging.warning("GEMINI_API_KEY no configurada - funcionalidades de Gemini estarán deshabilitadas")
-
-        # Comprobar si al menos una API está configurada
-        if not any([openai_api_key, anthropic_api_key, gemini_api_key]):
-            logging.error("¡ADVERTENCIA! Ninguna API está configurada. El sistema funcionará en modo degradado.")
-
-        import threading
-        # Start file watcher in a background thread
-        file_watcher_thread = threading.Thread(target=watch_workspace_files, daemon=True)
-        file_watcher_thread.start()
-
-        logging.info("Servidor listo para recibir conexiones")
-
-        # Start the SocketIO server
-        socketio.run(app, host='0.0.0.0', port=5000, debug=True)
-    except Exception as e:
-        logging.critical(f"Error fatal al iniciar el servidor: {str(e)}")
-        logging.critical(traceback.format_exc())
-
-# La función terminal ya está definida anteriormente en el archivo
+                    code_match = re.search(r'```(?:{language})?(.*?)

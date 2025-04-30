@@ -268,8 +268,6 @@ class DebugAI {
         });
     }
 };
-    }
-}
 
 // Exportar para uso en navegador o Node.js
 if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
