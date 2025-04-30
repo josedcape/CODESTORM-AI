@@ -1,5 +1,3 @@
-# Corrección del código completo
-
 from flask import Flask, render_template, request, jsonify, session, redirect, send_file
 from flask_cors import CORS
 from flask_socketio import SocketIO, emit
@@ -19,7 +17,7 @@ import threading
 
 # Configurar logging
 logging.basicConfig(level=logging.DEBUG,
-                   format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+                    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
 # Cargar variables de entorno
 load_dotenv()
@@ -29,7 +27,7 @@ app = Flask(__name__)
 app.secret_key = os.getenv('SECRET_KEY', 'default_secret_key')  # Añadido secret_key para session
 CORS(app)
 socketio = SocketIO(app, cors_allowed_origins="*", async_mode='threading',
-                   ping_timeout=60, ping_interval=25, logger=True, engineio_logger=True)
+                    ping_timeout=60, ping_interval=25, logger=True, engineio_logger=True)
 
 # Configurar claves API
 openai_api_key = os.getenv('OPENAI_API_KEY')
@@ -278,7 +276,7 @@ def handle_chat_internal(request_data):
                 "content": msg.get('content', '')
             })
 
-        USING_NEW_OPENAI_CLIENT = False #  Determine this based on your openai client version.  This is a placeholder.
+        USING_NEW_OPENAI_CLIENT = False  # Determine this based on your openai client version. This is a placeholder.
 
         if model_choice == 'openai':
             if openai_api_key:
@@ -654,7 +652,8 @@ def process_code_endpoint():
             'success': False,
             'error': f'Error al procesar la solicitud: {str(e)}'
         }), 500
-        @app.route('/api/process_natural', methods=['POST'])
+
+@app.route('/api/process_natural', methods=['POST'])
 def process_natural_command():
     """Process natural language input and return corresponding command."""
     try:
@@ -850,7 +849,7 @@ def process_instructions():
         logging.error(f"Error generating command: {str(e)}")
         return jsonify({'error': f"Error generating command: {str(e)}"}), 500
 
-                    @app.route('/api/health', methods=['GET'])
+@app.route('/api/health', methods=['GET'])
 def health_check():
     """Health check endpoint for the application."""
     try:
@@ -874,7 +873,7 @@ def health_check():
             "timestamp": time.time()
         }), 500
 
-                    @app.route('/api/files', methods=['GET'])
+@app.route('/api/files', methods=['GET'])
 def list_files_api():
     """API para listar archivos del workspace del usuario."""
     try:
@@ -946,457 +945,458 @@ def list_files_api():
             'error': str(e)
         }), 500
 
-                    @app.route('/api/files/read', methods=['GET'])
-                    def read_file():
-                    """API para leer el contenido de un archivo en el workspace del usuario."""
-                    try:
-                    file_path = request.args.get('file_path')
-                    user_id = request.args.get('user_id', 'default')
+@app.route('/api/files/read', methods=['GET'])
+def read_file():
+    """API para leer el contenido de un archivo en el workspace del usuario."""
+    try:
+        file_path = request.args.get('file_path')
+        user_id = request.args.get('user_id', 'default')
 
-                    if not file_path:
-                    return jsonify({
-                    'success': False,
-                    'error': 'No se proporcionó ruta de archivo'
-                    }), 400
+        if not file_path:
+            return jsonify({
+                'success': False,
+                'error': 'No se proporcionó ruta de archivo'
+            }), 400
 
-                    user_workspace = get_user_workspace(user_id)
+        user_workspace = get_user_workspace(user_id)
 
-                    file_path = file_path.replace('..', '').strip('/')
-                    full_path = os.path.join(user_workspace, file_path)
+        file_path = file_path.replace('..', '').strip('/')
+        full_path = os.path.join(user_workspace, file_path)
 
-                    if not os.path.exists(full_path):
-                    return jsonify({
-                    'success': False,
-                    'error': 'Archivo no encontrado'
-                    }), 404
+        if not os.path.exists(full_path):
+            return jsonify({
+                'success': False,
+                'error': 'Archivo no encontrado'
+            }), 404
 
-                    if os.path.isdir(full_path):
-                    return jsonify({
-                    'success': False,
-                    'error': 'La ruta especificada es un directorio'
-                    }), 400
+        if os.path.isdir(full_path):
+            return jsonify({
+                'success': False,
+                'error': 'La ruta especificada es un directorio'
+            }), 400
 
-                    try:
-                    binary_extensions = ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'zip', 'pdf', 'doc', 'docx', 'xls', 'xlsx']
-                    file_ext = os.path.splitext(file_path)[1].lower()[1:] if '.' in file_path else ''
+        try:
+            binary_extensions = ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'zip', 'pdf', 'doc', 'docx', 'xls', 'xlsx']
+            file_ext = os.path.splitext(file_path)[1].lower()[1:] if '.' in file_path else ''
 
-                    if file_ext in binary_extensions:
-                    return jsonify({
-                        'success': True,
-                        'is_binary': True,
-                        'file_path': file_path,
-                        'file_url': f'/api/files/download?file_path={file_path}&user_id={user_id}'
-                    })
-
-                    with open(full_path, 'r', encoding='utf-8', errors='replace') as f:
-                    content = f.read()
-
-                    return jsonify({
+            if file_ext in binary_extensions:
+                return jsonify({
                     'success': True,
-                    'content': content,
+                    'is_binary': True,
                     'file_path': file_path,
-                    'is_binary': False
-                    })
-                    except Exception as e:
-                    logging.error(f"Error al leer archivo: {str(e)}")
-                    return jsonify({
-                    'success': False,
-                    'error': f'Error al leer archivo: {str(e)}'
-                    }), 500
+                    'file_url': f'/api/files/download?file_path={file_path}&user_id={user_id}'
+                })
 
-                    except Exception as e:
-                    logging.error(f"Error en endpoint de lectura de archivo: {str(e)}")
-                    return jsonify({
-                    'success': False,
-                    'error': str(e)
-                    }), 500
+            with open(full_path, 'r', encoding='utf-8', errors='replace') as f:
+                content = f.read()
 
-                    @app.route('/api/files/create', methods=['POST'])
-                    def create_file():
-                    """API para crear un archivo o directorio en el workspace del usuario."""
-                    try:
-                    data = request.json
-                    if not data:
-                    return jsonify({
-                    'success': False,
-                    'error': 'No se proporcionaron datos'
-                    }), 400
+            return jsonify({
+                'success': True,
+                'content': content,
+                'file_path': file_path,
+                'is_binary': False
+            })
+        except Exception as e:
+            logging.error(f"Error al leer archivo: {str(e)}")
+            return jsonify({
+                'success': False,
+                'error': f'Error al leer archivo: {str(e)}'
+            }), 500
 
-                    file_path = data.get('file_path')
-                    content = data.get('content', '')
-                    is_directory = data.get('is_directory', False)
-                    user_id = data.get('user_id', 'default')
+    except Exception as e:
+        logging.error(f"Error en endpoint de lectura de archivo: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
 
-                    if not file_path:
-                    return jsonify({
-                    'success': False,
-                    'error': 'No se proporcionó ruta de archivo'
-                    }), 400
+@app.route('/api/files/create', methods=['POST'])
+def create_file():
+    """API para crear un archivo o directorio en el workspace del usuario."""
+    try:
+        data = request.json
+        if not data:
+            return jsonify({
+                'success': False,
+                'error': 'No se proporcionaron datos'
+            }), 400
 
-                    user_workspace = get_user_workspace(user_id)
+        file_path = data.get('file_path')
+        content = data.get('content', '')
+        is_directory = data.get('is_directory', False)
+        user_id = data.get('user_id', 'default')
 
-                    file_path = file_path.replace('..', '').strip('/')
-                    full_path = os.path.join(user_workspace, file_path)
+        if not file_path:
+            return jsonify({
+                'success': False,
+                'error': 'No se proporcionó ruta de archivo'
+            }), 400
 
-                    if os.path.exists(full_path):
-                    return jsonify({
-                    'success': False,
-                    'error': f'Ya existe un{"a carpeta" if is_directory else " archivo"} con ese nombre'
-                    }), 400
+        user_workspace = get_user_workspace(user_id)
 
-                    try:
-                    if is_directory:
-                    os.makedirs(full_path, exist_ok=True)
-                    message = f'Directorio {file_path} creado exitosamente'
-                    else:
-                    parent_dir = os.path.dirname(full_path)
-                    if parent_dir and not os.path.exists(parent_dir):
-                        os.makedirs(parent_dir, exist_ok=True)
+        file_path = file_path.replace('..', '').strip('/')
+        full_path = os.path.join(user_workspace, file_path)
 
-                    with open(full_path, 'w', encoding='utf-8') as f:
-                        f.write(content)
+        if os.path.exists(full_path):
+            return jsonify({
+                'success': False,
+                'error': f'Ya existe un{"a carpeta" if is_directory else " archivo"} con ese nombre'
+            }), 400
 
-                    message = f'Archivo {file_path} creado exitosamente'
+        try:
+            if is_directory:
+                os.makedirs(full_path, exist_ok=True)
+                message = f'Directorio {file_path} creado exitosamente'
+            else:
+                parent_dir = os.path.dirname(full_path)
+                if parent_dir and not os.path.exists(parent_dir):
+                    os.makedirs(parent_dir, exist_ok=True)
 
-                    return jsonify({
-                    'success': True,
-                    'message': message,
-                    'file_path': file_path,
-                    'is_directory': is_directory
-                    })
-                    except Exception as e:
-                    logging.error(f"Error al crear archivo/directorio: {str(e)}")
-                    return jsonify({
-                    'success': False,
-                    'error': f'Error al crear: {str(e)}'
-                    }), 500
+                with open(full_path, 'w', encoding='utf-8') as f:
+                    f.write(content)
 
-                    except Exception as e:
-                    logging.error(f"Error en endpoint de creación: {str(e)}")
-                    return jsonify({
-                    'success': False,
-                    'error': str(e)
-                    }), 500
+                message = f'Archivo {file_path} creado exitosamente'
 
-                    @app.route('/api/files/delete', methods=['DELETE'])
-                    def delete_file():
-                    """API para eliminar un archivo o directorio del workspace del usuario."""
-                    try:
-                    data = request.json
-                    if not data:
-                    return jsonify({
-                    'success': False,
-                    'error': 'No se proporcionaron datos'
-                    }), 400
+            return jsonify({
+                'success': True,
+                'message': message,
+                'file_path': file_path,
+                'is_directory': is_directory
+            })
+        except Exception as e:
+            logging.error(f"Error al crear archivo/directorio: {str(e)}")
+            return jsonify({
+                'success': False,
+                'error': f'Error al crear: {str(e)}'
+            }), 500
 
-                    file_path = data.get('file_path')
-                    user_id = data.get('user_id', 'default')
+    except Exception as e:
+        logging.error(f"Error en endpoint de creación: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
 
-                    if not file_path:
-                    return jsonify({
-                    'success': False,
-                    'error': 'No se proporcionó ruta de archivo'
-                    }), 400
+@app.route('/api/files/delete', methods=['DELETE'])
+def delete_file():
+    """API para eliminar un archivo o directorio del workspace del usuario."""
+    try:
+        data = request.json
+        if not data:
+            return jsonify({
+                'success': False,
+                'error': 'No se proporcionaron datos'
+            }), 400
 
-                    user_workspace = get_user_workspace(user_id)
+        file_path = data.get('file_path')
+        user_id = data.get('user_id', 'default')
 
-                    file_path = file_path.replace('..', '').strip('/')
-                    full_path = os.path.join(user_workspace, file_path)
+        if not file_path:
+            return jsonify({
+                'success': False,
+                'error': 'No se proporcionó ruta de archivo'
+            }), 400
 
-                    if not os.path.exists(full_path):
-                    return jsonify({
-                    'success': False,
-                    'error': 'Archivo o directorio no encontrado'
-                    }), 404
+        user_workspace = get_user_workspace(user_id)
 
-                    try:
-                    if os.path.isdir(full_path):
-                    shutil.rmtree(full_path)
-                    message = f'Directorio {file_path} eliminado exitosamente'
-                    else:
-                    os.remove(full_path)
-                    message = f'Archivo {file_path} eliminado exitosamente'
+        file_path = file_path.replace('..', '').strip('/')
+        full_path = os.path.join(user_workspace, file_path)
 
-                    return jsonify({
-                    'success': True,
-                    'message': message,
-                    'file_path': file_path,
-                    'is_directory': os.path.isdir(full_path)
-                    })
-                    except Exception as e:
-                    logging.error(f"Error al eliminar: {str(e)}")
-                    return jsonify({
-                    'success': False,
-                    'error': f'Error al eliminar: {str(e)}'
-                    }), 500
+        if not os.path.exists(full_path):
+            return jsonify({
+                'success': False,
+                'error': 'Archivo o directorio no encontrado'
+            }), 404
 
-                    except Exception as e:
-                    logging.error(f"Error en endpoint de eliminación: {str(e)}")
-                    return jsonify({
-                    'success': False,
-                    'error': str(e)
-                    }), 500
+        try:
+            if os.path.isdir(full_path):
+                shutil.rmtree(full_path)
+                message = f'Directorio {file_path} eliminado exitosamente'
+            else:
+                os.remove(full_path)
+                message = f'Archivo {file_path} eliminado exitosamente'
 
-                    @app.route('/api/files/download', methods=['GET'])
-                    def download_file():
-                    """API para descargar un archivo desde el workspace del usuario."""
-                    try:
-                    file_path = request.args.get('file_path')
-                    user_id = request.args.get('user_id', 'default')
+            return jsonify({
+                'success': True,
+                'message': message,
+                'file_path': file_path,
+                'is_directory': os.path.isdir(full_path)
+            })
+        except Exception as e:
+            logging.error(f"Error al eliminar: {str(e)}")
+            return jsonify({
+                'success': False,
+                'error': f'Error al eliminar: {str(e)}'
+            }), 500
 
-                    if not file_path:
-                    return jsonify({
-                    'success': False,
-                    'error': 'No se proporcionó ruta de archivo'
-                    }), 400
+    except Exception as e:
+        logging.error(f"Error en endpoint de eliminación: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
 
-                    user_workspace = get_user_workspace(user_id)
+@app.route('/api/files/download', methods=['GET'])
+def download_file():
+    """API para descargar un archivo desde el workspace del usuario."""
+    try:
+        file_path = request.args.get('file_path')
+        user_id = request.args.get('user_id', 'default')
 
-                    file_path = file_path.replace('..', '').strip('/')
-                    full_path = os.path.join(user_workspace, file_path)
+        if not file_path:
+            return jsonify({
+                'success': False,
+                'error': 'No se proporcionó ruta de archivo'
+            }), 400
 
-                    if not os.path.exists(full_path):
-                    return jsonify({
-                    'success': False,
-                    'error': 'Archivo no encontrado'
-                    }), 404
+        user_workspace = get_user_workspace(user_id)
 
-                    return send_file(full_path, as_attachment=True, download_name=os.path.basename(file_path))
+        file_path = file_path.replace('..', '').strip('/')
+        full_path = os.path.join(user_workspace, file_path)
 
-                    except Exception as e:
-                    logging.error(f"Error al descargar archivo: {str(e)}")
-                    return jsonify({
-                    'success': False,
-                    'error': f'Error al descargar archivo: {str(e)}'
-                    }), 500
+        if not os.path.exists(full_path):
+            return jsonify({
+                'success': False,
+                'error': 'Archivo no encontrado'
+            }), 404
 
-                    @app.route('/api/constructor/generate', methods=['POST'])
-                    def generate_project():
-                    """API endpoint para iniciar la generación de un proyecto."""
-                    try:
-                    data = request.json
-                    description = data.get('description', '')
+        return send_file(full_path, as_attachment=True, download_name=os.path.basename(file_path))
 
-                    if not description:
-                    return jsonify({
-                    'success': False,
-                    'error': 'Se requiere una descripción del proyecto'
-                    }), 400
+    except Exception as e:
+        logging.error(f"Error al descargar archivo: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': f'Error al descargar archivo: {str(e)}'
+        }), 500
 
-                    return jsonify({
-                    'success': True,
-                    'message': 'Generación de proyecto iniciada',
-                    'project_id': f"proj_{int(time.time())}",
-                    'estimated_time': '5-10 minutos'
-                    })
+@app.route('/api/constructor/generate', methods=['POST'])
+def generate_project():
+    """API endpoint para iniciar la generación de un proyecto."""
+    try:
+        data = request.json
+        description = data.get('description', '')
 
-                    except Exception as e:
-                    logging.error(f"Error al generar proyecto: {str(e)}")
-                    return jsonify({
-                    'success': False,
-                    'error': str(e)
-                    }), 500
+        if not description:
+            return jsonify({
+                'success': False,
+                'error': 'Se requiere una descripción del proyecto'
+            }), 400
 
-                    @app.route('/api/constructor/status/<project_id>', methods=['GET'])
-                    def project_status(project_id):
-                    """API endpoint para consultar el estado de un proyecto."""
-                    try:
-                    return jsonify({
-                    'success': True,
-                    'project_id': project_id,
-                    'status': 'in_progress',
-                    'progress': 45,
-                    'current_stage': 'Generación de código',
-                    'next_stage': 'Pruebas y optimización'
-                    })
+        return jsonify({
+            'success': True,
+            'message': 'Generación de proyecto iniciada',
+            'project_id': f"proj_{int(time.time())}",
+            'estimated_time': '5-10 minutos'
+        })
 
-                    except Exception as e:
-                    logging.error(f"Error al consultar estado del proyecto: {str(e)}")
-                    return jsonify({
-                    'success': False,
-                    'error': str(e)
-                    }), 500
+    except Exception as e:
+        logging.error(f"Error al generar proyecto: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
 
-                    @app.route('/api/constructor/download/<project_id>', methods=['GET'])
-                    def download_project(project_id):
-                    """API endpoint para descargar un proyecto generado."""
-                    try:
-                    return jsonify({
-                    'success': True,
-                    'project_id': project_id,
-                    'download_url': f"/api/download/{project_id}.zip",
-                    'expires_in': '24 horas'
-                    })
+@app.route('/api/constructor/status/<project_id>', methods=['GET'])
+def project_status(project_id):
+    """API endpoint para consultar el estado de un proyecto."""
+    try:
+        return jsonify({
+            'success': True,
+            'project_id': project_id,
+            'status': 'in_progress',
+            'progress': 45,
+            'current_stage': 'Generación de código',
+            'next_stage': 'Pruebas y optimización'
+        })
 
-                    except Exception as e:
-                    logging.error(f"Error al preparar descarga del proyecto: {str(e)}")
-                    return jsonify({
-                    'success': False,
-                    'error': str(e)
-                    }), 500
+    except Exception as e:
+        logging.error(f"Error al consultar estado del proyecto: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
 
-                    @app.route('/api_status')
-                    def api_status():
-                    """Muestra el estado de las claves API configuradas."""
-                    openai_key = os.environ.get('OPENAI_API_KEY', 'No configurada')
-                    anthropic_key = os.environ.get('ANTHROPIC_API_KEY', 'No configurada')
-                    gemini_key = os.environ.get('GEMINI_API_KEY', 'No configurada')
+@app.route('/api/constructor/download/<project_id>', methods=['GET'])
+def download_project(project_id):
+    """API endpoint para descargar un proyecto generado."""
+    try:
+        return jsonify({
+            'success': True,
+            'project_id': project_id,
+            'download_url': f"/api/download/{project_id}.zip",
+            'expires_in': '24 horas'
+        })
 
-                    if openai_key != 'No configurada':
-                    openai_key = openai_key[:5] + "..." + openai_key[-5:] if len(openai_key) > 10 else "***configurada***"
+    except Exception as e:
+        logging.error(f"Error al preparar descarga del proyecto: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
 
-                    if anthropic_key != 'No configurada':
-                    anthropic_key = anthropic_key[:5] + "..." + anthropic_key[-5:] if len(anthropic_key) > 10 else "***configurada***"
+@app.route('/api_status')
+def api_status():
+    """Muestra el estado de las claves API configuradas."""
+    openai_key = os.environ.get('OPENAI_API_KEY', 'No configurada')
+    anthropic_key = os.environ.get('ANTHROPIC_API_KEY', 'No configurada')
+    gemini_key = os.environ.get('GEMINI_API_KEY', 'No configurada')
 
-                    if gemini_key != 'No configurada':
-                    gemini_key = gemini_key[:5] + "..." + gemini_key[-5:] if len(gemini_key) > 10 else "***configurada***"
+    if openai_key != 'No configurada':
+        openai_key = openai_key[:5] + "..." + openai_key[-5:] if len(openai_key) > 10 else "***configurada***"
 
-                    return jsonify({
-                    'openai': openai_key,
-                    'anthropic': anthropic_key,
-                    'gemini': gemini_key,
-                    'message': 'Visita esta URL para verificar el estado de las APIs'
-                    })
+    if anthropic_key != 'No configurada':
+        anthropic_key = anthropic_key[:5] + "..." + anthropic_key[-5:] if len(anthropic_key) > 10 else "***configurada***"
 
-                    @socketio.on('connect')
-                    def handle_connect():
-                    """Manejar conexión de cliente Socket.IO."""
-                    logging.info(f"Cliente Socket.IO conectado: {request.sid}")
-                    emit('server_info', {'status': 'connected', 'sid': request.sid})
+    if gemini_key != 'No configurada':
+        gemini_key = gemini_key[:5] + "..." + gemini_key[-5:] if len(gemini_key) > 10 else "***configurada***"
 
-                    @socketio.on('execute_command')
-                    def handle_execute_command(data):
-                    """Ejecuta un comando en la terminal y devuelve el resultado."""
-                    command = data.get('command', '')
-                    user_id = data.get('user_id', 'default')
-                    terminal_id = data.get('terminal_id', request.sid)
+    return jsonify({
+        'openai': openai_key,
+        'anthropic': anthropic_key,
+        'gemini': gemini_key,
+        'message': 'Visita esta URL para verificar el estado de las APIs'
+    })
 
-                    if not command:
-                    emit('command_error', {
-                    'error': 'No se proporcionó un comando',
-                    'terminal_id': terminal_id
-                    }, room=terminal_id)
-                    return
+@socketio.on('connect')
+def handle_connect():
+    """Manejar conexión de cliente Socket.IO."""
+    logging.info(f"Cliente Socket.IO conectado: {request.sid}")
+    emit('server_info', {'status': 'connected', 'sid': request.sid})
 
-                    file_system_manager = FileSystemManager(socketio)
-                    result = file_system_manager.execute_command(
-                    command=command,
-                    user_id=user_id,
-                    notify=True,
-                    terminal_id=terminal_id
-                    )
+@socketio.on('execute_command')
+def handle_execute_command(data):
+    """Ejecuta un comando en la terminal y devuelve el resultado."""
+    command = data.get('command', '')
+    user_id = data.get('user_id', 'default')
+    terminal_id = data.get('terminal_id', request.sid)
 
-                    emit('command_result', {
-                    'output': result.get('output', ''),
-                    'success': result.get('success', False),
-                    'command': command,
-                    'terminal_id': terminal_id
-                    }, room=terminal_id)
+    if not command:
+        emit('command_error', {
+            'error': 'No se proporcionó un comando',
+            'terminal_id': terminal_id
+        }, room=terminal_id)
+        return
 
-                    socketio.emit('file_sync', {
-                    'refresh': True,
-                    'user_id': user_id,
-                    'command': command
-                    }, room=user_id)
+    file_system_manager = FileSystemManager(socketio)
+    result = file_system_manager.execute_command(
+        command=command,
+        user_id=user_id,
+        notify=True,
+        terminal_id=terminal_id
+    )
 
-                    @socketio.on('user_message')
-                    def handle_user_message(data):
-                    """Manejar mensajes del usuario a través de Socket.IO."""
-                    try:
-                    logging.info(f"Mensaje recibido vía Socket.IO: {data}")
-                    user_message = data.get('message', '')
-                    agent_id = data.get('agent', 'developer')
-                    model = data.get('model', 'openai')
-                    document = data.get('document', '')
-                    terminal_id = data.get('terminal_id', '')
+    emit('command_result', {
+        'output': result.get('output', ''),
+        'success': result.get('success', False),
+        'command': command,
+        'terminal_id': terminal_id
+    }, room=terminal_id)
 
-                    if not user_message:
-                    emit('error', {'message': 'Mensaje vacío'})
-                    return
+    socketio.emit('file_sync', {
+        'refresh': True,
+        'user_id': user_id,
+        'command': command
+    }, room=user_id)
 
-                    logging.info(f"Procesando mensaje Socket.IO: '{user_message[:30]}...' usando agente {agent_id} y modelo {model}")
+@socketio.on('user_message')
+def handle_user_message(data):
+    """Manejar mensajes del usuario a través de Socket.IO."""
+    try:
+        logging.info(f"Mensaje recibido vía Socket.IO: {data}")
+        user_message = data.get('message', '')
+        agent_id = data.get('agent', 'developer')
+        model = data.get('model', 'openai')
+        document = data.get('document', '')
+        terminal_id = data.get('terminal_id', '')
 
-                    request_data = {
-                    'message': user_message,
-                    'agent_id': agent_id,
-                    'model': model,
-                    'context': data.get('context', [])
-                    }
+        if not user_message:
+            emit('error', {'message': 'Mensaje vacío'})
+            return
 
-                    try:
-                    if model == 'openai' and openai_api_key:
-                    messages = [
-                        {"role": "system", "content": f"Eres un asistente de {agent_id} experto y útil."},
-                        {"role": "user", "content": user_message}
-                    ]
+        logging.info(f"Procesando mensaje Socket.IO: '{user_message[:30]}...' usando agente {agent_id} y modelo {model}")
 
-                    completion = openai.ChatCompletion.create(
-                        model="gpt-4o",
-                        messages=messages,
-                        temperature=0.7,
-                        max_tokens=2000
-                    )
+        request_data = {
+            'message': user_message,
+            'agent_id': agent_id,
+            'model': model,
+            'context': data.get('context', [])
+        }
 
-                    response = completion.choices[0].message.content
-                    logging.info(f"Respuesta generada directamente con OpenAI: {response[:100]}...")
+        try:
+            if model == 'openai' and openai_api_key:
+                messages = [
+                    {"role": "system", "content": f"Eres un asistente de {agent_id} experto y útil."},
+                    {"role": "user", "content": user_message}
+                ]
 
-                    emit('agent_response', {
-                        'response': response,
-                        'agent': agent_id,
-                        'model': model,
-                        'error': None
-                    })
-                    return
-                    except Exception as api_error:
-                    logging.warning(f"Error en API directa: {str(api_error)}, usando handle_chat_internal")
+                completion = openai.ChatCompletion.create(
+                    model="gpt-4o",
+                    messages=messages,
+                    temperature=0.7,
+                    max_tokens=2000
+                )
 
-                    result = handle_chat_internal(request_data)
+                response = completion.choices[0].message.content
+                logging.info(f"Respuesta generada directamente con OpenAI: {response[:100]}...")
 
-                    logging.info(f"Enviando respuesta Socket.IO: '{result.get('response', '')[:30]}...'")
-                    emit('agent_response', {
-                    'response': result.get('response', ''),
+                emit('agent_response', {
+                    'response': response,
                     'agent': agent_id,
                     'model': model,
-                    'error': result.get('error', None),
-                    'terminal_id': terminal_id
-                    })
+                    'error': None
+                })
+                return
+        except Exception as api_error:
+            logging.warning(f"Error en API directa: {str(api_error)}, usando handle_chat_internal")
 
-                    except Exception as e:
-                    logging.error(f"Error en Socket.IO user_message: {str(e)}")
-                    logging.error(traceback.format_exc())
-                    emit('error', {'message': str(e)})
+        # Si falla la API directa o no está configurada, usar handle_chat_internal
+        result = handle_chat_internal(request_data)
 
-                    if __name__ == '__main__':
-                    try:
-                    logging.info("Iniciando servidor CODESTORM Assistant...")
+        logging.info(f"Enviando respuesta Socket.IO: '{result.get('response', '')[:30]}...'")
+        emit('agent_response', {
+            'response': result.get('response', ''),
+            'agent': agent_id,
+            'model': model,
+            'error': result.get('error', None),
+            'terminal_id': terminal_id
+        })
 
-                    if not openai_api_key:
-                    logging.warning("OPENAI_API_KEY no configurada - funcionalidades de OpenAI estarán deshabilitadas")
-                    if not anthropic_api_key:
-                    logging.warning("ANTHROPIC_API_KEY no configurada - funcionalidades de Anthropic estarán deshabilitadas")
-                    if not gemini_api_key:
-                    logging.warning("GEMINI_API_KEY no configurada - funcionalidades de Gemini estarán deshabilitadas")
+    except Exception as e:
+        logging.error(f"Error en Socket.IO user_message: {str(e)}")
+        logging.error(traceback.format_exc())
+        emit('error', {'message': str(e)})
 
-                    if not any([openai_api_key, anthropic_api_key, gemini_api_key]):
-                    logging.error("¡ADVERTENCIA! Ninguna API está configurada. El sistema funcionará en modo degradado.")
+if __name__ == '__main__':
+    try:
+        logging.info("Iniciando servidor CODESTORM Assistant...")
 
-                    try:
-                    if 'watch_workspace_files' in globals():
-                    file_watcher_thread = threading.Thread(target=watch_workspace_files, daemon=True)
-                    file_watcher_thread.start()
-                    logging.info("Observador de archivos iniciado correctamente")
-                    except Exception as watcher_error:
-                    logging.warning(f"No se pudo iniciar el observador de archivos: {str(watcher_error)}")
+        if not openai_api_key:
+            logging.warning("OPENAI_API_KEY no configurada - funcionalidades de OpenAI estarán deshabilitadas")
+        if not anthropic_api_key:
+            logging.warning("ANTHROPIC_API_KEY no configurada - funcionalidades de Anthropic estarán deshabilitadas")
+        if not gemini_api_key:
+            logging.warning("GEMINI_API_KEY no configurada - funcionalidades de Gemini estarán deshabilitadas")
 
-                    logging.info("Servidor listo para recibir conexiones en puerto 5000")
+        if not any([openai_api_key, anthropic_api_key, gemini_api_key]):
+            logging.error("¡ADVERTENCIA! Ninguna API está configurada. El sistema funcionará en modo degradado.")
 
-                    socketio.run(
-                    app,
-                    host='0.0.0.0',
-                    port=5000,
-                    debug=True,
-                    allow_unsafe_werkzeug=True
-                    )
-                    except Exception as e:
-                    logging.critical(f"Error fatal al iniciar el servidor: {str(e)}")
-                    logging.critical(traceback.format_exc())
+        try:
+            if 'watch_workspace_files' in globals():
+                file_watcher_thread = threading.Thread(target=watch_workspace_files, daemon=True)
+                file_watcher_thread.start()
+                logging.info("Observador de archivos iniciado correctamente")
+        except Exception as watcher_error:
+            logging.warning(f"No se pudo iniciar el observador de archivos: {str(watcher_error)}")
+
+        logging.info("Servidor listo para recibir conexiones en puerto 5000")
+
+        socketio.run(
+            app,
+            host='0.0.0.0',
+            port=5000,
+            debug=True,
+            allow_unsafe_werkzeug=True
+        )
+    except Exception as e:
+        logging.critical(f"Error fatal al iniciar el servidor: {str(e)}")
+        logging.critical(traceback.format_exc())
