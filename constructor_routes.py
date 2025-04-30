@@ -38,7 +38,9 @@ def generate_application(project_id, description, agent, model, options, feature
             'current_stage': 'Analizando requisitos...',
             'console_messages': [],
             'start_time': time.time(),
-            'completion_time': None
+            'completion_time': None,
+            'framework': None,  # Almacenará el framework seleccionado
+            'techstack': {}     # Detalles del stack tecnológico
         }
 
         # Initialize development_paused status
@@ -76,6 +78,36 @@ def generate_application(project_id, description, agent, model, options, feature
                     development_paused[project_id] = False
                     break
                 time.sleep(1)
+            
+        # Determinar el stack tecnológico basado en la descripción
+        frameworks = determine_frameworks(description.lower())
+        if frameworks.get('recommended'):
+            project_status[project_id]['framework'] = frameworks['recommended']['name']
+            project_status[project_id]['techstack'] = {
+                'backend': frameworks['recommended']['backend']['id'],
+                'frontend': frameworks['recommended']['frontend']['id'],
+                'database': frameworks['recommended']['database']['id'] if frameworks['recommended']['database'] else 'sqlite'
+            }
+            
+            # Añadir mensaje sobre el stack tecnológico
+            update_status(
+                8, 
+                "Analizando requisitos y seleccionando tecnologías...",
+                f"Stack tecnológico seleccionado: {frameworks['recommended']['name']}"
+            )
+        else:
+            # Si no hay recomendación, usar Flask por defecto
+            project_status[project_id]['framework'] = "Flask + Bootstrap + SQLite"
+            project_status[project_id]['techstack'] = {
+                'backend': 'flask',
+                'frontend': 'bootstrap',
+                'database': 'sqlite'
+            }
+            update_status(
+                8, 
+                "Analizando requisitos y seleccionando tecnologías...",
+                "Stack tecnológico seleccionado por defecto: Flask + Bootstrap + SQLite"
+            )
 
         # Get project directory
         project_dir = os.path.join(PROJECTS_DIR, project_id)
@@ -487,12 +519,16 @@ def analyze_features():
         if not any(('base de datos' in f.lower()) for f in features):
             features.append('Base de datos')
 
+        # Determine appropriate frameworks based on description
+        frameworks = determine_frameworks(description_lower)
+        
         # Limit to a reasonable number of features
         features = features[:10]
 
         return jsonify({
             'success': True,
-            'features': features
+            'features': features,
+            'frameworks': frameworks
         })
     except Exception as e:
         logging.error(f"Error analyzing features: {str(e)}")
@@ -500,6 +536,236 @@ def analyze_features():
             'success': False,
             'error': str(e)
         }), 500
+
+def determine_frameworks(description):
+    """
+    Determina los frameworks más adecuados basándose en la descripción
+    del proyecto y devuelve una estructura con opciones y recomendaciones.
+    """
+    frameworks = {
+        'backend': [],
+        'frontend': [],
+        'database': [],
+        'recommended': None
+    }
+    
+    # Detectar frameworks de backend
+    backend_frameworks = [
+        {
+            'id': 'flask',
+            'name': 'Flask',
+            'description': 'Framework web ligero y flexible para Python',
+            'use_cases': 'APIs, aplicaciones web pequeñas y medianas, microservicios',
+            'score': 0
+        },
+        {
+            'id': 'django',
+            'name': 'Django',
+            'description': 'Framework web completo para Python con admin incorporado',
+            'use_cases': 'CMS, grandes aplicaciones web, sitios complejos',
+            'score': 0
+        },
+        {
+            'id': 'fastapi',
+            'name': 'FastAPI',
+            'description': 'Framework web moderno y rápido con validación automática',
+            'use_cases': 'APIs REST de alto rendimiento, microservicios',
+            'score': 0
+        },
+        {
+            'id': 'streamlit',
+            'name': 'Streamlit',
+            'description': 'Framework para crear aplicaciones de datos interactivas',
+            'use_cases': 'Dashboards, visualización de datos, prototipos rápidos',
+            'score': 0
+        },
+        {
+            'id': 'express',
+            'name': 'Express.js',
+            'description': 'Framework web minimalista para Node.js',
+            'use_cases': 'APIs, aplicaciones web en tiempo real, microservicios',
+            'score': 0
+        },
+        {
+            'id': 'nestjs',
+            'name': 'NestJS',
+            'description': 'Framework progresivo para Node.js con TypeScript',
+            'use_cases': 'Aplicaciones escalables del lado del servidor',
+            'score': 0
+        }
+    ]
+    
+    # Puntuar frameworks de backend según la descripción
+    for framework in backend_frameworks:
+        if framework['id'] in description:
+            framework['score'] += 10
+        
+        if 'api' in description and framework['id'] in ['fastapi', 'express', 'flask']:
+            framework['score'] += 5
+        
+        if 'dashboard' in description and framework['id'] in ['streamlit', 'django']:
+            framework['score'] += 5
+            
+        if 'datos' in description and framework['id'] in ['streamlit']:
+            framework['score'] += 8
+            
+        if 'microservicio' in description and framework['id'] in ['fastapi', 'flask', 'express']:
+            framework['score'] += 5
+            
+        if 'admin' in description and framework['id'] in ['django']:
+            framework['score'] += 8
+            
+        if ('simple' in description or 'sencillo' in description) and framework['id'] in ['flask', 'express', 'streamlit']:
+            framework['score'] += 3
+            
+        if 'completo' in description and framework['id'] in ['django', 'nestjs']:
+            framework['score'] += 3
+    
+    # Ordenar y seleccionar los mejores frameworks de backend
+    backend_frameworks.sort(key=lambda x: x['score'], reverse=True)
+    frameworks['backend'] = backend_frameworks[:3]  # Top 3 backends
+    
+    # Detectar frameworks de frontend
+    frontend_frameworks = [
+        {
+            'id': 'react',
+            'name': 'React',
+            'description': 'Biblioteca para construir interfaces de usuario',
+            'use_cases': 'SPAs, interfaces dinámicas, aplicaciones complejas',
+            'score': 0
+        },
+        {
+            'id': 'vue',
+            'name': 'Vue.js',
+            'description': 'Framework progresivo para construir interfaces de usuario',
+            'use_cases': 'Aplicaciones web de cualquier tamaño, integraciones progresivas',
+            'score': 0
+        },
+        {
+            'id': 'angular',
+            'name': 'Angular',
+            'description': 'Framework completo para aplicaciones web',
+            'use_cases': 'Aplicaciones empresariales, proyectos a gran escala',
+            'score': 0
+        },
+        {
+            'id': 'svelte',
+            'name': 'Svelte',
+            'description': 'Compilador en lugar de framework, con menor tamaño de bundle',
+            'use_cases': 'Interfaces rápidas, aplicaciones con rendimiento optimizado',
+            'score': 0
+        },
+        {
+            'id': 'bootstrap',
+            'name': 'Bootstrap',
+            'description': 'Framework CSS para diseño responsivo',
+            'use_cases': 'Prototipos rápidos, interfaces consistentes',
+            'score': 0
+        }
+    ]
+    
+    # Puntuar frameworks de frontend según la descripción
+    for framework in frontend_frameworks:
+        if framework['id'] in description:
+            framework['score'] += 10
+        
+        if 'móvil' in description and framework['id'] in ['react', 'vue']:
+            framework['score'] += 3
+            
+        if 'responsive' in description and framework['id'] in ['bootstrap']:
+            framework['score'] += 5
+            
+        if 'componentes' in description and framework['id'] in ['react', 'vue', 'angular', 'svelte']:
+            framework['score'] += 3
+            
+        if 'empresarial' in description and framework['id'] in ['angular']:
+            framework['score'] += 5
+            
+        if 'rendimiento' in description and framework['id'] in ['svelte']:
+            framework['score'] += 5
+    
+    # Ordenar y seleccionar los mejores frameworks de frontend
+    frontend_frameworks.sort(key=lambda x: x['score'], reverse=True)
+    frameworks['frontend'] = frontend_frameworks[:3]  # Top 3 frontends
+    
+    # Detectar bases de datos
+    database_options = [
+        {
+            'id': 'sqlite',
+            'name': 'SQLite',
+            'description': 'Base de datos relacional ligera sin servidor',
+            'use_cases': 'Aplicaciones pequeñas, prototipos, almacenamiento local',
+            'score': 0
+        },
+        {
+            'id': 'mysql',
+            'name': 'MySQL',
+            'description': 'Sistema de gestión de bases de datos relacional',
+            'use_cases': 'Aplicaciones web tradicionales, CMS, comercio electrónico',
+            'score': 0
+        },
+        {
+            'id': 'postgresql',
+            'name': 'PostgreSQL',
+            'description': 'Sistema de base de datos relacional avanzado',
+            'use_cases': 'Aplicaciones complejas, datos geoespaciales, escalabilidad',
+            'score': 0
+        },
+        {
+            'id': 'mongodb',
+            'name': 'MongoDB',
+            'description': 'Base de datos NoSQL orientada a documentos',
+            'use_cases': 'Aplicaciones con datos variables, APIs, microservicios',
+            'score': 0
+        },
+        {
+            'id': 'redis',
+            'name': 'Redis',
+            'description': 'Almacén de estructura de datos en memoria',
+            'use_cases': 'Caché, tiempo real, colas de mensajes, leaderboards',
+            'score': 0
+        }
+    ]
+    
+    # Puntuar bases de datos según la descripción
+    for db in database_options:
+        if db['id'] in description:
+            db['score'] += 10
+        
+        if 'sql' in description and db['id'] in ['mysql', 'postgresql', 'sqlite']:
+            db['score'] += 5
+            
+        if 'nosql' in description and db['id'] in ['mongodb']:
+            db['score'] += 8
+            
+        if 'simple' in description and db['id'] in ['sqlite']:
+            db['score'] += 5
+            
+        if 'escalable' in description and db['id'] in ['postgresql', 'mongodb']:
+            db['score'] += 5
+            
+        if 'tiempo real' in description and db['id'] in ['redis', 'mongodb']:
+            db['score'] += 5
+    
+    # Ordenar y seleccionar las mejores bases de datos
+    database_options.sort(key=lambda x: x['score'], reverse=True)
+    frameworks['database'] = database_options[:3]  # Top 3 databases
+    
+    # Recomendar una combinación de tecnologías basada en los puntajes
+    if len(frameworks['backend']) > 0 and len(frameworks['frontend']) > 0:
+        backend_choice = frameworks['backend'][0]['name']
+        frontend_choice = frameworks['frontend'][0]['name']
+        database_choice = frameworks['database'][0]['name'] if len(frameworks['database']) > 0 else "SQLite"
+        
+        frameworks['recommended'] = {
+            'name': f"{backend_choice} + {frontend_choice} + {database_choice}",
+            'description': f"Stack recomendado basado en tu descripción",
+            'backend': frameworks['backend'][0],
+            'frontend': frameworks['frontend'][0],
+            'database': frameworks['database'][0] if len(frameworks['database']) > 0 else None
+        }
+    
+    return frameworks
 
 # Route to start application generation
 @constructor_bp.route('/api/constructor/generate', methods=['POST'])
@@ -564,7 +830,13 @@ def project_status_route(project_id):
                         }
                     ],
                     'start_time': time.time(),
-                    'completion_time': None
+                    'completion_time': None,
+                    'framework': 'Flask + Bootstrap + SQLite',
+                    'techstack': {
+                        'backend': 'flask',
+                        'frontend': 'bootstrap',
+                        'database': 'sqlite'
+                    }
                 }
 
                 # Crear directorio del proyecto si no existe
@@ -597,6 +869,15 @@ def project_status_route(project_id):
         console_message = None
         if status_data.get('console_messages'):
             console_message = status_data['console_messages'][-1]['message']
+            
+        # Si no tiene framework, añadir uno predeterminado
+        if 'framework' not in status_data:
+            status_data['framework'] = 'Flask + Bootstrap + SQLite'
+            status_data['techstack'] = {
+                'backend': 'flask',
+                'frontend': 'bootstrap',
+                'database': 'sqlite'
+            }
 
         return jsonify({
             'success': True,
@@ -605,7 +886,9 @@ def project_status_route(project_id):
             'progress': status_data.get('progress', 60),
             'current_stage': status_data.get('current_stage', 'Procesando...'),
             'console_message': console_message,
-            'error': status_data.get('error')
+            'error': status_data.get('error'),
+            'framework': status_data.get('framework'),
+            'techstack': status_data.get('techstack', {})
         })
     except Exception as e:
         logging.error(f"Error checking project status: {str(e)}")
