@@ -1743,171 +1743,707 @@ def process_command():
 def process_code():
     """
     Procesa código para correcciones y mejoras con modelos especializados en programación.
+    Incluye análisis estático, métricas de código y optimizaciones específicas por lenguaje.
     """
     try:
         data = request.json
         code = data.get('code', '')
         instructions = data.get('instructions', 'Corrige errores y mejora la calidad del código')
         language = data.get('language', 'python')
-        model = data.get('model', 'openai')
+        model = data.get('model', 'gpt4o')  # Modelo por defecto actualizado
+        auto_fix = data.get('auto_fix', True)
+        optimize = data.get('optimize', True)
+        improve_readability = data.get('improve_readability', True)
+        follow_conventions = data.get('follow_conventions', False)
+        correction_level = data.get('correction_level', 'moderate')
+
+        # Registrar la solicitud para depuración
+        logging.info(f"Procesando código en {language} con modelo {model}")
+        logging.debug(f"Opciones: auto_fix={auto_fix}, optimize={optimize}, improve_readability={improve_readability}, follow_conventions={follow_conventions}, nivel={correction_level}")
 
         if not code:
-            return jsonify({'error': 'No code provided'}), 400
+            return jsonify({'success': False, 'error': 'No se proporcionó código para procesar'}), 400
 
-        # Si tenemos OpenAI disponible, usarlo para procesar el código
-        if model == 'openai' and os.environ.get('OPENAI_API_KEY'):
+        # Realizar análisis estático preliminar si es posible
+        static_analysis_results = perform_static_analysis(code, language)
+
+        # Construir instrucciones específicas basadas en las opciones seleccionadas
+        detailed_instructions = build_detailed_instructions(
+            instructions, language, auto_fix, optimize, 
+            improve_readability, follow_conventions, correction_level,
+            static_analysis_results
+        )
+
+        # Seleccionar el modelo y procesar el código
+        if 'gpt4' in model and os.environ.get('OPENAI_API_KEY'):
+            result = process_with_openai(code, language, detailed_instructions, model)
+        elif 'claude' in model and os.environ.get('ANTHROPIC_API_KEY'):
+            result = process_with_anthropic(code, language, detailed_instructions, model)
+        elif 'gemini' in model and os.environ.get('GEMINI_API_KEY'):
+            result = process_with_gemini(code, language, detailed_instructions, model)
+        else:
+            # Fallback a un modelo disponible si el solicitado no está configurado
+            available_model = find_available_model()
+            if not available_model:
+                return jsonify({
+                    'success': False,
+                    'error': 'No hay modelos de IA configurados. Configure al menos una API en las variables de entorno.'
+                }), 500
+
+            logging.warning(f"Modelo {model} no disponible, usando {available_model} como alternativa")
+
+            if 'gpt' in available_model:
+                result = process_with_openai(code, language, detailed_instructions, available_model)
+            elif 'claude' in available_model:
+                result = process_with_anthropic(code, language, detailed_instructions, available_model)
+            elif 'gemini' in available_model:
+                result = process_with_gemini(code, language, detailed_instructions, available_model)
+
+        if not result.get('success'):
+            return jsonify(result), 500
+
+        # Post-procesar y enriquecer los resultados
+        enhanced_result = enhance_results(result, code, language, static_analysis_results)
+
+        # Registrar métricas para seguimiento
+        log_processing_metrics(code, enhanced_result.get('corrected_code', ''), language, model)
+
+        return jsonify(enhanced_result)
+
+    except Exception as e:
+        logging.exception(f"Error procesando código: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': f'Error interno al procesar el código: {str(e)}'
+        }), 500
+
+
+def perform_static_analysis(code, language):
+    """
+    Realiza análisis estático básico del código antes de enviarlo al modelo.
+    Esto ayuda a identificar problemas obvios y proporcionar contexto adicional.
+    """
+    results = {
+        'issues': [],
+        'metrics': {
+            'loc': len(code.split('\n')),
+            'complexity': 0
+        }
+    }
+
+    try:
+        # Análisis específico por lenguaje
+        if language == 'python':
+            # Usar herramientas como pylint, pyflakes o flake8 (versión simplificada)
+            import tempfile
+            import subprocess
+
+            with tempfile.NamedTemporaryFile(suffix='.py', mode='w+') as temp:
+                temp.write(code)
+                temp.flush()
+
+                try:
+                    # Intentar ejecutar flake8 si está disponible
+                    result = subprocess.run(['flake8', temp.name], capture_output=True, text=True)
+                    if result.returncode != 0:
+                        for line in result.stdout.splitlines():
+                            parts = line.split(':', 2)
+                            if len(parts) >= 3:
+                                line_num = int(parts[1])
+                                message = parts[2].strip()
+                                results['issues'].append({
+                                    'line': line_num,
+                                    'message': message,
+                                    'severity': 'warning'
+                                })
+                except (subprocess.SubprocessError, FileNotFoundError):
+                    # Fallback a análisis básico si flake8 no está disponible
+                    pass
+
+                # Calcular complejidad ciclomática básica contando estructuras de control
+                control_keywords = ['if', 'for', 'while', 'except', 'with']
+                complexity = 1  # Complejidad base
+                for keyword in control_keywords:
+                    complexity += code.count(f' {keyword} ')
+                results['metrics']['complexity'] = complexity
+
+        elif language == 'javascript':
+            # Análisis básico para JavaScript
+            control_keywords = ['if', 'for', 'while', 'try', 'switch']
+            complexity = 1
+            for keyword in control_keywords:
+                complexity += code.count(f' {keyword} ')
+            results['metrics']['complexity'] = complexity
+
+            # Detectar problemas comunes
+            if 'var ' in code:
+                results['issues'].append({
+                    'line': 0,  # Línea genérica
+                    'message': 'Uso de "var" en lugar de "let" o "const"',
+                    'severity': 'suggestion'
+                })
+
+            if '== null' in code or '== undefined' in code:
+                results['issues'].append({
+                    'line': 0,
+                    'message': 'Uso de operador de igualdad débil con null/undefined',
+                    'severity': 'warning'
+                })
+    except Exception as e:
+        logging.warning(f"Error en análisis estático: {str(e)}")
+        # Continuar con el proceso incluso si el análisis estático falla
+
+    return results
+
+
+def build_detailed_instructions(base_instructions, language, auto_fix, optimize, 
+                              improve_readability, follow_conventions, correction_level,
+                              static_analysis=None):
+    """
+    Construye instrucciones detalladas para el modelo basadas en las opciones seleccionadas
+    y los resultados del análisis estático.
+    """
+    instructions = [base_instructions]
+
+    # Agregar instrucciones basadas en opciones
+    if auto_fix:
+        instructions.append("Corrige automáticamente errores de sintaxis y lógica.")
+
+    if optimize:
+        instructions.append("Optimiza el código para mejorar su rendimiento y eficiencia.")
+
+    if improve_readability:
+        instructions.append("Mejora la legibilidad con nombres de variables descriptivos, comentarios apropiados y estructura clara.")
+
+    if follow_conventions:
+        # Agregar convenciones específicas por lenguaje
+        if language == 'python':
+            instructions.append("Sigue estrictamente PEP 8 para estilo y convenciones de Python.")
+        elif language == 'javascript':
+            instructions.append("Sigue el estándar Airbnb JavaScript Style Guide.")
+        elif language == 'java':
+            instructions.append("Sigue las convenciones de código de Google para Java.")
+        else:
+            instructions.append(f"Sigue las mejores prácticas y convenciones estándar para {language}.")
+
+    # Ajustar nivel de corrección
+    if correction_level == 'minimal':
+        instructions.append("Realiza solo las correcciones esenciales para que el código funcione correctamente.")
+    elif correction_level == 'moderate':
+        instructions.append("Equilibra las correcciones necesarias con mejoras de estilo y optimizaciones moderadas.")
+    elif correction_level == 'aggressive':
+        instructions.append("Realiza una refactorización completa si es necesario para optimizar y mejorar el código significativamente.")
+
+    # Incorporar resultados del análisis estático
+    if static_analysis and static_analysis.get('issues'):
+        issues_text = "Problemas detectados en análisis estático que deben corregirse:\n"
+        for issue in static_analysis['issues'][:10]:  # Limitar a 10 problemas para no sobrecargar
+            issues_text += f"- Línea {issue['line']}: {issue['message']} ({issue['severity']})\n"
+        instructions.append(issues_text)
+
+    # Instrucciones específicas por lenguaje
+    language_specific = get_language_specific_instructions(language)
+    if language_specific:
+        instructions.append(language_specific)
+
+    # Instrucciones para formato de respuesta
+    instructions.append("""Responde en formato JSON con las siguientes claves:
+    - corrected_code: el código corregido completo
+    - changes: una lista de objetos, cada uno con:
+        - description: descripción del cambio
+        - lineNumbers: números de línea afectados
+        - category: categoría del cambio (sintaxis, optimización, estilo, seguridad, etc.)
+        - importance: importancia del cambio (alta, media, baja)
+    - explanation: explicación detallada de los cambios realizados
+    - metrics: métricas del código (opcional)
+    - recommendations: recomendaciones adicionales (opcional)
+    """)
+
+    return "\n\n".join(instructions)
+
+def get_language_specific_instructions(language):
+    """
+    Proporciona instrucciones específicas según el lenguaje de programación.
+    """
+    instructions = {
+        'python': """
+            - Usa f-strings en lugar de .format() o % cuando sea posible
+            - Prefiere list/dict comprehensions sobre bucles cuando sea apropiado
+            - Usa pathlib en lugar de os.path para manejo de rutas
+            - Implementa manejo de errores con bloques try/except específicos
+            - Asegúrate de que el código sea compatible con Python 3.8+
+        """,
+        'javascript': """
+            - Usa sintaxis ES6+ (const/let, arrow functions, destructuring, etc.)
+            - Prefiere métodos de array funcionales (map, filter, reduce) sobre bucles for
+            - Evita modificar objetos directamente, usa técnicas inmutables
+            - Maneja promesas correctamente con async/await
+            - Evita el uso de var y prefiere const siempre que sea posible
+        """,
+        'typescript': """
+            - Usa tipos explícitos y evita 'any' cuando sea posible
+            - Aprovecha interfaces y tipos para estructuras de datos
+            - Usa enums para valores constantes relacionados
+            - Implementa patrones de manejo de errores consistentes
+            - Asegúrate de que las funciones tengan tipos de retorno explícitos
+        """,
+        'java': """
+            - Sigue el principio de inmutabilidad cuando sea posible
+            - Usa Stream API para operaciones de colecciones
+            - Implementa manejo de excepciones adecuado
+            - Usa Optional para valores que pueden ser nulos
+            - Prefiere interfaces sobre clases concretas para variables
+        """,
+        'cpp': """
+            - Usa características modernas de C++ (C++17/20)
+            - Prefiere referencias y smart pointers sobre punteros crudos
+            - Usa RAII para gestión de recursos
+            - Implementa manejo de errores con excepciones o códigos de error consistentes
+            - Optimiza para rendimiento cuando sea crítico
+        """,
+    }
+
+    return instructions.get(language, "")
+
+
+def process_with_openai(code, language, instructions, model="gpt-4o"):
+    """
+    Procesa el código usando OpenAI con manejo de errores mejorado y reintentos.
+    """
+    try:
+        # Mapeo de nombres de modelos amigables a identificadores reales de API
+        model_mapping = {
+            'gpt4o': "gpt-4o",
+            'gpt4-turbo': "gpt-4-turbo",
+            'gpt4': "gpt-4-turbo",  # Fallback a turbo si solo se especifica gpt4
+        }
+
+        api_model = model_mapping.get(model, model)  # Usar el modelo mapeado o el original si no está en el mapeo
+
+        client = openai.OpenAI()
+
+        # Sistema de reintentos con backoff exponencial
+        max_retries = 3
+        retry_delay = 2  # segundos
+
+        for attempt in range(max_retries):
             try:
-                client = openai.OpenAI()
                 completion = client.chat.completions.create(
-                    model="gpt-4o",
-                    messages=[
-                        {"role": "system", "content": "Eres un experto programador especializado en corregir código."},
-                        {"role": "user", "content": f"Aquí está el código en {language} que necesito corregir:\n\n```{language}\n{code}\n```\n\nInstrucciones: {instructions}\n\nResponde en formato JSON con las siguientes claves:\n- corrected_code: el código corregido completo\n- changes: una lista de objetos, cada uno con 'description' y 'lineNumbers'\n- explanation: una explicación detallada de los cambios"}
-                    ],
-                    response_format={"type": "json_object"}
+                    model=api_model,
+                    messages=[{
+                        "role": "system", 
+                        "content": f"Eres un experto programador especializado en {language}. Tu tarea es corregir y mejorar código siguiendo las mejores prácticas y estándares actuales."
+                    },
+                    {
+                        "role": "user", 
+                        "content": f"Aquí está el código en {language} que necesito corregir:\n\n```{language}\n{code}\n```\n\nInstrucciones:\n{instructions}"
+                    }],
+                    response_format={"type": "json_object"},
+                    temperature=0.2,  # Temperatura más baja para respuestas más precisas
                 )
 
                 result = json.loads(completion.choices[0].message.content)
-                logging.info("Código corregido con OpenAI")
 
-                return jsonify({
-                    'success': True,
-                    'corrected_code': result.get('corrected_code', code),
-                    'changes': result.get('changes', []),
-                    'explanation': result.get('explanation', 'No se proporcionó explicación detallada.')
-                })
+                # Verificar que la respuesta tenga la estructura esperada
+                if 'corrected_code' not in result:
+                    if 'correctedCode' in result:  # Manejar posible variación en nombres de campos
+                        result['corrected_code'] = result.pop('correctedCode')
+                    else:
+                        raise ValueError("La respuesta del modelo no incluye el código corregido")
 
+                # Normalizar nombres de campos si es necesario
+                if 'changes' not in result and 'changes_made' in result:
+                    result['changes'] = result.pop('changes_made')
+
+                logging.info(f"Código procesado exitosamente con {api_model}")
+
+                # Agregar metadatos
+                result['model_used'] = api_model
+                result['success'] = True
+
+                return result
+
+            except (openai.APIError, openai.APIConnectionError, openai.RateLimitError) as e:
+                if attempt < max_retries - 1:
+                    logging.warning(f"Error temporal con OpenAI (intento {attempt+1}/{max_retries}): {str(e)}")
+                    time.sleep(retry_delay * (2 ** attempt))  # Backoff exponencial
+                else:
+                    logging.error(f"Error persistente con OpenAI después de {max_retries} intentos: {str(e)}")
+                    return {
+                        'success': False,
+                        'error': f'Error al conectar con OpenAI después de {max_retries} intentos: {str(e)}'
+                    }
             except Exception as e:
-                logging.error(f"Error con API de OpenAI: {str(e)}")
-                return jsonify({
+                logging.error(f"Error inesperado con OpenAI: {str(e)}")
+                return {
                     'success': False,
-                    'error': f'Error al conectar con OpenAI: {str(e)}'
-                }), 500
+                    'error': f'Error al procesar con OpenAI: {str(e)}'
+                }
 
-        # Si tenemos Anthropic disponible, usarlo como fallback
-        elif model == 'anthropic' or (model == 'openai' and not os.environ.get('OPENAI_API_KEY') and os.environ.get('ANTHROPIC_API_KEY')):
-            try:
-                client = anthropic.Anthropic(api_key=os.environ.get('ANTHROPIC_API_KEY'))
+    except Exception as e:
+        logging.exception(f"Error general al procesar con OpenAI: {str(e)}")
+        return {
+            'success': False,
+            'error': f'Error al configurar OpenAI: {str(e)}'
+        }
 
-                prompt = f"""Eres un experto programador. Tu tarea es corregir el siguiente código en {language} según las instrucciones proporcionadas.
 
-CÓDIGO:
+def process_with_anthropic(code, language, instructions, model="claude-3-5-sonnet"):
+    """
+    Procesa el código usando Anthropic Claude con manejo de errores mejorado.
+    """
+    try:
+        # Mapeo de nombres de modelos amigables a identificadores reales de API
+        model_mapping = {
+            'claude-3-5-sonnet': "claude-3-5-sonnet-20240620",
+            'claude-3-5-opus': "claude-3-5-opus-20240620",
+            'claude-3-7-sonnet': "claude-3-7-sonnet-20240307",
+        }
+
+        api_model = model_mapping.get(model, model)
+
+        client = anthropic.Anthropic(api_key=os.environ.get('ANTHROPIC_API_KEY'))
+
+        # Mensaje del sistema más detallado para mejor control
+        system_message = f"""
+        Eres un experto programador especializado en {language}. Tu tarea es corregir y mejorar código siguiendo
+        las mejores prácticas y estándares actuales. Responde SIEMPRE en formato JSON válido con los campos solicitados.
+
+        Debes analizar el código a fondo, identificar problemas y aplicar mejoras según las instrucciones.
+        Asegúrate de que tu respuesta incluya estos campos:
+        - corrected_code: el código corregido completo
+        - changes: lista de cambios con description, lineNumbers, category e importance
+        - explanation: explicación detallada de los cambios
+        """
+
+        # Crear prompt con formato específico para mejorar la respuesta
+        prompt = f"""Analiza y mejora el siguiente código en {language}: 
+
 ```{language}
 {code}
-```
-
 INSTRUCCIONES:
 {instructions}
 
-Responde EXACTAMENTE en este formato JSON y nada más:
+Tu respuesta debe ser un objeto JSON válido con exactamente esta estructura:
 ```json
 {{
-  "correctedCode": "código corregido aquí",
+  "corrected_code": "código corregido completo aquí",
   "changes": [
     {{
-      "description": "descripción del cambio 1",
-      "lineNumbers": [1, 2]
+      "description": "descripción del cambio",
+      "lineNumbers": [1, 2],
+      "category": "categoría del cambio",
+      "importance": "alta|media|baja"
     }}
   ],
-  "explanation": "explicación detallada de los cambios"
+  "explanation": "explicación detallada de los cambios",
+  "metrics": {{
+    "loc": 10,
+    "complexity": 5,
+    "errors_fixed": 3,
+    "warnings_fixed": 2,
+    "performance_improvements": 1,
+    "readability_improvements": 4,
+    "quality_scores": {{
+      "mantenibilidad": {{"before": 5, "after": 8}},
+      "legibilidad": {{"before": 4, "after": 7}},
+      "eficiencia": {{"before": 6, "after": 8}},
+      "robustez": {{"before": 3, "after": 7}},
+      "seguridad": {{"before": 5, "after": 6}}
+    }}
+  }},
+  "recommendations": [
+    {{
+      "title": "título de la recomendación",
+      "description": "descripción detallada"
+    }}
+  ]
 }}
-```
-"""
+```"""
 
+        # Realizar la llamada a la API con reintentos
+        max_retries = 2
+        retry_delay = 3
+
+        for attempt in range(max_retries):
+            try:
                 response = client.messages.create(
-                    model="claude-3-5-sonnet-latest",
+                    model=api_model,
                     max_tokens=4000,
-                    system="Eres un experto programador especializado en corregir código. Siempre respondes en formato JSON válido.",
+                    system=system_message,
                     messages=[{"role": "user", "content": prompt}],
                     temperature=0.1
                 )
 
-                try:
-                    # Buscar JSON en formato de bloque de código
-                    json_match = re.search(r'```(?:json)?\s*(.*?)\s*```', response.content[0].text, re.DOTALL)
+                # Extraer JSON de la respuesta
+                content = response.content[0].text
+
+                # Buscar JSON en formato de bloque de código primero
+                json_match = re.search(r'```(?:json)?\s*(.*?)\s*```', content, re.DOTALL)
+                if json_match:
+                    try:
+                        result = json.loads(json_match.group(1).strip())
+                    except json.JSONDecodeError:
+                        # Intentar limpiar el JSON antes de fallar
+                        cleaned_json = clean_json_string(json_match.group(1).strip())
+                        result = json.loads(cleaned_json)
+                else:
+                    # Intentar extraer cualquier objeto JSON de la respuesta completa
+                    json_match = re.search(r'(\{.*\})', content, re.DOTALL)
                     if json_match:
-                        try:
-                            result = json.loads(json_match.group(1).strip())
-                        except json.JSONDecodeError:
-                            # Si el contenido dentro de las comillas triples no es JSON válido
-                            result = {
-                                "correctedCode": code,
-                                "changes": [{"description": "No se pudo procesar el JSON correctamente", "lineNumbers": [1]}],
-                                "explanation": "Error al procesar la respuesta. Probablemente el formato no es correcto."
-                            }
+                        cleaned_json = clean_json_string(json_match.group(1))
+                        result = json.loads(cleaned_json)
                     else:
-                        # Intenta extraer cualquier objeto JSON de la respuesta completa
-                        try:
-                            # Buscar un objeto JSON completo en cualquier parte del texto
-                            json_match = re.search(r'(\{.*\})', response.content[0].text, re.DOTALL)
-                            if json_match:
-                                result = json.loads(json_match.group(1))
-                            else:
-                                # Fallback a un formato básico si no hay JSON
-                                result = {
-                                    "correctedCode": code,
-                                    "changes": [],
-                                    "explanation": "No se pudo procesar correctamente la respuesta del modelo."
-                                }
-                        except (json.JSONDecodeError, AttributeError):
-                            result = {
-                                "correctedCode": code,
-                                "changes": [],
-                                "explanation": "No se pudo extraer JSON válido de la respuesta."
-                            }
-                except Exception as e:
-                    logging.error(f"Error procesando respuesta de Anthropic: {str(e)}")
-                    result = {
-                        "correctedCode": code,
-                        "changes": [],
-                        "explanation": f"Error procesando respuesta de Anthropic: {str(e)}"
+                        raise ValueError("No se pudo extraer JSON de la respuesta")
+
+                # Normalizar nombres de campos si es necesario
+                if 'correctedCode' in result and 'corrected_code' not in result:
+                    result['corrected_code'] = result.pop('correctedCode')
+
+                logging.info(f"Código procesado exitosamente con {api_model}")
+
+                # Agregar metadatos
+                result['model_used'] = api_model
+                result['success'] = True
+
+                return result
+
+            except (anthropic.APIError, anthropic.APIConnectionError, anthropic.RateLimitError) as e:
+                if attempt < max_retries - 1:
+                    logging.warning(f"Error temporal con Anthropic (intento {attempt+1}/{max_retries}): {str(e)}")
+                    time.sleep(retry_delay * (2 ** attempt))  # Backoff exponencial
+                else:
+                    logging.error(f"Error persistente con Anthropic después de {max_retries} intentos: {str(e)}")
+                    return {
+                        'success': False,
+                        'error': f'Error al conectar con Anthropic después de {max_retries} intentos: {str(e)}'
                     }
-
-                logging.info("Código corregido con Anthropic")
-
             except Exception as e:
-                logging.error(f"Error con API de Anthropic: {str(e)}")
-                return jsonify({
+                logging.error(f"Error inesperado con Anthropic: {str(e)}")
+                return {
                     'success': False,
-                    'error': f'Error al conectar con Anthropic: {str(e)}'
-                }), 500
+                    'error': f'Error al procesar con Anthropic: {str(e)}'
+                }
 
-        elif model == 'gemini' and os.environ.get('GEMINI_API_KEY'):
+    except Exception as e:
+        logging.exception(f"Error general al procesar con Anthropic: {str(e)}")
+        return {
+            'success': False,
+            'error': f'Error al configurar Anthropic: {str(e)}'
+        }
+
+
+def process_with_gemini(code, language, instructions, model="gemini-1-5-pro"):
+    """
+    Procesa el código usando Google Gemini con manejo de errores mejorado.
+    """
+    try:
+        # Configurar la API si no está configurada
+        if not hasattr(genai, '_configured') or not genai._configured:
+            genai.configure(api_key=os.environ.get('GEMINI_API_KEY'))
+
+        # Mapeo de nombres de modelos amigables a identificadores reales de API
+        model_mapping = {
+            'gemini-1-5-pro': "gemini-1.5-pro",
+            'gemini-1-5-flash': "gemini-1.5-flash",
+            'gemini-1-5-ultra': "gemini-1.5-ultra",
+        }
+
+        api_model = model_mapping.get(model, model)
+
+        gemini_model = genai.GenerativeModel(
+            model_name=api_model,
+            generation_config={
+                'temperature': 0.2,
+                'top_p': 0.9,
+                'top_k': 40,
+                'max_output_tokens': 8192,
+            }
+        )
+
+        prompt = f"""Eres un experto programador especializado en {language}. Tu tarea es corregir y mejorar el siguiente código:
+
+```{language}
+{code}
+INSTRUCCIONES:
+{instructions}
+
+Responde ÚNICAMENTE con un objeto JSON válido con exactamente esta estructura:
+
+json
+Copiar
+{{
+  "corrected_code": "código corregido completo aquí",
+  "changes": [
+    {{
+      "description": "descripción del cambio",
+      "lineNumbers": [1, 2],
+      "category": "categoría del cambio",
+      "importance": "alta|media|baja"
+    }}
+  ],
+  "explanation": "explicación detallada de los cambios",
+  "metrics": {{
+    "loc": 10,
+    "complexity": 5,
+    "errors_fixed": 3,
+    "warnings_fixed": 2,
+    "performance_improvements": 1,
+    "readability_improvements": 4,
+    "quality_scores": {{
+      "mantenibilidad": {{"before": 5, "after": 8}},
+      "legibilidad": {{"before": 4, "after": 7}},
+      "eficiencia": {{"before": 6, "after": 8}},
+      "robustez": {{"before": 3, "after": 7}},
+      "seguridad": {{"before": 5, "after": 6}}
+    }}
+  }},
+  "recommendations": [
+    {{
+      "title": "título de la recomendación",
+      "description": "descripción detallada"
+    }}
+  ]
+}}
+No incluyas ningún texto adicional fuera del objeto JSON.
+"""
+        # Realizar la llamada a la API con reintentos
+        max_retries = 2
+        retry_delay = 3
+
+        for attempt in range(max_retries):
             try:
-                # Usar genai para procesar con Gemini
-                import google.generativeai as genai
-
-                if not hasattr(genai, '_configured') or not genai._configured:
-                    genai.configure(api_key=os.environ.get('GEMINI_API_KEY'))
-
-                gemini_model = genai.GenerativeModel(
-                    model_name='gemini-1.5-pro',
-                    generation_config={
-                        'temperature': 0.2,
-                        'top_p': 0.9,
-                        'top_k': 40,
-                        'max_output_tokens': 4096,
-                    }
-                )
-
-                prompt = f"""Eres un experto programador. Tu tarea es corregir el siguiente código en {language} según las instrucciones proporcionadas.
-
-                CÓDIGO:
-                ```{language}
-                {code}
-                ```
-
-                INSTRUCCIONES:
-                {instructions}
-
-                Responde en formato JSON con las siguientes claves:
-                - correctedCode: el código corregido completo
-                - changes: una lista de objetos, cada uno con 'description' y 'lineNumbers'
-                - explanation: una explicación detallada de los cambios
-                """
-
                 response = gemini_model.generate_content(prompt)
 
-                # Extraer el JSON de la respuesta de Gemini
-                import re
-                json_match = re.search(r'```json(.*?)
+                # Extraer JSON de la respuesta
+                content = response.text
+
+                # Buscar JSON en formato de bloque de código primero
+                json_match = re.search(r'```(?:json)?\s*(.*?)\s*```', content, re.DOTALL)
+                if json_match:
+                    try:
+                        result = json.loads(json_match.group(1).strip())
+                    except json.JSONDecodeError:
+                        # Intentar limpiar el JSON antes de fallar
+                        cleaned_json = clean_json_string(json_match.group(1).strip())
+                        result = json.loads(cleaned_json)
+                else:
+                    # Intentar extraer cualquier objeto JSON de la respuesta completa
+                    json_match = re.search(r'(\{.*\})', content, re.DOTALL)
+                    if json_match:
+                        cleaned_json = clean_json_string(json_match.group(1))
+                        result = json.loads(cleaned_json)
+                    else:
+                        # Último intento: tratar toda la respuesta como JSON
+                        try:
+                            cleaned_json = clean_json_string(content)
+                            result = json.loads(cleaned_json)
+                        except:
+                            raise ValueError("No se pudo extraer JSON de la respuesta")
+
+                # Normalizar nombres de campos si es necesario
+                if 'correctedCode' in result and 'corrected_code' not in result:
+                    result['corrected_code'] = result.pop('correctedCode')
+
+                logging.info(f"Código procesado exitosamente con {api_model}")
+
+                # Agregar metadatos
+                result['model_used'] = api_model
+                result['success'] = True
+
+                return result
+
+            except Exception as e:
+                if attempt < max_retries - 1:
+                    logging.warning(f"Error temporal con Gemini (intento {attempt+1}/{max_retries}): {str(e)}")
+                    time.sleep(retry_delay * (2 ** attempt))
+                else:
+                    logging.error(f"Error persistente con Gemini después de {max_retries} intentos: {str(e)}")
+                    return {
+                        'success': False,
+                        'error': f'Error al conectar con Gemini después de {max_retries} intentos: {str(e)}'
+                    }
+
+    except Exception as e:
+        logging.exception(f"Error general al procesar con Gemini: {str(e)}")
+        return {
+            'success': False,
+            'error': f'Error al configurar Gemini: {str(e)}'
+        }
+
+def clean_json_string(json_str):
+    """
+    Limpia una cadena JSON para intentar hacerla válida.
+    Útil para corregir problemas comunes en las respuestas de los modelos.
+    """
+    # Eliminar comentarios de una línea
+    json_str = re.sub(r'//.*$', '', json_str, flags=re.MULTILINE)
+
+    # Eliminar comentarios multilínea
+    json_str = re.sub(r'/\*.*?\*/', '', json_str, flags=re.DOTALL)
+
+    # Reemplazar comillas simples por comillas dobles
+    json_str = re.sub(r"'([^']*)'", r'"\1"', json_str)
+
+    # Eliminar comas finales en objetos y arrays
+    json_str = re.sub(r',\s*}', '}', json_str)
+    json_str = re.sub(r',\s*]', ']', json_str)
+
+    # Asegurar que los nombres de propiedades tengan comillas dobles
+    json_str = re.sub(r'([{,]\s*)([a-zA-Z0-9_]+)(\s*:)', r'\1"\2"\3', json_str)
+
+    return json_str
+
+def enhance_results(result, original_code, language, static_analysis):
+    """
+    Mejora los resultados con información adicional y validaciones.
+    """
+    enhanced = result.copy()
+    enhanced['success'] = True
+
+    # Asegurarse de que el código corregido sea válido
+    if not enhanced.get('corrected_code'):
+        enhanced['corrected_code'] = original_code
+        enhanced['changes'] = enhanced.get('changes', [])
+        enhanced['changes'].append({
+            'description': 'No se pudieron aplicar correcciones',
+            'lineNumbers': [1],
+            'category': 'error',
+            'importance': 'alta'
+        })
+
+    # Asegurarse de que todos los cambios tengan los campos requeridos
+    if 'changes' in enhanced:
+        normalized_changes = []
+        for change in enhanced['changes']:
+            normalized_change = {
+                'description': change.get('description', 'Sin descripción'),
+                'lineNumbers': change.get('lineNumbers', change.get('line_numbers', [1])),
+                'category': change.get('category', 'general'),
+                'importance': change.get('importance', 'media')
+            }
+            normalized_changes.append(normalized_change)
+        enhanced['changes'] = normalized_changes
+    else:
+        enhanced['changes'] = []
+
+    # Agregar métricas de código si no existen
+    if 'metrics' not in enhanced:
+        enhanced['metrics'] = calculate_code_metrics(original_code, enhanced['corrected_code'], language)
+
+    # Agregar recomendaciones si no existen
+    if 'recommendations' not in enhanced:
+        enhanced['recommendations'] = []
+
+    # Agregar diferencias para visualización
+    enhanced['diff'] = generate_diff(original_code, enhanced['corrected_code'])
+
+    # Agregar información de análisis estático si está disponible
+    if static_analysis and static_analysis.get('issues'):
+        enhanced['static_analysis'] = {
+            'issues_count': len(static_analysis['issues']),
+            'issues_summary': summarize_issues(static_analysis['issues'])
+        }
+
+    return enhanced
+    
