@@ -297,8 +297,18 @@
     <!-- Div para notificaciones -->
     <div id="notifications" class="notifications"></div>
 
-    <!-- Cargar el procesador de comandos naturales -->
+    <!-- Cargar scripts en orden correcto -->
     <script src="{{ url_for('static', filename='js/natural-command-processor.js') }}"></script>
+    <!-- Asegurar que se cargue después del natural-command-processor -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Verificar que NaturalCommandProcessor está disponible
+            if (typeof NaturalCommandProcessor === 'undefined') {
+                console.error('NaturalCommandProcessor no está disponible. Verificar carga de scripts.');
+            }
+        });
+    </script>
+    <script src="{{ url_for('static', filename='js/terminal-integration.js') }}"></script>
     <script src="{{ url_for('static', filename='js/command-assistant.js') }}"></script>
 
     <script>

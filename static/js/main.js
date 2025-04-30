@@ -105,15 +105,15 @@ document.addEventListener('DOMContentLoaded', function() {
                 try {
                     element.innerHTML = markdownParser(markdown);
 
-                // Resaltar código si prism está disponible
-                if (typeof Prism !== 'undefined') {
-                    element.querySelectorAll('pre code').forEach(block => {
-                        Prism.highlightElement(block);
-                    });
+                    // Resaltar código si prism está disponible
+                    if (typeof Prism !== 'undefined') {
+                        element.querySelectorAll('pre code').forEach(block => {
+                            Prism.highlightElement(block);
+                        });
+                    }
+                } catch (e) {
+                    console.error('Error al procesar markdown:', e);
                 }
-            } catch (e) {
-                console.error('Error al procesar markdown:', e);
-            }
             });
         } else {
             // Cargar marked dinámicamente si no está disponible
