@@ -1,4 +1,3 @@
-
 /**
  * Codestorm Assistant - Módulo de Chat
  * Versión: 2.0.1 (Optimizado)
@@ -892,277 +891,278 @@ function formatMessageContent(content) {
                     content = content.replace(/\n/g, '<br>');
 
                     return content;
-                    }
+}
 
-                    /**
-                    * Actualiza la información del agente seleccionado
-                    * @param {string} agentId - ID del agente
-                    */
-                    function updateAgentInfo(agentId) {
-                    // Asegurarse de que los agentes estén definidos
-                    if (!window.app.chat.availableAgents || Object.keys(window.app.chat.availableAgents).length === 0) {
-                    console.log('Agentes no disponibles, usando valores predeterminados');
-                    // Definir agentes predeterminados si no existen
-                    window.app.chat.availableAgents = window.app.chat.availableAgents || {
-                        'developer': {
-                            name: 'Agente de Desarrollo',
-                            description: 'Especialista en optimización y edición de código en tiempo real',
-                            capabilities: [
-                                'Programación en múltiples lenguajes',
-                                'Depuración de código y resolución de errores',
-                                'Implementación de funcionalidades',
-                                'Pruebas y optimización de rendimiento',
-                                'Gestión de dependencias y librerías'
-                            ],
-                            icon: 'code-slash'
-                        },
-                        'architect': {
-                            name: 'Agente de Arquitectura',
-                            description: 'Diseñador de arquitecturas escalables y optimizadas',
-                            capabilities: [
-                                'Definición de estructura del proyecto',
-                                'Selección de tecnologías y frameworks',
-                                'Asesoría en elección de bases de datos',
-                                'Implementación de microservicios',
-                                'Planificación de UI/UX y patrones de diseño'
-                            ],
-                            icon: 'diagram-3'
-                        },
-                        'general': {
-                            name: 'Asistente General',
-                            description: 'Asistente versátil para diversas tareas de programación',
-                            capabilities: [
-                                'Resolución de consultas generales',
-                                'Asistencia en proyectos diversos',
-                                'Explicación de conceptos técnicos',
-                                'Recomendaciones de buenas prácticas',
-                                'Orientación en elección de tecnologías'
-                            ],
-                            icon: 'person-check'
-                        }
-                    };
-                    }
+/**
+ * Actualiza la información del agente seleccionado
+ * @param {string} agentId - ID del agente
+ */
+function updateAgentInfo(agentId) {
+    // Asegurarse de que los agentes estén definidos
+    if (!window.app.chat.availableAgents || Object.keys(window.app.chat.availableAgents).length === 0) {
+        console.log('Agentes no disponibles, usando valores predeterminados');
+        // Definir agentes predeterminados si no existen
+        window.app.chat.availableAgents = window.app.chat.availableAgents || {
+            'developer': {
+                name: 'Agente de Desarrollo',
+                description: 'Especialista en optimización y edición de código en tiempo real',
+                capabilities: [
+                    'Programación en múltiples lenguajes',
+                    'Depuración de código y resolución de errores',
+                    'Implementación de funcionalidades',
+                    'Pruebas y optimización de rendimiento',
+                    'Gestión de dependencias y librerías'
+                ],
+                icon: 'code-slash'
+            },
+            'architect': {
+                name: 'Agente de Arquitectura',
+                description: 'Diseñador de arquitecturas escalables y optimizadas',
+                capabilities: [
+                    'Definición de estructura del proyecto',
+                    'Selección de tecnologías y frameworks',
+                    'Asesoría en elección de bases de datos',
+                    'Implementación de microservicios',
+                    'Planificación de UI/UX y patrones de diseño'
+                ],
+                icon: 'diagram-3'
+            },
+            'general': {
+                name: 'Asistente General',
+                description: 'Asistente versátil para diversas tareas de programación',
+                capabilities: [
+                    'Resolución de consultas generales',
+                    'Asistencia en proyectos diversos',
+                    'Explicación de conceptos técnicos',
+                    'Recomendaciones de buenas prácticas',
+                    'Orientación en elección de tecnologías'
+                ],
+                icon: 'person-check'
+            }
+        };
+    }
 
-                    const agent = window.app.chat.availableAgents[agentId] || window.app.chat.availableAgents.general;
-                    const {agentInfo, agentCapabilities, agentBadge} = window.app.chat.elements;
+    const agent = window.app.chat.availableAgents[agentId] || window.app.chat.availableAgents.general;
+    const {agentInfo, agentCapabilities, agentBadge} = window.app.chat.elements;
 
-                    // Actualizar información del agente
-                    if (agentInfo) {
-                    agentInfo.innerHTML = `
-                        <i class="bi bi-${agent.icon} agent-icon"></i>
-                        <div>
-                            <h3>${agent.name}</h3>
-                            <p>${agent.description}</p>
-                        </div>
-                    `;
-                    }
+    // Actualizar información del agente
+    if (agentInfo) {
+        agentInfo.innerHTML = `
+            <i class="bi bi-${agent.icon} agent-icon"></i>
+            <div>
+                <h3>${agent.name}</h3>
+                <p>${agent.description}</p>
+            </div>
+        `;
+    }
 
-                    // Actualizar lista de capacidades
-                    if (agentCapabilities && agent.capabilities) {
-                    agentCapabilities.innerHTML = '';
-                    agent.capabilities.forEach(capability => {
-                        const item = document.createElement('li');
-                        item.textContent = capability;
-                        agentCapabilities.appendChild(item);
+    // Actualizar lista de capacidades
+    if (agentCapabilities && agent.capabilities) {
+        agentCapabilities.innerHTML = '';
+        agent.capabilities.forEach(capability => {
+            const item = document.createElement('li');
+            item.textContent = capability;
+            agentCapabilities.appendChild(item);
+        });
+    }
+
+    // Actualizar badge del agente
+    if (agentBadge) {
+        agentBadge.textContent = agent.name;
+    }
+}
+
+/**
+ * Ajusta la altura del textarea automáticamente
+ * @param {HTMLTextAreaElement} textarea - Elemento textarea
+ */
+function adjustTextareaHeight(textarea) {
+    if (!textarea) return;
+
+    // Restablecer altura para obtener la correcta
+    textarea.style.height = 'auto';
+
+    // Calcular nueva altura (con límite máximo)
+    const maxHeight = 200; // altura máxima en px
+    const newHeight = Math.min(textarea.scrollHeight, maxHeight);
+
+    // Establecer nueva altura
+    textarea.style.height = `${newHeight}px`;
+
+    // Añadir/quitar clase de scroll si es necesario
+    if (textarea.scrollHeight > maxHeight) {
+        textarea.classList.add('scrollable');
+    } else {
+        textarea.classList.remove('scrollable');
+    }
+}
+
+/**
+ * Añade un mensaje al contenedor de chat
+ * @param {string} messageHTML - HTML del mensaje
+ */
+function appendMessageToChat(messageHTML) {
+    const {messagesContainer} = window.app.chat.elements;
+    if (!messagesContainer) return;
+
+    // Crear elemento temporal para insertar HTML
+    const tempDiv = document.createElement('div');
+    tempDiv.innerHTML = messageHTML;
+
+    // Añadir el nodo al contenedor
+    messagesContainer.appendChild(tempDiv.firstElementChild);
+}
+
+/**
+ * Desplaza el chat hasta abajo
+ */
+function scrollToBottom() {
+    const {messagesContainer} = window.app.chat.elements;
+    if (!messagesContainer) return;
+
+    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+}
+
+/**
+ * Obtiene la hora actual formateada (HH:MM)
+ * @returns {string} Hora formateada
+ */
+function getCurrentTime() {
+    const now = new Date();
+    let hours = now.getHours();
+    let minutes = now.getMinutes();
+
+    // Añadir ceros iniciales si es necesario
+    hours = hours < 10 ? '0' + hours : hours;
+    minutes = minutes < 10 ? '0' + minutes : minutes;
+
+    return `${hours}:${minutes}`;
+}
+
+/**
+ * Registra información en la consola sin mostrarla en la interfaz
+ * @param {string} message - Mensaje a registrar
+ * @param {any} data - Datos adicionales (opcional)
+ */
+function silentLog(message, data) {
+    // Verificar que window.app y window.app.chat existan antes de acceder a debugMode
+    if (window.app && window.app.chat && window.app.chat.debugMode) {
+        console.log(`[DEBUG] ${message}`, data !== undefined ? data : '');
+    } else {
+        console.log(`[INFO] ${message}`, data !== undefined ? data : '');
+    }
+}
+
+/**
+ * Exporta la conversación actual a un archivo
+ * @param {string} format - Formato de exportación ('json', 'html', 'markdown')
+ */
+function exportConversation(format = 'json') {
+    const {messagesContainer} = window.app.chat.elements;
+    if (!messagesContainer) {
+        addSystemMessage("No se pudo exportar la conversación");
+        return;
+    }
+
+    let content = '';
+    const filename = `codestorm-chat-${new Date().toISOString().slice(0, 10)}.${format}`;
+
+    try {
+        switch (format) {
+            case 'json':
+                // Exportar como JSON
+                const jsonData = [];
+                window.app.chat.context.forEach(msg => {
+                    jsonData.push({
+                        role: msg.role,
+                        content: msg.content,
+                        timestamp: new Date().toISOString()
                     });
+                });
+                content = JSON.stringify(jsonData, null, 2);
+                break;
+
+            case 'markdown':
+                // Exportar como Markdown
+                window.app.chat.context.forEach(msg => {
+                    if (msg.role === 'user') {
+                        content += `## Usuario\n\n${msg.content}\n\n`;
+                    } else if (msg.role === 'assistant') {
+                        content += `## Asistente\n\n${msg.content}\n\n`;
                     }
+                });
+                break;
 
-                    // Actualizar badge del agente
-                    if (agentBadge) {
-                    agentBadge.textContent = agent.name;
+            case 'html':
+                // Exportar como HTML
+                content = `<!DOCTYPE html>
+                <html>
+                <head>
+                    <meta charset="UTF-8">
+                    <title>Conversación de Codestorm Assistant</title>
+                    <style>
+                        body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; }
+                        .message { margin-bottom: 20px; padding: 10px; border-radius: 5px; }
+                        .user { background-color: #f0f0f0; }
+                        .assistant { background-color: #e6f7ff; }
+                        pre { background-color: #f5f5f5; padding: 10px; border-radius: 5px; overflow-x: auto; }
+                        code { font-family: monospace; }
+                    </style>
+                </head>
+                <body>
+                    <h1>Conversación de Codestorm Assistant</h1>
+                    <p>Exportado el ${new Date().toLocaleString()}</p>
+                    <div class="conversation">`;
+
+                window.app.chat.context.forEach(msg => {
+                    if (msg.role === 'user') {
+                        content += `<div class="message user"><strong>Usuario:</strong><div>${formatMessageContent(msg.content)}</div></div>`;
+                    } else if (msg.role === 'assistant') {
+                        content += `<div class="message assistant"><strong>Asistente:</strong><div>${formatMessageContent(msg.content)}</div></div>`;
                     }
-                    }
+                });
 
-                    /**
-                    * Ajusta la altura del textarea automáticamente
-                    * @param {HTMLTextAreaElement} textarea - Elemento textarea
-                    */
-                    function adjustTextareaHeight(textarea) {
-                    if (!textarea) return;
+                content += `</div></body></html>`;
+                break;
 
-                    // Restablecer altura para obtener la correcta
-                    textarea.style.height = 'auto';
+            default:
+                throw new Error(`Formato no soportado: ${format}`);
+        }
 
-                    // Calcular nueva altura (con límite máximo)
-                    const maxHeight = 200; // altura máxima en px
-                    const newHeight = Math.min(textarea.scrollHeight, maxHeight);
+        // Crear y descargar el archivo
+        const blob = new Blob([content], { type: `text/${format === 'json' ? 'json' : format === 'html' ? 'html' : 'plain'}` });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
 
-                    // Establecer nueva altura
-                    textarea.style.height = `${newHeight}px`;
+        addSystemMessage(`Conversación exportada como ${format.toUpperCase()}`);
+    } catch (error) {
+        console.error('Error al exportar conversación:', error);
+        addSystemMessage(`Error al exportar conversación: ${error.message}`);
+    }
+}
 
-                    // Añadir/quitar clase de scroll si es necesario
-                    if (textarea.scrollHeight > maxHeight) {
-                    textarea.classList.add('scrollable');
-                    } else {
-                    textarea.classList.remove('scrollable');
-                    }
-                    }
+/**
+ * Borra la conversación actual
+ */
+function clearConversation() {
+    if (!confirm('¿Estás seguro de que deseas borrar toda la conversación?')) {
+        return;
+    }
 
-                    /**
-                    * Añade un mensaje al contenedor de chat
-                    * @param {string} messageHTML - HTML del mensaje
-                    */
-                    function appendMessageToChat(messageHTML) {
-                    const {messagesContainer} = window.app.chat.elements;
-                    if (!messagesContainer) return;
+    const {messagesContainer} = window.app.chat.elements;
+    if (messagesContainer) {
+        messagesContainer.innerHTML = '';
+        window.app.chat.context = [];
+        window.app.chat.chatMessageId = 0;
+        addSystemMessage("Conversación borrada");
+    }
+}
 
-                    // Crear elemento temporal para insertar HTML
-                    const tempDiv = document.createElement('div');
-                    tempDiv.innerHTML = messageHTML;
-
-                    // Añadir el nodo al contenedor
-                    messagesContainer.appendChild(tempDiv.firstElementChild);
-                    }
-
-                    /**
-                    * Desplaza el chat hasta abajo
-                    */
-                    function scrollToBottom() {
-                    const {messagesContainer} = window.app.chat.elements;
-                    if (!messagesContainer) return;
-
-                    messagesContainer.scrollTop = messagesContainer.scrollHeight;
-                    }
-
-                    /**
-                    * Obtiene la hora actual formateada (HH:MM)
-                    * @returns {string} Hora formateada
-                    */
-                    function getCurrentTime() {
-                    const now = new Date();
-                    let hours = now.getHours();
-                    let minutes = now.getMinutes();
-
-                    // Añadir ceros iniciales si es necesario
-                    hours = hours < 10 ? '0' + hours : hours;
-                    minutes = minutes < 10 ? '0' + minutes : minutes;
-
-                    return `${hours}:${minutes}`;
-                    }
-
-                    /**
-                    * Registra información en la consola sin mostrarla en la interfaz
-                    * @param {string} message - Mensaje a registrar
-                    * @param {any} data - Datos adicionales (opcional)
-                    */
-                    function silentLog(message, data) {
-                    if (window.app.chat.debugMode) {
-                    console.log(`[DEBUG] ${message}`, data !== undefined ? data : '');
-                    } else {
-                    console.log(`[INFO] ${message}`, data !== undefined ? data : '');
-                    }
-                    }
-
-                    /**
-                    * Exporta la conversación actual a un archivo
-                    * @param {string} format - Formato de exportación ('json', 'html', 'markdown')
-                    */
-                    function exportConversation(format = 'json') {
-                    const {messagesContainer} = window.app.chat.elements;
-                    if (!messagesContainer) {
-                    addSystemMessage("No se pudo exportar la conversación");
-                    return;
-                    }
-
-                    let content = '';
-                    const filename = `codestorm-chat-${new Date().toISOString().slice(0, 10)}.${format}`;
-
-                    try {
-                    switch (format) {
-                        case 'json':
-                            // Exportar como JSON
-                            const jsonData = [];
-                            window.app.chat.context.forEach(msg => {
-                                jsonData.push({
-                                    role: msg.role,
-                                    content: msg.content,
-                                    timestamp: new Date().toISOString()
-                                });
-                            });
-                            content = JSON.stringify(jsonData, null, 2);
-                            break;
-
-                        case 'markdown':
-                            // Exportar como Markdown
-                            window.app.chat.context.forEach(msg => {
-                                if (msg.role === 'user') {
-                                    content += `## Usuario\n\n${msg.content}\n\n`;
-                                } else if (msg.role === 'assistant') {
-                                    content += `## Asistente\n\n${msg.content}\n\n`;
-                                }
-                            });
-                            break;
-
-                        case 'html':
-                            // Exportar como HTML
-                            content = `<!DOCTYPE html>
-                            <html>
-                            <head>
-                                <meta charset="UTF-8">
-                                <title>Conversación de Codestorm Assistant</title>
-                                <style>
-                                    body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; }
-                                    .message { margin-bottom: 20px; padding: 10px; border-radius: 5px; }
-                                    .user { background-color: #f0f0f0; }
-                                    .assistant { background-color: #e6f7ff; }
-                                    pre { background-color: #f5f5f5; padding: 10px; border-radius: 5px; overflow-x: auto; }
-                                    code { font-family: monospace; }
-                                </style>
-                            </head>
-                            <body>
-                                <h1>Conversación de Codestorm Assistant</h1>
-                                <p>Exportado el ${new Date().toLocaleString()}</p>
-                                <div class="conversation">`;
-
-                            window.app.chat.context.forEach(msg => {
-                                if (msg.role === 'user') {
-                                    content += `<div class="message user"><strong>Usuario:</strong><div>${formatMessageContent(msg.content)}</div></div>`;
-                                } else if (msg.role === 'assistant') {
-                                    content += `<div class="message assistant"><strong>Asistente:</strong><div>${formatMessageContent(msg.content)}</div></div>`;
-                                }
-                            });
-
-                            content += `</div></body></html>`;
-                            break;
-
-                        default:
-                            throw new Error(`Formato no soportado: ${format}`);
-                    }
-
-                    // Crear y descargar el archivo
-                    const blob = new Blob([content], { type: `text/${format === 'json' ? 'json' : format === 'html' ? 'html' : 'plain'}` });
-                    const url = URL.createObjectURL(blob);
-                    const a = document.createElement('a');
-                    a.href = url;
-                    a.download = filename;
-                    document.body.appendChild(a);
-                    a.click();
-                    document.body.removeChild(a);
-                    URL.revokeObjectURL(url);
-
-                    addSystemMessage(`Conversación exportada como ${format.toUpperCase()}`);
-                    } catch (error) {
-                    console.error('Error al exportar conversación:', error);
-                    addSystemMessage(`Error al exportar conversación: ${error.message}`);
-                    }
-                    }
-
-                    /**
-                    * Borra la conversación actual
-                    */
-                    function clearConversation() {
-                    if (!confirm('¿Estás seguro de que deseas borrar toda la conversación?')) {
-                    return;
-                    }
-
-                    const {messagesContainer} = window.app.chat.elements;
-                    if (messagesContainer) {
-                    messagesContainer.innerHTML = '';
-                    window.app.chat.context = [];
-                    window.app.chat.chatMessageId = 0;
-                    addSystemMessage("Conversación borrada");
-                    }
-                    }
-
-                    // Inicializar chat cuando el DOM esté completamente cargado
-                    document.addEventListener('DOMContentLoaded', window.initializeChat);
+// Inicializar chat cuando el DOM esté completamente cargado
+document.addEventListener('DOMContentLoaded', window.initializeChat);
