@@ -271,85 +271,103 @@ def handle_chat_internal(request_data):
 
         USING_NEW_OPENAI_CLIENT = False #  Determine this based on your openai client version.  This is a placeholder.
 
-        if model_choice == 'openai' and openai_api_key:
-            try:
-                messages = [{"role": "system", "content": system_prompt}]
-                for msg in formatted_context:
-                    messages.append({"role": msg['role'], "content": msg['content']})
-                messages.append({"role": "user", "content": user_message})
+        if model_choice == 'openai':
+            if openai_api_key:
+                try:
+                    messages = [{"role": "system", "content": system_prompt}]
+                    for msg in formatted_context:
+                        messages.append({"role": msg['role'], "content": msg['content']})
+                    messages.append({"role": "user", "content": user_message})
 
-                if USING_NEW_OPENAI_CLIENT:
-                    completion = client.chat.completions.create(
-                        model="gpt-4o",
-                        messages=messages,
-                        temperature=0.7,
-                        max_tokens=2000
-                    )
-                    response = completion.choices[0].message.content
-                else:
-                    completion = openai.ChatCompletion.create(
-                        model="gpt-4o",
-                        messages=messages,
-                        temperature=0.7,
-                        max_tokens=2000
-                    )
-                    response = completion.choices[0].message.content
-                logging.info(f"Respuesta generada con OpenAI: {response[:100]}...")
+                    if USING_NEW_OPENAI_CLIENT:
+                        completion = client.chat.completions.create(
+                            model="gpt-4o",
+                            messages=messages,
+                            temperature=0.7,
+                            max_tokens=2000
+                        )
+                        response = completion.choices[0].message.content
+                    else:
+                        completion = openai.ChatCompletion.create(
+                            model="gpt-4o",
+                            messages=messages,
+                            temperature=0.7,
+                            max_tokens=2000
+                        )
+                        response = completion.choices[0].message.content
+                    logging.info(f"Respuesta generada con OpenAI: {response[:100]}...")
 
-                return {'response': response, 'error': None}
+                    return {'response': response, 'error': None}
+                except Exception as e:
+                    logging.error(f"Error con API de OpenAI: {str(e)}")
+                    return {'response': f"Error con OpenAI API: {str(e)}", 'error': None}
+            else:
+                return {'response': f"El modelo 'openai' no está disponible en este momento. Por favor configura una clave API en el panel de Secrets o selecciona otro modelo.", 'error': None}
 
             except Exception as e:
                 logging.error(f"Error con API de OpenAI: {str(e)}")
                 return {'error': f"Error con OpenAI: {str(e)}", 'response': None}
 
-        elif model_choice == 'anthropic' and anthropic_api_key:
-            try:
-                import anthropic
-                from anthropic import Anthropic
+        elif model_choice == 'anthropic':
+            if anthropic_api_key:
+                try:
+                    import anthropic
+                    from anthropic import Anthropic
 
-                client = Anthropic(api_key=anthropic_api_key)
+                    client = Anthropic(api_key=anthropic_api_key)
 
-                messages = []
-                for msg in formatted_context:
-                    messages.append({"role": msg['role'], "content": msg['content']})
-                messages.append({"role": "user", "content": user_message})
+                    messages = []
+                    for msg in formatted_context:
+                        messages.append({"role": msg['role'], "content": msg['content']})
+                    messages.append({"role": "user", "content": user_message})
 
-                completion = client.messages.create(
-                    model="claude-3-5-sonnet-latest",
-                    messages=messages,
-                    max_tokens=2000,
-                    temperature=0.7,
-                    system=system_prompt
-                )
+                    completion = client.messages.create(
+                        model="claude-3-5-sonnet-latest",
+                        messages=messages,
+                        max_tokens=2000,
+                        temperature=0.7,
+                        system=system_prompt
+                    )
 
-                response = completion.content[0].text
-                logging.info(f"Respuesta generada con Anthropic: {response[:100]}...")
+                    response = completion.content[0].text
+                    logging.info(f"Respuesta generada con Anthropic: {response[:100]}...")
 
-                return {'response': response, 'error': None}
+                    return {'response': response, 'error': None}
+                except Exception as e:
+                    logging.error(f"Error con API de Anthropic: {str(e)}")
+                    return {'response': f"Error con Anthropic API: {str(e)}", 'error': None}
+            else:
+                return {'response': f"El modelo 'anthropic' no está disponible en este momento. Por favor configura una clave API en el panel de Secrets o selecciona otro modelo.", 'error': None}
 
             except Exception as e:
                 logging.error(f"Error con API de Anthropic: {str(e)}")
                 return {'error': f"Error con Anthropic: {str(e)}", 'response': None}
 
-        elif model_choice == 'gemini' and gemini_api_key:
-            try:
-                # Make sure Gemini is configured properly
-                if not hasattr(genai, '_configured') or not genai._configured:
-                    genai.configure(api_key=gemini_api_key)
+        elif model_choice == 'gemini':
+            if gemini_api_key:
+                try:
+                    # Make sure Gemini is configured properly
+                    if not hasattr(genai, '_configured') or not genai._configured:
+                        genai.configure(api_key=gemini_api_key)
 
-                model = genai.GenerativeModel('gemini-1.5-pro')
+                    model = genai.GenerativeModel('gemini-1.5-pro')
 
-                full_prompt = system_prompt + "\n\n"
-                for msg in formatted_context:
-                    role_prefix = "Usuario: " if msg['role'] == 'user' else "Asistente: "
-                    full_prompt += role_prefix + msg['content'] + "\n\n"
-                full_prompt += "Usuario: " + user_message + "\n\nAsistente: "
+                    full_prompt = system_prompt + "\n\n"
+                    for msg in formatted_context:
+                        role_prefix = "Usuario: " if msg['role'] == 'user' else "Asistente: "
+                        full_prompt += role_prefix + msg['content'] + "\n\n"
+                    full_prompt += "Usuario: " + user_message + "\n\nAsistente: "
 
-                gemini_response = model.generate_content(full_prompt)
-                response = gemini_response.text
-                logging.info(f"Respuesta generada con Gemini: {response[:100]}...")
+                    gemini_response = model.generate_content(full_prompt)
+                    response = gemini_response.text
+                    logging.info(f"Respuesta generada con Gemini: {response[:100]}...")
 
-                return {'response': response, 'error': None}
+                    return {'response': response, 'error': None}
+                except Exception as e:
+                    logging.error(f"Error con API de Gemini: {str(e)}")
+                    return {'response': f"Error con Gemini API: {str(e)}", 'error': None}
+            else:
+                return {'response': f"El modelo 'gemini' no está disponible en este momento. Por favor configura una clave API en el panel de Secrets o selecciona otro modelo.", 'error': None}
 
             except Exception as e:
                 logging.error(f"Error con API de Gemini: {str(e)}")
@@ -360,9 +378,24 @@ def handle_chat_internal(request_data):
                     'error': None
                 }
         else:
-            # If model not supported, return a helpful message instead of an error
+            # Mensaje descriptivo que orienta al usuario
+            available_models = []
+            if openai_api_key:
+                available_models.append("'openai'")
+            if anthropic_api_key:
+                available_models.append("'anthropic'")
+            if gemini_api_key:
+                available_models.append("'gemini'")
+                
+            if available_models:
+                available_models_text = ", ".join(available_models)
+                message = f"El modelo '{model_choice}' no está soportado. Por favor, selecciona uno de los siguientes modelos disponibles: {available_models_text}."
+            else:
+                message = "No hay modelos disponibles en este momento. Por favor configura al menos una API key en el panel de Secrets (OpenAI, Anthropic o Gemini)."
+                
+            logging.warning(f"Modelo no disponible: {model_choice}")
             return {
-                'response': f"Lo siento, el modelo '{model_choice}' no está disponible en este momento. Por favor selecciona otro modelo como 'openai' o 'anthropic' si está configurado.",
+                'response': message,
                 'error': None
             }
 

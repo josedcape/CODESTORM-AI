@@ -580,3 +580,66 @@ document.addEventListener('DOMContentLoaded', function() {
     // Initialize the app
     app.init();
 });
+
+
+// Función para verificar disponibilidad de APIs
+function checkAPIAvailability() {
+    fetch('/api/health')
+        .then(response => response.json())
+        .then(data => {
+            const apiStatus = document.getElementById('api-status');
+            if (apiStatus) {
+                const apis = data.apis || {};
+                const availableApis = Object.entries(apis)
+                    .filter(([_, status]) => status === 'ok')
+                    .map(([name, _]) => name);
+                
+                if (availableApis.length > 0) {
+                    apiStatus.textContent = 'APIs disponibles: ' + availableApis.join(', ');
+                    apiStatus.className = 'mt-2 small text-success';
+                } else {
+                    apiStatus.textContent = 'No hay APIs configuradas. Configura al menos una en el panel de Secrets.';
+                    apiStatus.className = 'mt-2 small text-warning';
+                }
+                
+                // Actualizar el selector de modelos
+                const modelSelector = document.getElementById('model-selector');
+                if (modelSelector) {
+                    // Deshabilitar opciones no disponibles
+                    Array.from(modelSelector.options).forEach(option => {
+                        const isAvailable = apis[option.value] === 'ok';
+                        option.disabled = !isAvailable;
+                        if (!isAvailable) {
+                            option.textContent += ' (no configurado)';
+                        }
+                    });
+                    
+                    // Seleccionar el primer modelo disponible
+                    const firstAvailable = Array.from(modelSelector.options)
+                        .find(option => !option.disabled);
+                    if (firstAvailable) {
+                        firstAvailable.selected = true;
+                    }
+                }
+            }
+        })
+        .catch(error => {
+            console.error('Error checking API availability:', error);
+            const apiStatus = document.getElementById('api-status');
+            if (apiStatus) {
+                apiStatus.textContent = 'Error al verificar disponibilidad de APIs';
+                apiStatus.className = 'mt-2 small text-danger';
+            }
+        });
+}
+
+// Llamar a la función cuando se carga la página
+document.addEventListener('DOMContentLoaded', function() {
+    // Inicializar la aplicación
+    if (window.app && typeof window.app.init === 'function') {
+        window.app.init();
+    }
+    
+    // Verificar disponibilidad de APIs
+    checkAPIAvailability();
+});
