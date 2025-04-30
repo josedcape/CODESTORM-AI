@@ -368,11 +368,11 @@ async function sendMessage() {
             addAgentMessage(data.response, data.agent || window.app.chat.activeAgent);
         } else if (data.error) {
             addSystemMessage(`Error: ${data.error}`);
-            
+
             // Sugerir probar otro modelo si hay error de API
             if (data.error.includes("API") || data.error.includes("OpenAI") || 
                 data.error.includes("Anthropic") || data.error.includes("Gemini")) {
-                
+
                 addSystemMessage(`Sugerencia: Prueba con otro modelo de IA desde el menú de selección o verifica la configuración de la API.`);
             }
         } else {
@@ -953,160 +953,5 @@ function addMessageToChat(sender, content, timestamp = null) {
         timeStr = date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
     } else {
         const now = new Date();
-        timeStr = now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-    }
-
-    // Intentar formatear el contenido como markdown si no es del usuario
-    let formattedContent = content;
-    if (sender !== 'Tú') {
-        try {
-            // Cargar marked.js si no está cargado
-            if (typeof marked === 'undefined') {
-                // Usamos marked desde CDN si no está disponible
-                const script = document.createElement('script');
-                script.src = 'https://cdn.jsdelivr.net/npm/marked/marked.min.js';
-                document.head.appendChild(script);
-
-                // Esperamos a que se cargue antes de formatear
-                script.onload = () => {
-                    formattedContent = marked.parse(content);
-                    updateMessage();
-                };
-            } else {
-                formattedContent = marked.parse(content);
-            }
-        } catch (e) {
-            console.error('Error al formatear markdown:', e);
-        }
-    }
-
-    // Construir HTML del mensaje
-    messageDiv.className = 'message-container ' + (sender === 'Tú' ? 'user-container' : 'agent-container');
-
-    function updateMessage() {
-        messageDiv.innerHTML = `
-            <div class="message-header">
-                <strong>${sender}</strong>
-                <span class="message-time">${timeStr}</span>
-            </div>
-            <div class="${messageClass}">
-                ${formattedContent}
-            </div>
-        `;
-    }
-
-    updateMessage();
-
-    // Añadir al contenedor de mensajes
-    chatMessages.appendChild(messageDiv);
-
-    // Scroll al final
-    chatMessages.scrollTop = chatMessages.scrollHeight;
-
-    // Aplicar resaltado de sintaxis a bloques de código
-    if (sender !== 'Tú') {
-        setTimeout(() => {
-            const codeBlocks = messageDiv.querySelectorAll('pre code');
-            if (codeBlocks.length > 0) {
-                // Cargar highlight.js si no está cargado
-                if (typeof hljs === 'undefined') {
-                    const highlightScript = document.createElement('script');
-                    highlightScript.src = 'https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/highlight.min.js';
-                    document.head.appendChild(highlightScript);
-
-                    const highlightCss = document.createElement('link');
-                    highlightCss.rel = 'stylesheet';
-                    highlightCss.href = 'https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/github-dark.min.css';
-                    document.head.appendChild(highlightCss);
-
-                    highlightScript.onload = () => {
-                        codeBlocks.forEach(block => {
-                            hljs.highlightElement(block);
-                        });
-                    };
-                } else {
-                    codeBlocks.forEach(block => {
-                        hljs.highlightElement(block);
-                    });
-                }
-            }
-        }, 100);
-    }
-}
-
-// Inicializar el chat cuando el DOM esté listo
-document.addEventListener('DOMContentLoaded', function() {
-    // Asegurarse de que el objeto app.chat existe
-    if (!window.app) window.app = {};
-    if (!window.app.chat) window.app.chat = {};
-    
-    // Inicializar configuración básica si no existe
-    if (!window.app.chat.elements) window.app.chat.elements = {};
-    if (!window.app.chat.context) window.app.chat.context = [];
-    
-    // Asegurarse de que los agentes estén definidos antes de inicializar
-    if (!window.app.chat.availableAgents || Object.keys(window.app.chat.availableAgents).length === 0) {
-        window.app.chat.availableAgents = {
-            'developer': {
-                name: 'Agente de Desarrollo',
-                description: 'Especialista en optimización y edición de código en tiempo real',
-                capabilities: [
-                    'Programación en múltiples lenguajes',
-                    'Depuración de código y resolución de errores',
-                    'Implementación de funcionalidades',
-                    'Pruebas y optimización de rendimiento',
-                    'Gestión de dependencias y librerías'
-                ],
-                icon: 'code-slash'
-            },
-            'architect': {
-                name: 'Agente de Arquitectura',
-                description: 'Diseñador de arquitecturas escalables y optimizadas',
-                capabilities: [
-                    'Definición de estructura del proyecto',
-                    'Selección de tecnologías y frameworks',
-                    'Asesoría en elección de bases de datos',
-                    'Implementación de microservicios',
-                    'Planificación de UI/UX y patrones de diseño'
-                ],
-                icon: 'diagram-3'
-            },
-            'general': {
-                name: 'Asistente General',
-                description: 'Asistente versátil para diversas tareas de programación',
-                capabilities: [
-                    'Resolución de consultas generales',
-                    'Asistencia en proyectos diversos',
-                    'Explicación de conceptos técnicos',
-                    'Recomendaciones de buenas prácticas',
-                    'Orientación en elección de tecnologías'
-                ],
-                icon: 'person-check'
-            }
-        };
-    }
-    
-    // Asegurarse de que los modelos estén definidos
-    if (!window.app.chat.availableModels || Object.keys(window.app.chat.availableModels).length === 0) {
-        window.app.chat.availableModels = {
-            'openai': 'OpenAI (GPT-4o)',
-            'anthropic': 'Anthropic (Claude)',
-            'gemini': 'Google (Gemini)'
-        };
-    }
-    
-    window.app.chat.chatMessageId = 0;  // Reiniciar contador de mensajes
-    window.app.chat.activeAgent = window.app.chat.activeAgent || 'architect'; // Asegurar agente activo
-    
-    try {
-        // Solo inicializar si estamos en la página de chat
-        if (document.getElementById('chat-container') || 
-            document.getElementById('messages-container')) {
-            initializeChat();
-            // Añadir mensaje de bienvenida del sistema
-            addSystemMessage('¡Bienvenido a Codestorm Assistant! Selecciona un modelo y agente para comenzar.');
-        }
-    } catch (e) {
-        console.error('Error during chat initialization:', e);
-    }
-});
+        timeStr = now.toLocaleTimeString([], {hour: 'language)
+    const codeBlockRegex = /```([a-zA-Z]+)?\s*([\s\S]*?)

@@ -625,14 +625,27 @@ code {
 <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/css.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/xml.min.js"></script>
 <script>
-    // Inicializar highlight.js
-    document.addEventListener('DOMContentLoaded', (event) => {
-        hljs.configure({
-            languages: ['javascript', 'python', 'html', 'css', 'bash', 'json']
+    document.addEventListener('DOMContentLoaded', () => {
+        // Registrar un callback para aplicar highlight.js cuando se añadan mensajes nuevos
+        const observer = new MutationObserver((mutations) => {
+            mutations.forEach((mutation) => {
+                if (mutation.addedNodes.length) {
+                    document.querySelectorAll('pre code').forEach((block) => {
+                        hljs.highlightElement(block);
+                    });
+                }
+            });
         });
 
-        // No destacar automáticamente todos los bloques de código
-        // Lo haremos manualmente en processCodeBlocks()
+        const chatMessages = document.getElementById('chat-messages');
+        if (chatMessages) {
+            observer.observe(chatMessages, { childList: true, subtree: true });
+        }
+
+        // Aplicar resaltado inicial
+        document.querySelectorAll('pre code').forEach((block) => {
+            hljs.highlightElement(block);
+        });
     });
 </script>
 <script src="{{ url_for('static', filename='js/chat/chat.js') }}"></script>

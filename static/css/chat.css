@@ -365,7 +365,7 @@
   .chat-container {
     max-height: calc(100vh - 170px);
   }
-  
+
   .horizontal-scroll-menu {
     display: flex;
     overflow-x: auto;
@@ -375,22 +375,55 @@
     margin-bottom: 10px;
     scrollbar-width: thin;
   }
-  
+
   .horizontal-scroll-menu::-webkit-scrollbar {
     height: 4px;
   }
-  
+
   .horizontal-scroll-menu::-webkit-scrollbar-track {
     background: rgba(33, 37, 41, 0.2);
   }
-  
+
   .horizontal-scroll-menu::-webkit-scrollbar-thumb {
     background-color: var(--bs-primary);
   }
-  
+
   .horizontal-scroll-menu .btn {
     flex-shrink: 0;
     margin-right: 8px;
   }
 };
+}
+
+pre code {
+    background-color: #1e1e1e;
+    border-radius: 5px;
+    padding: 1rem;
+    overflow-x: auto;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 14px;
+    color: #f8f8f2;
+}
+
+.hljs {
+    display: block;
+    background: #282c34;
+    color: #abb2bf;
+    line-height: 1.5;
+}
+
+.language-html, .language-xml {
+    color: #e06c75;
+}
+
+.language-css {
+    color: #61afef;
+}
+
+.language-javascript, .language-js {
+    color: #98c379;
+}
+
+.language-python, .language-py {
+    color: #56b6c2;
 }
