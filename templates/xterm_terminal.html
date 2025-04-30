@@ -299,17 +299,27 @@
 
     <!-- Cargar scripts en orden correcto -->
     <script src="{{ url_for('static', filename='js/natural-command-processor.js') }}"></script>
-    <!-- Asegurar que se cargue después del natural-command-processor -->
+    
+    <!-- Esperar a que NaturalCommandProcessor esté disponible -->
     <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            // Verificar que NaturalCommandProcessor está disponible
-            if (typeof NaturalCommandProcessor === 'undefined') {
-                console.error('NaturalCommandProcessor no está disponible. Verificar carga de scripts.');
+        function waitForNaturalCommandProcessor() {
+            if (typeof NaturalCommandProcessor !== 'undefined') {
+                // Cargar los demás scripts una vez que NaturalCommandProcessor esté disponible
+                const terminalScript = document.createElement('script');
+                terminalScript.src = "{{ url_for('static', filename='js/terminal-integration.js') }}";
+                document.head.appendChild(terminalScript);
+
+                const commandAssistantScript = document.createElement('script');
+                commandAssistantScript.src = "{{ url_for('static', filename='js/command-assistant.js') }}";
+                document.head.appendChild(commandAssistantScript);
+            } else {
+                console.warn('Esperando que NaturalCommandProcessor se cargue...');
+                setTimeout(waitForNaturalCommandProcessor, 200);
             }
-        });
+        }
+
+        document.addEventListener('DOMContentLoaded', waitForNaturalCommandProcessor);
     </script>
-    <script src="{{ url_for('static', filename='js/terminal-integration.js') }}"></script>
-    <script src="{{ url_for('static', filename='js/command-assistant.js') }}"></script>
 
     <script>
         // Eventos para el asistente de comandos

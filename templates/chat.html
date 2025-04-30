@@ -674,6 +674,9 @@ code {
     };
 </script>
 
+<!-- Cargar script principal de chat primero -->
+<script src="{{ url_for('static', filename='js/chat/chat.js') }}"></script>
+
 <script>
     document.addEventListener('DOMContentLoaded', () => {
         console.log("DOM cargado, inicializando chat...");
@@ -702,16 +705,18 @@ code {
             hljs.highlightElement(block);
         });
         
-        // Verificar que el script de chat se cargó correctamente
-        if (typeof initializeChat === 'function') {
-            console.log("Iniciando chat...");
-            initializeChat();
-        } else {
-            console.error("La función initializeChat no está disponible. Verifica que chat.js se cargó correctamente.");
+        // Verificar que el script de chat se cargó correctamente y esperar si es necesario
+        function checkAndInitializeChat() {
+            if (typeof initializeChat === 'function') {
+                console.log("Iniciando chat...");
+                initializeChat();
+            } else {
+                console.warn("Esperando a que la función initializeChat esté disponible...");
+                setTimeout(checkAndInitializeChat, 200);
+            }
         }
+        
+        checkAndInitializeChat();
     });
 </script>
-
-<!-- Cargar script principal de chat -->
-<script src="{{ url_for('static', filename='js/chat/chat.js') }}"></script>
 {% endblock %}
