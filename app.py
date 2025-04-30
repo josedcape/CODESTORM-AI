@@ -789,7 +789,7 @@ def rename_file():
                     response_message = f"He ejecutado el comando: `{terminal_command}`\n\n"
 
                     # Mostrar la salida del comando
-                    \n{result['stdout']}\n```\n\n"
+                    \n{result['stdout']}\n```\\n\n"
 
                     # Mostrar errores si existen
                     if result.get('stderr'):
@@ -965,23 +965,79 @@ def rename_file():
                 # Inicializar cliente
                 client = Anthropic(api_key=os.environ.get('ANTHROPIC_API_KEY'))
 
+                prompt = f"""Eres un experto programador. Tu tarea es corregir el siguiente código en {language} según las instrucciones proporcionadas.
+
+CÓDIGO:
+```{language}
+{code}
+```
+
+INSTRUCCIONES:
+{instructions}
+
+Responde EXACTAMENTE en este formato JSON y nada más:
+```json
+{{
+  "correctedCode": "código corregido aquí",
+  "changes": [
+    {{
+      "description": "descripción del cambio 1",
+      "lineNumbers": [1, 2]
+    }}
+  ],
+  "explanation": "explicación detallada de los cambios"
+}}
+```
+"""
+
                 response = client.messages.create(
                     model="claude-3-5-sonnet-latest",
                     max_tokens=4000,
-                    system=f"Eres un experto programador. Tu tarea es corregir el siguiente código en {language} según las instrucciones proporcionadas. Devuelve el código corregido, una lista de cambios realizados y una explicación clara en formato JSON.",
-                    messages=[
-                        {"role": "user", "content": f"CÓDIGO:\n```{language}\n{code}\n```\n\nINSTRUCCIONES:\n{instructions}\n\nResponde en formato JSON con las siguientes claves:\n- correctedCode: el código corregido completo\n- changes: una lista de objetos, cada uno con 'description' y 'lineNumbers'\n- explanation: una explicación detallada de los cambios"}
-                    ],
+                    system="Eres un experto programador especializado en corregir código. Siempre respondes en formato JSON válido.",
+                    messages=[{"role": "user", "content": prompt}],
                     temperature=0.1
                 )
 
-                # Extraer el JSON de la respuesta de Claude
-                import re
-                json_match = re.search(r'```json(.*?)```', response.content[0].text, re.DOTALL)
-                if json_match:
-                    result = json.loads(json_match.group(1).strip())
-                else:
-                    result = json.loads(response.content[0].text)
+                try:
+                    # Buscar JSON en formato de bloque de código
+                    json_match = re.search(r'```(?:json)?\s*(.*?)\s*```', response.content[0].text, re.DOTALL)
+                    if json_match:
+                        try:
+                            result = json.loads(json_match.group(1).strip())
+                        except json.JSONDecodeError:
+                            # Si el contenido dentro de las comillas triples no es JSON válido
+                            result = {
+                                "correctedCode": code,
+                                "changes": [{"description": "No se pudo procesar el JSON correctamente", "lineNumbers": [1]}],
+                                "explanation": "Error al procesar la respuesta. Probablemente el formato no es correcto."
+                            }
+                    else:
+                        # Intenta extraer cualquier objeto JSON de la respuesta completa
+                        try:
+                            # Buscar un objeto JSON completo en cualquier parte del texto
+                            json_match = re.search(r'(\{.*\})', response.content[0].text, re.DOTALL)
+                            if json_match:
+                                result = json.loads(json_match.group(1))
+                            else:
+                                # Fallback a un formato básico si no hay JSON
+                                result = {
+                                    "correctedCode": code,
+                                    "changes": [],
+                                    "explanation": "No se pudo procesar correctamente la respuesta del modelo."
+                                }
+                        except (json.JSONDecodeError, AttributeError):
+                            result = {
+                                "correctedCode": code,
+                                "changes": [],
+                                "explanation": "No se pudo extraer JSON válido de la respuesta."
+                            }
+                except Exception as e:
+                    logging.error(f"Error procesando respuesta de Anthropic: {str(e)}")
+                    result = {
+                        "correctedCode": code,
+                        "changes": [],
+                        "explanation": f"Error procesando respuesta de Anthropic: {str(e)}"
+                    }
 
                 logging.info("Código corregido con Anthropic")
 
@@ -1082,441 +1138,6 @@ def rename_file():
             'success': False,
             'error': f'Error al procesar la solicitud: {str(e)}'
         }), 500
-
-@app.route('/api/process_code', methods=['POST'])
-def process_code():
-    """
-    Procesa código para correcciones y mejoras con modelos especializados en programación.
-    Esta versión utiliza los modelos más avanzados y configuraciones optimizadas para código.
-    """
-    try:
-        data = request.json
-        code = data.get('code', '')
-        instructions = data.get('instructions', 'Corrige errores y mejora la calidad del código')
-        language = data.get('language', 'python')
-        complexity = data.get('complexity', 'standard')
-        code_size = len(code)
-
-        if not code:
-            return jsonify({'error': 'No code provided'}), 400
-
-        # Configuración de tokens según complejidad
-        max_tokens_map = {
-            'simple': 4000,
-            'standard': 12000,
-            'complex': 24000,
-            'extensive': 32000
-        }
-        max_tokens = max_tokens_map.get(complexity, 12000)
-
-        # Ajustar temperatura para código (valores más bajos para mayor precisión)
-        temperature = 0.05 if code_size > 5000 else 0.1
-
-        # Determinar nivel de complejidad para selección de modelo
-        code_complexity_level = "pequeño" if code_size < 1000 else "mediano" if code_size < 5000 else "grande" if code_size < 15000 else "muy grande"
-
-        # Construir un prompt especializado para código
-        prompt = f"""Analiza, corrige y mejora el siguiente código {language} de complejidad {code_complexity_level}.
-        El código debe ser optimizado siguiendo las mejores prácticas de ingeniería de software y estándares específicos de {language}.
-
-        INSTRUCCIONES ESPECÍFICAS DE CORRECCIÓN:
-        {instructions}
-
-        CÓDIGO ORIGINAL:
-        ```{language}
-        {code}
-        ```
-
-        DIRECTRICES DE ANÁLISIS (ENFOQUE EN CALIDAD DE CÓDIGO):
-        1. Corrige errores sintácticos, lógicos, y de implementación
-        2. Refactoriza siguiendo principios SOLID y patrones de diseño apropiados
-        3. Optimiza algoritmos, estructuras de datos y uso de memoria/CPU
-        4. Implementa manejo de errores robusto y validación de entradas
-        5. Mejora la legibilidad con nombres descriptivos y formato consistente
-        6. Añade documentación técnica precisa (docstrings/comentarios)
-        7. Elimina código duplicado, muerto o ineficiente
-        8. Mejora la seguridad (prevención de inyecciones, validación de datos, etc.)
-        9. Asegura compatibilidad con versiones recientes del lenguaje
-        10. Implementa pruebas unitarias si es apropiado
-
-        FORMATO DE RESPUESTA (JSON):
-        {{
-            "corrected_code": "CÓDIGO COMPLETO CORREGIDO AQUÍ, SIN OMITIR NINGUNA PARTE",
-            "summary": ["Resumen punto 1", "Resumen punto 2", ...],
-            "explanation": "Explicación detallada de cambios importantes",
-            "performance_impact": "Análisis del impacto en rendimiento de los cambios realizados",
-            "security_improvements": "Mejoras de seguridad implementadas",
-            "best_practices": ["Práctica 1", "Práctica 2", ...]
-        }}
-
-        IMPORTANTE: Proporciona el código COMPLETO en tu respuesta, sin truncar ni omitir secciones.
-        Si el código es extenso, asegúrate de incluirlo íntegramente con todas las mejoras aplicadas.
-        """
-
-        # Seleccionar el modelo y configuración según el proveedor
-        response = {}
-        model_choice = data.get('model', 'openai')
-
-        if model_choice == 'anthropic' and os.environ.get('ANTHROPIC_API_KEY'):
-            # Usar Anthropic Claude con modelos optimizados para código
-            client = anthropic.Anthropic(api_key=os.environ.get('ANTHROPIC_API_KEY'))
-
-            # Seleccionar el modelo más adecuado para código
-            if code_size > 15000:
-                claude_model = "claude-3-opus-20240229"  # Mejor para código muy extenso y complejo
-            elif code_size > 5000:
-                claude_model = "claude-3-sonnet-20240229"  # Buen equilibrio para código mediano-grande
-            else:
-                claude_model = "claude-3-5-sonnet-latest"  # Más rápido para código pequeño-mediano
-
-            logging.info(f"Usando modelo Anthropic: {claude_model} para código de tamaño {code_size}")
-
-            completion = client.messages.create(
-                model=claude_model,
-                max_tokens=max_tokens,
-                temperature=temperature,
-                system="""Eres un ingeniero de software senior especializado en análisis estático de código, 
-                refactorización y optimización. Tienes amplia experiencia en múltiples lenguajes de programación
-                y paradigmas. Tu especialidad es identificar problemas sutiles, aplicar patrones de diseño apropiados
-                y mejorar la calidad del código manteniendo su funcionalidad original.
-
-                Cuando analices código:
-                1. Prioriza la corrección funcional sobre la elegancia
-                2. Mantén el estilo y convenciones del código original cuando sea apropiado
-                3. Aplica optimizaciones específicas del lenguaje y compilador/intérprete
-                4. Considera el contexto y propósito del código
-                5. Proporciona el código completo sin omitir secciones
-
-                Responde siempre en formato JSON válido con todos los campos requeridos.""",
-                messages=[{"role": "user", "content": prompt}]
-            )
-
-            try:
-                # Intentar extraer JSON directamente
-                response = json.loads(completion.content[0].text)
-            except (json.JSONDecodeError, IndexError) as e:
-                # Sistema avanzado de recuperación para Claude
-                try:
-                    text_content = completion.content[0].text if completion.content else ""
-
-                    # Buscar JSON en formato de bloque de código
-                    json_match = re.search(r'```json\s*([\s\S]*?)\s*```', text_content)
-                    if json_match:
-                        response = json.loads(json_match.group(1))
-                    else:
-                        # Buscar código corregido entre marcadores de código
-                        code_blocks = re.findall(r'```(?:\w+)?\s*([\s\S]*?)\s*```', text_content)
-
-                        # El bloque más largo probablemente es el código corregido
-                        corrected_code = max(code_blocks, key=len) if code_blocks else code
-
-                        # Extraer resumen si existe
-                        summary_match = re.search(r'(?:resumen|summary)[\s\S]*?(?:\*|\-|\d+\.)\s*(.*?)(?:\n|$)', 
-                                                text_content, re.IGNORECASE)
-                        summary = [summary_match.group(1)] if summary_match else ["Extracción parcial de correcciones"]
-
-                        response = {
-                            "corrected_code": corrected_code,
-                            "summary": summary,
-                            "explanation": "Extracción parcial debido a formato de respuesta no estándar. Revisar el código cuidadosamente.",
-                            "performance_impact": "No disponible debido a error de procesamiento",
-                            "security_improvements": "No disponible",
-                            "best_practices": ["No disponible"]
-                        }
-                except Exception as inner_e:
-                    logging.error(f"Error en recuperación avanzada Claude: {str(inner_e)}")
-                    response = {
-                        "corrected_code": code,
-                        "summary": ["No se pudieron procesar las correcciones"],
-                        "explanation": f"Error al procesar la respuesta: {str(e)}",
-                        "performance_impact": "No disponible",
-                        "security_improvements": "No disponible",
-                        "best_practices": ["No disponible"]
-                    }
-
-        elif model_choice == 'gemini' and os.environ.get('GEMINI_API_KEY'):
-            # Usar Google Gemini con configuración especializada para código
-            if not hasattr(genai, '_configured') or not genai._configured:
-                genai.configure(api_key=os.environ.get('GEMINI_API_KEY'))
-
-            # Seleccionar modelo Gemini óptimo para código
-            if code_size > 10000:
-                gemini_model = 'gemini-1.5-pro-latest'  # Mejor para código extenso
-            else:
-                gemini_model = 'gemini-2.0-flash'  # Más rápido para código pequeño-mediano
-
-            logging.info(f"Usando modelo Gemini: {gemini_model} para código de tamaño {code_size}")
-
-            # Configuración especializada para código
-            safety_settings = [
-                {
-                    "category": "HARM_CATEGORY_DANGEROUS",
-                    "threshold": "BLOCK_NONE"
-                },
-                {
-                    "category": "HARM_CATEGORY_HARASSMENT",
-                    "threshold": "BLOCK_NONE"
-                },
-                {
-                    "category": "HARM_CATEGORY_HATE_SPEECH",
-                    "threshold": "BLOCK_NONE"
-                },
-                {
-                    "category": "HARM_CATEGORY_SEXUALLY_EXPLICIT",
-                    "threshold": "BLOCK_NONE"
-                },
-                {
-                    "category": "HARM_CATEGORY_DANGEROUS_CONTENT",
-                    "threshold": "BLOCK_NONE"
-                }
-            ]
-
-            model = genai.GenerativeModel(
-                gemini_model,
-                generation_config=genai.GenerationConfig(
-                    temperature=temperature,
-                    max_output_tokens=max_tokens,
-                    response_mime_type="application/json",
-                    top_p=0.95,
-                    top_k=40
-                ),
-                safety_settings=safety_settings
-            )
-
-            gemini_response = model.generate_content(
-                [
-                    genai.Content(
-                        parts=[
-                            genai.Part(text="""Eres un ingeniero de software senior especializado en análisis estático de código, 
-                            refactorización y optimización. Tienes amplia experiencia en múltiples lenguajes de programación
-                            y paradigmas. Tu especialidad es identificar problemas sutiles, aplicar patrones de diseño apropiados
-                            y mejorar la calidad del código manteniendo su funcionalidad original.
-
-                            Cuando analices código:
-                            1. Prioriza la corrección funcional sobre la elegancia
-                            2. Mantén el estilo y convenciones del código original cuando sea apropiado
-                            3. Aplica optimizaciones específicas del lenguaje y compilador/intérprete
-                            4. Considera el contexto y propósito del código
-                            5. Proporciona el código completo sin omitir secciones
-
-                            Responde siempre en formato JSON válido con todos los campos requeridos."""),
-                        ],
-                        role="system"
-                    ),
-                    genai.Content(
-                        parts=[genai.Part(text=prompt)],
-                        role="user"
-                    )
-                ]
-            )
-
-            try:
-                # Intentar extraer JSON directamente
-                response = json.loads(gemini_response.text)
-            except json.JSONDecodeError as e:
-                # Sistema avanzado de recuperación para Gemini
-                try:
-                    # Buscar JSON en formato de bloque de código
-                    json_match = re.search(r'```json\s*([\s\S]*?)\s*```', gemini_response.text)
-                    if json_match:
-                        response = json.loads(json_match.group(1))
-                    else:
-                        # Extraer código entre marcadores de código
-                        code_blocks = re.findall(r'```(?:\w+)?\s*([\s\S]*?)\s*```', gemini_response.text)
-
-                        # Identificar el bloque de código más relevante (generalmente el más largo)
-                        corrected_code = max(code_blocks, key=len) if code_blocks else code
-
-                        # Extraer puntos de resumen si existen
-                        summary_points = re.findall(r'(?:\*|\-|\d+\.)\s*(.*?)(?:\n|$)', gemini_response.text)
-                        summary = summary_points[:5] if summary_points else ["Extracción parcial de correcciones"]
-
-                        response = {
-                            "corrected_code": corrected_code,
-                            "summary": summary,
-                            "explanation": "Extracción parcial debido a formato de respuesta no estándar. Revisar el código cuidadosamente.",
-                            "performance_impact": "No disponible debido a error de procesamiento",
-                            "security_improvements": "No disponible",
-                            "best_practices": ["No disponible"]
-                        }
-                except Exception as inner_e:
-                    logging.error(f"Error en recuperación avanzada Gemini: {str(inner_e)}")
-                    response = {
-                        "corrected_code": code,
-                        "summary": ["No se pudieron procesar las correcciones"],
-                        "explanation": f"Error al procesar la respuesta: {str(e)}",
-                        "performance_impact": "No disponible",
-                        "security_improvements": "No disponible",
-                        "best_practices": ["No disponible"]
-                    }
-
-        else:
-            # Usar OpenAI con modelos especializados en código
-            client = openai.OpenAI()
-
-            # Seleccionar modelo OpenAI óptimo para código
-            if code_size > 15000:
-                openai_model = "gpt-4o-2024-05-13"  # Mejor para código muy extenso
-            elif code_size > 8000:
-                openai_model = "gpt-4o"  # Buen equilibrio para código mediano-grande
-            elif code_size > 3000:
-                openai_model = "gpt-4o-mini"  # Para código mediano
-            else:
-                openai_model = "gpt-o3"  # Más rápido para código pequeño
-
-            logging.info(f"Usando modelo OpenAI: {openai_model} para código de tamaño {code_size}")
-
-            completion = client.chat.completions.create(
-                model=openai_model,
-                response_format={"type": "json_object"},
-                temperature=temperature,
-                max_tokens=max_tokens,
-                top_p=0.95,
-                frequency_penalty=0.0,
-                presence_penalty=0.0,
-                messages=[
-                    {"role": "system", "content": """Eres un ingeniero de software senior especializado en análisis estático de código, 
-                    refactorización y optimización. Tienes amplia experiencia en múltiples lenguajes de programación
-                    y paradigmas. Tu especialidad es identificar problemas sutiles, aplicar patrones de diseño apropiados
-                    y mejorar la calidad del código manteniendo su funcionalidad original.
-
-                    Cuando analices código:
-                    1. Prioriza la corrección funcional sobre la elegancia
-                    2. Mantén el estilo y convenciones del código original cuando sea apropiado
-                    3. Aplica optimizaciones específicas del lenguaje y compilador/intérprete
-                    4. Considera el contexto y propósito del código
-                    5. Proporciona el código completo sin omitir secciones
-
-                    Responde siempre en formato JSON válido con todos los campos requeridos."""},
-                    {"role": "user", "content": prompt}
-                ]
-            )
-
-            try:
-                response = json.loads(completion.choices[0].message.content)
-            except json.JSONDecodeError as e:
-                logging.error(f"Error decodificando JSON de OpenAI: {str(e)}")
-
-                # Sistema avanzado de recuperación para OpenAI
-                try:
-                    content = completion.choices[0].message.content
-
-                    # Buscar código entre marcadores de código
-                    code_blocks = re.findall(r'```(?:\w+)?\s*([\s\S]*?)\s*', content)
-
-                    # Identificar el bloque de código más relevante
-                    corrected_code = max(code_blocks, key=len) if code_blocks else code
-
-                    # Extraer puntos de resumen si existen
-                    summary_section = re.search(r'(?:summary|resumen|cambios)(?:[\s\S]*?)(?:\*|\-|\d+\.)\s*(.*?)(?:\n|$)', 
-                                              content, re.IGNORECASE)
-                    summary = [summary_section.group(1)] if summary_section else ["Extracción parcial de correcciones"]
-
-                    # Extraer explicación si existe
-                    explanation_section = re.search(r'(?:explanation|explicación)(?:[\s\S]*?)((?:(?!\#\#).)*)', 
-                                                 content, re.IGNORECASE)
-                    explanation = explanation_section.group(1).strip() if explanation_section else "No disponible"
-
-                    response = {
-                        "corrected_code": corrected_code,
-                        "summary": summary,
-                        "explanation": explanation,
-                        "performance_impact": "No disponible debido a error de procesamiento",
-                        "security_improvements": "No disponible",
-                        "best_practices": ["No disponible"]
-                    }
-                except Exception as inner_e:
-                    logging.error(f"Error en recuperación avanzada OpenAI: {str(inner_e)}")
-                    response = {
-                        "corrected_code": code,
-                        "summary": ["No se pudieron procesar las correcciones"],
-                        "explanation": f"Error al procesar la respuesta: {str(e)}",
-                        "performance_impact": "No disponible",
-                        "security_improvements": "No disponible",
-                        "best_practices": ["No disponible"]
-                    }
-
-        # Validación y enriquecimiento de la respuesta
-        if 'corrected_code' not in response or not response['corrected_code']:
-            response['corrected_code'] = code
-            logging.warning("No se encontró código corregido en la respuesta, utilizando código original")
-
-        if 'summary' not in response or not response['summary']:
-            response['summary'] = ["No se generó resumen de cambios"]
-
-        if 'explanation' not in response or not response['explanation']:
-            response['explanation'] = "No se generó explicación detallada"
-
-        if 'performance_impact' not in response:
-            response['performance_impact'] = "No se proporcionó análisis de impacto en rendimiento"
-
-        if 'security_improvements' not in response:
-            response['security_improvements'] = "No se proporcionaron mejoras de seguridad"
-
-        if 'best_practices' not in response:
-            response['best_practices'] = ["No se proporcionaron mejores prácticas"]
-
-        # Verificación de sintaxis según el lenguaje
-        try:
-            if language.lower() in ['python', 'py']:
-                # Verificar sintaxis básica de Python
-                import ast
-                ast.parse(response['corrected_code'])
-            elif language.lower() in ['javascript', 'js', 'typescript', 'ts']:
-                # Verificación básica para JavaScript/TypeScript
-                if not response['corrected_code'].strip():
-                    raise ValueError("El código JavaScript/TypeScript corregido está vacío")
-
-                # Verificar presencia de errores sintácticos comunes
-                common_errors = ['undefined;', 'null;', 'NaN;', 'error;']
-                for error in common_errors:
-                    if error in response['corrected_code']:
-                        logging.warning(f"Posible error sintáctico en código JS: {error}")
-            elif language.lower() in ['java']:
-                # Verificación básica para Java
-                if not response['corrected_code'].strip():
-                    raise ValueError("El código Java corregido está vacío")
-
-                # Verificar estructura básica de clase Java
-                if 'class' not in response['corrected_code'] and 'interface' not in response['corrected_code']:
-                    logging.warning("El código Java podría no contener una definición de clase o interfaz")
-        except Exception as validation_error:
-            logging.warning(f"El código corregido tiene posibles errores de sintaxis: {str(validation_error)}")
-            response['validation_warning'] = f"El código corregido podría contener errores de sintaxis: {str(validation_error)}"
-
-        # Añadir metadatos sobre el procesamiento
-        response['metadata'] = {
-            'language': language,
-            'code_size': code_size,
-            'model_used': f"{model_choice}:{openai_model if model_choice == 'openai' else claude_model if model_choice == 'anthropic' else gemini_model}",
-            'processing_date': datetime.datetime.now().isoformat(),
-            'complexity_level': code_complexity_level
-        }
-
-        # Registrar estadísticas para análisis
-        logging.info(f"Procesamiento de código completado: {language}, tamaño={code_size}, modelo={model_choice}")
-
-        return jsonify(response)
-
-    except Exception as e:
-        logging.error(f"Error crítico procesando código: {str(e)}")
-        logging.error(traceback.format_exc())
-
-        # Proporcionar respuesta de error más informativa
-        error_response = {
-            'error': str(e),
-            'traceback': traceback.format_exc(),
-            'corrected_code': code,  # Devolver código original en caso de error
-            'summary': [f"Error durante el procesamiento: {str(e)}"],
-            'explanation': "Se produjo un error durante el análisis y corrección del código. Por favor, revisa los logs del servidor para más detalles.",
-            'metadata': {
-                'error_type': type(e).__name__,
-                'timestamp': datetime.datetime.now().isoformat()
-            }
-        }
-
-        return jsonify(error_response), 500
-
 
 @app.route('/api/process_instructions', methods=['POST'])
 def process_instructions():
@@ -1756,7 +1377,7 @@ def process_instructions():
 
                     # Limpiar posibles explicaciones o bloques de código
                     if "```" in terminal_command:
-                        terminal_command = re.search(r'```(?:\w+)?\n(.*?)\n', terminal_command, re.DOTALL)
+                        terminal_command = re.search(r'(?:\w+)?\n(.*?)\n```', terminal_command, re.DOTALL)
                         if terminal_command:
                             terminal_command = terminal_command.group(1).strip()
 
@@ -2168,25 +1789,125 @@ def process_code():
             try:
                 client = anthropic.Anthropic(api_key=os.environ.get('ANTHROPIC_API_KEY'))
 
+                prompt = f"""Eres un experto programador. Tu tarea es corregir el siguiente código en {language} según las instrucciones proporcionadas.
+
+CÓDIGO:
+```{language}
+{code}
+```
+
+INSTRUCCIONES:
+{instructions}
+
+Responde EXACTAMENTE en este formato JSON y nada más:
+```json
+{{
+  "correctedCode": "código corregido aquí",
+  "changes": [
+    {{
+      "description": "descripción del cambio 1",
+      "lineNumbers": [1, 2]
+    }}
+  ],
+  "explanation": "explicación detallada de los cambios"
+}}
+```
+"""
+
                 response = client.messages.create(
                     model="claude-3-5-sonnet-latest",
                     max_tokens=4000,
-                    system=f"Eres un experto programador. Tu tarea es corregir el siguiente código en {language} según las instrucciones proporcionadas. Devuelve el código corregido, una lista de cambios realizados y una explicación clara en formato JSON.",
-                    messages=[
-                        {"role": "user", "content": f"CÓDIGO:\n```{language}\n{code}\n```\n\nINSTRUCCIONES:\n{instructions}\n\nResponde en formato JSON con las siguientes claves:\n- corrected_code: el código corregido completo\n- changes: una lista de objetos, cada uno con 'description' y 'lineNumbers'\n- explanation: una explicación detallada de los cambios"}
-                    ]
+                    system="Eres un experto programador especializado en corregir código. Siempre respondes en formato JSON válido.",
+                    messages=[{"role": "user", "content": prompt}],
+                    temperature=0.1
                 )
 
-                # Intentar extraer el JSON de la respuesta
-                result = {}
                 try:
-                    import re
-                    json_match = re.search(r'```json(.*?)```', response.content[0].text, re.DOTALL)
+                    # Buscar JSON en formato de bloque de código
+                    json_match = re.search(r'```(?:json)?\s*(.*?)\s*```', response.content[0].text, re.DOTALL)
                     if json_match:
-                        result = json.loads(json_match.group(1).strip())
+                        try:
+                            result = json.loads(json_match.group(1).strip())
+                        except json.JSONDecodeError:
+                            # Si el contenido dentro de las comillas triples no es JSON válido
+                            result = {
+                                "correctedCode": code,
+                                "changes": [{"description": "No se pudo procesar el JSON correctamente", "lineNumbers": [1]}],
+                                "explanation": "Error al procesar la respuesta. Probablemente el formato no es correcto."
+                            }
                     else:
-                        result = json.loads(response.content[0].text)
-                except Exception as parse_error:
-                    logging.error(f"Error parseando respuesta de Anthropic: {str(parse_error)}")
-                    # Intentar extraer el código al menos
-                    code_match = re.search(r'```(?:{language})?(.*?)
+                        # Intenta extraer cualquier objeto JSON de la respuesta completa
+                        try:
+                            # Buscar un objeto JSON completo en cualquier parte del texto
+                            json_match = re.search(r'(\{.*\})', response.content[0].text, re.DOTALL)
+                            if json_match:
+                                result = json.loads(json_match.group(1))
+                            else:
+                                # Fallback a un formato básico si no hay JSON
+                                result = {
+                                    "correctedCode": code,
+                                    "changes": [],
+                                    "explanation": "No se pudo procesar correctamente la respuesta del modelo."
+                                }
+                        except (json.JSONDecodeError, AttributeError):
+                            result = {
+                                "correctedCode": code,
+                                "changes": [],
+                                "explanation": "No se pudo extraer JSON válido de la respuesta."
+                            }
+                except Exception as e:
+                    logging.error(f"Error procesando respuesta de Anthropic: {str(e)}")
+                    result = {
+                        "correctedCode": code,
+                        "changes": [],
+                        "explanation": f"Error procesando respuesta de Anthropic: {str(e)}"
+                    }
+
+                logging.info("Código corregido con Anthropic")
+
+            except Exception as e:
+                logging.error(f"Error con API de Anthropic: {str(e)}")
+                return jsonify({
+                    'success': False,
+                    'error': f'Error al conectar con Anthropic: {str(e)}'
+                }), 500
+
+        elif model == 'gemini' and os.environ.get('GEMINI_API_KEY'):
+            try:
+                # Usar genai para procesar con Gemini
+                import google.generativeai as genai
+
+                if not hasattr(genai, '_configured') or not genai._configured:
+                    genai.configure(api_key=os.environ.get('GEMINI_API_KEY'))
+
+                gemini_model = genai.GenerativeModel(
+                    model_name='gemini-1.5-pro',
+                    generation_config={
+                        'temperature': 0.2,
+                        'top_p': 0.9,
+                        'top_k': 40,
+                        'max_output_tokens': 4096,
+                    }
+                )
+
+                prompt = f"""Eres un experto programador. Tu tarea es corregir el siguiente código en {language} según las instrucciones proporcionadas.
+
+                CÓDIGO:
+                ```{language}
+                {code}
+                ```
+
+                INSTRUCCIONES:
+                {instructions}
+
+                Responde en formato JSON con las siguientes claves:
+                - correctedCode: el código corregido completo
+                - changes: una lista de objetos, cada uno con 'description' y 'lineNumbers'
+                - explanation: una explicación detallada de los cambios
+                """
+
+                response = gemini_model.generate_content(prompt)
+
+                # Extraer el JSON de la respuesta de Gemini
+                import re
+                json_match = re.search(r'```json(.*?)
