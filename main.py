@@ -65,21 +65,86 @@ except Exception as e:
     logging.error(f"Error registering constructor blueprint: {str(e)}")
 
 
-# Configurar claves API
+# Recargar variables de entorno para asegurar que tenemos las últimas
+load_dotenv(override=True)
+
+# Configurar claves API con manejo de errores mejorado
 openai_api_key = os.getenv('OPENAI_API_KEY')
 anthropic_api_key = os.getenv('ANTHROPIC_API_KEY')
 gemini_api_key = os.getenv('GEMINI_API_KEY')
 
+# Configurar OpenAI
 if openai_api_key:
-    openai.api_key = openai_api_key
-    logging.info(f"OpenAI API key configurada: {openai_api_key[:5]}...{openai_api_key[-5:]}")
+    try:
+        openai.api_key = openai_api_key
+        # Verificar que la clave funciona haciendo una llamada de prueba sencilla
+        openai_client = openai.OpenAI()
+        _ = openai_client.models.list()
+        logging.info(f"OpenAI API key verificada y configurada: {openai_api_key[:5]}...{openai_api_key[-5:]}")
+    except Exception as e:
+        logging.error(f"Error al configurar OpenAI API: {str(e)}")
+        logging.warning("La clave de OpenAI no es válida o el servicio no está disponible")
+        openai_api_key = None
+else:
+    logging.warning("OpenAI API key no configurada - funcionalidades de OpenAI estarán deshabilitadas")
 
+# Configurar Anthropic
 if anthropic_api_key:
-    logging.info(f"Anthropic API key configurada: {anthropic_api_key[:5]}...{anthropic_api_key[-5:]}")
+    try:
+        # Importar solo si la clave está configurada
+        import anthropic
+        from anthropic import Anthropic
+        
+        # Verificar que la clave funciona haciendo una llamada de prueba
+        client = Anthropic(api_key=anthropic_api_key)
+        _ = client.models.list()
+        logging.info(f"Anthropic API key verificada y configurada: {anthropic_api_key[:5]}...{anthropic_api_key[-5:]}")
+    except Exception as e:
+        logging.error(f"Error al configurar Anthropic API: {str(e)}")
+        logging.warning("La clave de Anthropic no es válida o el servicio no está disponible")
+        anthropic_api_key = None
+else:
+    logging.warning("Anthropic API key no configurada - funcionalidades de Anthropic estarán deshabilitadas")
 
+# Configurar Gemini
 if gemini_api_key:
-    genai.configure(api_key=gemini_api_key)
-    logging.info(f"Gemini API key configurada: {gemini_api_key[:5]}...{gemini_api_key[-5:]}")
+    try:
+        genai.configure(api_key=gemini_api_key)
+        # Verificar que la clave funciona listando modelos
+        models = genai.list_models()
+        _ = list(models)  # Forzar evaluación
+        logging.info(f"Gemini API key verificada y configurada: {gemini_api_key[:5]}...{gemini_api_key[-5:]}")
+    except Exception as e:
+        logging.error(f"Error al configurar Gemini API: {str(e)}")
+        logging.warning("La clave de Gemini no es válida o el servicio no está disponible")
+        gemini_api_key = None
+else:
+    logging.warning("Gemini API key no configurada - funcionalidades de Gemini estarán deshabilitadas")
+
+# Mensaje informativo sobre el estado de las APIs
+if not any([openai_api_key, anthropic_api_key, gemini_api_key]):
+    logging.error("¡ADVERTENCIA! Ninguna API está configurada. El sistema funcionará en modo degradado.")
+    print("=" * 80)
+    print("⚠️  NINGUNA API DE IA ESTÁ CONFIGURADA")
+    print("El sistema funcionará en modo degradado con plantillas predefinidas.")
+    print("Para habilitar la generación de código real, configure al menos una de las siguientes claves API:")
+    print("- OPENAI_API_KEY")
+    print("- ANTHROPIC_API_KEY")
+    print("- GEMINI_API_KEY")
+    print("=" * 80)
+else:
+    apis_configuradas = []
+    if openai_api_key:
+        apis_configuradas.append("OpenAI")
+    if anthropic_api_key:
+        apis_configuradas.append("Anthropic")
+    if gemini_api_key:
+        apis_configuradas.append("Gemini")
+        
+    print("=" * 80)
+    print(f"✅ APIs configuradas: {', '.join(apis_configuradas)}")
+    print("El sistema generará código real utilizando los modelos de IA disponibles.")
+    print("=" * 80)
 
 class FileSystemManager:
     def __init__(self, socketio):

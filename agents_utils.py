@@ -8,6 +8,7 @@ import openai
 import anthropic
 import google.generativeai as genai
 from dotenv import load_dotenv
+import time
 
 # Cargar variables de entorno
 load_dotenv()
@@ -25,7 +26,7 @@ genai_configured = False
 def setup_ai_clients():
     """Configura los clientes de las APIs de IA."""
     global openai_client, anthropic_client, genai_configured
-    
+
     # Configurar OpenAI
     openai_api_key = os.environ.get("OPENAI_API_KEY")
     if openai_api_key:
@@ -33,7 +34,7 @@ def setup_ai_clients():
         logger.info(f"OpenAI API key configurada: {openai_api_key[:5]}...{openai_api_key[-5:]}")
     else:
         logger.warning("No se encontró la clave de API de OpenAI en las variables de entorno")
-    
+
     # Configurar Anthropic
     anthropic_api_key = os.environ.get("ANTHROPIC_API_KEY")
     if anthropic_api_key:
@@ -41,7 +42,7 @@ def setup_ai_clients():
         logger.info("Anthropic API key configured successfully.")
     else:
         logger.warning("No se encontró la clave de API de Anthropic en las variables de entorno")
-    
+
     # Configurar Google Gemini
     gemini_api_key = os.environ.get("GEMINI_API_KEY")
     if gemini_api_key:
@@ -79,18 +80,18 @@ def get_agent_name(agent_id):
 def generate_with_openai(prompt, system_prompt, temperature=0.7):
     """
     Genera contenido utilizando la API de OpenAI.
-    
+
     Args:
         prompt: Prompt para generar contenido
         system_prompt: Prompt de sistema para establecer el rol
         temperature: Temperatura para la generación (0.0 - 1.0)
-        
+
     Returns:
         str: Contenido generado
     """
     if not openai_client:
         raise ValueError("Cliente de OpenAI no configurado. Verifica la clave API.")
-    
+
     try:
         completion = openai_client.chat.completions.create(
             model="gpt-4o", # the newest OpenAI model is "gpt-4o" which was released May 13, 2024.
@@ -101,7 +102,7 @@ def generate_with_openai(prompt, system_prompt, temperature=0.7):
             temperature=temperature,
             max_tokens=4000
         )
-        
+
         return completion.choices[0].message.content.strip()
     except Exception as e:
         logger.error(f"Error en generate_with_openai: {str(e)}")
@@ -110,18 +111,18 @@ def generate_with_openai(prompt, system_prompt, temperature=0.7):
 def generate_with_anthropic(prompt, system_prompt, temperature=0.7):
     """
     Genera contenido utilizando la API de Anthropic.
-    
+
     Args:
         prompt: Prompt para generar contenido
         system_prompt: Prompt de sistema para establecer el rol
         temperature: Temperatura para la generación (0.0 - 1.0)
-        
+
     Returns:
         str: Contenido generado
     """
     if not anthropic_client:
         raise ValueError("Cliente de Anthropic no configurado. Verifica la clave API.")
-    
+
     try:
         message = anthropic_client.messages.create(
             model="claude-3-5-sonnet-20241022", # the newest Anthropic model is "claude-3-5-sonnet-20241022" which was released October 22, 2024.
@@ -132,7 +133,7 @@ def generate_with_anthropic(prompt, system_prompt, temperature=0.7):
             temperature=temperature,
             max_tokens=4000
         )
-        
+
         return message.content[0].text
     except Exception as e:
         logger.error(f"Error en generate_with_anthropic: {str(e)}")
@@ -141,29 +142,29 @@ def generate_with_anthropic(prompt, system_prompt, temperature=0.7):
 def generate_with_gemini(prompt, system_prompt, temperature=0.7):
     """
     Genera contenido utilizando la API de Google Gemini.
-    
+
     Args:
         prompt: Prompt para generar contenido
         system_prompt: Prompt de sistema para establecer el rol
         temperature: Temperatura para la generación (0.0 - 1.0)
-        
+
     Returns:
         str: Contenido generado
     """
     if not genai_configured:
         raise ValueError("Google Gemini no configurado. Verifica la clave API.")
-    
+
     try:
         model = genai.GenerativeModel(
             model_name="gemini-1.5-pro",
             generation_config={"temperature": temperature}
         )
-        
+
         # Combinar system prompt y user prompt para Gemini
         combined_prompt = f"{system_prompt}\n\n{prompt}"
-        
+
         response = model.generate_content(combined_prompt)
-        
+
         return response.text
     except Exception as e:
         logger.error(f"Error en generate_with_gemini: {str(e)}")
@@ -171,51 +172,99 @@ def generate_with_gemini(prompt, system_prompt, temperature=0.7):
 
 def generate_content(prompt, system_prompt, model="openai", temperature=0.7):
     """
-    Genera contenido utilizando el modelo especificado.
-    
+    Genera contenido utilizando el modelo especificado con reintentos automáticos
+    y fallback a modelos alternativos si el principal falla.
+
     Args:
         prompt: Prompt para generar contenido
         system_prompt: Prompt de sistema para establecer el rol
         model: Modelo a utilizar (openai, anthropic, gemini)
         temperature: Temperatura para la generación (0.0 - 1.0)
-        
+
     Returns:
         str: Contenido generado
     """
-    try:
-        if model == "openai":
-            return generate_with_openai(prompt, system_prompt, temperature)
-        elif model == "anthropic":
-            return generate_with_anthropic(prompt, system_prompt, temperature)
-        elif model == "gemini":
-            return generate_with_gemini(prompt, system_prompt, temperature)
-        else:
-            # Por defecto, usar OpenAI
-            return generate_with_openai(prompt, system_prompt, temperature)
-    except Exception as e:
-        logger.error(f"Error en generate_content con modelo {model}: {str(e)}")
-        
-        # Intentar con modelo alternativo si falla el primero
-        try:
-            if model != "openai" and openai_client:
-                logger.info(f"Intentando con OpenAI como alternativa")
-                return generate_with_openai(prompt, system_prompt, temperature)
-            elif model != "anthropic" and anthropic_client:
-                logger.info(f"Intentando con Anthropic como alternativa")
-                return generate_with_anthropic(prompt, system_prompt, temperature)
-            elif model != "gemini" and genai_configured:
-                logger.info(f"Intentando con Gemini como alternativa")
-                return generate_with_gemini(prompt, system_prompt, temperature)
-            else:
-                raise ValueError(f"No se pudo generar contenido con ningún modelo disponible")
-        except Exception as fallback_error:
-            logger.error(f"Error en fallback: {str(fallback_error)}")
-            raise
+    max_retries = 3
+    retry_delay = 2  # segundos iniciales entre reintentos
+    models_to_try = []
+
+    # Determinar el orden de modelos a probar
+    if model == "openai":
+        models_to_try = ["openai", "anthropic", "gemini"]
+    elif model == "anthropic":
+        models_to_try = ["anthropic", "openai", "gemini"]
+    elif model == "gemini":
+        models_to_try = ["gemini", "openai", "anthropic"]
+    else:
+        # Si el modelo no es reconocido, probar todos en este orden
+        models_to_try = ["openai", "anthropic", "gemini"]
+
+    # Filtrar solo modelos que tengan API configurada
+    available_models = []
+    if openai_client:
+        available_models.append("openai")
+    if anthropic_client:
+        available_models.append("anthropic")
+    if genai_configured:
+        available_models.append("gemini")
+
+    # Si ningún modelo está disponible, lanzar error
+    if not available_models:
+        raise ValueError("No hay modelos de IA configurados. Por favor configura al menos una API key (OpenAI, Anthropic o Gemini).")
+
+    # Priorizar modelos según la solicitud, pero solo usar disponibles
+    ordered_models = [m for m in models_to_try if m in available_models]
+    if not ordered_models:
+        ordered_models = available_models  # Usar cualquier modelo disponible si ninguno coincide
+
+    last_error = None
+
+    # Intentar con cada modelo en orden
+    for current_model in ordered_models:
+        # Intentar múltiples veces con cada modelo
+        for attempt in range(max_retries):
+            try:
+                logging.info(f"Generando contenido con {current_model} (intento {attempt+1}/{max_retries})")
+
+                if current_model == "openai":
+                    return generate_with_openai(prompt, system_prompt, temperature)
+                elif current_model == "anthropic":
+                    return generate_with_anthropic(prompt, system_prompt, temperature)
+                elif current_model == "gemini":
+                    return generate_with_gemini(prompt, system_prompt, temperature)
+
+                # Si llegamos aquí, significa que la generación fue exitosa
+                break
+
+            except Exception as e:
+                last_error = e
+                error_msg = str(e)
+
+                # Determinar si el error es recuperable
+                is_rate_limit = "rate" in error_msg.lower() or "limit" in error_msg.lower() or "429" in error_msg
+                is_timeout = "time" in error_msg.lower() or "timeout" in error_msg.lower()
+                is_recoverable = is_rate_limit or is_timeout
+
+                if is_recoverable and attempt < max_retries - 1:
+                    wait_time = retry_delay * (2 ** attempt)  # Backoff exponencial
+                    logging.warning(f"Error recuperable con {current_model}: {error_msg}. Reintentando en {wait_time}s...")
+                    time.sleep(wait_time)
+                else:
+                    logging.error(f"Error con {current_model} después de {attempt+1} intentos: {error_msg}")
+                    break  # Pasar al siguiente modelo
+
+    # Si llegamos aquí, todos los modelos fallaron
+    if last_error:
+        logging.error(f"Todos los modelos fallaron. Último error: {str(last_error)}")
+        raise ValueError(f"No se pudo generar contenido con ningún modelo disponible. Verifica las claves API y la conectividad. Error: {str(last_error)}")
+
+    # Esto no debería ocurrir, pero por si acaso
+    raise ValueError("No se pudo generar contenido con ningún modelo disponible por razones desconocidas.")
 
 def create_file_with_agent(description, file_type, filename, agent_id, workspace_path, model="openai"):
     """
     Crea un archivo utilizando un agente especializado.
-    
+
     Args:
         description: Descripción del archivo a generar
         file_type: Tipo de archivo (html, css, js, py, json, md, txt)
@@ -223,7 +272,7 @@ def create_file_with_agent(description, file_type, filename, agent_id, workspace
         agent_id: ID del agente especializado
         workspace_path: Ruta del workspace del usuario
         model: Modelo de IA a utilizar (openai, anthropic, gemini)
-        
+
     Returns:
         dict: Resultado de la operación con claves success, file_path y content
     """
@@ -234,11 +283,11 @@ def create_file_with_agent(description, file_type, filename, agent_id, workspace
         logging.debug(f"Nombre de archivo: {filename}")
         logging.debug(f"Modelo: {model}")
         logging.debug(f"Descripción: {description}")
-        
+
         # Obtener el prompt de sistema y nombre según el agente
         system_prompt = get_agent_system_prompt(agent_id)
         agent_name = get_agent_name(agent_id)
-        
+
         # Preparar el prompt específico según el tipo de archivo
         file_type_prompt = ""
         if file_type == 'html' or '.html' in filename:
@@ -269,14 +318,14 @@ def create_file_with_agent(description, file_type, filename, agent_id, workspace
             file_type_prompt = """Genera un archivo de texto plano con el contenido solicitado,
             bien estructurado y formateado de manera clara y legible.
             Asegúrate de que el contenido esté completo, sin fragmentos o explicaciones adicionales."""
-            
+
         # Construir el prompt completo según el agente
         prompt = f"""Como {agent_name}, crea un archivo {file_type} completo y funcional que cumpla con el siguiente requerimiento:
-        
+
         "{description}"
-        
+
         {file_type_prompt}
-        
+
         IMPORTANTE: 
         - Genera SOLO el código completo sin explicaciones, comentarios introductorios o conclusiones.
         - NO uses bloques de código markdown (```), solo genera el contenido directo del archivo.
@@ -284,49 +333,49 @@ def create_file_with_agent(description, file_type, filename, agent_id, workspace
         - Si es un archivo HTML, asegúrate de incluir todos los elementos necesarios (DOCTYPE, html, head, body, etc.)
         - El código debe estar completo, compilar y funcionar correctamente.
         """
-        
+
         # Log del prompt para depuración
         logging.debug(f"Prompt enviado al modelo: {prompt}")
-        
+
         # Generar el contenido del archivo
         file_content = generate_content(prompt, system_prompt, model)
-        
+
         # Verificar que se haya generado contenido
         if not file_content:
             return {
                 'success': False,
                 'error': 'El modelo no generó contenido para el archivo'
             }
-            
+
         # Log del contenido generado para depuración
         logging.debug(f"Contenido generado (primeros 200 caracteres): {file_content[:200]}")
-        
+
         # Extraer código del contenido si el modelo aún incluye markdown u otros elementos
         code_pattern = r"```(?:\w+)?\s*([\s\S]*?)\s*```"
         code_match = re.search(code_pattern, file_content)
-        
+
         if code_match:
             file_content = code_match.group(1).strip()
             logging.debug("Se limpió el contenido usando el patrón de código")
-            
+
         # Crear el archivo en el workspace del usuario
         file_path = os.path.join(workspace_path, filename)
-        
+
         # Crear directorios intermedios si es necesario
         os.makedirs(os.path.dirname(file_path), exist_ok=True)
-        
+
         with open(file_path, 'w', encoding='utf-8') as f:
             f.write(file_content)
-            
+
         # Obtener la ruta relativa para mostrar al usuario
         relative_path = os.path.relpath(file_path, workspace_path)
-        
+
         return {
             'success': True,
             'file_path': relative_path,
             'content': file_content
         }
-            
+
     except Exception as e:
         logging.error(f"Error generando contenido del archivo: {str(e)}")
         return {
@@ -341,7 +390,7 @@ def generate_response(user_message, agent_id="general", context=None, model="ope
     try:
         system_prompt = get_agent_system_prompt(agent_id)
         agent_name = get_agent_name(agent_id)
-        
+
         # Formatear el contexto y el mensaje para el prompt
         if context:
             context_str = "\n".join([
@@ -350,15 +399,15 @@ def generate_response(user_message, agent_id="general", context=None, model="ope
             ])
             prompt = f"""Historial de conversación:
             {context_str}
-            
+
             Usuario: {user_message}
-            
+
             Como {agent_name}, responde al último mensaje del usuario."""
         else:
             prompt = f"""Usuario: {user_message}
-            
+
             Como {agent_name}, responde al mensaje del usuario."""
-        
+
         # Generar respuesta según el modelo seleccionado
         if model == "anthropic" and os.environ.get('ANTHROPIC_API_KEY'):
             response = generate_with_anthropic(prompt, system_prompt)
@@ -367,12 +416,12 @@ def generate_response(user_message, agent_id="general", context=None, model="ope
         else:
             # OpenAI por defecto
             response = generate_with_openai(prompt, system_prompt)
-            
+
         return {
             'success': True,
             'response': response
         }
-        
+
     except Exception as e:
         logging.error(f"Error generando respuesta: {str(e)}")
         return {
@@ -383,13 +432,13 @@ def generate_response(user_message, agent_id="general", context=None, model="ope
 def analyze_code(code, language="python", instructions="Mejorar el código", model="openai"):
     """
     Analiza y mejora código existente.
-    
+
     Args:
         code: Código a analizar
         language: Lenguaje del código
         instructions: Instrucciones específicas para el análisis
         model: Modelo de IA a utilizar
-        
+
     Returns:
         dict: Resultado del análisis con claves success, improved_code, explanations, suggestions
     """
@@ -397,7 +446,7 @@ def analyze_code(code, language="python", instructions="Mejorar el código", mod
         system_prompt = f"""Eres un experto programador de {language} especializado en revisar, mejorar y explicar código.
 Tu tarea es analizar el código proporcionado, mejorarlo según las instrucciones, y explicar tus cambios.
 Debes respetar la intención original del código, manteniendo su funcionalidad mientras lo mejoras."""
-        
+
         prompt = f"""Analiza el siguiente código de {language}:
 ```{language}
 {code}
@@ -417,15 +466,15 @@ IMPORTANTE: Tu respuesta debe tener este formato JSON:
     "suggestions": ["Sugerencia 1", "Sugerencia 2", ...]
 }}
 """
-        
+
         response = generate_content(prompt, system_prompt, model, temperature=0.3)
-        
+
         # Intentar extraer JSON de la respuesta
         try:
             # Buscar un bloque JSON en la respuesta
             json_pattern = r'```(?:json)?\s*({[\s\S]*?})\s*```'
             json_match = re.search(json_pattern, response)
-            
+
             if json_match:
                 import json
                 result = json.loads(json_match.group(1))
@@ -433,12 +482,12 @@ IMPORTANTE: Tu respuesta debe tener este formato JSON:
                 # Intentar parsear toda la respuesta como JSON
                 import json
                 result = json.loads(response)
-                
+
             # Verificar que tenga las claves esperadas
             for key in ['improved_code', 'explanations', 'suggestions']:
                 if key not in result:
                     result[key] = []
-                    
+
             return {
                 'success': True,
                 'improved_code': result['improved_code'],
@@ -447,23 +496,23 @@ IMPORTANTE: Tu respuesta debe tener este formato JSON:
             }
         except Exception as json_error:
             logging.error(f"Error parseando JSON de respuesta: {str(json_error)}")
-            
+
             # Fallback: extraer código mejorado usando regex
             code_pattern = r"```(?:\w+)?\s*([\s\S]*?)\s*```"
             code_match = re.search(code_pattern, response)
-            
+
             if code_match:
                 improved_code = code_match.group(1).strip()
             else:
                 improved_code = code  # Usar el código original si no se encuentra mejorado
-                
+
             return {
                 'success': True,
                 'improved_code': improved_code,
                 'explanations': ["Se procesó el código pero hubo un error al estructurar la respuesta."],
                 'suggestions': ["Revisa el código manualmente para confirmar las mejoras."]
             }
-                
+
     except Exception as e:
         logging.error(f"Error analizando código: {str(e)}")
         return {
@@ -474,12 +523,12 @@ IMPORTANTE: Tu respuesta debe tener este formato JSON:
 def process_natural_language_command(text, workspace_path, model="openai"):
     """
     Procesa una instrucción en lenguaje natural y determina la acción a realizar.
-    
+
     Args:
         text: Texto de la instrucción
         workspace_path: Ruta del workspace del usuario
         model: Modelo de IA a utilizar
-        
+
     Returns:
         dict: Resultado del procesamiento con la acción determinada
     """
@@ -487,7 +536,7 @@ def process_natural_language_command(text, workspace_path, model="openai"):
         system_prompt = """Eres un asistente especializado en interpretar instrucciones en lenguaje natural 
 y convertirlas en acciones específicas para un entorno de desarrollo. 
 Tu tarea es determinar qué acción debe realizarse basándote en el texto proporcionado."""
-        
+
         prompt = f"""Analiza la siguiente instrucción y determina qué acción debe realizarse:
 "{text}"
 
@@ -505,24 +554,24 @@ Responde en formato JSON con la siguiente estructura:
         "file_name": "Nombre del archivo a crear",
         "file_type": "Tipo de archivo (py, js, html, etc.)",
         "content_description": "Descripción del contenido a generar"
-        
+
         // Para execute_command:
         "command": "El comando a ejecutar"
-        
+
         // Para answer_question:
         "question": "La pregunta a responder"
     }}
 }}
 """
-        
+
         response = generate_content(prompt, system_prompt, model, temperature=0.3)
-        
+
         # Extraer JSON de la respuesta
         try:
             # Buscar un bloque JSON en la respuesta
             json_pattern = r'```(?:json)?\s*({[\s\S]*?})\s*```'
             json_match = re.search(json_pattern, response)
-            
+
             if json_match:
                 import json
                 result = json.loads(json_match.group(1))
@@ -530,20 +579,20 @@ Responde en formato JSON con la siguiente estructura:
                 # Intentar parsear toda la respuesta como JSON
                 import json
                 result = json.loads(response)
-                
+
             action = result.get('action', 'unknown')
             details = result.get('details', {})
-            
+
             # Procesar según la acción determinada
             if action == 'create_file':
                 file_name = details.get('file_name', 'unnamed.txt')
                 file_type = details.get('file_type', 'txt')
                 content_description = details.get('content_description', text)
-                
+
                 # Asegurar que el nombre de archivo tenga la extensión correcta
                 if not file_name.endswith('.' + file_type):
                     file_name += '.' + file_type
-                
+
                 # Usar la función de creación de archivo para generar el contenido
                 result = create_file_with_agent(
                     description=content_description,
@@ -553,7 +602,7 @@ Responde en formato JSON con la siguiente estructura:
                     workspace_path=workspace_path,
                     model=model
                 )
-                
+
                 if result['success']:
                     return {
                         'success': True,
@@ -566,16 +615,16 @@ Responde en formato JSON con la siguiente estructura:
                         'success': False,
                         'error': result['error']
                     }
-            
+
             elif action == 'execute_command':
                 command = details.get('command', '')
-                
+
                 if not command:
                     return {
                         'success': False,
                         'error': 'No se pudo determinar el comando a ejecutar'
                     }
-                
+
                 import subprocess
                 process = subprocess.Popen(
                     command,
@@ -584,10 +633,10 @@ Responde en formato JSON con la siguiente estructura:
                     stderr=subprocess.PIPE,
                     cwd=workspace_path
                 )
-                
+
                 stdout, stderr = process.communicate(timeout=30)
                 status = process.returncode
-                
+
                 return {
                     'success': True,
                     'action': 'execute_command',
@@ -596,17 +645,17 @@ Responde en formato JSON con la siguiente estructura:
                     'stderr': stderr.decode('utf-8', errors='replace'),
                     'status': status
                 }
-            
+
             elif action == 'answer_question':
                 question = details.get('question', text)
-                
+
                 # Generar respuesta a la pregunta
                 response_result = generate_response(
                     user_message=question,
                     agent_id='general',  # Usar agente general para preguntas
                     model=model
                 )
-                
+
                 if response_result['success']:
                     return {
                         'success': True,
@@ -619,24 +668,23 @@ Responde en formato JSON con la siguiente estructura:
                         'success': False,
                         'error': response_result['error']
                     }
-            
+
             else:  # unknown o cualquier otro caso
                 return {
                     'success': False,
                     'error': 'No se pudo determinar una acción específica para esta instrucción'
                 }
-                
+
         except Exception as json_error:
             logging.error(f"Error parseando respuesta: {str(json_error)}")
             return {
                 'success': False,
                 'error': f'Error procesando la instrucción: {str(json_error)}'
             }
-                
+
     except Exception as e:
         logging.error(f"Error procesando instrucción en lenguaje natural: {str(e)}")
         return {
             'success': False,
             'error': f'Error procesando instrucción: {str(e)}'
         }
-

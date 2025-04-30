@@ -452,6 +452,160 @@ class TechSelector {
   exportSelection() {
     return JSON.stringify(this.getSelectionData());
   }
+
+  // Enviar datos al backend para iniciar la generación
+  startGeneration() {
+        // Obtener datos adicionales para mejorar la generación de código
+        const appDescription = document.getElementById('app-description').value;
+
+        // Añadir información específica sobre las tecnologías seleccionadas al prompt
+        let enhancedDescription = appDescription;
+
+        if (this.selectedTech.backend) {
+            enhancedDescription += `\nUtilizando ${this.selectedTech.backend} como backend.`;
+        }
+
+        if (this.selectedTech.frontend) {
+            enhancedDescription += `\nUtilizando ${this.selectedTech.frontend} para el frontend.`;
+        }
+
+        if (this.selectedTech.database) {
+            enhancedDescription += `\nCon ${this.selectedTech.database} como base de datos.`;
+        }
+
+        // Añadir información sobre las características seleccionadas
+        if (this.selectedTech.additionalFeatures.length > 0) {
+            enhancedDescription += "\nCaracterísticas específicas que debe implementar:";
+            this.selectedTech.additionalFeatures.forEach(feature => {
+                const featureName = this.options.additionalFeatures.find(f => f.id === feature)?.name || feature;
+                enhancedDescription += `\n- ${featureName}`;
+            });
+        }
+
+        // Añadir instrucciones específicas para la generación de código real
+        enhancedDescription += "\n\nIMPORTANTE: Generar código funcional completo, no esqueletos o plantillas. Implementar todas las características solicitadas con código real.";
+
+        const projectData = {
+            description: enhancedDescription,
+            features: this.selectedTech.additionalFeatures,
+            agent: "developer", // Usar el agente desarrollador para código real
+            model: "openai", // Usar OpenAI por defecto para máxima calidad
+            tech_data: {
+                backend: this.selectedTech.backend,
+                frontend: this.selectedTech.frontend,
+                database: this.selectedTech.database,
+                features: this.selectedTech.additionalFeatures,
+                generationMode: "fullCode" // Modo de generación completa
+            },
+            options: {
+                includeTests: document.getElementById('include-tests')?.checked || false,
+                includeDocs: document.getElementById('include-docs')?.checked || false,
+                generateCompleteCode: true, // Flag explícito para generar código completo
+                optimizeForProduction: true
+            }
+        };
+
+        // Mostrar mensaje de espera
+        this.showWaitingMessage("Preparando la generación de código completo...");
+
+        fetch('/api/constructor/generate', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(projectData)
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`Error de servidor: ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.success) {
+                console.log('Generación iniciada:', data);
+
+                // Guardar el ID del proyecto
+                sessionStorage.setItem('current_project_id', data.project_id);
+
+                // Iniciar el polling de estado
+                this.startStatusPolling(data.project_id);
+
+                // Actualizar la UI para mostrar la pantalla de progreso
+                this.showProgressScreen(data.project_id);
+            } else {
+                console.error('Error iniciando generación:', data.error);
+                this.showError(data.error);
+            }
+        })
+        .catch(error => {
+            console.error('Error en la solicitud:', error);
+            this.showError('Error de conexión: ' + error.message);
+
+            // Reactivar el botón después de un error
+            document.getElementById('generate-button').disabled = false;
+        });
+    }
+
+    // Mostrar mensaje de espera durante la preparación
+    showWaitingMessage(message) {
+        const waitingElement = document.createElement('div');
+        waitingElement.className = 'waiting-message';
+        waitingElement.innerHTML = `
+            <div class="spinner"></div>
+            <p>${message}</p>
+            <p class="small">Estamos preparando todo para generar código real y completo según tus especificaciones</p>
+        `;
+
+        // Añadir estilos para el spinner
+        const style = document.createElement('style');
+        style.textContent = `
+            .waiting-message {
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                background: rgba(0,0,0,0.8);
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                z-index: 9999;
+                color: white;
+                text-align: center;
+                padding: 20px;
+            }
+            .waiting-message p {
+                margin: 15px 0;
+                font-size: 18px;
+            }
+            .waiting-message .small {
+                font-size: 14px;
+                opacity: 0.8;
+            }
+            .spinner {
+                width: 50px;
+                height: 50px;
+                border: 5px solid rgba(255,255,255,0.3);
+                border-radius: 50%;
+                border-top-color: white;
+                animation: spin 1s ease-in-out infinite;
+            }
+            @keyframes spin {
+                to { transform: rotate(360deg); }
+            }
+        `;
+        document.head.appendChild(style);
+        document.body.appendChild(waitingElement);
+
+        // Eliminar después de mostrar la pantalla de progreso
+        setTimeout(() => {
+            if (document.body.contains(waitingElement)) {
+                document.body.removeChild(waitingElement);
+            }
+        }, 5000);
+    }
 }
 
 // Inicializar cuando el DOM esté listo

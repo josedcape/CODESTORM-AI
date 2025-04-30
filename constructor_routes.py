@@ -141,8 +141,20 @@ def generate_application(project_id, description, agent, model, options, feature
             f.write(f"1. Instalar dependencias: `pip install -r requirements.txt`\n")
             f.write(f"2. Ejecutar la aplicación: `python app.py`\n")
 
-        # Stage 3: Generate app structure - faster and simpler
-        update_status(40, "Generando estructura básica...", "Creando archivos principales")
+        # Stage 3: Generate app structure using the AI agents
+        update_status(40, "Generando código completo de la aplicación...", "Creando archivos principales")
+
+        # Importar la función de generación de código
+        try:
+            import sys
+            sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+            from agents_utils import create_file_with_agent, get_agent_system_prompt, get_agent_name
+            ai_generation_available = True
+            update_status(42, "Generando código con agentes de IA...", "Agentes IA listos para generar código")
+        except ImportError as e:
+            logging.error(f"No se pudo importar módulos de agentes: {str(e)}")
+            ai_generation_available = False
+            update_status(42, "Usando plantillas predefinidas...", "No se pudo cargar los agentes de IA, usando plantillas")
 
         # Determine if it's a web app or CLI app based on features
         is_web_app = any(["web" in feature.lower() or
@@ -153,10 +165,36 @@ def generate_application(project_id, description, agent, model, options, feature
                           "html" in feature.lower()
                          for feature in features])
 
-        # Create app.py - core file
-        with open(os.path.join(project_dir, 'app.py'), 'w') as f:
-            if is_web_app:
-                f.write("""from flask import Flask, render_template, jsonify, request
+        # Determine the tech stack based on project status
+        tech_backend = project_status[project_id].get('techstack', {}).get('backend', 'flask')
+        tech_frontend = project_status[project_id].get('techstack', {}).get('frontend', 'bootstrap')
+        tech_database = project_status[project_id].get('techstack', {}).get('database', 'sqlite')
+
+        if ai_generation_available:
+            # Generar app.py usando agentes IA
+            app_description = f"""Crear un archivo principal app.py para una aplicación {'web' if is_web_app else 'CLI'} que implemente las siguientes características:
+            {', '.join(features)}
+            
+            La aplicación debe usar {tech_backend} como backend{', ' + tech_frontend + ' para el frontend' if is_web_app else ''} y {tech_database} como base de datos.
+            La aplicación debe ser funcional y completa, no un esqueleto o demo."""
+            
+            app_result = create_file_with_agent(
+                description=app_description,
+                file_type="py",
+                filename="app.py",
+                agent_id="developer",
+                workspace_path=project_dir,
+                model="openai"
+            )
+            
+            if app_result.get('success'):
+                update_status(45, "Generando código principal...", f"app.py generado exitosamente con {tech_backend}")
+            else:
+                update_status(45, "Error generando app.py", f"Error: {app_result.get('error', 'Desconocido')}")
+                # Fallback a plantilla simple si falla
+                with open(os.path.join(project_dir, 'app.py'), 'w') as f:
+                    if is_web_app:
+                        f.write("""from flask import Flask, render_template, jsonify, request
 from flask_cors import CORS
 import os
 
@@ -174,8 +212,8 @@ def status():
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)
 """)
-            else:
-                f.write("""import argparse
+                    else:
+                        f.write("""import argparse
 import sys
 
 def main():
@@ -190,26 +228,63 @@ if __name__ == "__main__":
     sys.exit(main())
 """)
 
-        # Create requirements.txt
-        with open(os.path.join(project_dir, 'requirements.txt'), 'w') as f:
-            if is_web_app:
-                f.write("""flask==2.0.1
+            # Generar requirements.txt
+            requirements_description = f"""Crear un archivo requirements.txt para una aplicación {'web' if is_web_app else 'CLI'} con {tech_backend}
+            que implementa las siguientes características: {', '.join(features)}.
+            {'Include libraries for ' + tech_frontend + ' integration' if is_web_app else ''}
+            La aplicación usa {tech_database} como base de datos."""
+            
+            req_result = create_file_with_agent(
+                description=requirements_description,
+                file_type="txt",
+                filename="requirements.txt",
+                agent_id="developer",
+                workspace_path=project_dir,
+                model="openai"
+            )
+            
+            if not req_result.get('success'):
+                # Fallback a plantilla simple si falla
+                with open(os.path.join(project_dir, 'requirements.txt'), 'w') as f:
+                    if is_web_app:
+                        f.write(f"""{tech_backend}==2.3.0
 flask-cors==3.0.10
+{tech_database}==3.36.0
 """)
-            else:
-                f.write("""# No external dependencies
+                    else:
+                        f.write("""# No external dependencies
 """)
 
-        # Create templates folder for web apps
-        if is_web_app:
-            os.makedirs(os.path.join(project_dir, 'templates'), exist_ok=True)
-            os.makedirs(os.path.join(project_dir, 'static'), exist_ok=True)
-            os.makedirs(os.path.join(project_dir, 'static', 'css'), exist_ok=True)
-            os.makedirs(os.path.join(project_dir, 'static', 'js'), exist_ok=True)
+            # Si es una aplicación web, crear archivos de frontend
+            if is_web_app:
+                os.makedirs(os.path.join(project_dir, 'templates'), exist_ok=True)
+                os.makedirs(os.path.join(project_dir, 'static'), exist_ok=True)
+                os.makedirs(os.path.join(project_dir, 'static', 'css'), exist_ok=True)
+                os.makedirs(os.path.join(project_dir, 'static', 'js'), exist_ok=True)
 
-            # Create index.html
-            with open(os.path.join(project_dir, 'templates', 'index.html'), 'w') as f:
-                f.write("""<!DOCTYPE html>
+                # Generar index.html
+                index_description = f"""Crear una página principal index.html para una aplicación web que implementa las siguientes características:
+                {', '.join(features)}
+                
+                La aplicación debe usar {tech_frontend} para el frontend.
+                Debe ser una implementación completa, no una demostración o plantilla."""
+                
+                index_result = create_file_with_agent(
+                    description=index_description,
+                    file_type="html",
+                    filename="templates/index.html",
+                    agent_id="developer",
+                    workspace_path=project_dir,
+                    model="openai"
+                )
+                
+                if index_result.get('success'):
+                    update_status(50, "Generando interfaz de usuario...", "index.html generado correctamente")
+                else:
+                    update_status(50, "Error generando index.html", f"Error: {index_result.get('error', 'Desconocido')}")
+                    # Fallback a plantilla simple si falla
+                    with open(os.path.join(project_dir, 'templates', 'index.html'), 'w') as f:
+                        f.write("""<!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
@@ -237,9 +312,26 @@ flask-cors==3.0.10
 </body>
 </html>""")
 
-            # Create CSS
-            with open(os.path.join(project_dir, 'static', 'css', 'style.css'), 'w') as f:
-                f.write("""body {
+                # Generar CSS
+                css_description = f"""Crear un archivo CSS principal para una aplicación web que implementa:
+                {', '.join(features)}
+                
+                El archivo debe usar {tech_frontend} y proporcionar estilos completos para toda la aplicación,
+                incluyendo diseño responsivo para móviles, tablets y desktop."""
+                
+                css_result = create_file_with_agent(
+                    description=css_description,
+                    file_type="css",
+                    filename="static/css/style.css",
+                    agent_id="developer",
+                    workspace_path=project_dir,
+                    model="openai"
+                )
+                
+                if not css_result.get('success'):
+                    # Fallback a plantilla simple si falla
+                    with open(os.path.join(project_dir, 'static', 'css', 'style.css'), 'w') as f:
+                        f.write("""body {
     font-family: Arial, sans-serif;
     margin: 0;
     padding: 0;
@@ -277,9 +369,168 @@ footer {
     width: 100%;
 }""")
 
-            # Create JS
-            with open(os.path.join(project_dir, 'static', 'js', 'main.js'), 'w') as f:
-                f.write("""document.addEventListener('DOMContentLoaded', function() {
+                # Generar JS
+                js_description = f"""Crear un archivo JavaScript principal para una aplicación web que implementa:
+                {', '.join(features)}
+                
+                El archivo debe implementar toda la funcionalidad del lado del cliente, incluyendo:
+                - Manejo de eventos
+                - Validación de formularios
+                - Integración con API backend
+                - Actualización dinámica de contenido"""
+                
+                js_result = create_file_with_agent(
+                    description=js_description,
+                    file_type="js",
+                    filename="static/js/main.js",
+                    agent_id="developer",
+                    workspace_path=project_dir,
+                    model="openai"
+                )
+                
+                if not js_result.get('success'):
+                    # Fallback a plantilla simple si falla
+                    with open(os.path.join(project_dir, 'static', 'js', 'main.js'), 'w') as f:
+                        f.write("""document.addEventListener('DOMContentLoaded', function() {
+    // Verificar el estado de la API
+    fetch('/api/status')
+        .then(response => response.json())
+        .then(data => {
+            document.getElementById('status').textContent = 'Estado del servidor: ' + data.status;
+        })
+        .catch(error => {
+            document.getElementById('status').textContent = 'Error: ' + error.message;
+        });
+});""")
+        else:
+            # Si los agentes no están disponibles, usar plantillas predefinidas
+            # Create app.py - core file
+            with open(os.path.join(project_dir, 'app.py'), 'w') as f:
+                if is_web_app:
+                    f.write("""from flask import Flask, render_template, jsonify, request
+from flask_cors import CORS
+import os
+
+app = Flask(__name__)
+CORS(app)
+
+@app.route('/')
+def index():
+    return render_template('index.html', title="Aplicación Generada")
+
+@app.route('/api/status')
+def status():
+    return jsonify({'status': 'ok'})
+
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=5000, debug=True)
+""")
+                else:
+                    f.write("""import argparse
+import sys
+
+def main():
+    parser = argparse.ArgumentParser(description="Aplicación CLI generada")
+    parser.add_argument('--accion', type=str, help='Acción a realizar')
+    args = parser.parse_args()
+
+    print(f"Aplicación: {args.accion if args.accion else 'Sin acción especificada'}")
+    return 0
+
+if __name__ == "__main__":
+    sys.exit(main())
+""")
+
+            # Create requirements.txt
+            with open(os.path.join(project_dir, 'requirements.txt'), 'w') as f:
+                if is_web_app:
+                    f.write("""flask==2.3.0
+flask-cors==3.0.10
+""")
+                else:
+                    f.write("""# No external dependencies
+""")
+
+            # Create templates folder for web apps
+            if is_web_app:
+                os.makedirs(os.path.join(project_dir, 'templates'), exist_ok=True)
+                os.makedirs(os.path.join(project_dir, 'static'), exist_ok=True)
+                os.makedirs(os.path.join(project_dir, 'static', 'css'), exist_ok=True)
+                os.makedirs(os.path.join(project_dir, 'static', 'js'), exist_ok=True)
+
+                # Create index.html
+                with open(os.path.join(project_dir, 'templates', 'index.html'), 'w') as f:
+                    f.write("""<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ title }}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <header>
+        <h1>{{ title }}</h1>
+    </header>
+    <main>
+        <div class="container">
+            <div class="card">
+                <h2>Aplicación generada correctamente</h2>
+                <p>Esta es una aplicación generada automáticamente.</p>
+                <div id="status">Cargando estado...</div>
+            </div>
+        </div>
+    </main>
+    <footer>
+        <p>&copy; Aplicación generada por Codestorm Assistant</p>
+    </footer>
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html>""")
+
+                # Create CSS
+                with open(os.path.join(project_dir, 'static', 'css', 'style.css'), 'w') as f:
+                    f.write("""body {
+    font-family: Arial, sans-serif;
+    margin: 0;
+    padding: 0;
+    background-color: #f5f5f5;
+}
+
+header {
+    background-color: #333;
+    color: white;
+    padding: 1rem;
+    text-align: center;
+}
+
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 1rem;
+}
+
+.card {
+    background-color: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    padding: 1rem;
+    margin: 1rem 0;
+}
+
+footer {
+    background-color: #333;
+    color: white;
+    text-align: center;
+    padding: 1rem;
+    position: fixed;
+    bottom: 0;
+    width: 100%;
+}""")
+
+                # Create JS
+                with open(os.path.join(project_dir, 'static', 'js', 'main.js'), 'w') as f:
+                    f.write("""document.addEventListener('DOMContentLoaded', function() {
     // Verificar el estado de la API
     fetch('/api/status')
         .then(response => response.json())
@@ -291,9 +542,9 @@ footer {
         });
 });""")
 
-        update_status(60, "Implementando funcionalidades...", "Generando código específico")
+        update_status(60, "Implementando funcionalidades...", "Generando código específico para cada característica")
 
-        # Generate module files based on features
+        # Generate module files based on features using AI agents if available
         for i, feature in enumerate(features[:5]):  # Limit to first 5 features to speed up
             # Sanitizar el nombre de la característica para usar como nombre de archivo
             feature_name = feature.lower().replace(' ', '_').replace('-', '_').replace(':', '_').replace(';', '_')
@@ -305,26 +556,187 @@ footer {
             if not feature_name or not feature_name[0].isalpha():
                 feature_name = f"feature_{i}"
 
-            if is_web_app:
-                # Add a route for this feature
-                with open(os.path.join(project_dir, f'{feature_name}.py'), 'w') as f:
-                    f.write(f"""# Módulo para la característica: {feature}
+            # Determinar el tech stack
+            tech_backend = project_status[project_id].get('techstack', {}).get('backend', 'flask')
+            tech_frontend = project_status[project_id].get('techstack', {}).get('frontend', 'bootstrap')
+            tech_database = project_status[project_id].get('techstack', {}).get('database', 'sqlite')
 
+            if ai_generation_available:
+                try:
+                    # Determinar tipo de característica
+                    is_ui_feature = any(kw in feature.lower() for kw in ['interfaz', 'ui', 'página', 'formulario', 'vista'])
+                    is_data_feature = any(kw in feature.lower() for kw in ['datos', 'base de datos', 'db', 'modelo', 'entity'])
+                    is_auth_feature = any(kw in feature.lower() for kw in ['auth', 'login', 'registro', 'usuario', 'autenticación'])
+                    
+                    if is_web_app:
+                        # Generar módulo backend para la característica
+                        module_description = f"""Crear un módulo completo para la característica: {feature}.
+                        
+                        Este módulo debe implementar toda la funcionalidad backend necesaria para {feature},
+                        incluyendo rutas, lógica de negocio, y acceso a datos.
+                        
+                        La aplicación utiliza {tech_backend} como framework backend y {tech_database} como base de datos.
+                        
+                        Implementa CÓDIGO COMPLETO Y FUNCIONAL, no un esqueleto o plantilla."""
+                        
+                        module_result = create_file_with_agent(
+                            description=module_description,
+                            file_type="py",
+                            filename=f'routes/{feature_name}_routes.py',
+                            agent_id="developer",
+                            workspace_path=project_dir,
+                            model="openai"
+                        )
+                        
+                        # Asegurar que existe el directorio routes
+                        os.makedirs(os.path.join(project_dir, 'routes'), exist_ok=True)
+                        
+                        # Generar plantilla frontend para la característica
+                        template_description = f"""Crear una plantilla HTML completa para la característica: {feature}.
+                        
+                        Esta plantilla debe implementar toda la interfaz de usuario para {feature},
+                        incluyendo formularios, tablas, visualizaciones y elementos interactivos.
+                        
+                        La aplicación utiliza {tech_frontend} como framework frontend.
+                        
+                        Implementa CÓDIGO COMPLETO Y FUNCIONAL, no un esqueleto o plantilla."""
+                        
+                        os.makedirs(os.path.join(project_dir, 'templates'), exist_ok=True)
+                        template_result = create_file_with_agent(
+                            description=template_description,
+                            file_type="html",
+                            filename=f'templates/{feature_name}.html',
+                            agent_id="developer",
+                            workspace_path=project_dir,
+                            model="openai"
+                        )
+                        
+                        # Si es característica con interfaz, generar CSS específico
+                        if is_ui_feature:
+                            css_description = f"""Crear un archivo CSS para la característica: {feature}.
+                            
+                            Este archivo debe proporcionar todos los estilos necesarios para la interfaz de {feature},
+                            incluyendo diseño responsivo, animaciones, y estilos de componentes.
+                            
+                            La aplicación utiliza {tech_frontend} como framework CSS.
+                            
+                            Implementa CÓDIGO COMPLETO Y FUNCIONAL, no un esqueleto o plantilla."""
+                            
+                            os.makedirs(os.path.join(project_dir, 'static/css'), exist_ok=True)
+                            css_result = create_file_with_agent(
+                                description=css_description,
+                                file_type="css",
+                                filename=f'static/css/{feature_name}.css',
+                                agent_id="developer",
+                                workspace_path=project_dir,
+                                model="openai"
+                            )
+                            
+                            # Generar también JavaScript para la funcionalidad frontend
+                            js_description = f"""Crear un archivo JavaScript para la característica: {feature}.
+                            
+                            Este archivo debe implementar toda la lógica del lado del cliente para {feature},
+                            incluyendo interacciones con la API, validación, y manipulación del DOM.
+                            
+                            Implementa CÓDIGO COMPLETO Y FUNCIONAL, no un esqueleto o plantilla."""
+                            
+                            os.makedirs(os.path.join(project_dir, 'static/js'), exist_ok=True)
+                            js_result = create_file_with_agent(
+                                description=js_description,
+                                file_type="js",
+                                filename=f'static/js/{feature_name}.js',
+                                agent_id="developer",
+                                workspace_path=project_dir,
+                                model="openai"
+                            )
+                        
+                        # Si es característica de datos, generar modelo específico
+                        if is_data_feature:
+                            model_description = f"""Crear un modelo de datos para la característica: {feature}.
+                            
+                            Este archivo debe definir todas las estructuras de datos necesarias para {feature},
+                            incluyendo clases, esquemas, y métodos de acceso a datos.
+                            
+                            La aplicación utiliza {tech_database} como base de datos.
+                            
+                            Implementa CÓDIGO COMPLETO Y FUNCIONAL, no un esqueleto o plantilla."""
+                            
+                            os.makedirs(os.path.join(project_dir, 'models'), exist_ok=True)
+                            model_result = create_file_with_agent(
+                                description=model_description,
+                                file_type="py",
+                                filename=f'models/{feature_name}_model.py',
+                                agent_id="developer",
+                                workspace_path=project_dir,
+                                model="openai"
+                            )
+                    else:
+                        # Para aplicaciones CLI, generar módulo de característica
+                        module_description = f"""Crear un módulo de línea de comandos completo para la característica: {feature}.
+                        
+                        Este módulo debe implementar toda la funcionalidad necesaria para {feature},
+                        incluyendo procesamiento de argumentos, lógica de negocio, y salida al usuario.
+                        
+                        Implementa CÓDIGO COMPLETO Y FUNCIONAL, no un esqueleto o plantilla."""
+                        
+                        module_result = create_file_with_agent(
+                            description=module_description,
+                            file_type="py",
+                            filename=f'modules/{feature_name}.py',
+                            agent_id="developer",
+                            workspace_path=project_dir,
+                            model="openai"
+                        )
+                        
+                        # Asegurar que existe el directorio modules
+                        os.makedirs(os.path.join(project_dir, 'modules'), exist_ok=True)
+                    
+                    # Update progress incrementally
+                    progress = 60 + int((i+1) * 30 / len(features[:5]))
+                    update_status(progress, f"Implementando característica: {feature}", f"Generando código para {feature}")
+                    
+                except Exception as e:
+                    logging.error(f"Error generando código para característica {feature}: {str(e)}")
+                    update_status(progress, f"Error en característica: {feature}", f"Error: {str(e)}")
+                    # Continuar con la siguiente característica
+            else:
+                # Si los agentes no están disponibles, generar código de plantilla
+                if is_web_app:
+                    # Crear directorios necesarios
+                    os.makedirs(os.path.join(project_dir, 'routes'), exist_ok=True)
+                    os.makedirs(os.path.join(project_dir, 'templates'), exist_ok=True)
+                    os.makedirs(os.path.join(project_dir, 'static', 'css'), exist_ok=True)
+                    os.makedirs(os.path.join(project_dir, 'static', 'js'), exist_ok=True)
+                    
+                    # Add a route for this feature
+                    with open(os.path.join(project_dir, f'routes/{feature_name}_routes.py'), 'w') as f:
+                        f.write(f"""# Módulo para la característica: {feature}
+from flask import Blueprint, render_template, request, jsonify
+
+{feature_name}_bp = Blueprint('{feature_name}', __name__)
+
+@{feature_name}_bp.route('/{feature_name}')
+def {feature_name}_page():
+    \"\"\"
+    Renderiza la página principal para la característica {feature}
+    \"\"\"
+    return render_template('{feature_name}.html', title="{feature}")
+
+@{feature_name}_bp.route('/api/{feature_name}/data')
 def get_{feature_name}_data():
     \"\"\"
     Obtiene datos para la característica {feature}
     \"\"\"
-    return {{
+    return jsonify({{
         "name": "{feature}",
         "enabled": True,
         "description": "Implementación de {feature}"
-    }}
+    }})
 """)
 
-                # Add feature template
-                os.makedirs(os.path.join(project_dir, 'templates'), exist_ok=True)
-                with open(os.path.join(project_dir, 'templates', f'{feature_name}.html'), 'w') as f:
-                    template_content = f"""
+                    # Add feature template
+                    with open(os.path.join(project_dir, 'templates', f'{feature_name}.html'), 'w') as f:
+                        template_content = f"""
 {{% extends "base.html" %}}
 
 {{% block title %}}{feature}{{% endblock %}}
@@ -334,14 +746,77 @@ def get_{feature_name}_data():
     <h1>{feature}</h1>
     <div class="feature-content">
         <p>Esta es la página para la característica {feature}.</p>
+        <div id="{feature_name}-data" class="data-container">
+            <p>Cargando datos...</p>
+        </div>
     </div>
 </div>
+{{% endblock %}}
+
+{{% block extra_js %}}
+<script src="{{ url_for('static', filename='js/{feature_name}.js') }}"></script>
 {{% endblock %}}"""
-                    f.write(template_content)
-            else:
-                # Add a module for this feature
-                with open(os.path.join(project_dir, f'{feature_name}.py'), 'w') as f:
-                    f.write(f"""# Módulo para la característica: {feature}
+                        f.write(template_content)
+                    
+                    # Add feature JavaScript
+                    with open(os.path.join(project_dir, 'static', 'js', f'{feature_name}.js'), 'w') as f:
+                        f.write(f"""document.addEventListener('DOMContentLoaded', function() {{
+    // Cargar datos para la característica {feature}
+    fetch('/api/{feature_name}/data')
+        .then(response => response.json())
+        .then(data => {{
+            const dataContainer = document.getElementById('{feature_name}-data');
+            dataContainer.innerHTML = `
+                <h3>${{data.name}}</h3>
+                <p>${{data.description}}</p>
+                <p>Estado: ${{data.enabled ? 'Activo' : 'Inactivo'}}</p>
+            `;
+        }})
+        .catch(error => {{
+            console.error('Error cargando datos:', error);
+            document.getElementById('{feature_name}-data').innerHTML = 
+                `<p class="error">Error cargando datos: ${{error.message}}</p>`;
+        }});
+}});""")
+                    
+                    # Add feature CSS
+                    with open(os.path.join(project_dir, 'static', 'css', f'{feature_name}.css'), 'w') as f:
+                        f.write(f""".feature-container {{
+    padding: 20px;
+    margin-bottom: 30px;
+}}
+
+.feature-container h1 {{
+    color: #333;
+    margin-bottom: 20px;
+}}
+
+.feature-content {{
+    background-color: #f9f9f9;
+    border-radius: 8px;
+    padding: 15px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}}
+
+.data-container {{
+    margin-top: 20px;
+    padding: 10px;
+    background-color: #fff;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+}}
+
+.error {{
+    color: #d9534f;
+    font-weight: bold;
+}}""")
+                else:
+                    # Crear directorio para módulos CLI
+                    os.makedirs(os.path.join(project_dir, 'modules'), exist_ok=True)
+                    
+                    # Add a module for this feature
+                    with open(os.path.join(project_dir, f'modules/{feature_name}.py'), 'w') as f:
+                        f.write(f"""# Módulo para la característica: {feature}
 
 class {feature_name.capitalize()}:
     \"\"\"
@@ -352,21 +827,33 @@ class {feature_name.capitalize()}:
         self.name = "{feature}"
         self.enabled = True
 
-    def execute(self):
+    def execute(self, args=None):
         \"\"\"
         Ejecuta la funcionalidad principal
+        
+        Args:
+            args: Argumentos opcionales para la ejecución
+            
+        Returns:
+            bool: Resultado de la ejecución
         \"\"\"
         print(f"Ejecutando {self.name}...")
+        if args:
+            print(f"Argumentos: {args}")
         return True
 
     def get_info(self):
         \"\"\"
         Devuelve información sobre esta característica
+        
+        Returns:
+            dict: Información de la característica
         \"\"\"
         return {{
             "name": self.name,
             "enabled": self.enabled,
-            "type": "CLI Feature"
+            "type": "CLI Feature",
+            "usage": "Ejecutar con: python app.py --feature {feature_name} [argumentos]"
         }}
 """)
 
