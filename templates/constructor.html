@@ -187,6 +187,17 @@
                                 role="progressbar" style="width: 0%;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">0%</div>
                         </div>
                         <div id="current-stage" class="mt-2 small text-center">Inicializando agentes...</div>
+                        
+                        <!-- Controles de desarrollo -->
+                        <div class="mt-3 mb-3 text-center">
+                            <button id="pause-development-btn" class="btn btn-warning btn-sm me-2">
+                                <i class="bi bi-pause-fill me-1"></i> Pausar Desarrollo
+                            </button>
+                            <button id="resume-development-btn" class="btn btn-success btn-sm" style="display: none;">
+                                <i class="bi bi-play-fill me-1"></i> Reanudar Desarrollo
+                            </button>
+                        </div>
+                        
                         <div class="console-output" id="generation-console"></div>
                     </div>
 
@@ -500,6 +511,73 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         
         window.open(`/api/constructor/preview/${projectId}`, '_blank');
+    });
+    
+    // Manejar pausa del desarrollo
+    const pauseDevelopmentBtn = document.getElementById('pause-development-btn');
+    const resumeDevelopmentBtn = document.getElementById('resume-development-btn');
+    
+    pauseDevelopmentBtn.addEventListener('click', function() {
+        if (!projectId) {
+            alert('No hay proyecto en desarrollo');
+            return;
+        }
+        
+        fetch(`/api/constructor/pause/${projectId}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                addConsoleMessage('Desarrollo pausado por el usuario', 'info');
+                pauseDevelopmentBtn.style.display = 'none';
+                resumeDevelopmentBtn.style.display = 'inline-block';
+                
+                // Cambiar el estilo de la barra de progreso
+                progressBar.classList.remove('progress-bar-animated');
+            } else {
+                addConsoleMessage('Error al pausar el desarrollo: ' + data.error, 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Error al pausar desarrollo:', error);
+            addConsoleMessage('Error al pausar el desarrollo', 'error');
+        });
+    });
+    
+    // Manejar reanudación del desarrollo
+    resumeDevelopmentBtn.addEventListener('click', function() {
+        if (!projectId) {
+            alert('No hay proyecto en desarrollo');
+            return;
+        }
+        
+        fetch(`/api/constructor/resume/${projectId}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                addConsoleMessage('Desarrollo reanudado por el usuario', 'success');
+                resumeDevelopmentBtn.style.display = 'none';
+                pauseDevelopmentBtn.style.display = 'inline-block';
+                
+                // Restaurar el estilo de la barra de progreso
+                progressBar.classList.add('progress-bar-animated');
+            } else {
+                addConsoleMessage('Error al reanudar el desarrollo: ' + data.error, 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Error al reanudar desarrollo:', error);
+            addConsoleMessage('Error al reanudar el desarrollo', 'error');
+        });
     });
 });
 </script>

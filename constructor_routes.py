@@ -20,6 +20,9 @@ os.makedirs(PROJECTS_DIR, exist_ok=True)
 # In-memory storage for project status
 project_status = {}
 
+# Variable para controlar si el desarrollo está pausado
+development_paused = {}
+
 # Function to create a workspace for a project
 def create_project_workspace(project_id):
     project_dir = os.path.join(PROJECTS_DIR, project_id)
@@ -39,16 +42,29 @@ def generate_application(project_id, description, agent, model, options, feature
             'completion_time': None
         }
         
+        # Initialize development_paused status
+        development_paused[project_id] = False
+        
         # Function to update status
         def update_status(progress, stage, message=None):
             project_status[project_id]['progress'] = progress
+            
+            # Mantener la etiqueta (PAUSADO) si está pausado
+            if development_paused.get(project_id, False) and " (PAUSADO)" not in stage:
+                stage += " (PAUSADO)"
+                
             project_status[project_id]['current_stage'] = stage
+            
             if message:
                 project_status[project_id]['console_messages'].append({
                     'time': time.time(),
                     'message': message
                 })
                 logging.info(f"Project {project_id}: {message}")
+                
+            # Si está pausado, esperar hasta que se reanude
+            while development_paused.get(project_id, False) and project_status[project_id]['status'] == 'in_progress':
+                time.sleep(1)  # Esperar un segundo antes de verificar nuevamente
         
         # Get project directory
         project_dir = os.path.join(PROJECTS_DIR, project_id)
@@ -681,6 +697,71 @@ def preview_project(project_id):
         )
     except Exception as e:
         logging.error(f"Error previewing project: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+        
+# Route to pause development
+@constructor_bp.route('/api/constructor/pause/<project_id>', methods=['POST'])
+def pause_development(project_id):
+    try:
+        if project_id not in project_status:
+            return jsonify({
+                'success': False,
+                'error': 'Proyecto no encontrado'
+            }), 404
+        
+        # Mark development as paused
+        development_paused[project_id] = True
+        
+        # Update project status
+        if project_status[project_id]['status'] == 'in_progress':
+            project_status[project_id]['current_stage'] += " (PAUSADO)"
+            project_status[project_id]['console_messages'].append({
+                'time': time.time(),
+                'message': "Desarrollo pausado por el usuario"
+            })
+        
+        return jsonify({
+            'success': True,
+            'message': 'Desarrollo pausado exitosamente'
+        })
+    except Exception as e:
+        logging.error(f"Error pausing development: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+# Route to resume development
+@constructor_bp.route('/api/constructor/resume/<project_id>', methods=['POST'])
+def resume_development(project_id):
+    try:
+        if project_id not in project_status:
+            return jsonify({
+                'success': False,
+                'error': 'Proyecto no encontrado'
+            }), 404
+        
+        # Mark development as resumed
+        development_paused[project_id] = False
+        
+        # Update project status
+        if project_status[project_id]['status'] == 'in_progress':
+            current_stage = project_status[project_id]['current_stage']
+            project_status[project_id]['current_stage'] = current_stage.replace(" (PAUSADO)", "")
+            project_status[project_id]['console_messages'].append({
+                'time': time.time(),
+                'message': "Desarrollo reanudado por el usuario"
+            })
+        
+        return jsonify({
+            'success': True,
+            'message': 'Desarrollo reanudado exitosamente'
+        })
+    except Exception as e:
+        logging.error(f"Error resuming development: {str(e)}")
         return jsonify({
             'success': False,
             'error': str(e)

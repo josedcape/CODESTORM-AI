@@ -31,7 +31,12 @@ socketio = SocketIO(app, cors_allowed_origins="*", async_mode='threading',
                     ping_timeout=60, ping_interval=25, logger=True, engineio_logger=True)
 
 # Register constructor blueprint
-app.register_blueprint(constructor_bp)
+try:
+    app.register_blueprint(constructor_bp)
+    logging.info("Constructor blueprint registered successfully")
+except Exception as e:
+    logging.error(f"Error registering constructor blueprint: {str(e)}")
+
 
 # Configurar claves API
 openai_api_key = os.getenv('OPENAI_API_KEY')
