@@ -4,7 +4,7 @@
 
 document.addEventListener('DOMContentLoaded', function() {
     console.log('Codestorm Assistant inicializado');
-    
+
     // Variables para controlar el estado de pausa del constructor
     window.constructorState = {
         isPaused: false,
@@ -12,7 +12,7 @@ document.addEventListener('DOMContentLoaded', function() {
         pauseCallback: null,
         resumeCallback: null
     };
-    
+
     // Función para pausar el constructor
     window.pauseConstructor = function(callback) {
         window.constructorState.isPaused = true;
@@ -23,7 +23,7 @@ document.addEventListener('DOMContentLoaded', function() {
         console.log('Constructor pausado');
         return window.constructorState.isPaused;
     };
-    
+
     // Función para reanudar el constructor
     window.resumeConstructor = function(callback) {
         window.constructorState.isPaused = false;
@@ -34,7 +34,7 @@ document.addEventListener('DOMContentLoaded', function() {
         console.log('Constructor reanudado');
         return !window.constructorState.isPaused;
     };
-    
+
     // Inicializar tooltips de Bootstrap si existen
     if (typeof bootstrap !== 'undefined' && bootstrap.Tooltip) {
         const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
@@ -42,7 +42,7 @@ document.addEventListener('DOMContentLoaded', function() {
             return new bootstrap.Tooltip(tooltipTriggerEl);
         });
     }
-    
+
     // Inicializar popovers de Bootstrap si existen
     if (typeof bootstrap !== 'undefined' && bootstrap.Popover) {
         const popoverTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="popover"]'));
@@ -50,7 +50,7 @@ document.addEventListener('DOMContentLoaded', function() {
             return new bootstrap.Popover(popoverTriggerEl);
         });
     }
-    
+
     // Función para mostrar mensajes de notificación
     window.showNotification = function(message, type = 'info') {
         const alertContainer = document.getElementById('alert-container');
@@ -64,16 +64,16 @@ document.addEventListener('DOMContentLoaded', function() {
             container.style.zIndex = '9999';
             document.body.appendChild(container);
         }
-        
+
         const alert = document.createElement('div');
         alert.className = `alert alert-${type} alert-dismissible fade show`;
         alert.innerHTML = `
             ${message}
             <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
         `;
-        
+
         document.getElementById('alert-container').appendChild(alert);
-        
+
         // Auto-cerrar después de 5 segundos
         setTimeout(() => {
             if (alert) {
@@ -82,29 +82,29 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }, 5000);
     };
-    
+
     // Hacer que los campos de formulario con la clase 'autosize' se ajusten automáticamente
     document.querySelectorAll('textarea.autosize').forEach(textarea => {
         textarea.addEventListener('input', function() {
             this.style.height = 'auto';
             this.style.height = this.scrollHeight + 'px';
         });
-        
+
         // Trigger inicial
         textarea.dispatchEvent(new Event('input'));
     });
-    
+
     // Integración markdown automática para elementos con la clase 'markdown-content'
     if (typeof marked !== 'undefined') {
         // Verificamos si marked es un objeto (versión más reciente) o una función (versión antigua)
         const markdownParser = typeof marked.parse === 'function' ? marked.parse : (typeof marked === 'function' ? marked : null);
-        
+
         if (markdownParser) {
             document.querySelectorAll('.markdown-content').forEach(element => {
                 const markdown = element.textContent || element.innerText;
                 try {
                     element.innerHTML = markdownParser(markdown);
-                
+
                 // Resaltar código si prism está disponible
                 if (typeof Prism !== 'undefined') {
                     element.querySelectorAll('pre code').forEach(block => {
@@ -114,28 +114,29 @@ document.addEventListener('DOMContentLoaded', function() {
             } catch (e) {
                 console.error('Error al procesar markdown:', e);
             }
-        });
-    } else {
-        // Cargar marked dinámicamente si no está disponible
-        const script = document.createElement('script');
-        script.src = 'https://cdn.jsdelivr.net/npm/marked/marked.min.js';
-        script.onload = function() {
-            console.log('Biblioteca marked cargada correctamente');
-            // Volver a intentar procesar el markdown cuando se cargue
-            const markdownParser = typeof marked.parse === 'function' ? marked.parse : marked;
-            
-            document.querySelectorAll('.markdown-content').forEach(element => {
-                const markdown = element.textContent || element.innerText;
-                try {
-                    element.innerHTML = markdownParser(markdown);
-                } catch (e) {
-                    console.error('Error al procesar markdown:', e);
-                }
             });
-        };
-        document.head.appendChild(script);
+        } else {
+            // Cargar marked dinámicamente si no está disponible
+            const script = document.createElement('script');
+            script.src = 'https://cdn.jsdelivr.net/npm/marked/marked.min.js';
+            script.onload = function() {
+                console.log('Biblioteca marked cargada correctamente');
+                // Volver a intentar procesar el markdown cuando se cargue
+                const markdownParser = typeof marked.parse === 'function' ? marked.parse : marked;
+
+                document.querySelectorAll('.markdown-content').forEach(element => {
+                    const markdown = element.textContent || element.innerText;
+                    try {
+                        element.innerHTML = markdownParser(markdown);
+                    } catch (e) {
+                        console.error('Error al procesar markdown:', e);
+                    }
+                });
+            };
+            document.head.appendChild(script);
+        }
     }
-    
+
     // Función para copiar texto al portapapeles
     window.copyToClipboard = function(text) {
         navigator.clipboard.writeText(text)
@@ -147,6 +148,19 @@ document.addEventListener('DOMContentLoaded', function() {
                 showNotification('Error al copiar al portapapeles', 'danger');
             });
     };
+
+    window.webSocketClient = {
+        sendMessage: function(type, data) {
+            if (socket && socket.connected) {
+                socket.emit(type, data);
+            } else if (window.nativeWebSocket && window.nativeWebSocket.readyState === WebSocket.OPEN) {
+                window.nativeWebSocket.send(JSON.stringify({
+                    type: type,
+                    data: data
+                }));
+            }
+        }
+    };
 });
 
 // Función para formatear fechas
@@ -154,7 +168,7 @@ function formatDate(date) {
     if (!(date instanceof Date)) {
         date = new Date(date);
     }
-    
+
     const options = {
         year: 'numeric',
         month: 'short',
@@ -162,20 +176,20 @@ function formatDate(date) {
         hour: '2-digit',
         minute: '2-digit'
     };
-    
+
     return date.toLocaleDateString('es-ES', options);
 }
 
 // Función para formatear bytes a unidades legibles
 function formatBytes(bytes, decimals = 2) {
     if (bytes === 0) return '0 Bytes';
-    
+
     const k = 1024;
     const dm = decimals < 0 ? 0 : decimals;
     const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB', 'PB'];
-    
+
     const i = Math.floor(Math.log(bytes) / Math.log(k));
-    
+
     return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
 }
 
@@ -184,7 +198,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Comprobar si estamos en la página de corrector de código
     if (document.getElementById('process-btn') && document.getElementById('code-input')) {
         console.log('Inicializando corrector de código...');
-        
+
         // Configurar el manipulador de eventos para el botón de proceso
         const processBtn = document.getElementById('process-btn');
         if (processBtn) {
@@ -193,17 +207,17 @@ document.addEventListener('DOMContentLoaded', function() {
                 const language = document.getElementById('code-language').value;
                 const instructions = document.getElementById('instructions')?.value || '';
                 const modelSelect = document.getElementById('model-select');
-                
+
                 if (!codeInput || !codeInput.value.trim()) {
                     window.showNotification?.('Por favor, ingresa código para corregir', 'warning') || 
                     alert('Por favor, ingresa código para corregir');
                     return;
                 }
-                
+
                 // Mostrar indicador de carga
                 processBtn.disabled = true;
                 processBtn.innerHTML = '<span class="btn-content"><div class="btn-spinner"></div> Procesando...</span>';
-                
+
                 // Llamar a la API para procesar el código
                 fetch('/api/process_code', {
                     method: 'POST',
@@ -232,18 +246,18 @@ document.addEventListener('DOMContentLoaded', function() {
                     if (resultsContainer) {
                         resultsContainer.style.display = 'block';
                     }
-                    
+
                     // Actualizar código corregido
                     const correctedCode = document.getElementById('corrected-code');
                     if (correctedCode && data.corrected_code) {
                         correctedCode.textContent = data.corrected_code;
-                        
+
                         // Resaltar sintaxis si está disponible
                         if (window.hljs) {
                             hljs.highlightElement(correctedCode);
                         }
                     }
-                    
+
                     // Actualizar explicación
                     const explanationText = document.getElementById('explanation-text');
                     if (explanationText && data.explanation) {
@@ -253,17 +267,17 @@ document.addEventListener('DOMContentLoaded', function() {
                             explanationText.textContent = data.explanation;
                         }
                     }
-                    
+
                     // Mostrar cambios
                     if (data.changes && document.getElementById('changes-list')) {
                         renderChanges(data.changes);
                     }
-                    
+
                     // Actualizar vista de diferencias si hay función definida
                     if (typeof generateDiff === 'function' && document.getElementById('diff-view')) {
                         document.getElementById('diff-view').innerHTML = generateDiff(codeInput.value.trim(), data.corrected_code);
                     }
-                    
+
                     window.showNotification?.('Código corregido exitosamente', 'success') || 
                     console.log('Código corregido exitosamente');
                 })
@@ -279,35 +293,35 @@ document.addEventListener('DOMContentLoaded', function() {
                 });
             });
         }
-        
+
         // Función auxiliar para renderizar cambios
         window.renderChanges = function(changes) {
             const changesList = document.getElementById('changes-list');
             if (!changesList) return;
-            
+
             changesList.innerHTML = '';
-            
+
             if (changes && changes.length > 0) {
                 changes.forEach((change, index) => {
                     const item = document.createElement('div');
                     item.className = 'cyber-list-item';
-                    
+
                     // Determinar badge de importancia
                     let importance = change.importance || 'info';
                     const badgeClass = importance === 'alta' ? 'cyber-badge-danger' :
                                       importance === 'media' ? 'cyber-badge-warning' : 'cyber-badge-info';
-                    
+
                     // Información de línea
                     const lineInfo = change.lineNumbers ?
                         `<span class="cyber-badge cyber-badge-secondary">Línea(s): ${change.lineNumbers.join(', ')}</span>` : '';
-                    
+
                     item.innerHTML = `
                         <div class="d-flex justify-content-between align-items-center">
                             <div><span class="cyber-badge ${badgeClass}">${importance}</span> ${change.description}</div>
                             ${lineInfo}
                         </div>
                     `;
-                    
+
                     changesList.appendChild(item);
                 });
             } else {

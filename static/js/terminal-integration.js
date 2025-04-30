@@ -915,4 +915,16 @@ function formatUptime(seconds) {
 // Exponer funciones para uso externo
 window.webSocketClient = {
     sendMessage: function(type, data) {
-        if (socket && socket.connected)(\w*)\n([\s\S]*?)\n
+        if (socket && socket.connected) {
+            socket.emit(type, data);
+            return true;
+        } else if (window.nativeWebSocket && window.nativeWebSocket.readyState === WebSocket.OPEN) {
+            window.nativeWebSocket.send(JSON.stringify({
+                type: type,
+                data: data
+            }));
+            return true;
+        }
+        return false;
+    }
+}
