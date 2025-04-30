@@ -139,23 +139,26 @@
 
 
     <!-- Controles de construcción -->
-    <div class="constructor-controls mt-3 mb-4">
-        <div class="d-flex justify-content-between align-items-center">
-            <div class="controls-left">
-                <button id="pause-constructor" class="btn btn-warning">
-                    <i class="fas fa-pause me-1"></i> Pausar construcción
-                </button>
-                <button id="resume-constructor" class="btn btn-success ms-2" disabled>
-                    <i class="fas fa-play me-1"></i> Reanudar construcción
-                </button>
-            </div>
-            <div class="controls-right">
-                <button id="debug-constructor" class="btn btn-outline-info">
-                    <i class="fas fa-bug me-1"></i> Depurar
-                </button>
-            </div>
-        </div>
-    </div>
+    .constructor-controls {
+        margin-top: 30px;
+        margin-bottom: 40px;
+    }
+    .constructor-controls .d-flex {
+        justify-content: space-between;
+        align-items: center;
+    }
+    .constructor-controls .controls-left {
+        margin-right: 20px;
+    }
+    .constructor-controls .controls-right {
+        margin-left: 20px;
+    }
+    .constructor-controls .btn {
+        margin-right: 5px;
+    }
+    .constructor-controls .btn.ms-2 {
+        margin-left: 10px;
+    }
 
     .badge.bg-success {
         background: linear-gradient(135deg, #28a745, #1e7e34) !important;
@@ -314,6 +317,7 @@
                             </button>
                         </div>
                     </div>
+                    <div id="message-container"></div>
                 </div>
             </div>
         </div>
@@ -330,7 +334,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const resultSection = document.getElementById('generation-result');
     const progressBar = document.getElementById('progress-bar');
     const currentStage = document.getElementById('current-stage');
-    const progressText = document.getElementById('progress-text'); // Added progressText
+    const progressText = document.getElementById('progress-text'); 
     const viewAppBtn = document.getElementById('view-app-btn');
     const downloadAppBtn = document.getElementById('download-app-btn');
     const projectDescription = document.getElementById('project-description');
@@ -475,7 +479,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 .then(response => response.json())
                 .then(data => {
                     if (data.success) {
-                        updateProjectStatus(data); // Pass data to updateProjectStatus
+                        updateProjectStatus(data); 
 
                         if (data.status === 'completed') {
                             clearInterval(statusCheckInterval);
@@ -593,7 +597,7 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
 
-        window.location.href = `/api/constructor/download/${projectId}`;
+        downloadProject(projectId);
     });
 
     // Evento para ver la aplicación
@@ -752,6 +756,72 @@ document.addEventListener('DOMContentLoaded', function() {
     function capitalizeFirstLetter(string) {
         if (!string) return '';
         return string.charAt(0).toUpperCase() + string.slice(1);
+    }
+
+    // Función para descargar el proyecto
+    function downloadProject(projectId) {
+        // Mostrar mensaje de descarga iniciada
+        showMessage('Preparando descarga...', 'info');
+
+        // Realizar una verificación previa
+        fetch(`/api/constructor/status/${projectId}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success && data.status === 'completed') {
+                    // Iniciar descarga directa
+                    window.location.href = `/api/constructor/download/${projectId}`;
+
+                    // Mostrar mensaje después de iniciar descarga
+                    setTimeout(() => {
+                        showMessage('Si la descarga no comenzó automáticamente, <a href="/api/constructor/download/' + 
+                                  projectId + '" class="download-link">haz clic aquí</a>', 'success');
+                    }, 3000);
+                } else {
+                    // Si el proyecto no está completado, mostrar mensaje
+                    showMessage('El proyecto aún no está listo para descargar. Estado: ' + 
+                              (data.status || 'desconocido'), 'warning');
+                }
+            })
+            .catch(error => {
+                console.error('Error verificando estado:', error);
+                // Intentar descarga directa como fallback
+                window.location.href = `/api/constructor/download/${projectId}`;
+
+                // Mostrar mensaje de fallback
+                setTimeout(() => {
+                    showMessage('Intentando descarga directa. Si no funciona, por favor inténtalo más tarde o contacta con soporte.', 'warning');
+                }, 2000);
+            });
+    }
+
+    // Función para mostrar mensajes en la interfaz
+    function showMessage(message, type) {
+        const messageContainer = document.getElementById('message-container');
+        if (!messageContainer) {
+            // Crear contenedor de mensajes si no existe
+            const container = document.createElement('div');
+            container.id = 'message-container';
+            container.style.position = 'fixed';
+            container.style.top = '20px';
+            container.style.right = '20px';
+            container.style.zIndex = '1000';
+            document.body.appendChild(container);
+        }
+
+        const messageDiv = document.createElement('div');
+        messageDiv.className = `alert alert-${type}`;
+        messageDiv.innerHTML = message;
+        messageDiv.style.marginBottom = '10px';
+        messageDiv.style.minWidth = '300px';
+
+        document.getElementById('message-container').appendChild(messageDiv);
+
+        // Auto-eliminar después de 8 segundos
+        setTimeout(() => {
+            if (messageDiv.parentNode) {
+                messageDiv.parentNode.removeChild(messageDiv);
+            }
+        }, 8000);
     }
 });
 </script>

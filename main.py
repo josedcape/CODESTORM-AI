@@ -1238,43 +1238,8 @@ def generate_project():
             'error': str(e)
         }), 500
 
-@app.route('/api/constructor/status/<project_id>', methods=['GET'])
-def project_status(project_id):
-    """API endpoint para consultar el estado de un proyecto."""
-    try:
-        return jsonify({
-            'success': True,
-            'project_id': project_id,
-            'status': 'in_progress',
-            'progress': 45,
-            'current_stage': 'Generación de código',
-            'next_stage': 'Pruebas y optimización'
-        })
-
-    except Exception as e:
-        logging.error(f"Error al consultar estado del proyecto: {str(e)}")
-        return jsonify({
-            'success': False,
-            'error': str(e)
-        }), 500
-
-@app.route('/api/constructor/download/<project_id>', methods=['GET'])
-def download_project(project_id):
-    """API endpoint para descargar un proyecto generado."""
-    try:
-        return jsonify({
-            'success': True,
-            'project_id': project_id,
-            'download_url': f"/api/download/{project_id}.zip",
-            'expires_in': '24 horas'
-        })
-
-    except Exception as e:
-        logging.error(f"Error al preparar descarga del proyecto: {str(e)}")
-        return jsonify({
-            'success': False,
-            'error': str(e)
-        }), 500
+# Estas rutas ahora son manejadas por el constructor_bp blueprint
+# Se elimina el código duplicado para evitar conflictos de rutas
 
 @app.route('/api_status')
 def api_status():

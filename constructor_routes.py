@@ -872,7 +872,7 @@ def project_status_route(project_id):
 
         # Si no tiene framework, añadir uno predeterminado
         if 'framework' not in status_data:
-            status_data['framework'] = 'Flask + Bootstrap + SQLite'
+            statusdata['framework'] = 'Flask + Bootstrap + SQLite'
             status_data['techstack'] = {
                 'backend': 'flask',
                 'frontend': 'bootstrap',
@@ -907,14 +907,50 @@ def project_status_route(project_id):
 @constructor_bp.route('/api/constructor/download/<project_id>', methods=['GET'])
 def download_project(project_id):
     try:
-        zip_path = os.path.join(PROJECTS_DIR, f"{project_id}.zip")
+        # Check if the project exists and is completed
+        if project_id not in project_status:
+            # Si no existe en memoria, verificar si existe el archivo zip directamente
+            zip_path = os.path.join(PROJECTS_DIR, f"{project_id}.zip")
+            if os.path.exists(zip_path):
+                # Si existe el archivo, permitir la descarga aunque no esté en memoria
+                return send_file(
+                    zip_path,
+                    mimetype='application/zip',
+                    as_attachment=True,
+                    download_name=f"{project_id}.zip"
+                )
+            else:
+                return jsonify({
+                    'success': False,
+                    'error': 'Proyecto no encontrado'
+                }), 404
 
-        if not os.path.exists(zip_path):
+        if project_status[project_id]['status'] != 'completed':
             return jsonify({
                 'success': False,
-                'error': 'Archivo de proyecto no encontrado'
-            }), 404
+                'error': f"El proyecto aún no está listo. Estado actual: {project_status[project_id]['status']}"
+            }), 400
 
+        # Project zip file path
+        zip_path = os.path.join(PROJECTS_DIR, f"{project_id}.zip")
+        if not os.path.exists(zip_path):
+            # Si no existe el zip pero el proyecto está marcado como completado, recrearlo
+            project_dir = os.path.join(PROJECTS_DIR, project_id)
+            if os.path.exists(project_dir):
+                # Crear zip del directorio existente
+                with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
+                    for root, dirs, files in os.walk(project_dir):
+                        for file in files:
+                            file_path = os.path.join(root, file)
+                            arcname = os.path.relpath(file_path, PROJECTS_DIR)
+                            zipf.write(file_path, arcname)
+            else:
+                return jsonify({
+                    'success': False,
+                    'error': 'Archivo de proyecto no encontrado'
+                }), 404
+
+        # Return the zip file
         return send_file(
             zip_path,
             mimetype='application/zip',
