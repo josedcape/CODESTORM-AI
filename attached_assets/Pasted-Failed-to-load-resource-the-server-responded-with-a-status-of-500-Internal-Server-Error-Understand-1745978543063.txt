@@ -1,0 +1,80 @@
+Failed to load resource: the server responded with a status of 500 (Internal Server Error)Understand this error
+/api/process_natural:1 
+            
+            
+           Failed to load resource: the server responded with a status of 500 (Internal Server Error)Understand this error
+manager.js:108 
+            
+            
+           GET https://14c5941c-a212-44a3-8dfc-cb247968df59-00-22lda5t04nxid.riker.replit.dev/socket.io/?EIO=4&transport=polling&t=PQ4RQ0t 502 (Bad Gateway)
+value @ polling.js:307
+i @ polling.js:251
+value @ polling.js:203
+value @ polling.js:228
+value @ polling.js:95
+value @ polling.js:55
+value @ transport.js:45
+value @ socket.js:164
+a @ socket.js:105
+value @ manager.js:108
+(anonymous) @ manager.js:331
+setTimeout
+value @ manager.js:324
+value @ manager.js:304
+L.emit @ index.mjs:136
+value @ socket.js:553
+(anonymous) @ socket.js:183
+L.emit @ index.mjs:136
+value @ transport.js:106
+ws.onclose @ websocket.js:65Understand this error
+manager.js:108 
+            
+            
+           GET https://14c5941c-a212-44a3-8dfc-cb247968df59-00-22lda5t04nxid.riker.replit.dev/socket.io/?EIO=4&transport=polling&t=PQ4RQ_J 502 (Bad Gateway)
+value @ polling.js:307
+i @ polling.js:251
+value @ polling.js:203
+value @ polling.js:228
+value @ polling.js:95
+value @ polling.js:55
+value @ transport.js:45
+value @ socket.js:164
+a @ socket.js:105
+value @ manager.js:108
+(anonymous) @ manager.js:331
+setTimeout
+value @ manager.js:324
+(anonymous) @ manager.js:334
+(anonymous) @ manager.js:124
+L.emit @ index.mjs:136
+value @ socket.js:524
+L.emit @ index.mjs:136
+value @ transport.js:37
+(anonymous) @ polling.js:231
+L.emit @ index.mjs:136
+value @ polling.js:329
+(anonymous) @ polling.js:303
+setTimeout
+n.onreadystatechange @ polling.js:302
+XMLHttpRequest.send
+value @ polling.js:307
+i @ polling.js:251
+value @ polling.js:203
+value @ polling.js:228
+value @ polling.js:95
+value @ polling.js:55
+value @ transport.js:45
+value @ socket.js:164
+a @ socket.js:105
+value @ manager.js:108
+(anonymous) @ manager.js:331
+setTimeout
+value @ manager.js:324
+value @ manager.js:304
+L.emit @ index.mjs:136
+value @ socket.js:553
+(anonymous) @ socket.js:183
+L.emit @ index.mjs:136
+value @ transport.js:106
+ws.onclose @ websocket.js:65Understand this error
+xterm_terminal:692 Información del servidor: {status: 'connected', sid: '82M_Ky5Hr05soPMMAAAB'}
