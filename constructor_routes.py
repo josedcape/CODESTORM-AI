@@ -295,7 +295,15 @@ footer {
 
         # Generate module files based on features
         for i, feature in enumerate(features[:5]):  # Limit to first 5 features to speed up
-            feature_name = feature.lower().replace(' ', '_').replace('-', '_')
+            # Sanitizar el nombre de la característica para usar como nombre de archivo
+            feature_name = feature.lower().replace(' ', '_').replace('-', '_').replace(':', '_').replace(';', '_')
+            # Eliminar caracteres especiales adicionales
+            import re
+            feature_name = re.sub(r'[^a-z0-9_]', '', feature_name)
+            
+            # Asegurarse de que no esté vacío y comience con una letra
+            if not feature_name or not feature_name[0].isalpha():
+                feature_name = f"feature_{i}"
 
             if is_web_app:
                 # Add a route for this feature
@@ -314,8 +322,10 @@ def get_{feature_name}_data():
 """)
 
                 # Add feature template
+                os.makedirs(os.path.join(project_dir, 'templates'), exist_ok=True)
                 with open(os.path.join(project_dir, 'templates', f'{feature_name}.html'), 'w') as f:
-                    f.write(f"""{{% extends "base.html" %}}
+                    template_content = f"""
+{{% extends "base.html" %}}
 
 {{% block title %}}{feature}{{% endblock %}}
 
@@ -326,7 +336,8 @@ def get_{feature_name}_data():
         <p>Esta es la página para la característica {feature}.</p>
     </div>
 </div>
-{{% endblock %}}""")
+{{% endblock %}}"""
+                    f.write(template_content)
             else:
                 # Add a module for this feature
                 with open(os.path.join(project_dir, f'{feature_name}.py'), 'w') as f:
@@ -368,14 +379,14 @@ class {feature_name.capitalize()}:
         # Stage 4: Create a base template for web apps
         if is_web_app:
             with open(os.path.join(project_dir, 'templates', 'base.html'), 'w') as f:
-                f.write("""<!DOCTYPE html>
+                base_template = """<!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{% block title %}}Aplicación{{% endblock %}}</title>
+    <title>{% block title %}Aplicación{% endblock %}</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-    {{% block extra_css %}}{{% endblock %}}
+    {% block extra_css %}{% endblock %}
 </head>
 <body>
     <header>
@@ -383,16 +394,16 @@ class {feature_name.capitalize()}:
         <nav>
             <ul>
                 <li><a href="/">Inicio</a></li>
-                {{% for feature in features %}}
+                {% for feature in features %}
                 <li><a href="/{{ feature.url }}">{{ feature.name }}</a></li>
-                {{% endfor %}}
+                {% endfor %}
             </ul>
         </nav>
     </header>
 
     <main>
         <div class="container">
-            {{% block content %}}{{% endblock %}}
+            {% block content %}{% endblock %}
         </div>
     </main>
 
@@ -401,9 +412,10 @@ class {feature_name.capitalize()}:
     </footer>
 
     <script src="{{ url_for('static', filename='js/main.js') }}"></script>
-    {{% block extra_js %}}{{% endblock %}}
+    {% block extra_js %}{% endblock %}
 </body>
-</html>""")
+</html>"""
+                f.write(base_template)
 
         # Create a zip file of the project
         update_status(95, "Finalizando...", "Preparando archivos para descarga")
@@ -961,15 +973,57 @@ def download_project(project_id):
                     download_name=f"{project_id}.zip"
                 )
             else:
-                return jsonify({
-                    'success': False,
-                    'error': 'Proyecto no encontrado'
-                }), 404
+                # Verificar si existe el directorio del proyecto
+                project_dir = os.path.join(PROJECTS_DIR, project_id)
+                if os.path.exists(project_dir):
+                    # Crear un archivo zip para este proyecto
+                    zip_path = os.path.join(PROJECTS_DIR, f"{project_id}.zip")
+                    with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
+                        for root, dirs, files in os.walk(project_dir):
+                            for file in files:
+                                file_path = os.path.join(root, file)
+                                arcname = os.path.relpath(file_path, project_dir)
+                                zipf.write(file_path, arcname)
+                    
+                    # Retornar el archivo zip recién creado
+                    return send_file(
+                        zip_path,
+                        mimetype='application/zip',
+                        as_attachment=True,
+                        download_name=f"{project_id}.zip"
+                    )
+                else:
+                    return jsonify({
+                        'success': False,
+                        'error': 'Proyecto no encontrado'
+                    }), 404
 
-        if project_status[project_id]['status'] != 'completed':
+        if project_status[project_id]['status'] != 'completed' and project_status[project_id].get('status') != 'failed':
+            # Si el proyecto falló, igual intentamos crear un ZIP con lo que tengamos
+            if project_status[project_id].get('status') == 'failed':
+                project_dir = os.path.join(PROJECTS_DIR, project_id)
+                if os.path.exists(project_dir):
+                    # Crear zip del directorio existente
+                    zip_path = os.path.join(PROJECTS_DIR, f"{project_id}.zip")
+                    with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
+                        for root, dirs, files in os.walk(project_dir):
+                            for file in files:
+                                file_path = os.path.join(root, file)
+                                arcname = os.path.relpath(file_path, project_dir)
+                                zipf.write(file_path, arcname)
+                    
+                    # Retornar el archivo zip
+                    return send_file(
+                        zip_path,
+                        mimetype='application/zip',
+                        as_attachment=True,
+                        download_name=f"{project_id}.zip"
+                    )
+            
+            # Si no está completado ni falló, mostrar mensaje de error
             return jsonify({
                 'success': False,
-                'error': f"El proyecto aún no está listo. Estado actual: {project_status[project_id]['status']}"
+                'error': f"El proyecto aún no está listo. Estado actual: {project_status[project_id].get('status', 'desconocido')}"
             }), 400
 
         # Project zip file path
@@ -983,13 +1037,55 @@ def download_project(project_id):
                     for root, dirs, files in os.walk(project_dir):
                         for file in files:
                             file_path = os.path.join(root, file)
-                            arcname = os.path.relpath(file_path, PROJECTS_DIR)
+                            arcname = os.path.relpath(file_path, project_dir)
                             zipf.write(file_path, arcname)
             else:
-                return jsonify({
-                    'success': False,
-                    'error': 'Archivo de proyecto no encontrado'
-                }), 404
+                # Crear un proyecto mínimo para evitar errores
+                project_dir = os.path.join(PROJECTS_DIR, project_id)
+                os.makedirs(project_dir, exist_ok=True)
+                
+                # Crear un archivo README con información del error
+                with open(os.path.join(project_dir, 'README.md'), 'w') as f:
+                    f.write(f"# Proyecto: {project_id}\n\n")
+                    f.write("Este proyecto tuvo un error durante la generación.\n")
+                    if project_id in project_status and 'error' in project_status[project_id]:
+                        f.write(f"\nError: {project_status[project_id]['error']}\n")
+                
+                # Crear un archivo index.html simple
+                os.makedirs(os.path.join(project_dir, 'templates'), exist_ok=True)
+                with open(os.path.join(project_dir, 'templates', 'index.html'), 'w') as f:
+                    f.write("""<!DOCTYPE html>
+<html>
+<head>
+    <title>Proyecto con Error</title>
+</head>
+<body>
+    <h1>Error en la generación del proyecto</h1>
+    <p>Se produjo un error durante la generación de este proyecto.</p>
+</body>
+</html>""")
+                
+                # Crear app.py simple
+                with open(os.path.join(project_dir, 'app.py'), 'w') as f:
+                    f.write("""from flask import Flask, render_template
+
+app = Flask(__name__)
+
+@app.route('/')
+def index():
+    return render_template('index.html')
+
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=5000, debug=True)
+""")
+                
+                # Crear el zip con estos archivos mínimos
+                with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
+                    for root, dirs, files in os.walk(project_dir):
+                        for file in files:
+                            file_path = os.path.join(root, file)
+                            arcname = os.path.relpath(file_path, project_dir)
+                            zipf.write(file_path, arcname)
 
         # Return the zip file
         return send_file(
@@ -1000,10 +1096,30 @@ def download_project(project_id):
         )
     except Exception as e:
         logging.error(f"Error downloading project: {str(e)}")
-        return jsonify({
-            'success': False,
-            'error': str(e)
-        }), 500
+        # En caso de error crítico, crear un ZIP mínimo con información del error
+        try:
+            project_dir = os.path.join(PROJECTS_DIR, project_id)
+            os.makedirs(project_dir, exist_ok=True)
+            
+            with open(os.path.join(project_dir, 'ERROR.txt'), 'w') as f:
+                f.write(f"Error al descargar el proyecto: {str(e)}\n")
+            
+            zip_path = os.path.join(PROJECTS_DIR, f"{project_id}_error.zip")
+            with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
+                zipf.write(os.path.join(project_dir, 'ERROR.txt'), 'ERROR.txt')
+            
+            return send_file(
+                zip_path,
+                mimetype='application/zip',
+                as_attachment=True,
+                download_name=f"{project_id}_error.zip"
+            )
+        except Exception as inner_e:
+            logging.error(f"Error crítico al intentar generar ZIP de error: {str(inner_e)}")
+            return jsonify({
+                'success': False,
+                'error': str(e)
+            }), 500
 
 # Route to preview a generated project
 @constructor_bp.route('/api/constructor/preview/<project_id>', methods=['GET'])

@@ -1,4 +1,3 @@
-
 // Controlador de selección de tecnologías
 class TechSelector {
   constructor() {
@@ -8,7 +7,7 @@ class TechSelector {
       database: null,
       additionalFeatures: []
     };
-    
+
     this.options = {
       backend: [
         { id: 'flask', name: 'Flask', icon: 'fa-flask', description: 'Framework web minimalista para Python' },
@@ -47,7 +46,7 @@ class TechSelector {
         { id: 'map', name: 'Mapas', icon: 'fa-map-marker-alt', description: 'Integración de mapas' }
       ]
     };
-    
+
     this.presetStacks = [
       { 
         name: 'Stack MERN', 
@@ -86,7 +85,7 @@ class TechSelector {
       }
     ];
   }
-  
+
   // Generar HTML para opciones de tecnología
   generateTechOptions(categoryName, options) {
     let html = '';
@@ -113,7 +112,7 @@ class TechSelector {
     });
     return html;
   }
-  
+
   // Generar HTML para características adicionales
   generateFeatureOptions(features) {
     let html = '';
@@ -140,7 +139,7 @@ class TechSelector {
     });
     return html;
   }
-  
+
   // Generar HTML para plantillas predefinidas
   generatePresetOptions(presets) {
     let html = '';
@@ -162,101 +161,101 @@ class TechSelector {
     });
     return html;
   }
-  
+
   // Obtener nombre de tecnología por ID
   getTechName(category, techId) {
     const tech = this.options[category].find(t => t.id === techId);
     return tech ? tech.name : 'Desconocido';
   }
-  
+
   // Aplicar una plantilla predefinida
   applyPreset(presetIndex) {
     const preset = this.presetStacks[presetIndex];
     if (!preset) return false;
-    
+
     this.selectTech('backend', preset.backend);
     this.selectTech('frontend', preset.frontend);
     this.selectTech('database', preset.database);
-    
+
     return true;
   }
-  
+
   // Seleccionar una tecnología
   selectTech(category, techId) {
     this.selectedTech[category] = techId;
-    
+
     // Actualizar UI
     document.querySelectorAll(`[data-category="${category}"]`).forEach(el => {
       el.classList.remove('selected');
     });
-    
+
     const selectedEl = document.querySelector(`[data-category="${category}"][data-tech-id="${techId}"]`);
     if (selectedEl) {
       selectedEl.classList.add('selected');
       const radio = selectedEl.querySelector('input[type="radio"]');
       if (radio) radio.checked = true;
     }
-    
+
     // Actualizar resumen
     this.updateSummary();
-    
+
     return true;
   }
-  
+
   // Alternar una característica adicional
   toggleFeature(featureId) {
     const index = this.selectedTech.additionalFeatures.indexOf(featureId);
-    
+
     if (index === -1) {
       // Añadir la característica
       this.selectedTech.additionalFeatures.push(featureId);
-      
+
       // Actualizar UI
       const featureEl = document.querySelector(`[data-feature-id="${featureId}"]`);
       if (featureEl) featureEl.classList.add('selected');
     } else {
       // Quitar la característica
       this.selectedTech.additionalFeatures.splice(index, 1);
-      
+
       // Actualizar UI
       const featureEl = document.querySelector(`[data-feature-id="${featureId}"]`);
       if (featureEl) featureEl.classList.remove('selected');
     }
-    
+
     // Actualizar resumen
     this.updateSummary();
-    
+
     return true;
   }
-  
+
   // Actualizar el resumen de selección
   updateSummary() {
     const summaryEl = document.getElementById('tech-selection-summary');
     if (!summaryEl) return;
-    
+
     let backendName = 'No seleccionado';
     let frontendName = 'No seleccionado';
     let databaseName = 'No seleccionado';
-    
+
     if (this.selectedTech.backend) {
       const backend = this.options.backend.find(b => b.id === this.selectedTech.backend);
       if (backend) backendName = backend.name;
     }
-    
+
     if (this.selectedTech.frontend) {
       const frontend = this.options.frontend.find(f => f.id === this.selectedTech.frontend);
       if (frontend) frontendName = frontend.name;
     }
-    
+
     if (this.selectedTech.database) {
       const database = this.options.database.find(d => d.id === this.selectedTech.database);
       if (database) databaseName = database.name;
     }
-    
+
     // Calcular compatibilidad y complejidad
     const compatibility = this.calculateCompatibility();
     const complexity = this.calculateComplexity();
-    
+
     // Construir HTML del resumen
     const html = `
       <div class="stack-summary-header">
@@ -283,7 +282,7 @@ class TechSelector {
             </div>
           </div>
         </div>
-        
+
         <div class="tech-indicators mt-3">
           <div class="row">
             <div class="col-md-6">
@@ -306,7 +305,7 @@ class TechSelector {
             </div>
           </div>
         </div>
-        
+
         <div class="selected-features mt-3">
           <h6>Características adicionales (${this.selectedTech.additionalFeatures.length}):</h6>
           <div class="feature-pills">
@@ -318,9 +317,9 @@ class TechSelector {
         </div>
       </div>
     `;
-    
+
     summaryEl.innerHTML = html;
-    
+
     // Actualizar estado del botón de continuar
     const continueBtn = document.getElementById('tech-selection-continue');
     if (continueBtn) {
@@ -328,13 +327,13 @@ class TechSelector {
       continueBtn.disabled = !isComplete;
     }
   }
-  
+
   // Calcular compatibilidad del stack
   calculateCompatibility() {
     if (!this.selectedTech.backend || !this.selectedTech.frontend || !this.selectedTech.database) {
       return 30; // Compatibilidad baja si falta algún componente
     }
-    
+
     // Mapeo de stacks compatibles
     const compatibilityMap = {
       'node-react-mongodb': 95,
@@ -353,17 +352,17 @@ class TechSelector {
       'streamlit-html-sqlite': 90,
       'streamlit-html-postgresql': 85
     };
-    
+
     const key = `${this.selectedTech.backend}-${this.selectedTech.frontend}-${this.selectedTech.database}`;
     return compatibilityMap[key] || 75; // 75% por defecto para combinaciones no mapeadas
   }
-  
+
   // Calcular complejidad del stack
   calculateComplexity() {
     if (!this.selectedTech.backend || !this.selectedTech.frontend || !this.selectedTech.database) {
       return 20; // Complejidad baja si falta algún componente
     }
-    
+
     // Complejidad base por tecnología
     const complexityScores = {
       backend: {
@@ -391,22 +390,22 @@ class TechSelector {
         'redis': 60
       }
     };
-    
+
     // Calcular complejidad base
     let complexity = 0;
     complexity += complexityScores.backend[this.selectedTech.backend] || 40;
     complexity += complexityScores.frontend[this.selectedTech.frontend] || 40;
     complexity += complexityScores.database[this.selectedTech.database] || 40;
-    
+
     // Ajustar por cantidad de características
     complexity += this.selectedTech.additionalFeatures.length * 5;
-    
+
     // Normalizar a escala de 100
     complexity = Math.min(Math.round(complexity / 3), 100);
-    
+
     return complexity;
   }
-  
+
   // Obtener color para indicador de compatibilidad
   getCompatibilityColor(value) {
     if (value >= 80) return 'success';
@@ -414,7 +413,7 @@ class TechSelector {
     if (value >= 40) return 'warning';
     return 'danger';
   }
-  
+
   // Obtener texto para indicador de compatibilidad
   getCompatibilityText(value) {
     if (value >= 80) return 'Excelente compatibilidad';
@@ -422,7 +421,7 @@ class TechSelector {
     if (value >= 40) return 'Compatibilidad moderada';
     return 'Compatibilidad limitada';
   }
-  
+
   // Obtener color para indicador de complejidad
   getComplexityColor(value) {
     if (value <= 30) return 'success';
@@ -430,7 +429,7 @@ class TechSelector {
     if (value <= 80) return 'warning';
     return 'danger';
   }
-  
+
   // Obtener texto para indicador de complejidad
   getComplexityText(value) {
     if (value <= 30) return 'Baja complejidad - ideal para principiantes';
@@ -438,7 +437,7 @@ class TechSelector {
     if (value <= 80) return 'Complejidad considerable';
     return 'Alta complejidad - para desarrolladores avanzados';
   }
-  
+
   // Obtener los datos seleccionados
   getSelectionData() {
     return {
@@ -448,7 +447,7 @@ class TechSelector {
       features: this.selectedTech.additionalFeatures
     };
   }
-  
+
   // Exportar selección como JSON
   exportSelection() {
     return JSON.stringify(this.getSelectionData());
@@ -459,23 +458,23 @@ class TechSelector {
 document.addEventListener('DOMContentLoaded', function() {
   if (document.getElementById('tech-selector-container')) {
     window.techSelector = new TechSelector();
-    
+
     // Generar HTML de opciones
     document.getElementById('backend-options').innerHTML = 
       window.techSelector.generateTechOptions('backend', window.techSelector.options.backend);
-    
+
     document.getElementById('frontend-options').innerHTML = 
       window.techSelector.generateTechOptions('frontend', window.techSelector.options.frontend);
-    
+
     document.getElementById('database-options').innerHTML = 
       window.techSelector.generateTechOptions('database', window.techSelector.options.database);
-    
+
     document.getElementById('features-options').innerHTML = 
       window.techSelector.generateFeatureOptions(window.techSelector.options.additionalFeatures);
-    
+
     document.getElementById('preset-stacks').innerHTML = 
       window.techSelector.generatePresetOptions(window.techSelector.presetStacks);
-    
+
     // Asignar eventos
     // Selección de tecnología
     document.querySelectorAll('.tech-option-card').forEach(card => {
@@ -485,7 +484,7 @@ document.addEventListener('DOMContentLoaded', function() {
         window.techSelector.selectTech(category, techId);
       });
     });
-    
+
     // Selección de características
     document.querySelectorAll('.feature-card').forEach(card => {
       card.addEventListener('click', function() {
@@ -493,7 +492,7 @@ document.addEventListener('DOMContentLoaded', function() {
         window.techSelector.toggleFeature(featureId);
       });
     });
-    
+
     // Selección de plantillas
     document.querySelectorAll('.select-preset-btn').forEach(btn => {
       btn.addEventListener('click', function() {
@@ -504,17 +503,17 @@ document.addEventListener('DOMContentLoaded', function() {
         }
       });
     });
-    
+
     // Continuar con la selección
     document.getElementById('tech-selection-continue').addEventListener('click', function() {
       // Ocultar selector y mostrar constructor
       document.getElementById('tech-selector-container').style.display = 'none';
       document.getElementById('constructor-container').style.display = 'block';
-      
+
       // Pasar la selección al proceso de construcción
       const techSelection = window.techSelector.getSelectionData();
       document.getElementById('project-tech-data').value = window.techSelector.exportSelection();
-      
+
       // Actualizar resumen en la interfaz de construcción
       document.getElementById('selected-tech-summary').innerHTML = `
         <div class="d-flex align-items-center mb-3">
@@ -536,7 +535,7 @@ document.addEventListener('DOMContentLoaded', function() {
           <span>${window.techSelector.getTechName('database', techSelection.database)}</span>
         </div>
       `;
-      
+
       // Mostrar características seleccionadas
       if (techSelection.features.length > 0) {
         let featuresHtml = '<div class="selected-features-list mt-3">';
@@ -550,14 +549,111 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('selected-features').innerHTML = featuresHtml;
       }
     });
-    
+
     // Inicializar resumen
     window.techSelector.updateSummary();
   }
-  
+
   // Función auxiliar para obtener icono
   function getTechIcon(category, techId) {
     const tech = window.techSelector.options[category].find(t => t.id === techId);
     return tech ? tech.icon : 'fa-code';
   }
 });
+
+
+// Evento de envío del formulario
+    constructorForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+
+        // Obtener valores del formulario
+        const description = projectDescription.value.trim();
+        const agent = document.getElementById('agent-selector').value;
+        const model = document.getElementById('model-selector').value;
+        const includeTests = document.getElementById('include-tests').checked;
+        const includeDocs = document.getElementById('include-docs').checked;
+        const includeDeployment = document.getElementById('include-deployment').checked;
+        const includeCICD = document.getElementById('include-ci-cd').checked;
+        const features = getSelectedFeatures();
+        const techData = document.getElementById('project-tech-data').value;
+
+        if (!description) {
+            alert('Por favor, describe tu aplicación');
+            return;
+        }
+
+        // Mostrar sección de progreso
+        progressSection.style.display = 'block';
+        resultSection.style.display = 'none';
+        generateBtn.disabled = true;
+        progressBar.className = 'progress-bar progress-bar-striped progress-bar-animated';
+        progressBar.style.width = '0%';
+        progressBar.setAttribute('aria-valuenow', 0);
+        progressBar.textContent = '0%';
+        generationConsole.innerHTML = '';
+
+        // Iniciar generación del proyecto
+        fetch('/api/constructor/generate', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                description: description,
+                agent: agent,
+                model: model,
+                options: {
+                    includeTests,
+                    includeDocs,
+                    includeDeployment,
+                    includeCICD
+                },
+                features: features,
+                tech_data: techData // Incluir datos de tecnología seleccionada
+            }),
+        })
+        .then(response => {
+            // Verificar si la respuesta es JSON válido antes de procesarla
+            const contentType = response.headers.get("content-type");
+            if (contentType && contentType.indexOf("application/json") !== -1) {
+                return response.json();
+            } else {
+                // Si no es JSON, convertir a texto y luego lanzar error
+                return response.text().then(text => {
+                    throw new Error(`Respuesta no válida del servidor: ${text.substring(0, 100)}...`);
+                });
+            }
+        })
+        .then(data => {
+            if (data.success) {
+                projectId = data.project_id;
+                addConsoleMessage(`Proyecto iniciado con ID: ${projectId}`);
+                addConsoleMessage(`Tiempo estimado: ${data.estimated_time}`);
+                startStatusCheck(projectId);
+
+                // Actualizar progreso inicial
+                progressBar.style.width = '5%';
+                progressBar.setAttribute('aria-valuenow', 5);
+                progressBar.textContent = '5%';
+            } else {
+                showFailedState(data.error);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showFailedState(error.message || "Error de conexión con el servidor");
+
+            // Intentar recuperar el estado automáticamente
+            setTimeout(() => {
+                addConsoleMessage("Intentando recuperar estado automáticamente...", "info");
+
+                // Generar un ID de proyecto temporal si es necesario
+                if (!projectId) {
+                    projectId = 'app_' + Math.random().toString(36).substring(2, 10) + '_' + Math.floor(Date.now() / 1000);
+                    addConsoleMessage(`Usando ID temporal: ${projectId}`, "info");
+                }
+
+                startStatusCheck(projectId);
+            }, 3000);
+        });
+    });
