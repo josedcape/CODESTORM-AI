@@ -21,14 +21,38 @@ window.app.chat.apiEndpoints = {
 // Asegurarse de que los endpoints estén definidos y accesibles
 console.log("API Endpoints configurados:", window.app.chat.apiEndpoints);
 
-// Configuración del módulo de chat
-const chatConfig = {
-    context: [], // Historial de mensajes para mantener contexto
-    chatMessageId: 0, // Contador de ID para mensajes
-    activeModel: 'gemini', // Modelo predeterminado
-    activeAgent: 'architect', // Agente predeterminado
-    debugMode: false, // Desactivar modo debug por defecto
-    availableAgents: {
+/**
+ * Inicializa el chat y configura los manejadores de eventos
+ */
+window.initializeChat = function() {
+    // Inicializar la estructura completa de window.app
+    window.app = window.app || {};
+    window.app.chat = window.app.chat || {};
+
+    // Inicializar propiedades básicas del chat
+    window.app.chat.context = window.app.chat.context || [];
+    window.app.chat.chatMessageId = window.app.chat.chatMessageId || 0;
+    window.app.chat.debugMode = window.app.chat.debugMode || false;
+    window.app.chat.elements = window.app.chat.elements || {};
+
+    // Configurar modelos disponibles
+    window.app.chat.availableModels = window.app.chat.availableModels || {
+        'gpt-4o': 'GPT-4o - Modelo avanzado de OpenAI con excelente seguimiento de instrucciones',
+        'gpt-o3': 'GPT-o3 - Versión optimizada para generación y análisis de código',
+        'claude-3-opus': 'Claude 3 Opus - Modelo premium de Anthropic con razonamiento avanzado',
+        'claude-3.7-sonnet': 'Claude 3.7 Sonnet - Especializado en desarrollo y automatización con alto contexto',
+        'claude-code': 'Claude Code - Experto en refactorización, debugging e integración Git',
+        'gpt-4.1-std': 'GPT-4.1 Standard - Modelo principal de OpenAI con 1M de tokens de contexto',
+        'gpt-4.1-mini': 'GPT-4.1 Mini - Versión más ligera y rápida de GPT-4.1',
+        'gpt-4.1-nano': 'GPT-4.1 Nano - Versión ultraligera para respuestas rápidas',
+        'gemini-1.5-pro': 'Gemini 1.5 Pro - Análisis de grandes bases de código con 1M de tokens',
+        'gemini-2.0-flash': 'Gemini 2.0 Flash - Alta velocidad y eficiencia con entrada multimodal',
+        'gemini-1.0-ultra': 'Gemini 1.0 Ultra - Especializado en tareas complejas y competencias de programación',
+        'gemma': 'Gemma - Modelo ligero open source de Google para código y dispositivos'
+    };
+
+    // Configurar agentes disponibles
+    window.app.chat.availableAgents = window.app.chat.availableAgents || {
         'developer': {
             name: 'Agente de Desarrollo',
             description: 'Especialista en optimización y edición de código en tiempo real',
@@ -53,18 +77,6 @@ const chatConfig = {
             ],
             icon: 'diagram-3'
         },
-        'advanced': {
-            name: 'Agente Avanzado',
-            description: 'Experto en integraciones complejas y soluciones avanzadas',
-            capabilities: [
-                'Implementación de IA y aprendizaje automático',
-                'Arquitecturas distribuidas y serverless',
-                'Optimización de sistemas a gran escala',
-                'Estrategias de seguridad y encriptación',
-                'DevOps y automatización de procesos'
-            ],
-            icon: 'cpu'
-        },
         'general': {
             name: 'Asistente General',
             description: 'Asistente versátil para diversas tareas de programación',
@@ -77,22 +89,12 @@ const chatConfig = {
             ],
             icon: 'person-check'
         }
-    },
-    // Modelos de IA disponibles
-    availableModels: {
-        'openai': 'OpenAI (GPT-4o)',
-        'anthropic': 'Anthropic (Claude)',
-        'gemini': 'Google (Gemini)'
-    }
-};
+    };
 
-// Extender la configuración en lugar de sobrescribirla
-Object.assign(window.app.chat, chatConfig);
+    // Configurar valores por defecto
+    window.app.chat.activeModel = window.app.chat.activeModel || 'gpt-4';
+    window.app.chat.activeAgent = window.app.chat.activeAgent || 'general';
 
-/**
- * Inicializa el chat y configura los manejadores de eventos
- */
-window.initializeChat = function() {
     // Inicializar logs silenciosamente
     silentLog('Inicializando chat con configuración optimizada...');
 
@@ -105,43 +107,57 @@ window.initializeChat = function() {
     // Inicializar características avanzadas
     setupDocumentFeatures();
 
-    // Cargar highlight.js
-    loadHighlightJS();
-};
+     // Cargar highlight.js si es necesario
+        if (typeof loadHighlightJS === 'function') {
+            loadHighlightJS();
+        } else {
+            // Si la función no existe, la implementamos aquí
+            loadHighlightJS = function() {
+                silentLog('Cargando highlight.js para resaltado de sintaxis...');
 
-/**
- * Carga highlight.js de manera optimizada
- * @returns {Promise} Promesa que se resuelve cuando se carga highlight.js
- */
-function loadHighlightJS() {
-    // Verificar si ya está cargado
-    if (window.hljs) {
-        silentLog('highlight.js ya está cargado');
-        return Promise.resolve();
-    }
+                // Verificar si highlight.js ya está cargado
+                if (window.hljs) {
+                    silentLog('highlight.js ya está cargado.');
+                    return;
+                }
 
-    return new Promise((resolve, reject) => {
-        const script = document.createElement('script');
-        script.src = 'https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js';
-        script.async = true;
-        document.head.appendChild(script);
+                // Crear enlace para el CSS de highlight.js
+                const highlightCSS = document.createElement('link');
+                highlightCSS.rel = 'stylesheet';
+                highlightCSS.href = 'https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/atom-one-dark.min.css';
+                document.head.appendChild(highlightCSS);
 
-        script.onload = () => {
-            silentLog('highlight.js cargado correctamente');
-            resolve();
-        };
+                // Crear script para highlight.js
+                const highlightScript = document.createElement('script');
+                highlightScript.src = 'https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/highlight.min.js';
+                highlightScript.onload = function() {
+                    silentLog('highlight.js cargado correctamente');
+                    // Inicializar highlight.js
+                    if (window.hljs) {
+                        window.hljs.configure({
+                            ignoreUnescapedHTML: true,
+                            languages: ['javascript', 'html', 'css', 'python', 'java', 'php', 'ruby', 'bash', 'json']
+                        });
 
-        script.onerror = (error) => {
-            silentLog('Error al cargar highlight.js');
-            reject(error);
-        };
-    });
-}
+                        // Resaltar bloques de código existentes
+                        document.querySelectorAll('pre code').forEach(block => {
+                            window.hljs.highlightElement(block);
+                        });
+                    }
+                };
+                document.head.appendChild(highlightScript);
+            };
 
+            // Llamar a la función recién creada
+            loadHighlightJS();
+        }
+    };
 /**
  * Configura las referencias a elementos UI y sus eventos
  */
 function setupUIElements() {
+    // No es necesario reinicializar window.app.chat aquí ya que lo hacemos en initializeChat
+
     // Elementos principales
     window.app.chat.elements = {
         chatContainer: document.getElementById('chat-container'),
@@ -211,7 +227,6 @@ function setupUIElements() {
     // Actualizar info del agente inicial
     updateAgentInfo(window.app.chat.activeAgent);
 }
-
 /**
  * Comprueba la conexión con el servidor de manera optimizada
  */
