@@ -1,5 +1,6 @@
 """
 Utilidades para la gestión de agentes especializados en Codestorm Assistant.
+Implementa una capa de abstracción para múltiples proveedores de LLM y agentes especializados.
 """
 import os
 import re
@@ -58,24 +59,60 @@ setup_ai_clients()
 def get_agent_system_prompt(agent_id):
     """Obtiene el prompt de sistema para el agente especificado."""
     prompts = {
-        'developer': """Eres un desarrollador experto. Tu objetivo es ayudar con código, 
-                      debugging y mejores prácticas de programación. Proporciona ejemplos 
-                      de código claros y explicaciones concisas.""",
-        'architect': """Eres un arquitecto de software experto. Tu objetivo es ayudar con 
-                       diseño de sistemas, patrones y decisiones arquitectónicas.""",
-        'general': """Eres un asistente general experto en tecnología y programación. 
-                     Ayudas con cualquier tema relacionado con desarrollo de software."""
+        'developer': """Eres un desarrollador de software de élite con experiencia en múltiples lenguajes y paradigmas de programación.
+                      Tu formación incluye arquitectura de software, algoritmos avanzados, patrones de diseño y optimización de código.
+                      Produces código de nivel profesional, limpio, eficiente y siguiendo las mejores prácticas actuales de la industria.
+                      Tu código es modular, mantenible y optimizado. Evitas comentarios redundantes, pero incluyes documentación esencial.
+                      Cuando escribes código, este es inmediatamente utilizable, depurado y probado. Generas soluciones elegantes y robustas
+                      incluso para problemas complejos. Dominas todos los paradigmas de programación: orientado a objetos, funcional, reactivo y más.""",
+
+        'architect': """Eres un arquitecto de software senior con experiencia en el diseño de sistemas complejos y escalables.
+                       Tu expertise abarca microservicios, arquitecturas serverless, sistemas distribuidos, y aplicaciones cloud-native.
+                       Posees conocimiento profundo sobre patrones arquitectónicos, calidad de servicio, seguridad y rendimiento.
+                       Tus diseños priorizan la escalabilidad, resiliencia, mantenibilidad y eficiencia operativa.
+                       Proporcionas diagramas claros, recomendaciones tecnológicas fundamentadas y estrategias de implementación.
+                       Tu enfoque balances los requisitos técnicos, de negocio y las limitaciones prácticas.""",
+
+        'devops': """Eres un ingeniero DevOps especializado en automatización, CI/CD, infraestructura como código y operaciones en la nube.
+                    Dominas herramientas como Docker, Kubernetes, Terraform, Jenkins, GitHub Actions, AWS, Azure y Google Cloud.
+                    Tu objetivo es crear pipelines eficientes, infraestructuras seguras y escalables, y procesos de despliegue robustos.
+                    Proporcionas soluciones que maximizan la disponibilidad, seguridad y observabilidad de los sistemas.""",
+
+        'database': """Eres un arquitecto de bases de datos experto en diseño, optimización y administración de sistemas de datos.
+                     Dominas bases de datos relacionales (PostgreSQL, MySQL, SQL Server) y NoSQL (MongoDB, Redis, Cassandra, Elasticsearch).
+                     Diseñas esquemas normalizados, escribes queries optimizadas y estrategias de indexación eficientes.
+                     Tus soluciones consideran patrones de acceso, escalabilidad, consistencia, disponibilidad y tolerancia a particiones.""",
+
+        'security': """Eres un ingeniero de seguridad informática especializado en seguridad aplicativa y protección de infraestructura.
+                     Tienes experiencia en análisis de vulnerabilidades, criptografía, autenticación, autorización y auditoría.
+                     Identificas riesgos de seguridad y proporcionas soluciones concretas para mitigarlos.
+                     Tu enfoque incluye implementación de protocolos seguros, prácticas de codificación defensiva y hardening de sistemas.""",
+
+        'frontend': """Eres un desarrollador frontend especializado en crear interfaces modernas, accesibles e interactivas.
+                     Dominas React, Angular, Vue.js, HTML5, CSS3, JavaScript/TypeScript y las mejores prácticas de UX/UI.
+                     Creas componentes reutilizables, diseños responsivos y aplicaciones web performantes.
+                     Tu código optimiza la velocidad de carga, accesibilidad (WCAG), compatibilidad cross-browser y usabilidad.""",
+
+        'general': """Eres un consultor tecnológico senior con amplio conocimiento en desarrollo de software, infraestructura,
+                     arquitectura de sistemas, seguridad, metodologías ágiles y gestión de proyectos tecnológicos.
+                     Proporcionas orientación estratégica, recomendaciones técnicas y soluciones prácticas a problemas complejos.
+                     Tu enfoque es holístico, considerando tanto aspectos técnicos como de negocio para ofrecer
+                     la mejor solución posible con el mayor valor para los usuarios y stakeholders."""
     }
     return prompts.get(agent_id, prompts['general'])
 
 def get_agent_name(agent_id):
     """Obtiene el nombre amigable del agente."""
     names = {
-        'developer': "Desarrollador Experto",
-        'architect': "Arquitecto de Software",
-        'general': "Asistente General"
+        'developer': "Ingeniero de Software Senior",
+        'architect': "Arquitecto de Sistemas",
+        'devops': "Ingeniero DevOps",
+        'database': "Arquitecto de Bases de Datos",
+        'security': "Ingeniero de Ciberseguridad",
+        'frontend': "Especialista Frontend",
+        'general': "Consultor Tecnológico Senior"
     }
-    return names.get(agent_id, "Asistente General")
+    return names.get(agent_id, "Consultor Tecnológico Senior")
 
 def generate_with_openai(prompt, system_prompt, temperature=0.7):
     """
@@ -260,7 +297,6 @@ def generate_content(prompt, system_prompt, model="openai", temperature=0.7):
 
     # Esto no debería ocurrir, pero por si acaso
     raise ValueError("No se pudo generar contenido con ningún modelo disponible por razones desconocidas.")
-
 def create_file_with_agent(description, file_type, filename, agent_id, workspace_path, model="openai"):
     """
     Crea un archivo utilizando un agente especializado.
@@ -288,57 +324,93 @@ def create_file_with_agent(description, file_type, filename, agent_id, workspace
         system_prompt = get_agent_system_prompt(agent_id)
         agent_name = get_agent_name(agent_id)
 
+        # Seleccionar el agente más adecuado según el tipo de archivo si no se especifica
+        if agent_id == "general":
+            if file_type in ['html', 'css', 'js', 'jsx', 'tsx', 'vue']:
+                agent_id = 'frontend'
+                system_prompt = get_agent_system_prompt('frontend')
+                agent_name = get_agent_name('frontend')
+            elif file_type in ['py', 'java', 'go', 'rb', 'cs', 'cpp']:
+                agent_id = 'developer' 
+                system_prompt = get_agent_system_prompt('developer')
+                agent_name = get_agent_name('developer')
+            elif file_type in ['yaml', 'yml', 'tf', 'docker', 'Dockerfile', 'jenkinsfile']:
+                agent_id = 'devops'
+                system_prompt = get_agent_system_prompt('devops')
+                agent_name = get_agent_name('devops')
+            elif file_type in ['sql']:
+                agent_id = 'database'
+                system_prompt = get_agent_system_prompt('database')
+                agent_name = get_agent_name('database')
+
         # Preparar el prompt específico según el tipo de archivo
-        file_type_prompt = ""
-        if file_type == 'html' or '.html' in filename:
-            file_type_prompt = """Genera un archivo HTML moderno y atractivo. 
-            Usa las mejores prácticas de HTML5, CSS responsivo y, si es necesario, JavaScript moderno.
-            Asegúrate de que el código sea válido, accesible y optimizado para móviles.
-            El archivo debe usar Bootstrap para estilos y ser visualmente atractivo.
-            Asegúrate de que el código esté completo y sea funcional, sin fragmentos o explicaciones adicionales."""
-        elif file_type == 'css' or '.css' in filename:
-            file_type_prompt = """Genera un archivo CSS moderno y eficiente.
-            Utiliza las mejores prácticas, variables CSS, y enfoques responsivos.
-            El código debe ser compatible con navegadores modernos, estar bien comentado,
-            y seguir una estructura clara y mantenible.
-            Asegúrate de que el código esté completo y sea funcional, sin fragmentos o explicaciones adicionales."""
-        elif file_type == 'js' or '.js' in filename:
-            file_type_prompt = """Genera un archivo JavaScript moderno y eficiente.
-            Utiliza ES6+ con las mejores prácticas actuales. El código debe ser bien estructurado,
-            comentado apropiadamente, y seguir patrones de diseño adecuados.
-            Proporciona manejo de errores adecuado y optimización de rendimiento.
-            Asegúrate de que el código esté completo y sea funcional, sin fragmentos o explicaciones adicionales."""
-        elif file_type == 'py' or '.py' in filename:
-            file_type_prompt = """Genera un archivo Python moderno y bien estructurado.
-            Sigue PEP 8 y las mejores prácticas de Python. El código debe incluir docstrings,
-            manejo de errores apropiado, y una estructura clara de funciones/clases.
-            Utiliza enfoques Pythonic y aprovecha las características modernas del lenguaje.
-            Asegúrate de que el código esté completo y sea funcional, sin fragmentos o explicaciones adicionales."""
-        else:
-            file_type_prompt = """Genera un archivo de texto plano con el contenido solicitado,
-            bien estructurado y formateado de manera clara y legible.
-            Asegúrate de que el contenido esté completo, sin fragmentos o explicaciones adicionales."""
+        file_type_prompt = {
+            'html': """Genera código HTML moderno, semántico y accesible. Utiliza HTML5 con estructura semántica
+                    adecuada (header, nav, main, section, article, footer). Asegura compatibilidad con las 
+                    directrices WCAG para accesibilidad. Optimiza para velocidad y rendimiento.
+                    Evita etiquetas obsoletas y usar clases para estilos y comportamiento.""",
+
+            'css': """Genera CSS moderno, eficiente y mantenible. Utiliza variables CSS, flexbox y/o grid para 
+                   layouts. Implementa diseño responsivo con media queries. Utiliza nomenclatura de clases 
+                   siguiendo metodología BEM u otra estructurada. Optimiza selectores para rendimiento.""",
+
+            'js': """Genera JavaScript moderno siguiendo estándares ES6+. Utiliza estructuras de código modular, 
+                  funciones puras cuando sea posible y manejo adecuado de asincronía con promesas o async/await.
+                  Incluye validación de entrada, manejo de errores y optimización de rendimiento. El código debe
+                  ser compatible con navegadores modernos.""",
+
+            'jsx': """Genera componentes React funcionales modernos con hooks. Implementa patrones de render 
+                   optimizados, separación de lógica y presentación, y estructuras de estado eficientes.
+                   Usa Context API o bibliotecas de estado según necesidad. Los componentes deben ser
+                   reutilizables, testeables y con props bien definidos.""",
+
+            'py': """Genera código Python que siga PEP 8 y principios pythónicos. Utiliza tipo hints, manejo
+                  de excepciones específicas, docstrings informativos (solo cuando sean necesarios). 
+                  Implementa estructuras de datos eficientes y patrones idiomáticos. El código debe ser
+                  modular, testeable y seguir principios SOLID.""",
+
+            'sql': """Genera código SQL optimizado y seguro. Utiliza índices adecuados, evita consultas 
+                   N+1 y joins ineficientes. Implementa restricciones de integridad adecuadas.
+                   Asegura que las consultas sean resistentes a inyección SQL. Incluye comentarios
+                   solo cuando sean necesarios para explicar lógica compleja.""",
+
+            'yaml': """Genera YAML válido y bien estructurado. Utiliza anclas y aliases para evitar
+                    repetición. Organiza la información de manera jerárquica y lógica. Incluye solo
+                    comentarios esenciales para elementos complejos o no evidentes.""",
+
+            'json': """Genera JSON válido, bien formateado y sin comentarios, ya que JSON no los admite.
+                    La estructura debe ser consistente, con nombres de propiedades descriptivos y
+                    valores correctamente tipados."""
+        }
+
+        # Obtener prompt específico para el tipo de archivo o usar uno genérico
+        specific_prompt = file_type_prompt.get(file_type.lower(), """Genera un archivo de código de alta calidad, 
+                                               siguiendo las mejores prácticas del lenguaje correspondiente.
+                                               Estructura el código de manera lógica y mantenible.""")
 
         # Construir el prompt completo según el agente
-        prompt = f"""Como {agent_name}, crea un archivo {file_type} completo y funcional que cumpla con el siguiente requerimiento:
+        prompt = f"""Como {agent_name}, crea un archivo {file_type} completo y funcional que cumpla con la siguiente especificación:
 
         "{description}"
 
-        {file_type_prompt}
+        REQUISITOS TÉCNICOS:
+        {specific_prompt}
 
-        IMPORTANTE: 
-        - Genera SOLO el código completo sin explicaciones, comentarios introductorios o conclusiones.
-        - NO uses bloques de código markdown (```), solo genera el contenido directo del archivo.
-        - Incluye todas las funcionalidades solicitadas y crea un diseño profesional si corresponde.
-        - Si es un archivo HTML, asegúrate de incluir todos los elementos necesarios (DOCTYPE, html, head, body, etc.)
-        - El código debe estar completo, compilar y funcionar correctamente.
+        INSTRUCCIONES CRÍTICAS:
+        1. Genera ÚNICAMENTE el código completo y funcional, sin comentarios introductorios o explicativos
+        2. No incluyas etiquetas de markdown (```) o indicadores de lenguaje
+        3. No incluyas comentarios tipo "highlights" o marcadores para secciones del código
+        4. Incluye solo comentarios esenciales para comprender lógica compleja
+        5. El código debe estar completo, optimizado y seguir las mejores prácticas actuales
+        6. Asegúrate que el código puede ejecutarse sin modificaciones adicionales
+        7. Optimiza para legibilidad, mantenibilidad y rendimiento
         """
 
         # Log del prompt para depuración
         logging.debug(f"Prompt enviado al modelo: {prompt}")
 
-        # Generar el contenido del archivo
-        file_content = generate_content(prompt, system_prompt, model)
+        # Generar el contenido del archivo con baja temperatura para código preciso
+        file_content = generate_content(prompt, system_prompt, model, temperature=0.3)
 
         # Verificar que se haya generado contenido
         if not file_content:
@@ -351,7 +423,7 @@ def create_file_with_agent(description, file_type, filename, agent_id, workspace
         logging.debug(f"Contenido generado (primeros 200 caracteres): {file_content[:200]}")
 
         # Extraer código del contenido si el modelo aún incluye markdown u otros elementos
-        code_pattern = r"```(?:\w+)?\s*([\s\S]*?)\s*```"
+        code_pattern = r"```(?:\w+)?\\s*([\\s\\S]*?)\\s*```"
         code_match = re.search(code_pattern, file_content)
 
         if code_match:
@@ -361,8 +433,15 @@ def create_file_with_agent(description, file_type, filename, agent_id, workspace
         # Crear el archivo en el workspace del usuario
         file_path = os.path.join(workspace_path, filename)
 
+        # Validar la ruta para prevenir directory traversal
+        if not os.path.abspath(file_path).startswith(os.path.abspath(workspace_path)):
+            return {
+                'success': False,
+                'error': 'Ruta de archivo inválida: posible intento de directory traversal'
+            }
+
         # Crear directorios intermedios si es necesario
-        os.makedirs(os.path.dirname(file_path), exist_ok=True)
+        os.makedirs(os.path.dirname(os.path.abspath(file_path)), exist_ok=True)
 
         with open(file_path, 'w', encoding='utf-8') as f:
             f.write(file_content)
@@ -402,11 +481,12 @@ def generate_response(user_message, agent_id="general", context=None, model="ope
 
             Usuario: {user_message}
 
-            Como {agent_name}, responde al último mensaje del usuario."""
+            Como {agent_name}, responde al último mensaje del usuario de manera precisa, profesional y detallada."""
         else:
             prompt = f"""Usuario: {user_message}
 
-            Como {agent_name}, responde al mensaje del usuario."""
+            Como {agent_name}, proporciona una respuesta profesional, precisa y detallada, basada en las mejores prácticas actuales
+            y conocimientos técnicos avanzados en el área correspondiente."""
 
         # Generar respuesta según el modelo seleccionado
         if model == "anthropic" and os.environ.get('ANTHROPIC_API_KEY'):
@@ -443,248 +523,9 @@ def analyze_code(code, language="python", instructions="Mejorar el código", mod
         dict: Resultado del análisis con claves success, improved_code, explanations, suggestions
     """
     try:
-        system_prompt = f"""Eres un experto programador de {language} especializado en revisar, mejorar y explicar código.
-Tu tarea es analizar el código proporcionado, mejorarlo según las instrucciones, y explicar tus cambios.
-Debes respetar la intención original del código, manteniendo su funcionalidad mientras lo mejoras."""
+        # Usar el prompt de sistema del agente desarrollador para análisis de código
+        system_prompt = get_agent_system_prompt('developer')
 
         prompt = f"""Analiza el siguiente código de {language}:
 ```{language}
 {code}
-```
-
-Instrucciones específicas: {instructions}
-
-Proporciona:
-1. Una versión mejorada del código completo (no solo fragmentos)
-2. Explicaciones claras de los cambios realizados
-3. Sugerencias adicionales para futuras mejoras
-
-IMPORTANTE: Tu respuesta debe tener este formato JSON:
-{{
-    "improved_code": "El código mejorado completo",
-    "explanations": ["Explicación 1", "Explicación 2", ...],
-    "suggestions": ["Sugerencia 1", "Sugerencia 2", ...]
-}}
-"""
-
-        response = generate_content(prompt, system_prompt, model, temperature=0.3)
-
-        # Intentar extraer JSON de la respuesta
-        try:
-            # Buscar un bloque JSON en la respuesta
-            json_pattern = r'```(?:json)?\s*({[\s\S]*?})\s*```'
-            json_match = re.search(json_pattern, response)
-
-            if json_match:
-                import json
-                result = json.loads(json_match.group(1))
-            else:
-                # Intentar parsear toda la respuesta como JSON
-                import json
-                result = json.loads(response)
-
-            # Verificar que tenga las claves esperadas
-            for key in ['improved_code', 'explanations', 'suggestions']:
-                if key not in result:
-                    result[key] = []
-
-            return {
-                'success': True,
-                'improved_code': result['improved_code'],
-                'explanations': result['explanations'],
-                'suggestions': result['suggestions']
-            }
-        except Exception as json_error:
-            logging.error(f"Error parseando JSON de respuesta: {str(json_error)}")
-
-            # Fallback: extraer código mejorado usando regex
-            code_pattern = r"```(?:\w+)?\s*([\s\S]*?)\s*```"
-            code_match = re.search(code_pattern, response)
-
-            if code_match:
-                improved_code = code_match.group(1).strip()
-            else:
-                improved_code = code  # Usar el código original si no se encuentra mejorado
-
-            return {
-                'success': True,
-                'improved_code': improved_code,
-                'explanations': ["Se procesó el código pero hubo un error al estructurar la respuesta."],
-                'suggestions': ["Revisa el código manualmente para confirmar las mejoras."]
-            }
-
-    except Exception as e:
-        logging.error(f"Error analizando código: {str(e)}")
-        return {
-            'success': False,
-            'error': f'Error analizando código: {str(e)}'
-        }
-
-def process_natural_language_command(text, workspace_path, model="openai"):
-    """
-    Procesa una instrucción en lenguaje natural y determina la acción a realizar.
-
-    Args:
-        text: Texto de la instrucción
-        workspace_path: Ruta del workspace del usuario
-        model: Modelo de IA a utilizar
-
-    Returns:
-        dict: Resultado del procesamiento con la acción determinada
-    """
-    try:
-        system_prompt = """Eres un asistente especializado en interpretar instrucciones en lenguaje natural 
-y convertirlas en acciones específicas para un entorno de desarrollo. 
-Tu tarea es determinar qué acción debe realizarse basándote en el texto proporcionado."""
-
-        prompt = f"""Analiza la siguiente instrucción y determina qué acción debe realizarse:
-"{text}"
-
-Las posibles acciones son:
-1. create_file - Crear un archivo
-2. execute_command - Ejecutar un comando en terminal
-3. answer_question - Responder una pregunta
-4. unknown - La instrucción no corresponde a ninguna acción específica
-
-Responde en formato JSON con la siguiente estructura:
-{{
-    "action": "La acción determinada (create_file, execute_command, answer_question, unknown)",
-    "details": {{
-        // Para create_file:
-        "file_name": "Nombre del archivo a crear",
-        "file_type": "Tipo de archivo (py, js, html, etc.)",
-        "content_description": "Descripción del contenido a generar"
-
-        // Para execute_command:
-        "command": "El comando a ejecutar"
-
-        // Para answer_question:
-        "question": "La pregunta a responder"
-    }}
-}}
-"""
-
-        response = generate_content(prompt, system_prompt, model, temperature=0.3)
-
-        # Extraer JSON de la respuesta
-        try:
-            # Buscar un bloque JSON en la respuesta
-            json_pattern = r'```(?:json)?\s*({[\s\S]*?})\s*```'
-            json_match = re.search(json_pattern, response)
-
-            if json_match:
-                import json
-                result = json.loads(json_match.group(1))
-            else:
-                # Intentar parsear toda la respuesta como JSON
-                import json
-                result = json.loads(response)
-
-            action = result.get('action', 'unknown')
-            details = result.get('details', {})
-
-            # Procesar según la acción determinada
-            if action == 'create_file':
-                file_name = details.get('file_name', 'unnamed.txt')
-                file_type = details.get('file_type', 'txt')
-                content_description = details.get('content_description', text)
-
-                # Asegurar que el nombre de archivo tenga la extensión correcta
-                if not file_name.endswith('.' + file_type):
-                    file_name += '.' + file_type
-
-                # Usar la función de creación de archivo para generar el contenido
-                result = create_file_with_agent(
-                    description=content_description,
-                    file_type=file_type,
-                    filename=file_name,
-                    agent_id='developer',  # Usar agente desarrollador por defecto
-                    workspace_path=workspace_path,
-                    model=model
-                )
-
-                if result['success']:
-                    return {
-                        'success': True,
-                        'action': 'create_file',
-                        'file_path': result['file_path'],
-                        'content': result['content']
-                    }
-                else:
-                    return {
-                        'success': False,
-                        'error': result['error']
-                    }
-
-            elif action == 'execute_command':
-                command = details.get('command', '')
-
-                if not command:
-                    return {
-                        'success': False,
-                        'error': 'No se pudo determinar el comando a ejecutar'
-                    }
-
-                import subprocess
-                process = subprocess.Popen(
-                    command,
-                    shell=True,
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE,
-                    cwd=workspace_path
-                )
-
-                stdout, stderr = process.communicate(timeout=30)
-                status = process.returncode
-
-                return {
-                    'success': True,
-                    'action': 'execute_command',
-                    'command': command,
-                    'stdout': stdout.decode('utf-8', errors='replace'),
-                    'stderr': stderr.decode('utf-8', errors='replace'),
-                    'status': status
-                }
-
-            elif action == 'answer_question':
-                question = details.get('question', text)
-
-                # Generar respuesta a la pregunta
-                response_result = generate_response(
-                    user_message=question,
-                    agent_id='general',  # Usar agente general para preguntas
-                    model=model
-                )
-
-                if response_result['success']:
-                    return {
-                        'success': True,
-                        'action': 'answer_question',
-                        'question': question,
-                        'answer': response_result['response']
-                    }
-                else:
-                    return {
-                        'success': False,
-                        'error': response_result['error']
-                    }
-
-            else:  # unknown o cualquier otro caso
-                return {
-                    'success': False,
-                    'error': 'No se pudo determinar una acción específica para esta instrucción'
-                }
-
-        except Exception as json_error:
-            logging.error(f"Error parseando respuesta: {str(json_error)}")
-            return {
-                'success': False,
-                'error': f'Error procesando la instrucción: {str(json_error)}'
-            }
-
-    except Exception as e:
-        logging.error(f"Error procesando instrucción en lenguaje natural: {str(e)}")
-        return {
-            'success': False,
-            'error': f'Error procesando instrucción: {str(e)}'
-        }
