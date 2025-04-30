@@ -1,0 +1,332 @@
+
+/* Estilos para el Selector de Tecnologías */
+
+.tech-selector-header {
+  background: linear-gradient(90deg, #091428 0%, #0A2149 100%);
+  color: white;
+  padding: 1.5rem;
+  border-radius: 10px 10px 0 0;
+  text-align: center;
+  margin-bottom: 1.5rem;
+}
+
+.tech-selector-header h3 {
+  margin-bottom: 0.5rem;
+  font-weight: 700;
+}
+
+.tech-selector-header p {
+  opacity: 0.8;
+  max-width: 700px;
+  margin: 0 auto;
+}
+
+.tech-selector-footer {
+  background: #f8f9fa;
+  padding: 1.5rem;
+  border-radius: 0 0 10px 10px;
+  margin-top: 2rem;
+  text-align: center;
+}
+
+.tech-selector-nav {
+  background-color: #f8f9fa;
+  padding: 1rem;
+  border-radius: 5px;
+  margin-bottom: 1.5rem;
+}
+
+.tech-selector-nav .nav-pills .nav-link {
+  color: #212529;
+  font-weight: 500;
+  padding: 0.75rem 1.5rem;
+  border-radius: 5px;
+  margin-right: 0.5rem;
+}
+
+.tech-selector-nav .nav-pills .nav-link.active {
+  background-color: #007bff;
+  color: white;
+}
+
+.tech-selector-tab-content {
+  padding: 1rem 0;
+}
+
+/* Tarjetas de opciones tecnológicas */
+.tech-option-card {
+  display: flex;
+  align-items: center;
+  padding: 1.25rem;
+  border: 1px solid rgba(0,0,0,0.1);
+  border-radius: 8px;
+  margin-bottom: 1rem;
+  transition: all 0.3s ease;
+  cursor: pointer;
+  background-color: white;
+}
+
+.tech-option-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+  border-color: rgba(0,123,255,0.5);
+}
+
+.tech-option-card.selected {
+  border-color: #007bff;
+  box-shadow: 0 5px 15px rgba(0,123,255,0.2);
+  background-color: rgba(0,123,255,0.05);
+}
+
+.tech-icon {
+  font-size: 2rem;
+  color: #007bff;
+  margin-right: 1.5rem;
+  min-width: 50px;
+  text-align: center;
+}
+
+.tech-details {
+  flex: 1;
+}
+
+.tech-details h5 {
+  margin-bottom: 0.25rem;
+  font-weight: 600;
+}
+
+.tech-description {
+  font-size: 0.85rem;
+  color: #6c757d;
+  margin-bottom: 0;
+}
+
+.tech-select {
+  min-width: 100px;
+  text-align: right;
+}
+
+.tech-select .form-check {
+  padding: 0;
+  margin: 0;
+  justify-content: flex-end;
+  display: flex;
+}
+
+/* Características adicionales */
+.feature-card {
+  display: flex;
+  align-items: center;
+  padding: 1rem;
+  border: 1px solid rgba(0,0,0,0.1);
+  border-radius: 8px;
+  height: 100%;
+  transition: all 0.3s ease;
+  cursor: pointer;
+  background-color: white;
+}
+
+.feature-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+}
+
+.feature-card.selected {
+  border-color: #28a745;
+  box-shadow: 0 3px 10px rgba(40,167,69,0.2);
+  background-color: rgba(40,167,69,0.05);
+}
+
+.feature-icon {
+  font-size: 1.25rem;
+  color: #28a745;
+  margin-right: 1rem;
+  min-width: 30px;
+  text-align: center;
+}
+
+.feature-details {
+  flex: 1;
+}
+
+.feature-details h6 {
+  margin-bottom: 0.25rem;
+  font-weight: 600;
+}
+
+.feature-description {
+  font-size: 0.75rem;
+  color: #6c757d;
+  margin-bottom: 0;
+}
+
+.feature-select {
+  margin-left: 0.5rem;
+}
+
+/* Presets de stack */
+.preset-card {
+  border: 1px solid rgba(0,0,0,0.1);
+  border-radius: 8px;
+  padding: 1.25rem;
+  height: 100%;
+  transition: all 0.3s ease;
+  background-color: white;
+}
+
+.preset-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+}
+
+.preset-card h5 {
+  margin-bottom: 0.5rem;
+  font-weight: 600;
+}
+
+.preset-card p {
+  font-size: 0.85rem;
+  color: #6c757d;
+  margin-bottom: 1rem;
+}
+
+.preset-tech-pills {
+  margin-bottom: 1rem;
+}
+
+.preset-tech-pills .badge {
+  margin-right: 0.5rem;
+  font-weight: 500;
+  padding: 0.35rem 0.75rem;
+}
+
+/* Resumen de stack */
+.stack-summary {
+  background-color: white;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+  margin-top: 2rem;
+}
+
+.stack-summary-header {
+  background: linear-gradient(90deg, #091428 0%, #0A2149 100%);
+  color: white;
+  padding: 1rem 1.5rem;
+}
+
+.stack-summary-header h5 {
+  margin-bottom: 0;
+  font-weight: 600;
+}
+
+.stack-summary-content {
+  padding: 1.5rem;
+}
+
+.tech-summary-item {
+  display: flex;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.tech-label {
+  min-width: 100px;
+  font-weight: 500;
+}
+
+.tech-value {
+  font-weight: 500;
+  padding: 0.35rem 0.75rem;
+}
+
+.tech-indicators .indicator {
+  margin-bottom: 1rem;
+}
+
+.tech-indicators label {
+  font-weight: 500;
+  margin-bottom: 0.25rem;
+  display: block;
+}
+
+.tech-indicators .progress {
+  height: 0.75rem;
+  border-radius: 1rem;
+}
+
+.tech-indicators .small {
+  font-size: 0.75rem;
+  color: #6c757d;
+}
+
+.feature-pills {
+  display: flex;
+  flex-wrap: wrap;
+}
+
+.tech-badge {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+}
+
+.selected-features-list {
+  margin-top: 0.5rem;
+}
+
+#tech-selector-container {
+  margin-bottom: 2rem;
+}
+
+/* Aviso de compatibilidad */
+.compatibility-notice {
+  margin-top: 1.5rem;
+  padding: 1rem;
+  border-radius: 8px;
+  background-color: #f8f9fa;
+  border-left: 4px solid #ffc107;
+}
+
+.compatibility-notice h6 {
+  color: #856404;
+  margin-bottom: 0.5rem;
+}
+
+.compatibility-notice p {
+  color: #6c757d;
+  font-size: 0.85rem;
+  margin-bottom: 0;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .tech-option-card {
+    flex-direction: column;
+    text-align: center;
+  }
+  
+  .tech-icon {
+    margin-right: 0;
+    margin-bottom: 1rem;
+  }
+  
+  .tech-select {
+    margin-top: 1rem;
+    width: 100%;
+    text-align: center;
+  }
+  
+  .tech-summary-item {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  
+  .tech-label {
+    margin-bottom: 0.5rem;
+  }
+}

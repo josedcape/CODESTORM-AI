@@ -40,7 +40,12 @@ def generate_application(project_id, description, agent, model, options, feature
             'start_time': time.time(),
             'completion_time': None,
             'framework': None,  # Almacenará el framework seleccionado
-            'techstack': {}     # Detalles del stack tecnológico
+            'techstack': {},    # Detalles del stack tecnológico
+            'plan': {           # Plan de desarrollo
+                'selected_technologies': [],
+                'development_phases': [],
+                'estimated_time': ''
+            }
         }
 
         # Initialize development_paused status
@@ -777,12 +782,48 @@ def generate_project():
         model = data.get('model', 'openai')
         options = data.get('options', {})
         features = data.get('features', [])
+        tech_data = data.get('tech_data', {})  # Nuevos datos de tecnología
 
         if not description:
             return jsonify({
                 'success': False,
                 'error': 'Se requiere una descripción del proyecto'
             }), 400
+            
+        # Procesar datos de tecnología si existen
+        if tech_data:
+            # Añadir información de tecnología al estado del proyecto
+            if isinstance(tech_data, str):
+                try:
+                    tech_data = json.loads(tech_data)
+                except:
+                    tech_data = {}
+                    
+            # Añadir características basadas en tecnologías seleccionadas
+            if isinstance(tech_data, dict):
+                # Añadir framework backend como característica
+                if tech_data.get('backend'):
+                    backend_feature = f"Backend: {tech_data.get('backend')}"
+                    if backend_feature not in features:
+                        features.append(backend_feature)
+                
+                # Añadir framework frontend como característica
+                if tech_data.get('frontend'):
+                    frontend_feature = f"Frontend: {tech_data.get('frontend')}"
+                    if frontend_feature not in features:
+                        features.append(frontend_feature)
+                
+                # Añadir base de datos como característica
+                if tech_data.get('database'):
+                    db_feature = f"Base de datos: {tech_data.get('database')}"
+                    if db_feature not in features:
+                        features.append(db_feature)
+                
+                # Añadir características adicionales
+                if tech_data.get('features') and isinstance(tech_data.get('features'), list):
+                    for feature in tech_data.get('features'):
+                        if feature and feature not in features:
+                            features.append(feature)
 
         # Generate a unique project ID
         project_id = f"app_{uuid.uuid4().hex[:8]}_{int(time.time())}"
@@ -872,7 +913,7 @@ def project_status_route(project_id):
 
         # Si no tiene framework, añadir uno predeterminado
         if 'framework' not in status_data:
-            statusdata['framework'] = 'Flask + Bootstrap + SQLite'
+            status_data['framework'] = 'Flask + Bootstrap + SQLite'
             status_data['techstack'] = {
                 'backend': 'flask',
                 'frontend': 'bootstrap',

@@ -3,6 +3,8 @@
 {% block title %}Constructor de Aplicaciones - Codestorm Assistant{% endblock %}
 
 {% block extra_css %}
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/tech-selector.css') }}">
 <style>
     .card-futuristic {
         background-color: #222;
@@ -180,11 +182,141 @@
                 </div>
                 <div class="card-body">
                     <div class="alert alert-info">
-                        <i class="bi bi-info-circle me-2"></i> El Constructor utiliza agentes especializados para generar tu aplicación completa basada en tu descripción.
+                        <i class="bi bi-info-circle me-2"></i> El Constructor utiliza agentes especializados para generar tu aplicación completa basada en tu descripción y stack tecnológico seleccionado.
+                    </div>
+                    
+                    <!-- Selector de Tecnologías -->
+                    <div id="tech-selector-container">
+                        <div class="tech-selector-header">
+                            <h3>Plan de Desarrollo <i class="bi bi-check2-circle"></i></h3>
+                            <p>Selecciona el stack tecnológico que prefieres para tu aplicación</p>
+                        </div>
+                        
+                        <div class="tech-selector-nav">
+                            <ul class="nav nav-pills nav-fill" id="techSelectorTab" role="tablist">
+                                <li class="nav-item" role="presentation">
+                                    <button class="nav-link active" id="presets-tab" data-bs-toggle="pill" data-bs-target="#presets-content" type="button" role="tab">
+                                        <i class="bi bi-lightning-charge me-1"></i> Plantillas
+                                    </button>
+                                </li>
+                                <li class="nav-item" role="presentation">
+                                    <button class="nav-link" id="backend-tab" data-bs-toggle="pill" data-bs-target="#backend-content" type="button" role="tab">
+                                        <i class="bi bi-server me-1"></i> Backend
+                                    </button>
+                                </li>
+                                <li class="nav-item" role="presentation">
+                                    <button class="nav-link" id="frontend-tab" data-bs-toggle="pill" data-bs-target="#frontend-content" type="button" role="tab">
+                                        <i class="bi bi-layout-wtf me-1"></i> Frontend
+                                    </button>
+                                </li>
+                                <li class="nav-item" role="presentation">
+                                    <button class="nav-link" id="database-tab" data-bs-toggle="pill" data-bs-target="#database-content" type="button" role="tab">
+                                        <i class="bi bi-database me-1"></i> Base de Datos
+                                    </button>
+                                </li>
+                                <li class="nav-item" role="presentation">
+                                    <button class="nav-link" id="features-tab" data-bs-toggle="pill" data-bs-target="#features-content" type="button" role="tab">
+                                        <i class="bi bi-puzzle me-1"></i> Características
+                                    </button>
+                                </li>
+                            </ul>
+                        </div>
+                        
+                        <div class="tab-content tech-selector-tab-content" id="techSelectorContent">
+                            <!-- Plantillas Predefinidas -->
+                            <div class="tab-pane fade show active" id="presets-content" role="tabpanel">
+                                <h5>Plantillas de Stack Tecnológico</h5>
+                                <p class="text-muted mb-4">Selecciona una plantilla predefinida o personaliza tu stack manualmente en las otras pestañas</p>
+                                
+                                <div class="row" id="preset-stacks">
+                                    <!-- El contenido se generará dinámicamente -->
+                                </div>
+                            </div>
+                            
+                            <!-- Backend -->
+                            <div class="tab-pane fade" id="backend-content" role="tabpanel">
+                                <h5>Selecciona tu Backend</h5>
+                                <p class="text-muted mb-4">El backend es responsable de la lógica de negocio y el procesamiento de datos</p>
+                                
+                                <div id="backend-options">
+                                    <!-- El contenido se generará dinámicamente -->
+                                </div>
+                            </div>
+                            
+                            <!-- Frontend -->
+                            <div class="tab-pane fade" id="frontend-content" role="tabpanel">
+                                <h5>Selecciona tu Frontend</h5>
+                                <p class="text-muted mb-4">El frontend es la interfaz que verán tus usuarios</p>
+                                
+                                <div id="frontend-options">
+                                    <!-- El contenido se generará dinámicamente -->
+                                </div>
+                            </div>
+                            
+                            <!-- Base de Datos -->
+                            <div class="tab-pane fade" id="database-content" role="tabpanel">
+                                <h5>Selecciona tu Base de Datos</h5>
+                                <p class="text-muted mb-4">La base de datos almacenará la información de tu aplicación</p>
+                                
+                                <div id="database-options">
+                                    <!-- El contenido se generará dinámicamente -->
+                                </div>
+                            </div>
+                            
+                            <!-- Características Adicionales -->
+                            <div class="tab-pane fade" id="features-content" role="tabpanel">
+                                <h5>Características Adicionales</h5>
+                                <p class="text-muted mb-4">Selecciona las características que requiere tu proyecto</p>
+                                
+                                <div class="row" id="features-options">
+                                    <!-- El contenido se generará dinámicamente -->
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Resumen de selección -->
+                        <div class="stack-summary" id="tech-selection-summary">
+                            <!-- El contenido se generará dinámicamente -->
+                        </div>
+                        
+                        <div class="compatibility-notice">
+                            <h6><i class="bi bi-info-circle me-1"></i> Consejo de compatibilidad</h6>
+                            <p>Algunas combinaciones de tecnologías funcionan mejor juntas. Las plantillas predefinidas ofrecen la mejor compatibilidad garantizada.</p>
+                        </div>
+                        
+                        <div class="tech-selector-footer">
+                            <button type="button" id="tech-selection-continue" class="btn btn-lg btn-primary btn-futuristic" disabled>
+                                <i class="bi bi-arrow-right me-2"></i> Continuar al desarrollo
+                            </button>
+                        </div>
                     </div>
 
-                    <!-- Formulario de Construcción -->
-                    <form id="constructor-form">
+                    <!-- Formulario de Construcción (inicialmente oculto) -->
+                    <div id="constructor-container" style="display: none;">
+                        <h4 class="mb-4">Detalles del Proyecto</h4>
+                        
+                        <div class="row mb-4">
+                            <div class="col-md-8">
+                                <div class="card bg-light">
+                                    <div class="card-body">
+                                        <h5 class="card-title mb-3">Stack Tecnológico Seleccionado</h5>
+                                        <div id="selected-tech-summary"></div>
+                                        <div id="selected-features" class="mt-2"></div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="alert alert-primary h-100 d-flex align-items-center">
+                                    <div>
+                                        <h5 class="alert-heading"><i class="bi bi-lightning-charge"></i> ¡Excelente elección!</h5>
+                                        <p class="mb-0">Completa la descripción para generar tu aplicación con estas tecnologías.</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <form id="constructor-form">
+                            <input type="hidden" id="project-tech-data" name="tech_data" value="">
                         <div class="mb-4">
                             <label for="project-description" class="form-label">Describe tu aplicación</label>
                             <textarea id="project-description" class="form-control futuristic-input" rows="5" 
@@ -326,6 +458,7 @@
 {% endblock %}
 
 {% block scripts %}
+<script src="{{ url_for('static', filename='js/tech-selector.js') }}"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     const constructorForm = document.getElementById('constructor-form');
