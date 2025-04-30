@@ -70,6 +70,32 @@
         background-color: #6c757d;
         color: white;
     }
+    
+    .feature-tag {
+        display: inline-block;
+        background-color: #1E88E5;
+        color: white;
+        padding: 0.2rem 0.5rem;
+        border-radius: 4px;
+        margin: 0.2rem;
+        font-size: 0.85rem;
+    }
+    
+    .feature-tag .remove-tag {
+        cursor: pointer;
+        margin-left: 5px;
+    }
+    
+    .console-output {
+        background-color: #121212;
+        color: #00FF00;
+        font-family: monospace;
+        padding: 10px;
+        border-radius: 5px;
+        height: 150px;
+        overflow-y: auto;
+        margin-top: 15px;
+    }
 </style>
 {% endblock %}
 
@@ -92,6 +118,13 @@
                             <label for="project-description" class="form-label">Describe tu aplicación</label>
                             <textarea id="project-description" class="form-control futuristic-input" rows="5" 
                                 placeholder="Describe en detalle la aplicación que deseas crear. Por ejemplo: 'Una aplicación para gestionar inventario con login, dashboard y reportes en PDF'"></textarea>
+                        </div>
+                        
+                        <!-- Características detectadas -->
+                        <div class="mb-3" id="features-container" style="display: none;">
+                            <label class="form-label">Características detectadas:</label>
+                            <div id="features-tags" class="mb-2"></div>
+                            <div class="form-text">Estas características se han detectado automáticamente. Puedes eliminar las que no desees.</div>
                         </div>
 
                         <!-- Selección de Agente -->
@@ -133,6 +166,10 @@
                                 <input class="form-check-input" type="checkbox" id="include-deployment" checked>
                                 <label class="form-check-label" for="include-deployment">Configuración para despliegue</label>
                             </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="include-ci-cd">
+                                <label class="form-check-label" for="include-ci-cd">Configurar CI/CD</label>
+                            </div>
                         </div>
 
                         <div class="d-grid gap-2">
@@ -150,6 +187,7 @@
                                 role="progressbar" style="width: 0%;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">0%</div>
                         </div>
                         <div id="current-stage" class="mt-2 small text-center">Inicializando agentes...</div>
+                        <div class="console-output" id="generation-console"></div>
                     </div>
 
                     <!-- Resultado (oculto inicialmente) -->
@@ -175,7 +213,6 @@
 
 {% block scripts %}
 <script>
-// JavaScript for form submission and progress updates
 document.addEventListener('DOMContentLoaded', function() {
     const constructorForm = document.getElementById('constructor-form');
     const generateBtn = document.getElementById('generate-btn');
@@ -185,114 +222,284 @@ document.addEventListener('DOMContentLoaded', function() {
     const currentStage = document.getElementById('current-stage');
     const viewAppBtn = document.getElementById('view-app-btn');
     const downloadAppBtn = document.getElementById('download-app-btn');
+    const projectDescription = document.getElementById('project-description');
+    const featuresContainer = document.getElementById('features-container');
+    const featuresTags = document.getElementById('features-tags');
+    const generationConsole = document.getElementById('generation-console');
     
+    // Variable para almacenar el ID del proyecto
+    let projectId = null;
+    
+    // Verificar disponibilidad de APIs
+    checkAPIAvailability();
+    
+    // Evento para analizar características al escribir descripción
+    let debounceTimer;
+    projectDescription.addEventListener('input', function() {
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(function() {
+            const description = projectDescription.value.trim();
+            if (description.length > 30) {
+                analyzeFeatures(description);
+            }
+        }, 1000);
+    });
+    
+    // Función para analizar y extraer características de la descripción
+    function analyzeFeatures(description) {
+        fetch('/api/constructor/analyze-features', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ description: description }),
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success && data.features && data.features.length > 0) {
+                displayFeatures(data.features);
+                featuresContainer.style.display = 'block';
+            }
+        })
+        .catch(error => {
+            console.error('Error al analizar características:', error);
+        });
+    }
+    
+    // Función para mostrar características detectadas
+    function displayFeatures(features) {
+        featuresTags.innerHTML = '';
+        features.forEach(feature => {
+            const tag = document.createElement('span');
+            tag.className = 'feature-tag';
+            tag.innerHTML = feature + ' <span class="remove-tag">×</span>';
+            
+            tag.querySelector('.remove-tag').addEventListener('click', function() {
+                tag.remove();
+            });
+            
+            featuresTags.appendChild(tag);
+        });
+    }
+    
+    // Función para recopilar características seleccionadas
+    function getSelectedFeatures() {
+        const tags = featuresTags.querySelectorAll('.feature-tag');
+        return Array.from(tags).map(tag => tag.textContent.replace('×', '').trim());
+    }
+    
+    // Función para verificar disponibilidad de APIs
+    function checkAPIAvailability() {
+        fetch('/api/health')
+            .then(response => response.json())
+            .then(data => {
+                const apiStatus = document.getElementById('api-status');
+                if (apiStatus) {
+                    const apis = data.apis || {};
+                    const availableApis = Object.entries(apis)
+                        .filter(([_, status]) => status === 'ok')
+                        .map(([name, _]) => name);
+                    
+                    if (availableApis.length > 0) {
+                        apiStatus.textContent = 'APIs disponibles: ' + availableApis.join(', ');
+                        apiStatus.className = 'mt-2 small text-success';
+                        
+                        // Actualizar el selector de modelos
+                        const modelSelector = document.getElementById('model-selector');
+                        if (modelSelector) {
+                            // Deshabilitar opciones no disponibles
+                            Array.from(modelSelector.options).forEach(option => {
+                                const isAvailable = apis[option.value] === 'ok';
+                                option.disabled = !isAvailable;
+                                if (!isAvailable) {
+                                    option.textContent += ' (no configurado)';
+                                }
+                            });
+                            
+                            // Seleccionar el primer modelo disponible
+                            const firstAvailable = Array.from(modelSelector.options)
+                                .find(option => !option.disabled);
+                            if (firstAvailable) {
+                                firstAvailable.selected = true;
+                            }
+                        }
+                    } else {
+                        apiStatus.textContent = 'No hay APIs configuradas. Configura al menos una en el panel de Secrets.';
+                        apiStatus.className = 'mt-2 small text-warning';
+                    }
+                }
+            })
+            .catch(error => {
+                console.error('Error checking API availability:', error);
+                const apiStatus = document.getElementById('api-status');
+                if (apiStatus) {
+                    apiStatus.textContent = 'Error al verificar disponibilidad de APIs';
+                    apiStatus.className = 'mt-2 small text-danger';
+                }
+            });
+    }
+    
+    // Agregar mensaje al console log de generación
+    function addConsoleMessage(message, type = 'info') {
+        const line = document.createElement('div');
+        line.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+        
+        if (type === 'error') {
+            line.style.color = '#FF5252';
+        } else if (type === 'success') {
+            line.style.color = '#00E676';
+        } else {
+            line.style.color = '#00FF00';
+        }
+        
+        generationConsole.appendChild(line);
+        generationConsole.scrollTop = generationConsole.scrollHeight;
+    }
+    
+    // Configurar interval para verificar el estado del proyecto
+    let statusCheckInterval;
+    function startStatusCheck(projectId) {
+        statusCheckInterval = setInterval(() => {
+            fetch(`/api/constructor/status/${projectId}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        progressBar.style.width = data.progress + '%';
+                        progressBar.setAttribute('aria-valuenow', data.progress);
+                        progressBar.textContent = data.progress + '%';
+                        currentStage.textContent = data.current_stage || 'Procesando...';
+                        
+                        if (data.console_message) {
+                            addConsoleMessage(data.console_message);
+                        }
+                        
+                        if (data.status === 'completed') {
+                            clearInterval(statusCheckInterval);
+                            showCompletedState(projectId);
+                        } else if (data.status === 'failed') {
+                            clearInterval(statusCheckInterval);
+                            showFailedState(data.error);
+                        }
+                    }
+                })
+                .catch(error => {
+                    console.error('Error al verificar estado:', error);
+                    addConsoleMessage('Error al verificar estado del proyecto', 'error');
+                });
+        }, 2000);
+    }
+    
+    // Mostrar estado de generación completada
+    function showCompletedState(projectId) {
+        setTimeout(() => {
+            progressSection.style.display = 'none';
+            resultSection.style.display = 'block';
+            generateBtn.disabled = false;
+            
+            // Configurar botones con el ID del proyecto
+            downloadAppBtn.setAttribute('data-project-id', projectId);
+            viewAppBtn.setAttribute('data-project-id', projectId);
+        }, 1000);
+    }
+    
+    // Mostrar estado de error
+    function showFailedState(error) {
+        progressBar.className = 'progress-bar bg-danger';
+        currentStage.textContent = 'Error: ' + (error || 'Ha ocurrido un problema durante la generación');
+        addConsoleMessage('Error en la generación: ' + (error || 'Error desconocido'), 'error');
+        generateBtn.disabled = false;
+    }
+    
+    // Evento de envío del formulario
     constructorForm.addEventListener('submit', function(e) {
         e.preventDefault();
         
-        // Get form values
-        const description = document.getElementById('project-description').value;
+        // Obtener valores del formulario
+        const description = projectDescription.value.trim();
         const agent = document.getElementById('agent-selector').value;
         const model = document.getElementById('model-selector').value;
         const includeTests = document.getElementById('include-tests').checked;
         const includeDocs = document.getElementById('include-docs').checked;
         const includeDeployment = document.getElementById('include-deployment').checked;
+        const includeCICD = document.getElementById('include-ci-cd').checked;
+        const features = getSelectedFeatures();
         
-        if (!description.trim()) {
+        if (!description) {
             alert('Por favor, describe tu aplicación');
             return;
         }
         
-        // Show progress section
+        // Mostrar sección de progreso
         progressSection.style.display = 'block';
         resultSection.style.display = 'none';
         generateBtn.disabled = true;
+        progressBar.className = 'progress-bar progress-bar-striped progress-bar-animated';
+        progressBar.style.width = '0%';
+        progressBar.setAttribute('aria-valuenow', 0);
+        progressBar.textContent = '0%';
+        generationConsole.innerHTML = '';
         
-        // Simulate progress (for demo, replace with actual API call)
-        simulateProgress();
-        
-        // In a real application, you would make an API call to your backend here
-        // For example:
-        /*
-        fetch('/api/generate_application', {
+        // Iniciar generación del proyecto
+        fetch('/api/constructor/generate', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-                description,
-                agent,
-                model,
+                description: description,
+                agent: agent,
+                model: model,
                 options: {
                     includeTests,
                     includeDocs,
-                    includeDeployment
-                }
+                    includeDeployment,
+                    includeCICD
+                },
+                features: features
             }),
         })
         .then(response => response.json())
         .then(data => {
-            progressSection.style.display = 'none';
-            resultSection.style.display = 'block';
-            // Update UI with results
+            if (data.success) {
+                projectId = data.project_id;
+                addConsoleMessage(`Proyecto iniciado con ID: ${projectId}`);
+                addConsoleMessage(`Tiempo estimado: ${data.estimated_time}`);
+                startStatusCheck(projectId);
+                
+                // Actualizar progreso inicial
+                progressBar.style.width = '5%';
+                progressBar.setAttribute('aria-valuenow', 5);
+                progressBar.textContent = '5%';
+            } else {
+                showFailedState(data.error);
+            }
         })
         .catch(error => {
             console.error('Error:', error);
-            alert('Ocurrió un error al generar la aplicación: ' + error.message);
-        })
-        .finally(() => {
-            generateBtn.disabled = false;
+            showFailedState(error.message);
         });
-        */
     });
     
-    // For demo purposes only - simulates progress updates
-    function simulateProgress() {
-        let progress = 0;
-        const stages = [
-            'Analizando descripción...',
-            'Generando estructura de archivos...',
-            'Codificando componentes principales...',
-            'Implementando lógica de negocio...',
-            'Creando pruebas unitarias...',
-            'Generando documentación...',
-            'Preparando configuración de despliegue...',
-            'Optimizando código...',
-            'Finalizando proyecto...'
-        ];
-        
-        const interval = setInterval(() => {
-            progress += Math.floor(Math.random() * 10) + 1;
-            if (progress >= 100) {
-                progress = 100;
-                clearInterval(interval);
-                
-                // Show completion after a brief delay
-                setTimeout(() => {
-                    progressSection.style.display = 'none';
-                    resultSection.style.display = 'block';
-                    generateBtn.disabled = false;
-                }, 1000);
-            }
-            
-            progressBar.style.width = progress + '%';
-            progressBar.setAttribute('aria-valuenow', progress);
-            progressBar.textContent = progress + '%';
-            
-            // Update current stage based on progress
-            const stageIndex = Math.min(Math.floor(progress / (100 / stages.length)), stages.length - 1);
-            currentStage.textContent = stages[stageIndex];
-        }, 500);
-    }
-    
-    // Button handlers for result actions
-    viewAppBtn.addEventListener('click', function() {
-        // In a real app, redirect to the generated application
-        alert('Esta funcionalidad estaría conectada a la visualización de la aplicación generada.');
-    });
-    
+    // Evento de descarga del proyecto
     downloadAppBtn.addEventListener('click', function() {
-        // In a real app, trigger download of the generated code
-        alert('Esta funcionalidad estaría conectada a la descarga del código generado.');
+        const projectId = this.getAttribute('data-project-id');
+        if (!projectId) {
+            alert('ID de proyecto no disponible');
+            return;
+        }
+        
+        window.location.href = `/api/constructor/download/${projectId}`;
+    });
+    
+    // Evento para ver la aplicación
+    viewAppBtn.addEventListener('click', function() {
+        const projectId = this.getAttribute('data-project-id');
+        if (!projectId) {
+            alert('ID de proyecto no disponible');
+            return;
+        }
+        
+        window.open(`/api/constructor/preview/${projectId}`, '_blank');
     });
 });
 </script>

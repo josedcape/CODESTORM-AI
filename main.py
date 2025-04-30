@@ -14,6 +14,7 @@ from pathlib import Path
 import traceback
 import re
 import threading
+from constructor_routes import constructor_bp
 
 # Configurar logging
 logging.basicConfig(level=logging.DEBUG,
@@ -28,6 +29,9 @@ app.secret_key = os.getenv('SECRET_KEY', 'default_secret_key')  # Añadido secre
 CORS(app)
 socketio = SocketIO(app, cors_allowed_origins="*", async_mode='threading',
                     ping_timeout=60, ping_interval=25, logger=True, engineio_logger=True)
+
+# Register constructor blueprint
+app.register_blueprint(constructor_bp)
 
 # Configurar claves API
 openai_api_key = os.getenv('OPENAI_API_KEY')
