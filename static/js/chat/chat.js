@@ -363,7 +363,10 @@ async function sendMessage() {
         // No mostrar el debug en la interfaz
         silentLog('Enviando mensaje al servidor:', requestData);
 
-        const response = await fetch('/api/chat', {
+        // Asegurarse de usar la API endpoint correcta
+        const apiUrl = window.app.chat.apiEndpoints.chat || '/api/chat';
+
+        const response = await fetch(apiUrl, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -391,7 +394,9 @@ async function sendMessage() {
             sendButton.style.opacity = '1';
         }
 
+        // Verificar diferentes formatos de respuesta
         if (data.response) {
+            // Formato estándar: data.response
             // Añadir respuesta al contexto
             window.app.chat.context.push({
                 role: 'assistant',
@@ -399,7 +404,14 @@ async function sendMessage() {
             });
 
             // Añadir mensaje del agente al chat
-            addAgentMessage(data.response, data.agent || window.app.chat.activeAgent);
+            addAgentMessage(data.response, data.agent_id || data.agent || window.app.chat.activeAgent);
+        } else if (data.message && data.success) {
+            // Formato alternativo: data.message con data.success
+            window.app.chat.context.push({
+                role: 'assistant',
+                content: data.message
+            });
+            addAgentMessage(data.message, data.agent_id || window.app.chat.activeAgent);
         } else if (data.error) {
             addSystemMessage(`Error: ${data.error}`);
 
@@ -885,7 +897,7 @@ function formatMessageContent(content) {
                     const escapedCode = block.code
                         .replace(/</g, '&lt;')
                         .replace(/>/g, '&gt;');
-                    content = content.replace(
+                                        content = content.replace(
                         `__CODE_BLOCK_${i}__`, 
                         `<pre><code class="language-${block.language}">${escapedCode}</code></pre>`
                     );

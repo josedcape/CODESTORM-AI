@@ -161,6 +161,57 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }
     };
+
+    // Configurar endpoints API globalmente
+    window.app = window.app || {};
+    window.app.apiEndpoints = {
+        chat: '/api/chat',
+        fallback: '/api/generate',
+        health: '/api/health',
+        processCode: '/api/process_code',
+        execute: '/api/execute_command',
+        files: '/api/files'
+    };
+
+    // Inicializar la funcionalidad del asistente flotante
+    if (typeof initFloatingAssistant === 'function') {
+        initFloatingAssistant();
+    }
+
+    // Inicializar el chat si estamos en la página de chat
+    if (document.getElementById('chat-container')) {
+        console.log('DOM cargado, inicializando chat...');
+
+        // Configurar un observer para mensajes de chat
+        const messagesContainer = document.getElementById('messages-container');
+        if (messagesContainer) {
+            console.log('Observer para mensajes de chat configurado');
+
+            // Asegurar que los objetos necesarios estén inicializados
+            window.app.chat = window.app.chat || {};
+            window.app.chat.apiEndpoints = window.app.apiEndpoints;
+
+            // Inicializar chat
+            if (typeof window.initializeChat === 'function') {
+                window.initializeChat();
+            } else if (typeof initializeChat === 'function') {
+                initializeChat();
+            } else {
+                console.error('La función initializeChat no está disponible. Verifica que chat.js se cargó correctamente.');
+
+                // Intento de recuperación: cargar dinámicamente chat.js
+                const chatScript = document.createElement('script');
+                chatScript.src = '/static/js/chat/chat.js';
+                chatScript.onload = function() {
+                    console.log('Chat.js cargado dinámicamente');
+                    if (typeof window.initializeChat === 'function') {
+                        window.initializeChat();
+                    }
+                };
+                document.head.appendChild(chatScript);
+            }
+        }
+    }
 });
 
 // Función para formatear fechas
