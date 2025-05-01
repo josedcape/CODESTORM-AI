@@ -18,8 +18,15 @@ window.app.chat.apiEndpoints = {
     files: '/api/files'
 };
 
-// Asegurarse de que los endpoints estén definidos y accesibles
-console.log("API Endpoints configurados:", window.app.chat.apiEndpoints);
+/**
+ * Función para logging silencioso (debug)
+ * @param {...any} args - Argumentos a loggear
+ */
+function silentLog(...args) {
+    if (window.app && window.app.chat && window.app.chat.debugMode) {
+        console.log('[Chat]', ...args);
+    }
+}
 
 /**
  * Inicializa el chat y configura los manejadores de eventos
@@ -97,38 +104,6 @@ window.initializeChat = function() {
             icon: 'gear-wide-connected'
         },
         'general': {
-
-// Función para copiar código al portapapeles
-window.copyCode = function(button) {
-    const preElement = button.closest('.code-block-container').querySelector('pre');
-    const codeElement = preElement.querySelector('code');
-    const textToCopy = codeElement.textContent;
-
-    navigator.clipboard.writeText(textToCopy).then(() => {
-        const originalText = button.textContent;
-        button.textContent = '¡Copiado!';
-        button.style.backgroundColor = 'rgba(40, 167, 69, 0.3)';
-        button.style.borderColor = 'rgba(40, 167, 69, 0.5)';
-
-        setTimeout(() => {
-            button.textContent = originalText;
-            button.style.backgroundColor = '';
-            button.style.borderColor = '';
-        }, 2000);
-    }).catch(err => {
-        console.error('Error al copiar texto: ', err);
-        button.textContent = 'Error al copiar';
-        button.style.backgroundColor = 'rgba(220, 53, 69, 0.3)';
-        button.style.borderColor = 'rgba(220, 53, 69, 0.5)';
-
-        setTimeout(() => {
-            button.textContent = 'Copiar';
-            button.style.backgroundColor = '';
-            button.style.borderColor = '';
-        }, 2000);
-    });
-}
-
             name: 'Asistente General',
             description: 'Asistente versátil para diversas tareas de programación',
             capabilities: [
@@ -161,135 +136,203 @@ window.copyCode = function(button) {
     // Inicializar características avanzadas
     setupDocumentFeatures();
 
-     // Cargar highlight.js si es necesario
-        if (typeof loadHighlightJS === 'function') {
-            loadHighlightJS();
-        } else {
-            // Si la función no existe, la implementamos aquí
-            loadHighlightJS = function() {
-                silentLog('Cargando highlight.js para resaltado de sintaxis...');
+    // Cargar highlight.js si es necesario
+    loadHighlightJS();
+};
 
-                // Verificar si highlight.js ya está cargado
-                if (window.hljs) {
-                    silentLog('highlight.js ya está cargado.');
-                    return;
-                }
+/**
+ * Carga highlight.js para resaltado de sintaxis
+ * @returns {Promise} Promesa que se resuelve cuando highlight.js está listo
+ */
+function loadHighlightJS() {
+    return new Promise((resolve, reject) => {
+        silentLog('Cargando highlight.js para resaltado de sintaxis...');
 
-                // Crear enlace para el CSS de highlight.js
-                const highlightCSS = document.createElement('link');
-                highlightCSS.rel = 'stylesheet';
-                highlightCSS.href = 'https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/atom-one-dark.min.css';
-                document.head.appendChild(highlightCSS);
-
-                // Crear script para highlight.js
-                const highlightScript = document.createElement('script');
-                highlightScript.src = 'https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/highlight.min.js';
-                highlightScript.onload = function() {
-                    silentLog('highlight.js cargado correctamente');
-                    // Inicializar highlight.js
-                    if (window.hljs) {
-                        window.hljs.configure({
-                            ignoreUnescapedHTML: true,
-                            languages: ['javascript', 'html', 'css', 'python', 'java', 'php', 'ruby', 'bash', 'json']
-                        });
-
-                        // Resaltar bloques de código existentes
-                        document.querySelectorAll('pre code').forEach(block => {
-                            window.hljs.highlightElement(block);
-                        });
-                    }
-                };
-                document.head.appendChild(highlightScript);
-            };
-
-            // Llamar a la función recién creada
-            loadHighlightJS();
+        // Verificar si highlight.js ya está cargado
+        if (window.hljs) {
+            silentLog('highlight.js ya está cargado.');
+            resolve(window.hljs);
+            return;
         }
-    };
+
+        try {
+            // Crear enlace para el CSS de highlight.js
+            const highlightCSS = document.createElement('link');
+            highlightCSS.rel = 'stylesheet';
+            highlightCSS.href = 'https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/atom-one-dark.min.css';
+            document.head.appendChild(highlightCSS);
+
+            // Crear script para highlight.js
+            const highlightScript = document.createElement('script');
+            highlightScript.src = 'https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/highlight.min.js';
+            highlightScript.onload = function() {
+                silentLog('highlight.js cargado correctamente');
+                // Inicializar highlight.js
+                if (window.hljs) {
+                    window.hljs.configure({
+                        ignoreUnescapedHTML: true,
+                        languages: ['javascript', 'html', 'css', 'python', 'java', 'php', 'ruby', 'bash', 'json']
+                    });
+
+                    // Resaltar bloques de código existentes
+                    document.querySelectorAll('pre code').forEach(block => {
+                        window.hljs.highlightElement(block);
+                    });
+                    resolve(window.hljs);
+                } else {
+                    reject(new Error('highlight.js no se inicializó correctamente'));
+                }
+            };
+            highlightScript.onerror = function(e) {
+                reject(new Error('Error al cargar highlight.js: ' + e.message));
+            };
+            document.head.appendChild(highlightScript);
+        } catch (error) {
+            reject(error);
+        }
+    });
+}
+
 /**
  * Configura las referencias a elementos UI y sus eventos
  */
 function setupUIElements() {
     // No es necesario reinicializar window.app.chat aquí ya que lo hacemos en initializeChat
 
-    // Elementos principales
-    window.app.chat.elements = {
-        chatContainer: document.getElementById('chat-container'),
-        messagesContainer: document.getElementById('messages-container'),
-        messageInput: document.getElementById('message-input'),
-        sendButton: document.getElementById('send-button'),
-        modelSelect: document.getElementById('model-select'),
-        agentSelect: document.getElementById('agent-select'),
-        agentInfo: document.getElementById('agent-info'),
-        agentCapabilities: document.getElementById('agent-capabilities'),
-        agentBadge: document.getElementById('agent-badge'),
-        statusIndicator: document.getElementById('status-indicator')
-    };
+    // Elementos principales con manejo de errores
+    try {
+        window.app.chat.elements = {
+            chatContainer: document.getElementById('chat-container'),
+            messagesContainer: document.getElementById('messages-container'),
+            messageInput: document.getElementById('message-input'),
+            sendButton: document.getElementById('send-button'),
+            modelSelect: document.getElementById('model-select'),
+            agentSelect: document.getElementById('agent-select'),
+            agentInfo: document.getElementById('agent-info'),
+            agentCapabilities: document.getElementById('agent-capabilities'),
+            agentBadge: document.getElementById('agent-badge'),
+            statusIndicator: document.getElementById('status-indicator')
+        };
 
-    const {messageInput, sendButton, modelSelect, agentSelect} = window.app.chat.elements;
+        const {messageInput, sendButton, modelSelect, agentSelect} = window.app.chat.elements;
 
-    // Configurar eventos principales
-    if (sendButton) {
-        sendButton.addEventListener('click', sendMessage);
-    }
+        // Configurar eventos principales con verificación
+        if (sendButton) {
+            sendButton.addEventListener('click', sendMessage);
+        } else {
+            silentLog('Advertencia: Elemento sendButton no encontrado');
+        }
 
-    if (messageInput) {
-        messageInput.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                sendMessage();
-            } else if (e.key === 'Enter' && e.shiftKey) {
-                // Permitir saltos de línea con Shift+Enter
-            }
+        if (messageInput) {
+            messageInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    sendMessage();
+                }
+                // Ajustar altura al contenido
+                setTimeout(() => {
+                    adjustTextareaHeight(messageInput);
+                }, 0);
+            });
 
-            // Ajustar altura al contenido
-            setTimeout(() => {
+            // Ajustar altura al escribir
+            messageInput.addEventListener('input', () => {
                 adjustTextareaHeight(messageInput);
-            }, 0);
-        });
+            });
+        } else {
+            silentLog('Advertencia: Elemento messageInput no encontrado');
+        }
 
-        // Ajustar altura al escribir
-        messageInput.addEventListener('input', () => {
-            adjustTextareaHeight(messageInput);
-        });
+        // Cambiar modelo de IA
+        if (modelSelect) {
+            modelSelect.addEventListener('change', () => {
+                window.app.chat.activeModel = modelSelect.value;
+                silentLog('Modelo cambiado a:', window.app.chat.activeModel);
+                let modelName = "desconocido";
+                if (window.app.chat.availableModels && window.app.chat.activeModel in window.app.chat.availableModels) {
+                    modelName = window.app.chat.availableModels[window.app.chat.activeModel];
+                } else {
+                    modelName = window.app.chat.activeModel;
+                }
+                addSystemMessage(`Modelo cambiado a: ${modelName}`);
+
+                // Asegurarse de que el modelo se actualice en toda la aplicación
+                localStorage.setItem('codestorm_active_model', window.app.chat.activeModel);
+            });
+        } else {
+            silentLog('Advertencia: Elemento modelSelect no encontrado');
+        }
+
+        // Cambiar agente
+        if (agentSelect) {
+            agentSelect.addEventListener('change', () => {
+                const previousAgent = window.app.chat.activeAgent;
+                window.app.chat.activeAgent = agentSelect.value;
+                updateAgentInfo(window.app.chat.activeAgent);
+                silentLog('Agente cambiado a:', window.app.chat.activeAgent);
+
+                // Añadir notificación solo si realmente cambió
+                if (previousAgent !== window.app.chat.activeAgent) {
+                    addSystemMessage(`Has cambiado al ${window.app.chat.availableAgents[window.app.chat.activeAgent].name}. ${window.app.chat.availableAgents[window.app.chat.activeAgent].description}`);
+                }
+            });
+        } else {
+            silentLog('Advertencia: Elemento agentSelect no encontrado');
+        }
+
+        // Actualizar info del agente inicial
+        updateAgentInfo(window.app.chat.activeAgent);
+    } catch (error) {
+        console.error('Error al configurar elementos de UI:', error);
+        addSystemMessage('Error al configurar interfaz. Por favor, recarga la página.');
     }
-
-    // Cambiar modelo de IA
-    if (modelSelect) {
-        modelSelect.addEventListener('change', () => {
-            window.app.chat.activeModel = modelSelect.value;
-            silentLog('Modelo cambiado a:', window.app.chat.activeModel);
-            let modelName = "desconocido";
-            if (window.app.chat.availableModels && window.app.chat.activeModel in window.app.chat.availableModels) {
-                modelName = window.app.chat.availableModels[window.app.chat.activeModel];
-            } else {
-                modelName = window.app.chat.activeModel;
-            }
-            addSystemMessage(`Modelo cambiado a: ${modelName}`);
-
-            // Asegurarse de que el modelo se actualice en toda la aplicación
-            localStorage.setItem('codestorm_active_model', window.app.chat.activeModel);
-        });
-    }
-
-    // Cambiar agente
-    if (agentSelect) {
-        agentSelect.addEventListener('change', () => {
-            const previousAgent = window.app.chat.activeAgent;
-            window.app.chat.activeAgent = agentSelect.value;
-            updateAgentInfo(window.app.chat.activeAgent);
-            silentLog('Agente cambiado a:', window.app.chat.activeAgent);
-
-            // Añadir notificación solo si realmente cambió
-            if (previousAgent !== window.app.chat.activeAgent) {
-                addSystemMessage(`Has cambiado al ${window.app.chat.availableAgents[window.app.chat.activeAgent].name}. ${window.app.chat.availableAgents[window.app.chat.activeAgent].description}`);
-            }
-        });
-    }
-
-    // Actualizar info del agente inicial
-    updateAgentInfo(window.app.chat.activeAgent);
 }
+
+/**
+ * Actualiza la información mostrada del agente seleccionado
+ * @param {string} agentId - ID del agente seleccionado
+ */
+function updateAgentInfo(agentId) {
+    try {
+        const agent = window.app.chat.availableAgents[agentId];
+        if (!agent) {
+            silentLog(`Agente no encontrado: ${agentId}`);
+            return;
+        }
+
+        const { agentInfo, agentCapabilities, agentBadge } = window.app.chat.elements;
+
+        if (agentInfo) {
+            agentInfo.textContent = agent.description || '';
+        }
+
+        if (agentBadge) {
+            agentBadge.innerHTML = `<i class="bi bi-${agent.icon}"></i> ${agent.name}`;
+        }
+
+        if (agentCapabilities) {
+            // Limpiar capacidades anteriores
+            agentCapabilities.innerHTML = '';
+
+            // Añadir nuevas capacidades
+            if (agent.capabilities && Array.isArray(agent.capabilities)) {
+                const ul = document.createElement('ul');
+                ul.className = 'list-unstyled small';
+
+                agent.capabilities.forEach(capability => {
+                    const li = document.createElement('li');
+                    li.innerHTML = `<i class="bi bi-check2-circle text-success me-1"></i> ${capability}`;
+                    ul.appendChild(li);
+                });
+
+                agentCapabilities.appendChild(ul);
+            }
+        }
+    } catch (error) {
+        silentLog('Error al actualizar información del agente:', error);
+    }
+}
+
 /**
  * Verifica los modelos disponibles y actualiza la interfaz
  */
@@ -426,8 +469,56 @@ async function checkServerConnection() {
  * Configura funcionalidades relacionadas con documentos
  */
 function setupDocumentFeatures() {
-    // Configuración silenciosa
-    silentLog('Características de documentos inicializadas');
+    // Configuración silenciosa con manejo de errores
+    try {
+        // Registrar eventos de arrastrar y soltar para archivos
+        const dropZone = document.getElementById('chat-container');
+        if (dropZone) {
+            dropZone.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                dropZone.classList.add('drag-over');
+            });
+
+            dropZone.addEventListener('dragleave', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                dropZone.classList.remove('drag-over');
+            });
+
+            dropZone.addEventListener('drop', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                dropZone.classList.remove('drag-over');
+
+                const files = e.dataTransfer.files;
+                if (files.length > 0) {
+                    handleFileDrop(files);
+                }
+            });
+        }
+
+        silentLog('Características de documentos inicializadas');
+    } catch (error) {
+        silentLog('Error al configurar características de documentos:', error);
+    }
+}
+
+/**
+ * Maneja archivos soltados en la zona de chat
+ * @param {FileList} files - Lista de archivos
+ */
+function handleFileDrop(files) {
+    try {
+        const fileNames = Array.from(files).map(file => file.name);
+        addSystemMessage(`Archivos recibidos: ${fileNames.join(', ')}`);
+
+        // Implementar aquí la lógica para procesar archivos
+        // Por ahora solo mostramos los nombres
+    } catch (error) {
+        console.error('Error al procesar archivos:', error);
+        addSystemMessage('Error al procesar los archivos');
+    }
 }
 
 /**
@@ -628,287 +719,276 @@ async function sendMessage() {
     }
 }
 
-
-// Función para copiar el contenido de un mensaje
-function copyMessageContent(messageElement) {
-    // Obtener el contenido del mensaje (excluyendo los botones y otros elementos de UI)
-    const messageContent = messageElement.querySelector('.message-content');
-
-    if (messageContent) {
-        // Crear un elemento temporal para obtener el texto plano
-        const tempElement = document.createElement('div');
-        tempElement.innerHTML = messageContent.innerHTML;
-
-        // Eliminar los botones de copiar de los bloques de código
-        tempElement.querySelectorAll('.code-toolbar').forEach(toolbar => {
-            toolbar.remove();
-        });
-
-        // Obtener el texto del mensaje
-        const textToCopy = tempElement.innerText || tempElement.textContent;
-
-        // Copiar al portapapeles
-        navigator.clipboard.writeText(textToCopy).then(() => {
-            showCopyNotification();
-        }).catch(err => {
-            console.error('Error al copiar texto: ', err);
-            alert('No se pudo copiar el texto. Por favor, inténtalo de nuevo.');
-        });
-    }
-}
-
-
 /**
  * Añade mensaje del usuario al chat
  * @param {string} message - Mensaje a mostrar
  */
 function addUserMessage(message) {
     const messageId = `msg-${++window.app.chat.chatMessageId}`;
+
     const messageHTML = `
-        <div class="message-container user-message" id="${messageId}">
+        <div id="${messageId}" class="message user-message">
             <div class="message-header">
-                <span class="message-author">Tú</span>
-                <span class="message-time">${getCurrentTime()}</span>
-            </div>
-            <div class="message-content">
-                ${formatMessageContent(message)}
-            </div>
-        </div>
-    `;
-
-    appendMessageToChat(messageHTML);
-    scrollToBottom();
-}
-
-/**
- * Añade mensaje del agente al chat
- * @param {string} message - Mensaje a mostrar
- * @param {string} agentId - ID del agente
- */
-function addAgentMessage(message, agentId) {
-    const agent = window.app.chat.availableAgents[agentId] || window.app.chat.availableAgents.general;
-    const messageId = `msg-${++window.app.chat.chatMessageId}`;
-    const copyBtnId = `copy-btn-${messageId}`;
-    const formattedMessage = formatMessageContent(message);
-
-    const messageHTML = `
-        <div class="message-container agent-message" id="${messageId}">
-            <div class="message-header">
-                <span class="message-author">
-                    <i class="bi bi-${agent.icon}"></i> 
-                    ${agent.name}
-                </span>
-                <span class="message-time">${getCurrentTime()}</span>
-            </div>
-            <div class="message-content">
-                ${formattedMessage}
-            </div>
-            <div class="message-actions">
-                <button id="${copyBtnId}" class="btn btn-sm btn-icon" onclick="copyToClipboard('${messageId}', 'message', null, '${copyBtnId}')" data-message-id="${messageId}" title="Copiar mensaje">
-                    <i class="bi bi-clipboard"></i>
-                </button>
-            </div>
-        </div>
-    `;
-
-    appendMessageToChat(messageHTML);
-
-    // Procesar elementos especiales (código, HTML, etc)
-    processCodeBlocks(messageId);
-    processHTMLPreview(messageId);
-
-    scrollToBottom();
-}
-
-/**
- * Añade mensaje del sistema al chat (notificaciones, etc)
- * @param {string} message - Mensaje a mostrar
- */
-function addSystemMessage(message) {
-    const messageId = `msg-${++window.app.chat.chatMessageId}`;
-    const messageHTML = `
-        <div class="message-container system-message" id="${messageId}">
-            <div class="message-content">
-                <i class="bi bi-info-circle"></i> ${message}
-            </div>
-        </div>
-    `;
-
-    appendMessageToChat(messageHTML);
-    scrollToBottom();
-}
-
-/**
- * Añade un mensaje de carga al chat
- * @returns {string} ID del mensaje de carga
- */
-function addLoadingMessage() {
-    const messageId = `loading-${Date.now()}`;
-    const messageHTML = `
-        <div class="message-container loading-message" id="${messageId}">
-            <div class="message-content">
-                <div class="typing-indicator">
-                    <span></span>
-                    <span></span>
-                    <span></span>
+                <div class="message-avatar">
+                    <i class="bi bi-person-circle"></i>
+                </div>
+                <div class="message-info">
+                    <span class="message-sender">Tú</span>
+                    <span class="message-time">${getCurrentTime()}</span>
+                </div>
+                <div class="message-actions">
+                    <button id="copy-btn-${messageId}" class="btn btn-sm btn-outline-secondary" onclick="copyToClipboard('${messageId}', 'message', null, 'copy-btn-${messageId}')">
+                        <i class="bi bi-clipboard"></i>
+                    </button>
                 </div>
             </div>
+            <div class="message-content">${formatMessageContent(message)}</div>
         </div>
     `;
 
     appendMessageToChat(messageHTML);
     scrollToBottom();
-
-    return messageId;
 }
 
 /**
- * Elimina un mensaje de carga
- * @param {string} messageId - ID del mensaje a eliminar
+ * Ajusta la altura de un textarea para mostrar todo su contenido
+ * @param {HTMLTextAreaElement} textarea - El elemento textarea
  */
-function removeLoadingMessage(messageId) {
-    if (messageId) {
-        const loadingElement = document.getElementById(messageId);
-        if (loadingElement) {
-            loadingElement.remove();
-        }
-    } else {
-        // Si no se especifica ID, eliminar todos los indicadores de carga
-        const loadingElements = document.querySelectorAll('.loading-message');
-        loadingElements.forEach(el => el.remove());
-    }
+function adjustTextareaHeight(textarea) {
+    if (!textarea) return;
+
+    // Restablecer altura para obtener una medida precisa
+    textarea.style.height = 'auto';
+    // Establecer altura basada en el contenido
+    textarea.style.height = `${Math.min(textarea.scrollHeight, 300)}px`;
 }
 
 /**
- * Procesa bloques de código en el mensaje
- * @param {string} messageId - ID del elemento del mensaje
+ * Obtiene la hora actual formateada
+ * @returns {string} Hora actual en formato HH:MM
  */
-function processCodeBlocks(messageId) {
-    const messageElement = document.getElementById(messageId);
-    if (!messageElement) return;
-
-    const codeBlocks = messageElement.querySelectorAll('pre code');
-    if (!codeBlocks.length) return;
-
-    // Cargar highlight.js si es necesario
-    loadHighlightJS().then(() => {
-        codeBlocks.forEach((codeBlock, index) => {
-            const codeContent = codeBlock.textContent;
-            const copyButtonId = `copy-code-${messageId}-${index}`;
-
-            // Detectar lenguaje de programación
-            let language = 'plaintext';
-            const codeClasses = codeBlock.className.split(' ');
-            for (const cls of codeClasses) {
-                if (cls.startsWith('language-')) {
-                    language = cls.replace('language-', '');
-                    break;
-                }
-            }
-
-            // Crear contenedor para el bloque de código con botón de copiar
-            const codeContainer = document.createElement('div');
-            codeContainer.className = 'code-block-container';
-
-            // Barra de herramientas
-            const toolbar = document.createElement('div');
-            toolbar.className = 'code-toolbar';
-
-            // Etiqueta de lenguaje
-            const langLabel = document.createElement('span');
-            langLabel.className = 'code-language';
-            langLabel.textContent = language;
-            toolbar.appendChild(langLabel);
-
-            // Botón de copiar
-            const copyButton = document.createElement('button');
-            copyButton.id = copyButtonId;
-            copyButton.className = 'btn btn-sm btn-dark code-copy-btn';
-            copyButton.innerHTML = '<i class="bi bi-clipboard"></i>';
-            copyButton.title = 'Copiar código';
-            copyButton.onclick = function() {
-                // Asegurarse de que codeContent contiene el texto completo del código
-                // y no solo una referencia o un ID
-                copyToClipboard(null, 'code', codeContent, copyButtonId);
-            };
-            toolbar.appendChild(copyButton);
-
-            codeContainer.appendChild(toolbar);
-
-
-            // Conservar el bloque de código original
-            const newCodeBlock = document.createElement('pre');
-            newCodeBlock.className = codeBlock.parentElement.className;
-            newCodeBlock.appendChild(codeBlock.cloneNode(true));
-            codeContainer.appendChild(newCodeBlock);
-
-            // Reemplazar el bloque original con el contenedor mejorado
-            codeBlock.parentElement.replaceWith(codeContainer);
-
-            // Aplicar highlight.js al nuevo bloque de código
-            try {
-                if (window.hljs) {
-                    const codeElements = codeContainer.querySelectorAll('code');
-                    codeElements.forEach(el => {
-                        window.hljs.highlightElement(el);
-                    });
-                }
-            } catch (e) {
-                silentLog('Error al aplicar highlight.js:', e);
-            }
-        });
-    }).catch(err => {
-        silentLog('No se pudo cargar highlight.js:', err);
-    });
+function getCurrentTime() {
+    const now = new Date();
+    const hours = String(now.getHours()).padStart(2, '0');
+    const minutes = String(now.getMinutes()).padStart(2, '0');
+    return `${hours}:${minutes}`;
 }
 
-/**
- * Procesa previsualizaciones HTML en el mensaje
- * @param {string} messageId - ID del elemento del mensaje
- */
-function processHTMLPreview(messageId) {
-    const messageElement = document.getElementById(messageId);
-    if (!messageElement) return;
 
-    const codeBlocks = messageElement.querySelectorAll('pre code.language-html');
+                             /**
+                              * Promesa para cargar highlight.js
+                              * @returns {Promise} Promesa que se resuelve cuando highlight.js está cargado
+                              */
+                             function loadHighlightJS() {
+                                 return new Promise((resolve, reject) => {
+                                     silentLog('Cargando highlight.js para resaltado de sintaxis...');
 
-    codeBlocks.forEach((codeBlock, index) => {
-        const htmlContent = codeBlock.textContent;
+                                     // Si ya está cargado, resolver inmediatamente
+                                     if (window.hljs) {
+                                         silentLog('highlight.js ya está cargado.');
+                                         resolve();
+                                         return;
+                                     }
 
-        // Solo añadir vista previa si el HTML tiene suficiente contenido
-        if (htmlContent.length > 50) {
-            const previewButtonId = `preview-${messageId}-${index}`;
+                                     try {
+                                         // Crear enlace para el CSS de highlight.js
+                                         const highlightCSS = document.createElement('link');
+                                         highlightCSS.rel = 'stylesheet';
+                                         highlightCSS.href = 'https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/atom-one-dark.min.css';
+                                         document.head.appendChild(highlightCSS);
 
-            // Crear botón de vista previa
-            const previewButton = document.createElement('button');
-            previewButton.id = previewButtonId;
-            previewButton.className = 'btn btn-sm btn-primary mt-2';
-            previewButton.innerHTML = '<i class="bi bi-eye"></i> Ver HTML';
-            previewButton.onclick = function() {
-                showHTMLPreview(htmlContent);
-            };
+                                         // Crear script para highlight.js
+                                         const highlightScript = document.createElement('script');
+                                         highlightScript.src = 'https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/highlight.min.js';
+                                         highlightScript.onload = function() {
+                                             silentLog('highlight.js cargado correctamente');
+                                             // Inicializar highlight.js
+                                             if (window.hljs) {
+                                                 window.hljs.configure({
+                                                     ignoreUnescapedHTML: true,
+                                                     languages: ['javascript', 'html', 'css', 'python', 'java', 'php', 'ruby', 'bash', 'json']
+                                                 });
 
-            // Añadir botón después del bloque de código
-            codeBlock.parentElement.parentElement.appendChild(previewButton);
-        }
-    });
-}
+                                                 // Resaltar bloques de código existentes
+                                                 document.querySelectorAll('pre code').forEach(block => {
+                                                     window.hljs.highlightElement(block);
+                                                 });
+                                             }
+                                             resolve();
+                                         };
+                                         highlightScript.onerror = function(error) {
+                                             silentLog('Error al cargar highlight.js:', error);
+                                             reject(error);
+                                         };
+                                         document.head.appendChild(highlightScript);
+                                     } catch (error) {
+                                         silentLog('Error al configurar highlight.js:', error);
+                                         reject(error);
+                                     }
+                                 });
+                             }
 
-/**
- * Muestra una previsualización de código HTML
- * @param {string} htmlContent - Contenido HTML a previsualizar
- */
-function showHTMLPreview(htmlContent) {
-    // Crear una ventana emergente para la vista previa
-    const previewWindow = window.open('', '_blank', 'width=800,height=600');
+                             /**
+                              * Copia contenido al portapapeles
+                              * @param {string} elementId - ID del elemento que contiene el texto (opcional)
+                              * @param {string} type - Tipo de contenido ('message' o 'code')
+                              * @param {string} content - Contenido a copiar (opcional)
+                              * @param {string} buttonId - ID del botón de copiar (para feedback visual)
+                              */
+                             function copyToClipboard(elementId, type, content, buttonId) {
+                                 try {
+                                     let textToCopy = content;
 
-    if (previewWindow) {
-        previewWindow.document.write(`
-            <!DOCTYPE html>
-            <html>
-            <head>
-                <title>Vista Previa HTML</title>
-                <meta charset="UTF-8">
-                <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                <!-- Bootstrap CSS -->
-                <link href([a-zA-Z]*)\n([\s\S]+?)
+                                     if (!textToCopy && elementId) {
+                                         const element = document.getElementById(elementId);
+                                         if (!element) {
+                                             throw new Error(`Elemento con ID ${elementId} no encontrado`);
+                                         }
+
+                                         if (type === 'message') {
+                                             const messageContent = element.querySelector('.message-content');
+                                             if (messageContent) {
+                                                 // Crear un elemento temporal para obtener el texto plano
+                                                 const tempElement = document.createElement('div');
+                                                 tempElement.innerHTML = messageContent.innerHTML;
+
+                                                 // Eliminar elementos de UI internos
+                                                 tempElement.querySelectorAll('.code-toolbar, .message-actions').forEach(el => el.remove());
+
+                                                 textToCopy = tempElement.innerText || tempElement.textContent;
+                                             }
+                                         } else if (type === 'code') {
+                                             const codeElement = element.querySelector('code');
+                                             if (codeElement) {
+                                                 textToCopy = codeElement.textContent;
+                                             }
+                                         }
+                                     }
+
+                                     if (!textToCopy) {
+                                         throw new Error('No se encontró contenido para copiar');
+                                     }
+
+                                     // Copiar al portapapeles
+                                     navigator.clipboard.writeText(textToCopy).then(() => {
+                                         showCopyNotification(buttonId);
+                                     }).catch(err => {
+                                         throw err;
+                                     });
+                                 } catch (error) {
+                                     console.error('Error al copiar al portapapeles:', error);
+                                     alert(`No se pudo copiar el texto: ${error.message}`);
+                                 }
+                             }
+
+                             /**
+                              * Muestra una notificación de éxito al copiar
+                              * @param {string} buttonId - ID del botón que inició la copia
+                              */
+                             function showCopyNotification(buttonId) {
+                                 if (buttonId) {
+                                     const button = document.getElementById(buttonId);
+                                     if (button) {
+                                         const originalHTML = button.innerHTML;
+                                         const originalBgColor = button.style.backgroundColor;
+                                         const originalBorderColor = button.style.borderColor;
+
+                                         // Cambiar apariencia del botón para mostrar confirmación
+                                         button.innerHTML = '<i class="bi bi-check"></i> Copiado';
+                                         button.style.backgroundColor = 'rgba(40, 167, 69, 0.3)';
+                                         button.style.borderColor = 'rgba(40, 167, 69, 0.5)';
+
+                                         // Restaurar apariencia original después de 2 segundos
+                                         setTimeout(() => {
+                                             button.innerHTML = originalHTML;
+                                             button.style.backgroundColor = originalBgColor;
+                                             button.style.borderColor = originalBorderColor;
+                                         }, 2000);
+                                     }
+                                 } else {
+                                     // Mostrar una notificación flotante genérica
+                                     const notification = document.createElement('div');
+                                     notification.className = 'copy-notification';
+                                     notification.innerHTML = '<i class="bi bi-clipboard-check"></i> Contenido copiado al portapapeles';
+
+                                     document.body.appendChild(notification);
+
+                                     // Animar la notificación
+                                     setTimeout(() => {
+                                         notification.classList.add('show');
+
+                                         setTimeout(() => {
+                                             notification.classList.remove('show');
+                                             setTimeout(() => {
+                                                 notification.remove();
+                                             }, 300);
+                                         }, 2000);
+                                     }, 10);
+                                 }
+                             }
+
+                             /**
+                              * Formatea el contenido de un mensaje para ser mostrado en el chat
+                              * @param {string} content - Contenido del mensaje
+                              * @returns {string} Contenido formateado con HTML
+                              */
+                             function formatMessageContent(content) {
+                                 if (!content) return '';
+
+                                 // Escapar HTML para prevenir XSS
+                                 let formattedContent = escapeHTML(content);
+
+                                 // Convertir saltos de línea en <br>
+                                 formattedContent = formattedContent.replace(/\n/g, '<br>');
+
+                                 // Procesar bloques de código con markdown
+                                 formattedContent = processCodeBlocks(formattedContent);
+
+                                 // Procesamiento adicional (negritas, cursivas, enlaces, etc.)
+                                 formattedContent = processMarkdown(formattedContent);
+
+                                 return formattedContent;
+                             }
+
+                             /**
+                              * Escapa caracteres especiales HTML para prevenir XSS
+                              * @param {string} text - Texto a escapar
+                              * @returns {string} Texto escapado
+                              */
+                             function escapeHTML(text) {
+                                 const div = document.createElement('div');
+                                 div.textContent = text;
+                                 return div.innerHTML;
+                             }
+
+                             /**
+                              * Procesa bloques de código markdown en el texto
+                              * @param {string} text - Texto a procesar
+                              * @returns {string} Texto con bloques de código HTML
+                              */
+                             function processCodeBlocks(text) {
+                                 // Reemplazar bloques de código con ```
+                                 const codeBlockRegex = /```([a-z]*)\n([\s\S]+?)```/g;
+                                 return text.replace(codeBlockRegex, function(match, language, code) {
+                                     language = language || 'plaintext';
+                                     return `<pre><code class="language-${language}">${code}</code></pre>`;
+                                 });
+                             }
+
+                             /**
+                              * Procesa sintaxis markdown básica
+                              * @param {string} text - Texto a procesar
+                              * @returns {string} Texto con formato HTML
+                              */
+                             function processMarkdown(text) {
+                                 // Negritas
+                                 text = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+
+                                 // Cursiva
+                                 text = text.replace(/\*(.*?)\*/g, '<em>$1</em>');
+
+                                 // Enlaces
+                                 text = text.replace(/\[(.*?)\]\((.*?)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
+
+                                 return text;
+                             }
