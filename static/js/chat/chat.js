@@ -596,6 +596,36 @@ async function sendMessage() {
     }
 }
 
+
+// Función para copiar el contenido de un mensaje
+function copyMessageContent(messageElement) {
+    // Obtener el contenido del mensaje (excluyendo los botones y otros elementos de UI)
+    const messageContent = messageElement.querySelector('.message-content');
+
+    if (messageContent) {
+        // Crear un elemento temporal para obtener el texto plano
+        const tempElement = document.createElement('div');
+        tempElement.innerHTML = messageContent.innerHTML;
+
+        // Eliminar los botones de copiar de los bloques de código
+        tempElement.querySelectorAll('.code-toolbar').forEach(toolbar => {
+            toolbar.remove();
+        });
+
+        // Obtener el texto del mensaje
+        const textToCopy = tempElement.innerText || tempElement.textContent;
+
+        // Copiar al portapapeles
+        navigator.clipboard.writeText(textToCopy).then(() => {
+            showCopyNotification();
+        }).catch(err => {
+            console.error('Error al copiar texto: ', err);
+            alert('No se pudo copiar el texto. Por favor, inténtalo de nuevo.');
+        });
+    }
+}
+
+
 /**
  * Añade mensaje del usuario al chat
  * @param {string} message - Mensaje a mostrar
