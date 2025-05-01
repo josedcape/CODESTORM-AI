@@ -5,6 +5,7 @@ import json
 import shutil
 import logging
 import zipfile
+import traceback
 from datetime import datetime
 from flask import Blueprint, request, jsonify, send_file, render_template
 from threading import Thread
@@ -174,10 +175,10 @@ def generate_application(project_id, description, agent, model, options, feature
             # Generar app.py usando agentes IA
             app_description = f"""Crear un archivo principal app.py para una aplicación {'web' if is_web_app else 'CLI'} que implemente las siguientes características:
             {', '.join(features)}
-            
+
             La aplicación debe usar {tech_backend} como backend{', ' + tech_frontend + ' para el frontend' if is_web_app else ''} y {tech_database} como base de datos.
             La aplicación debe ser funcional y completa, no un esqueleto o demo."""
-            
+
             app_result = create_file_with_agent(
                 description=app_description,
                 file_type="py",
@@ -186,7 +187,7 @@ def generate_application(project_id, description, agent, model, options, feature
                 workspace_path=project_dir,
                 model="openai"
             )
-            
+
             if app_result.get('success'):
                 update_status(45, "Generando código principal...", f"app.py generado exitosamente con {tech_backend}")
             else:
@@ -233,7 +234,7 @@ if __name__ == "__main__":
             que implementa las siguientes características: {', '.join(features)}.
             {'Include libraries for ' + tech_frontend + ' integration' if is_web_app else ''}
             La aplicación usa {tech_database} como base de datos."""
-            
+
             req_result = create_file_with_agent(
                 description=requirements_description,
                 file_type="txt",
@@ -242,7 +243,7 @@ if __name__ == "__main__":
                 workspace_path=project_dir,
                 model="openai"
             )
-            
+
             if not req_result.get('success'):
                 # Fallback a plantilla simple si falla
                 with open(os.path.join(project_dir, 'requirements.txt'), 'w') as f:
@@ -265,10 +266,10 @@ flask-cors==3.0.10
                 # Generar index.html
                 index_description = f"""Crear una página principal index.html para una aplicación web que implementa las siguientes características:
                 {', '.join(features)}
-                
+
                 La aplicación debe usar {tech_frontend} para el frontend.
                 Debe ser una implementación completa, no una demostración o plantilla."""
-                
+
                 index_result = create_file_with_agent(
                     description=index_description,
                     file_type="html",
@@ -277,7 +278,7 @@ flask-cors==3.0.10
                     workspace_path=project_dir,
                     model="openai"
                 )
-                
+
                 if index_result.get('success'):
                     update_status(50, "Generando interfaz de usuario...", "index.html generado correctamente")
                 else:
@@ -315,10 +316,10 @@ flask-cors==3.0.10
                 # Generar CSS
                 css_description = f"""Crear un archivo CSS principal para una aplicación web que implementa:
                 {', '.join(features)}
-                
+
                 El archivo debe usar {tech_frontend} y proporcionar estilos completos para toda la aplicación,
                 incluyendo diseño responsivo para móviles, tablets y desktop."""
-                
+
                 css_result = create_file_with_agent(
                     description=css_description,
                     file_type="css",
@@ -327,7 +328,7 @@ flask-cors==3.0.10
                     workspace_path=project_dir,
                     model="openai"
                 )
-                
+
                 if not css_result.get('success'):
                     # Fallback a plantilla simple si falla
                     with open(os.path.join(project_dir, 'static', 'css', 'style.css'), 'w') as f:
@@ -372,13 +373,13 @@ footer {
                 # Generar JS
                 js_description = f"""Crear un archivo JavaScript principal para una aplicación web que implementa:
                 {', '.join(features)}
-                
+
                 El archivo debe implementar toda la funcionalidad del lado del cliente, incluyendo:
                 - Manejo de eventos
                 - Validación de formularios
                 - Integración con API backend
                 - Actualización dinámica de contenido"""
-                
+
                 js_result = create_file_with_agent(
                     description=js_description,
                     file_type="js",
@@ -387,7 +388,7 @@ footer {
                     workspace_path=project_dir,
                     model="openai"
                 )
-                
+
                 if not js_result.get('success'):
                     # Fallback a plantilla simple si falla
                     with open(os.path.join(project_dir, 'static', 'js', 'main.js'), 'w') as f:
@@ -551,7 +552,7 @@ footer {
             # Eliminar caracteres especiales adicionales
             import re
             feature_name = re.sub(r'[^a-z0-9_]', '', feature_name)
-            
+
             # Asegurarse de que no esté vacío y comience con una letra
             if not feature_name or not feature_name[0].isalpha():
                 feature_name = f"feature_{i}"
@@ -567,18 +568,18 @@ footer {
                     is_ui_feature = any(kw in feature.lower() for kw in ['interfaz', 'ui', 'página', 'formulario', 'vista'])
                     is_data_feature = any(kw in feature.lower() for kw in ['datos', 'base de datos', 'db', 'modelo', 'entity'])
                     is_auth_feature = any(kw in feature.lower() for kw in ['auth', 'login', 'registro', 'usuario', 'autenticación'])
-                    
+
                     if is_web_app:
                         # Generar módulo backend para la característica
                         module_description = f"""Crear un módulo completo para la característica: {feature}.
-                        
+
                         Este módulo debe implementar toda la funcionalidad backend necesaria para {feature},
                         incluyendo rutas, lógica de negocio, y acceso a datos.
-                        
+
                         La aplicación utiliza {tech_backend} como framework backend y {tech_database} como base de datos.
-                        
+
                         Implementa CÓDIGO COMPLETO Y FUNCIONAL, no un esqueleto o plantilla."""
-                        
+
                         module_result = create_file_with_agent(
                             description=module_description,
                             file_type="py",
@@ -587,20 +588,20 @@ footer {
                             workspace_path=project_dir,
                             model="openai"
                         )
-                        
+
                         # Asegurar que existe el directorio routes
                         os.makedirs(os.path.join(project_dir, 'routes'), exist_ok=True)
-                        
+
                         # Generar plantilla frontend para la característica
                         template_description = f"""Crear una plantilla HTML completa para la característica: {feature}.
-                        
+
                         Esta plantilla debe implementar toda la interfaz de usuario para {feature},
                         incluyendo formularios, tablas, visualizaciones y elementos interactivos.
-                        
+
                         La aplicación utiliza {tech_frontend} como framework frontend.
-                        
+
                         Implementa CÓDIGO COMPLETO Y FUNCIONAL, no un esqueleto o plantilla."""
-                        
+
                         os.makedirs(os.path.join(project_dir, 'templates'), exist_ok=True)
                         template_result = create_file_with_agent(
                             description=template_description,
@@ -610,18 +611,18 @@ footer {
                             workspace_path=project_dir,
                             model="openai"
                         )
-                        
+
                         # Si es característica con interfaz, generar CSS específico
                         if is_ui_feature:
                             css_description = f"""Crear un archivo CSS para la característica: {feature}.
-                            
+
                             Este archivo debe proporcionar todos los estilos necesarios para la interfaz de {feature},
                             incluyendo diseño responsivo, animaciones, y estilos de componentes.
-                            
+
                             La aplicación utiliza {tech_frontend} como framework CSS.
-                            
+
                             Implementa CÓDIGO COMPLETO Y FUNCIONAL, no un esqueleto o plantilla."""
-                            
+
                             os.makedirs(os.path.join(project_dir, 'static/css'), exist_ok=True)
                             css_result = create_file_with_agent(
                                 description=css_description,
@@ -631,15 +632,15 @@ footer {
                                 workspace_path=project_dir,
                                 model="openai"
                             )
-                            
+
                             # Generar también JavaScript para la funcionalidad frontend
                             js_description = f"""Crear un archivo JavaScript para la característica: {feature}.
-                            
+
                             Este archivo debe implementar toda la lógica del lado del cliente para {feature},
                             incluyendo interacciones con la API, validación, y manipulación del DOM.
-                            
+
                             Implementa CÓDIGO COMPLETO Y FUNCIONAL, no un esqueleto o plantilla."""
-                            
+
                             os.makedirs(os.path.join(project_dir, 'static/js'), exist_ok=True)
                             js_result = create_file_with_agent(
                                 description=js_description,
@@ -649,18 +650,18 @@ footer {
                                 workspace_path=project_dir,
                                 model="openai"
                             )
-                        
+
                         # Si es característica de datos, generar modelo específico
                         if is_data_feature:
                             model_description = f"""Crear un modelo de datos para la característica: {feature}.
-                            
+
                             Este archivo debe definir todas las estructuras de datos necesarias para {feature},
                             incluyendo clases, esquemas, y métodos de acceso a datos.
-                            
+
                             La aplicación utiliza {tech_database} como base de datos.
-                            
+
                             Implementa CÓDIGO COMPLETO Y FUNCIONAL, no un esqueleto o plantilla."""
-                            
+
                             os.makedirs(os.path.join(project_dir, 'models'), exist_ok=True)
                             model_result = create_file_with_agent(
                                 description=model_description,
@@ -673,12 +674,12 @@ footer {
                     else:
                         # Para aplicaciones CLI, generar módulo de característica
                         module_description = f"""Crear un módulo de línea de comandos completo para la característica: {feature}.
-                        
+
                         Este módulo debe implementar toda la funcionalidad necesaria para {feature},
                         incluyendo procesamiento de argumentos, lógica de negocio, y salida al usuario.
-                        
+
                         Implementa CÓDIGO COMPLETO Y FUNCIONAL, no un esqueleto o plantilla."""
-                        
+
                         module_result = create_file_with_agent(
                             description=module_description,
                             file_type="py",
@@ -687,14 +688,14 @@ footer {
                             workspace_path=project_dir,
                             model="openai"
                         )
-                        
+
                         # Asegurar que existe el directorio modules
                         os.makedirs(os.path.join(project_dir, 'modules'), exist_ok=True)
-                    
+
                     # Update progress incrementally
                     progress = 60 + int((i+1) * 30 / len(features[:5]))
                     update_status(progress, f"Implementando característica: {feature}", f"Generando código para {feature}")
-                    
+
                 except Exception as e:
                     logging.error(f"Error generando código para característica {feature}: {str(e)}")
                     update_status(progress, f"Error en característica: {feature}", f"Error: {str(e)}")
@@ -707,7 +708,7 @@ footer {
                     os.makedirs(os.path.join(project_dir, 'templates'), exist_ok=True)
                     os.makedirs(os.path.join(project_dir, 'static', 'css'), exist_ok=True)
                     os.makedirs(os.path.join(project_dir, 'static', 'js'), exist_ok=True)
-                    
+
                     # Add a route for this feature
                     with open(os.path.join(project_dir, f'routes/{feature_name}_routes.py'), 'w') as f:
                         f.write(f"""# Módulo para la característica: {feature}
@@ -757,7 +758,7 @@ def get_{feature_name}_data():
 <script src="{{ url_for('static', filename='js/{feature_name}.js') }}"></script>
 {{% endblock %}}"""
                         f.write(template_content)
-                    
+
                     # Add feature JavaScript
                     with open(os.path.join(project_dir, 'static', 'js', f'{feature_name}.js'), 'w') as f:
                         f.write(f"""document.addEventListener('DOMContentLoaded', function() {{
@@ -778,7 +779,7 @@ def get_{feature_name}_data():
                 `<p class="error">Error cargando datos: ${{error.message}}</p>`;
         }});
 }});""")
-                    
+
                     # Add feature CSS
                     with open(os.path.join(project_dir, 'static', 'css', f'{feature_name}.css'), 'w') as f:
                         f.write(f""".feature-container {{
@@ -813,7 +814,7 @@ def get_{feature_name}_data():
                 else:
                     # Crear directorio para módulos CLI
                     os.makedirs(os.path.join(project_dir, 'modules'), exist_ok=True)
-                    
+
                     # Add a module for this feature
                     with open(os.path.join(project_dir, f'modules/{feature_name}.py'), 'w') as f:
                         f.write(f"""# Módulo para la característica: {feature}
@@ -830,10 +831,10 @@ class {feature_name.capitalize()}:
     def execute(self, args=None):
         \"\"\"
         Ejecuta la funcionalidad principal
-        
+
         Args:
             args: Argumentos opcionales para la ejecución
-            
+
         Returns:
             bool: Resultado de la ejecución
         \"\"\"
@@ -845,7 +846,7 @@ class {feature_name.capitalize()}:
     def get_info(self):
         \"\"\"
         Devuelve información sobre esta característica
-        
+
         Returns:
             dict: Información de la característica
         \"\"\"
@@ -1288,7 +1289,7 @@ def generate_project():
                 'success': False,
                 'error': 'Se requiere una descripción del proyecto'
             }), 400
-            
+
         # Procesar datos de tecnología si existen
         if tech_data:
             # Añadir información de tecnología al estado del proyecto
@@ -1297,7 +1298,7 @@ def generate_project():
                     tech_data = json.loads(tech_data)
                 except:
                     tech_data = {}
-                    
+
             # Añadir características basadas en tecnologías seleccionadas
             if isinstance(tech_data, dict):
                 # Añadir framework backend como característica
@@ -1305,288 +1306,19 @@ def generate_project():
                     backend_feature = f"Backend: {tech_data.get('backend')}"
                     if backend_feature not in features:
                         features.append(backend_feature)
-                
+
                 # Añadir framework frontend como característica
                 if tech_data.get('frontend'):
                     frontend_feature = f"Frontend: {tech_data.get('frontend')}"
                     if frontend_feature not in features:
                         features.append(frontend_feature)
-                
+
                 # Añadir base de datos como característica
                 if tech_data.get('database'):
                     db_feature = f"Base de datos: {tech_data.get('database')}"
                     if db_feature not in features:
                         features.append(db_feature)
 
-# Endpoints para el Asistente Interactivo
-
-@constructor_bp.route('/api/assistant/chat', methods=['POST'])
-def assistant_chat():
-    """Procesa mensajes del asistente interactivo."""
-    try:
-        # Obtener datos de la solicitud
-        data = request.get_json()
-        if not data:
-            return jsonify({'success': False, 'error': 'No se proporcionaron datos'})
-        
-        message = data.get('message', '')
-        context = data.get('context', {})
-        
-        if not message:
-            return jsonify({'success': False, 'error': 'Mensaje vacío'})
-        
-        # Registrar la solicitud
-        logging.info(f"Mensaje recibido para asistente: {message[:50]}...")
-        
-        # Obtener IDs de proyecto y estado actual
-        project_id = context.get('projectId')
-        mode = context.get('mode', 'information')
-        current_stage = context.get('currentStage')
-        
-        # Construir prompt para el asistente
-        system_prompt = """Eres un asistente de desarrollo especializado en ayudar a modificar funciones específicas en proyectos de software.
-Tu objetivo es proporcionar respuestas precisas y útiles para ayudar al usuario a modificar o crear código en su proyecto.
-
-Cuando el usuario solicite modificar alguna función o archivo específico:
-1. Analiza cuidadosamente la solicitud para entender qué parte del código necesita ser modificada
-2. Proporciona código claro y bien documentado para la modificación
-3. Explica brevemente qué hace el código y cómo soluciona el problema
-4. Si es necesario, sugiere acciones específicas que pueden ser automatizadas
-
-Utiliza bloques de código con triple backtick para mostrar el código, incluyendo el lenguaje correspondiente:
-```javascript
-// Código JavaScript aquí
-```
-
-```python
-# Código Python aquí
-```
-
-```css
-/* Código CSS aquí */
-```
-
-Actualmente estás en modo: """ + mode
-
-        if project_id and project_id in project_status:
-            # Agregar información sobre el proyecto actual si está disponible
-            project_info = project_status.get(project_id, {})
-            system_prompt += f"""
-
-Información del proyecto actual:
-- ID: {project_id}
-- Estado: {project_info.get('status', 'desconocido')}
-- Etapa actual: {project_info.get('current_stage', 'desconocida')}
-- Progreso: {project_info.get('progress', 0)}%
-"""
-        
-        # Determinar qué modelo usar para responder
-        model_to_use = 'openai'  # Por defecto usar OpenAI
-        
-        # Verificar disponibilidad de APIs
-        if os.environ.get('OPENAI_API_KEY'):
-            model_to_use = 'openai'
-        elif os.environ.get('ANTHROPIC_API_KEY'):
-            model_to_use = 'anthropic'
-        elif os.environ.get('GEMINI_API_KEY'):
-            model_to_use = 'gemini'
-        
-        # Preparar datos para generar la respuesta
-        response_text = None
-        actions = []
-        
-        # Generar respuesta usando el modelo disponible
-        if model_to_use == 'openai' and os.environ.get('OPENAI_API_KEY'):
-            try:
-                openai_client = openai.OpenAI()
-                completion = openai_client.chat.completions.create(
-                    model="gpt-4o",
-                    messages=[
-                        {"role": "system", "content": system_prompt},
-                        {"role": "user", "content": message}
-                    ],
-                    temperature=0.7,
-                    max_tokens=1500
-                )
-                response_text = completion.choices[0].message.content
-            except Exception as e:
-                logging.error(f"Error con OpenAI API: {str(e)}")
-                return jsonify({'success': False, 'error': f"Error al generar respuesta: {str(e)}"})
-        
-        elif model_to_use == 'anthropic' and os.environ.get('ANTHROPIC_API_KEY'):
-            try:
-                import anthropic
-                client = anthropic.Anthropic(api_key=os.environ.get('ANTHROPIC_API_KEY'))
-                
-                message_response = client.messages.create(
-                    model="claude-3-opus-20240229",
-                    max_tokens=1500,
-                    temperature=0.7,
-                    system=system_prompt,
-                    messages=[
-                        {"role": "user", "content": message}
-                    ]
-                )
-                
-                response_text = message_response.content[0].text
-            except Exception as e:
-                logging.error(f"Error con Anthropic API: {str(e)}")
-                return jsonify({'success': False, 'error': f"Error al generar respuesta: {str(e)}"})
-        
-        elif model_to_use == 'gemini' and os.environ.get('GEMINI_API_KEY'):
-            try:
-                import google.generativeai as genai
-                genai.configure(api_key=os.environ.get('GEMINI_API_KEY'))
-                
-                model = genai.GenerativeModel('gemini-1.5-pro')
-                prompt = f"{system_prompt}\n\nUsuario: {message}\n\nAsistente:"
-                
-                response = model.generate_content(prompt)
-                response_text = response.text
-            except Exception as e:
-                logging.error(f"Error con Gemini API: {str(e)}")
-                return jsonify({'success': False, 'error': f"Error al generar respuesta: {str(e)}"})
-        
-        else:
-            return jsonify({
-                'success': False, 
-                'error': 'No hay modelos de IA configurados. Por favor configura al menos una API key.'
-            })
-        
-        # Si estamos en modo intervención y hay un proyecto activo, intentar detectar acciones
-        if mode == 'intervention' and project_id and project_id in project_status:
-            # Por simplicidad, solo detectamos algunas acciones básicas
-            # En una implementación real, esto sería más sofisticado
-            
-            # Detectar si la respuesta sugiere agregar un archivo
-            if "crear un nuevo archivo" in response_text.lower() or "crear archivo" in response_text.lower():
-                # Extraer posible nombre de archivo de la respuesta
-                import re
-                file_match = re.search(r'`([^`]+\.[a-zA-Z0-9]+)`', response_text)
-                
-                if file_match:
-                    filename = file_match.group(1)
-                    actions.append({
-                        'type': 'add_file',
-                        'filename': filename,
-                        'content': 'Por determinar'
-                    })
-            
-            # Detectar si la respuesta sugiere modificar un archivo existente
-            if "modificar el archivo" in response_text.lower() or "modificar archivo" in response_text.lower():
-                # Extraer posible nombre de archivo de la respuesta
-                import re
-                file_match = re.search(r'`([^`]+\.[a-zA-Z0-9]+)`', response_text)
-                
-                if file_match:
-                    filename = file_match.group(1)
-                    actions.append({
-                        'type': 'modify_file',
-                        'filename': filename,
-                        'changes': 'Por determinar'
-                    })
-        
-        return jsonify({
-            'success': True,
-            'response': response_text,
-            'actions': actions,
-            'model_used': model_to_use
-        })
-    
-    except Exception as e:
-        logging.error(f"Error en asistente de chat: {str(e)}")
-        logging.error(traceback.format_exc())
-        return jsonify({'success': False, 'error': str(e)})
-
-@constructor_bp.route('/api/assistant/execute-action', methods=['POST'])
-def execute_assistant_action():
-    """Ejecuta una acción solicitada por el asistente."""
-    try:
-        data = request.get_json()
-        project_id = data.get('project_id')
-        action = data.get('action')
-        
-        if not project_id or not action:
-            return jsonify({'success': False, 'error': 'Falta project_id o action'})
-        
-        if project_id not in project_status:
-            return jsonify({'success': False, 'error': 'Proyecto no encontrado'})
-        
-        # Registrar la acción
-        logging.info(f"Ejecutando acción: {action.get('type')} para proyecto {project_id}")
-        
-        # Actualmente solo simularemos la ejecución para mostrar el flujo
-        # En una implementación real, aquí se realizarían las acciones en los archivos del proyecto
-        
-        action_type = action.get('type')
-        
-        if action_type == 'add_file':
-            # Simular agregar archivo
-            return jsonify({
-                'success': True,
-                'message': f"Archivo {action.get('filename')} agregado (simulación)",
-                'action_type': action_type
-            })
-        
-        elif action_type == 'modify_file':
-            # Simular modificar archivo
-            return jsonify({
-                'success': True,
-                'message': f"Archivo {action.get('filename')} modificado (simulación)",
-                'action_type': action_type
-            })
-        
-        elif action_type == 'notification':
-            # Notificación simple
-            return jsonify({
-                'success': True,
-                'message': action.get('message', 'Notificación'),
-                'action_type': action_type
-            })
-        
-        else:
-            return jsonify({
-                'success': False,
-                'error': f"Tipo de acción no soportado: {action_type}"
-            })
-    
-    except Exception as e:
-        logging.error(f"Error al ejecutar acción: {str(e)}")
-        logging.error(traceback.format_exc())
-        return jsonify({'success': False, 'error': str(e)})
-
-@constructor_bp.route('/api/assistant/intervention-mode', methods=['POST'])
-def set_intervention_mode():
-    """Configura el modo de intervención para un proyecto."""
-    try:
-        data = request.get_json()
-        project_id = data.get('project_id')
-        is_intervening = data.get('is_intervening', False)
-        
-        if not project_id:
-            return jsonify({'success': False, 'error': 'Falta project_id'})
-        
-        if project_id not in project_status:
-            return jsonify({'success': False, 'error': 'Proyecto no encontrado'})
-        
-        # Guardar el estado de intervención en el proyecto
-        project_status[project_id]['intervention_mode'] = is_intervening
-        
-        # Registrar el cambio
-        mode_str = "activado" if is_intervening else "desactivado"
-        logging.info(f"Modo intervención {mode_str} para proyecto {project_id}")
-        
-        return jsonify({
-            'success': True,
-            'project_id': project_id,
-            'intervention_mode': is_intervening
-        })
-    
-    except Exception as e:
-        logging.error(f"Error al configurar modo intervención: {str(e)}")
-        return jsonify({'success': False, 'error': str(e)})
-
-                
                 # Añadir características adicionales
                 if tech_data.get('features') and isinstance(tech_data.get('features'), list):
                     for feature in tech_data.get('features'):
@@ -1740,7 +1472,7 @@ def download_project(project_id):
                                 file_path = os.path.join(root, file)
                                 arcname = os.path.relpath(file_path, project_dir)
                                 zipf.write(file_path, arcname)
-                    
+
                     # Retornar el archivo zip recién creado
                     return send_file(
                         zip_path,
@@ -1767,7 +1499,7 @@ def download_project(project_id):
                                 file_path = os.path.join(root, file)
                                 arcname = os.path.relpath(file_path, project_dir)
                                 zipf.write(file_path, arcname)
-                    
+
                     # Retornar el archivo zip
                     return send_file(
                         zip_path,
@@ -1775,7 +1507,7 @@ def download_project(project_id):
                         as_attachment=True,
                         download_name=f"{project_id}.zip"
                     )
-            
+
             # Si no está completado ni falló, mostrar mensaje de error
             return jsonify({
                 'success': False,
@@ -1799,14 +1531,14 @@ def download_project(project_id):
                 # Crear un proyecto mínimo para evitar errores
                 project_dir = os.path.join(PROJECTS_DIR, project_id)
                 os.makedirs(project_dir, exist_ok=True)
-                
+
                 # Crear un archivo README con información del error
                 with open(os.path.join(project_dir, 'README.md'), 'w') as f:
                     f.write(f"# Proyecto: {project_id}\n\n")
                     f.write("Este proyecto tuvo un error durante la generación.\n")
                     if project_id in project_status and 'error' in project_status[project_id]:
                         f.write(f"\nError: {project_status[project_id]['error']}\n")
-                
+
                 # Crear un archivo index.html simple
                 os.makedirs(os.path.join(project_dir, 'templates'), exist_ok=True)
                 with open(os.path.join(project_dir, 'templates', 'index.html'), 'w') as f:
@@ -1820,7 +1552,7 @@ def download_project(project_id):
     <p>Se produjo un error durante la generación de este proyecto.</p>
 </body>
 </html>""")
-                
+
                 # Crear app.py simple
                 with open(os.path.join(project_dir, 'app.py'), 'w') as f:
                     f.write("""from flask import Flask, render_template
@@ -1834,7 +1566,7 @@ def index():
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)
 """)
-                
+
                 # Crear el zip con estos archivos mínimos
                 with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
                     for root, dirs, files in os.walk(project_dir):
@@ -1856,14 +1588,14 @@ if __name__ == '__main__':
         try:
             project_dir = os.path.join(PROJECTS_DIR, project_id)
             os.makedirs(project_dir, exist_ok=True)
-            
+
             with open(os.path.join(project_dir, 'ERROR.txt'), 'w') as f:
                 f.write(f"Error al descargar el proyecto: {str(e)}\n")
-            
+
             zip_path = os.path.join(PROJECTS_DIR, f"{project_id}_error.zip")
             with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
                 zipf.write(os.path.join(project_dir, 'ERROR.txt'), 'ERROR.txt')
-            
+
             return send_file(
                 zip_path,
                 mimetype='application/zip',
@@ -1915,8 +1647,7 @@ def preview_project(project_id):
 @constructor_bp.route('/api/constructor/pause/<project_id>', methods=['POST'])
 def pause_development(project_id):
     try:
-        if project_id not in project_status:
-            return jsonify({
+        if project_id not in project_status:            return jsonify({
                 'success': False,
                 'error': 'Proyecto no encontrado'
             }), 404
