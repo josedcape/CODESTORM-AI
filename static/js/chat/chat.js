@@ -37,6 +37,13 @@ window.initializeChat = function() {
 
     // Configurar modelos disponibles
     window.app.chat.availableModels = window.app.chat.availableModels || {
+        'openai': 'GPT-4o - Modelo avanzado de OpenAI con excelente seguimiento de instrucciones',
+        'anthropic': 'Claude 3.5 Sonnet - Especializado en desarrollo y automatización con alto contexto',
+        'gemini': 'Gemini 1.5 Pro - Análisis de grandes bases de código con 1M de tokens'
+    };
+
+    // Modelos completos disponibles (para referencia futura)
+    window.app.chat.fullModelList = {
         'gpt-4o': 'GPT-4o - Modelo avanzado de OpenAI con excelente seguimiento de instrucciones',
         'gpt-o3': 'GPT-o3 - Versión optimizada para generación y análisis de código',
         'claude-3-opus': 'Claude 3 Opus - Modelo premium de Anthropic con razonamiento avanzado',
@@ -321,7 +328,7 @@ async function sendMessage() {
     if (!window.app || !window.app.chat) {
         console.error("Error: window.app.chat no está inicializado");
         addSystemMessage("Error: Inicialización incompleta. Recargando interfaz...");
-        
+
         // Inicializar objetos necesarios si no existen
         window.app = window.app || {};
         window.app.chat = window.app.chat || {};
@@ -335,14 +342,14 @@ async function sendMessage() {
             execute: '/api/execute_command',
             files: '/api/files'
         };
-        
+
         // Reintentar setup
         setupUIElements();
     }
-    
+
     const messageInput = document.getElementById('message-input');
     const sendButton = document.getElementById('send-button');
-    
+
     if (!messageInput) {
         console.error("Elemento de entrada de mensaje no encontrado");
         return;
@@ -353,7 +360,7 @@ async function sendMessage() {
 
     // Añadir mensaje del usuario al chat y contexto
     addUserMessage(userMessage);
-    
+
     // Asegurarse de que el contexto exista
     window.app.chat.context = window.app.chat.context || [];
     window.app.chat.context.push({
@@ -399,7 +406,7 @@ async function sendMessage() {
             chat: '/api/chat',
             fallback: '/api/generate'
         };
-        
+
         const apiUrl = apiEndpoints.chat || '/api/chat';
 
         const response = await fetch(apiUrl, {
@@ -476,7 +483,7 @@ async function sendMessage() {
         try {
             addSystemMessage("Intentando con servidor de respaldo...");
             const fallbackUrl = (window.app.chat.apiEndpoints || {}).fallback || '/api/generate';
-            
+
             const fallbackResponse = await fetch(fallbackUrl, {
                 method: 'POST',
                 headers: {

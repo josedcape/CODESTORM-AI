@@ -387,9 +387,12 @@ def handle_chat_internal(request_data):
                         messages.append({"role": msg['role'], "content": msg['content']})
                     messages.append({"role": "user", "content": user_message})
 
+                    # Usar el modelo más avanzado disponible: GPT-4o
+                    openai_model = "gpt-4o"
+
                     if USING_NEW_OPENAI_CLIENT:
                         completion = client.chat.completions.create(
-                            model="gpt-4o",
+                            model=openai_model,
                             messages=messages,
                             temperature=0.7,
                             max_tokens=2000
@@ -397,13 +400,13 @@ def handle_chat_internal(request_data):
                         response = completion.choices[0].message.content
                     else:
                         completion = openai.ChatCompletion.create(
-                            model="gpt-4o",
+                            model=openai_model,
                             messages=messages,
                             temperature=0.7,
                             max_tokens=2000
                         )
                         response = completion.choices[0].message.content
-                    logging.info(f"Respuesta generada con OpenAI: {response[:100]}...")
+                    logging.info(f"Respuesta generada con OpenAI ({openai_model}): {response[:100]}...")
 
                     return {'response': response, 'error': None}
                 except Exception as e:
@@ -769,8 +772,7 @@ def process_code_endpoint():
 @app.route('/api/process_natural', methods=['POST'])
 def process_natural_command():
     """Process natural language input and return corresponding command."""
-    try:
-        data = request.json
+    try:        data = request.json
         # Support both'text' and 'instruction' for backward compatibility
         text = data.get('text', '') or data.get('instruction', '')
         model_choice = data.get('model', 'openai')
