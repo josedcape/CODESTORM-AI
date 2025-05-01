@@ -97,6 +97,38 @@ window.initializeChat = function() {
             icon: 'gear-wide-connected'
         },
         'general': {
+
+// Función para copiar código al portapapeles
+window.copyCode = function(button) {
+    const preElement = button.closest('.code-block-container').querySelector('pre');
+    const codeElement = preElement.querySelector('code');
+    const textToCopy = codeElement.textContent;
+    
+    navigator.clipboard.writeText(textToCopy).then(() => {
+        const originalText = button.textContent;
+        button.textContent = '¡Copiado!';
+        button.style.backgroundColor = 'rgba(40, 167, 69, 0.3)';
+        button.style.borderColor = 'rgba(40, 167, 69, 0.5)';
+        
+        setTimeout(() => {
+            button.textContent = originalText;
+            button.style.backgroundColor = '';
+            button.style.borderColor = '';
+        }, 2000);
+    }).catch(err => {
+        console.error('Error al copiar texto: ', err);
+        button.textContent = 'Error al copiar';
+        button.style.backgroundColor = 'rgba(220, 53, 69, 0.3)';
+        button.style.borderColor = 'rgba(220, 53, 69, 0.5)';
+        
+        setTimeout(() => {
+            button.textContent = 'Copiar';
+            button.style.backgroundColor = '';
+            button.style.borderColor = '';
+        }, 2000);
+    });
+}
+
             name: 'Asistente General',
             description: 'Asistente versátil para diversas tareas de programación',
             capabilities: [
@@ -1128,14 +1160,20 @@ function formatMessageContent(content) {
 
                     content = lines.join('\n');
 
-                    // Restaurar bloques de código
+                    // Restaurar bloques de código con mejor formato
                     codeBlocks.forEach((block, i) => {
                     const escapedCode = block.code
                         .replace(/</g, '&lt;')
                         .replace(/>/g, '&gt;');
-                                        content = content.replace(
+                    content = content.replace(
                         `__CODE_BLOCK_${i}__`, 
-                        `<pre><code class="language-${block.language}">${escapedCode}</code></pre>`
+                        `<div class="code-block-container">
+                          <div class="code-toolbar">
+                            <span class="code-language">${block.language || 'code'}</span>
+                            <button class="code-copy-btn" onclick="copyCode(this)">Copiar</button>
+                          </div>
+                          <pre><code class="language-${block.language || ''}">${escapedCode}</code></pre>
+                         </div>`
                     );
                     });
 
