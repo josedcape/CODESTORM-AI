@@ -317,8 +317,32 @@ function setupDocumentFeatures() {
  * Envía un mensaje al servidor y procesa la respuesta
  */
 async function sendMessage() {
-    const {messageInput, sendButton} = window.app.chat.elements;
-
+    // Asegurarse de que window.app y window.app.chat estén inicializados
+    if (!window.app || !window.app.chat) {
+        console.error("Error: window.app.chat no está inicializado");
+        addSystemMessage("Error: Inicialización incompleta. Recargando interfaz...");
+        
+        // Inicializar objetos necesarios si no existen
+        window.app = window.app || {};
+        window.app.chat = window.app.chat || {};
+        window.app.chat.elements = window.app.chat.elements || {};
+        window.app.chat.context = window.app.chat.context || [];
+        window.app.chat.apiEndpoints = window.app.chat.apiEndpoints || {
+            chat: '/api/chat',
+            fallback: '/api/generate',
+            health: '/api/health',
+            processCode: '/api/process_code',
+            execute: '/api/execute_command',
+            files: '/api/files'
+        };
+        
+        // Reintentar setup
+        setupUIElements();
+    }
+    
+    const messageInput = document.getElementById('message-input');
+    const sendButton = document.getElementById('send-button');
+    
     if (!messageInput) {
         console.error("Elemento de entrada de mensaje no encontrado");
         return;
@@ -329,6 +353,9 @@ async function sendMessage() {
 
     // Añadir mensaje del usuario al chat y contexto
     addUserMessage(userMessage);
+    
+    // Asegurarse de que el contexto exista
+    window.app.chat.context = window.app.chat.context || [];
     window.app.chat.context.push({
         role: 'user',
         content: userMessage
@@ -348,11 +375,15 @@ async function sendMessage() {
     // Mantener el contexto en un tamaño razonable (últimos 10 mensajes)
     const contextToSend = window.app.chat.context.slice(-10);
 
+    // Asegurarse de que los valores predeterminados estén disponibles
+    const activeAgent = window.app.chat.activeAgent || 'general';
+    const activeModel = window.app.chat.activeModel || 'gpt-4o';
+
     // Preparar datos para enviar al servidor
     const requestData = {
         message: userMessage,
-        agent_id: window.app.chat.activeAgent || 'general',
-        model: window.app.chat.activeModel || 'gemini',
+        agent_id: activeAgent,
+        model: activeModel,
         context: contextToSend
     };
 
@@ -363,8 +394,13 @@ async function sendMessage() {
         // No mostrar el debug en la interfaz
         silentLog('Enviando mensaje al servidor:', requestData);
 
-        // Asegurarse de usar la API endpoint correcta
-        const apiUrl = window.app.chat.apiEndpoints.chat || '/api/chat';
+        // Asegurarse de usar la API endpoint correcta y tener un respaldo
+        const apiEndpoints = window.app.chat.apiEndpoints || {
+            chat: '/api/chat',
+            fallback: '/api/generate'
+        };
+        
+        const apiUrl = apiEndpoints.chat || '/api/chat';
 
         const response = await fetch(apiUrl, {
             method: 'POST',
@@ -404,14 +440,14 @@ async function sendMessage() {
             });
 
             // Añadir mensaje del agente al chat
-            addAgentMessage(data.response, data.agent_id || data.agent || window.app.chat.activeAgent);
+            addAgentMessage(data.response, data.agent_id || data.agent || activeAgent);
         } else if (data.message && data.success) {
             // Formato alternativo: data.message con data.success
             window.app.chat.context.push({
                 role: 'assistant',
                 content: data.message
             });
-            addAgentMessage(data.message, data.agent_id || window.app.chat.activeAgent);
+            addAgentMessage(data.message, data.agent_id || activeAgent);
         } else if (data.error) {
             addSystemMessage(`Error: ${data.error}`);
 
@@ -439,14 +475,16 @@ async function sendMessage() {
         // Intentar con el endpoint de respaldo si el principal falla
         try {
             addSystemMessage("Intentando con servidor de respaldo...");
-            const fallbackResponse = await fetch(window.app.chat.apiEndpoints.fallback, {
+            const fallbackUrl = (window.app.chat.apiEndpoints || {}).fallback || '/api/generate';
+            
+            const fallbackResponse = await fetch(fallbackUrl, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
                     message: userMessage,
-                    model: window.app.chat.activeModel || 'gemini'
+                    model: activeModel
                 })
             });
 
@@ -460,7 +498,7 @@ async function sendMessage() {
                     });
 
                     // Añadir mensaje del agente al chat
-                    addAgentMessage(fallbackData.response, window.app.chat.activeAgent);
+                    addAgentMessage(fallbackData.response, activeAgent);
                     addSystemMessage("Respuesta generada por el servidor de respaldo");
                 }
             } else {

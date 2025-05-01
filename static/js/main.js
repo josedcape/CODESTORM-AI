@@ -188,8 +188,24 @@ document.addEventListener('DOMContentLoaded', function() {
             console.log('Observer para mensajes de chat configurado');
 
             // Asegurar que los objetos necesarios estén inicializados
+            window.app = window.app || {};
             window.app.chat = window.app.chat || {};
+            
+            // Inicializar endpoints API
+            window.app.apiEndpoints = window.app.apiEndpoints || {
+                chat: '/api/chat',
+                fallback: '/api/generate',
+                health: '/api/health',
+                processCode: '/api/process_code',
+                execute: '/api/execute_command',
+                files: '/api/files'
+            };
+            
+            // Asignar endpoints al chat
             window.app.chat.apiEndpoints = window.app.apiEndpoints;
+            
+            // Verificar explícitamente que los endpoints existan
+            console.log('API Endpoints configurados:', window.app.chat.apiEndpoints);
 
             // Inicializar chat
             if (typeof window.initializeChat === 'function') {
@@ -206,7 +222,16 @@ document.addEventListener('DOMContentLoaded', function() {
                     console.log('Chat.js cargado dinámicamente');
                     if (typeof window.initializeChat === 'function') {
                         window.initializeChat();
+                    } else {
+                        console.error('No se pudo cargar la función initializeChat. Recargando la página...');
+                        setTimeout(() => {
+                            window.location.reload();
+                        }, 3000);
                     }
+                };
+                chatScript.onerror = function() {
+                    console.error('Error al cargar chat.js');
+                    alert('Error al cargar el módulo de chat. Por favor, recarga la página.');
                 };
                 document.head.appendChild(chatScript);
             }

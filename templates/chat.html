@@ -1029,7 +1029,8 @@ code {
                     };
                     </script>
 
-                    <!-- Cargar script principal de chat primero -->
+                    <!-- Cargar scripts en orden correcto -->
+               <script src="{{ url_for('static', filename='js/main.js') }}"></script>
                     <script src="{{ url_for('static', filename='js/chat/chat.js') }}"></script>
 
                     <script>
