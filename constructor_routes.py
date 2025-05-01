@@ -1321,6 +1321,9 @@ def generate_project():
 
                 # Añadir características adicionales
                 if tech_data.get('features') and isinstance(tech_data.get('features'), list):
+                    for feature in tech_data.get('features'):
+                        if feature and feature not in features:
+                            features.append(feature)
 
 @constructor_bp.route('/api/dev-assistant/chat', methods=['POST'])
 def dev_assistant_chat():
@@ -1353,10 +1356,6 @@ def dev_assistant_chat():
         }
     
     return jsonify(response)
-
-                    for feature in tech_data.get('features'):
-                        if feature and feature not in features:
-                            features.append(feature)
 
         # Generate a unique project ID
         project_id = f"app_{uuid.uuid4().hex[:8]}_{int(time.time())}"
