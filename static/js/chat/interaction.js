@@ -397,3 +397,202 @@ document.addEventListener('DOMContentLoaded', function() {
     // Inicializar
     console.log('Asistente de chat interactivo inicializado');
 });
+/**
+ * Maneja la interacción con el asistente de desarrollo
+ */
+class DevelopmentAssistant {
+    constructor() {
+        this.chatInput = document.getElementById('assistant-chat-input');
+        this.chatMessages = document.getElementById('assistant-chat-messages');
+        this.sendButton = document.getElementById('send-assistant-message');
+        this.interventionMode = document.getElementById('intervention-mode');
+        
+        this.isWaitingResponse = false;
+        this.sessionId = this.generateSessionId();
+        
+        this.initEventListeners();
+    }
+    
+    initEventListeners() {
+        // Enviar mensaje al hacer clic en el botón
+        this.sendButton.addEventListener('click', () => this.sendMessage());
+        
+        // Enviar mensaje al presionar Enter
+        this.chatInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                this.sendMessage();
+            }
+        });
+    }
+    
+    /**
+     * Envía el mensaje al asistente
+     */
+    sendMessage() {
+        const message = this.chatInput.value.trim();
+        if (!message || this.isWaitingResponse) return;
+        
+        // Añadir mensaje del usuario al chat
+        this.addUserMessage(message);
+        this.chatInput.value = '';
+        
+        // Mostrar indicador de escritura
+        this.showTypingIndicator();
+        this.isWaitingResponse = true;
+        
+        // Enviar mensaje al backend
+        this.sendToBackend(message)
+            .then(response => {
+                // Ocultar indicador de escritura
+                this.hideTypingIndicator();
+                
+                // Añadir respuesta del asistente
+                this.addAssistantMessage(response.message);
+                
+                // Aplicar cambios de código si es necesario
+                if (response.codeChanges) {
+                    this.applyCodeChanges(response.codeChanges);
+                }
+                
+                this.isWaitingResponse = false;
+            })
+            .catch(error => {
+                this.hideTypingIndicator();
+                this.addSystemMessage(`Error: No se pudo obtener respuesta. ${error.message}`);
+                this.isWaitingResponse = false;
+            });
+    }
+    
+    /**
+     * Envía el mensaje al backend
+     * @param {string} message - Mensaje a enviar
+     * @return {Promise} - Promesa con la respuesta
+     */
+    sendToBackend(message) {
+        return fetch('/api/dev-assistant/chat', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                message: message,
+                sessionId: this.sessionId,
+                interventionMode: this.interventionMode.checked
+            })
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Error en la comunicación con el servidor');
+            }
+            return response.json();
+        });
+    }
+    
+    /**
+     * Añade un mensaje del usuario al chat
+     * @param {string} message - Mensaje del usuario
+     */
+    addUserMessage(message) {
+        const messageElement = document.createElement('div');
+        messageElement.className = 'message user-message';
+        messageElement.textContent = message;
+        this.chatMessages.appendChild(messageElement);
+        this.scrollToBottom();
+    }
+    
+    /**
+     * Añade un mensaje del asistente al chat
+     * @param {string} message - Mensaje del asistente
+     */
+    addAssistantMessage(message) {
+        const messageElement = document.createElement('div');
+        messageElement.className = 'message assistant-message';
+        messageElement.innerHTML = CodeFormatter.formatCode(message);
+        this.chatMessages.appendChild(messageElement);
+        
+        // Aplicar resaltado de sintaxis si hay código
+        CodeFormatter.highlightAll();
+        this.scrollToBottom();
+    }
+    
+    /**
+     * Añade un mensaje del sistema al chat
+     * @param {string} message - Mensaje del sistema
+     */
+    addSystemMessage(message) {
+        const messageElement = document.createElement('div');
+        messageElement.className = 'system-message';
+        messageElement.innerHTML = message;
+        this.chatMessages.appendChild(messageElement);
+        this.scrollToBottom();
+    }
+    
+    /**
+     * Muestra el indicador de escritura
+     */
+    showTypingIndicator() {
+        const typingIndicator = document.createElement('div');
+        typingIndicator.className = 'typing-indicator';
+        typingIndicator.id = 'typing-indicator';
+        
+        for (let i = 0; i < 3; i++) {
+            const bubble = document.createElement('div');
+            bubble.className = 'typing-bubble';
+            typingIndicator.appendChild(bubble);
+        }
+        
+        this.chatMessages.appendChild(typingIndicator);
+        this.scrollToBottom();
+    }
+    
+    /**
+     * Oculta el indicador de escritura
+     */
+    hideTypingIndicator() {
+        const typingIndicator = document.getElementById('typing-indicator');
+        if (typingIndicator) {
+            typingIndicator.remove();
+        }
+    }
+    
+    /**
+     * Aplica cambios de código en el proyecto
+     * @param {Object} changes - Cambios a aplicar
+     */
+    applyCodeChanges(changes) {
+        if (changes.success) {
+            this.addSystemMessage(`
+                <p><i class="bi bi-check-circle-fill text-success"></i> <strong>Cambios aplicados:</strong></p>
+                <ul>
+                    ${changes.files.map(file => `<li>Modificado: ${file}</li>`).join('')}
+                </ul>
+            `);
+        } else {
+            this.addSystemMessage(`
+                <p><i class="bi bi-exclamation-triangle-fill text-warning"></i> <strong>No se pudieron aplicar todos los cambios:</strong></p>
+                <p>${changes.error}</p>
+            `);
+        }
+    }
+    
+    /**
+     * Desplaza el chat hacia abajo
+     */
+    scrollToBottom() {
+        this.chatMessages.scrollTop = this.chatMessages.scrollHeight;
+    }
+    
+    /**
+     * Genera un ID de sesión único
+     * @return {string} - ID de sesión
+     */
+    generateSessionId() {
+        return 'session_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+    }
+}
+
+// Inicializar el asistente cuando el DOM esté listo
+document.addEventListener('DOMContentLoaded', function() {
+    window.developmentAssistant = new DevelopmentAssistant();
+});

@@ -330,3 +330,95 @@
     margin-bottom: 0.5rem;
   }
 }
+/* Estilos para el selector de tecnologías */
+.tech-selector {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 20px;
+}
+
+.tech-item {
+    background-color: #333;
+    border: 1px solid #555;
+    border-radius: 5px;
+    padding: 8px 15px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.tech-item:hover {
+    background-color: #444;
+    border-color: #777;
+}
+
+.tech-item.selected {
+    background-color: #1E88E5;
+    border-color: #1976D2;
+    color: white;
+}
+
+.tech-item .tech-icon {
+    width: 20px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.tech-item .tech-name {
+    font-size: 0.9rem;
+}
+
+/* Categorías de tecnologías */
+.tech-category {
+    margin-bottom: 20px;
+}
+
+.tech-category-title {
+    font-size: 1rem;
+    color: #aaa;
+    margin-bottom: 10px;
+    border-bottom: 1px solid #444;
+    padding-bottom: 5px;
+}
+
+/* Estilos para las insignias de tecnología */
+.tech-badge {
+    display: inline-flex;
+    align-items: center;
+    background-color: #1E88E5;
+    color: white;
+    padding: 4px 10px;
+    border-radius: 15px;
+    margin: 3px;
+    font-size: 0.8rem;
+}
+
+.tech-badge .tech-icon {
+    margin-right: 5px;
+}
+
+.tech-badge .remove-tech {
+    margin-left: 5px;
+    cursor: pointer;
+    opacity: 0.7;
+    transition: opacity 0.2s;
+}
+
+.tech-badge .remove-tech:hover {
+    opacity: 1;
+}
+
+/* Animación para añadir tecnologías */
+@keyframes techAdded {
+    0% { transform: scale(0.8); opacity: 0; }
+    100% { transform: scale(1); opacity: 1; }
+}
+
+.tech-added {
+    animation: techAdded 0.3s ease-out;
+}

@@ -216,3 +216,62 @@ document.addEventListener('DOMContentLoaded', function() {
     // Iniciar el formateador
     initCodeFormatter();
 });
+/**
+ * Utilidades para formatear código en los mensajes del chat
+ */
+const CodeFormatter = {
+    /**
+     * Detecta y formatea bloques de código en un mensaje
+     * @param {string} message - El mensaje a formatear
+     * @return {string} - Mensaje con código formateado en HTML
+     */
+    formatCode: function(message) {
+        // Detectar bloques de código con triple backtick
+        const codeBlockRegex = /```([a-zA-Z]*)\n([\s\S]*?)```/g;
+        
+        // Reemplazar bloques de código con elementos <pre><code>
+        let formattedMessage = message.replace(codeBlockRegex, (match, language, code) => {
+            const langClass = language ? `language-${language}` : '';
+            return `<pre><code class="${langClass}">${this.escapeHtml(code)}</code></pre>`;
+        });
+        
+        // Detectar código en línea con backtick simple
+        const inlineCodeRegex = /`([^`]+)`/g;
+        formattedMessage = formattedMessage.replace(inlineCodeRegex, '<code>$1</code>');
+        
+        return formattedMessage;
+    },
+    
+    /**
+     * Escapa caracteres HTML para mostrar código correctamente
+     * @param {string} html - Texto a escapar
+     * @return {string} - Texto con caracteres HTML escapados
+     */
+    escapeHtml: function(html) {
+        const escapeMap = {
+            '&': '&amp;',
+            '<': '&lt;',
+            '>': '&gt;',
+            '"': '&quot;',
+            "'": '&#039;'
+        };
+        
+        return html.replace(/[&<>"']/g, function(m) {
+            return escapeMap[m];
+        });
+    },
+    
+    /**
+     * Aplica resaltado de sintaxis a los bloques de código
+     */
+    highlightAll: function() {
+        // Si se usa una biblioteca como Prism.js o highlight.js
+        if (typeof Prism !== 'undefined') {
+            Prism.highlightAll();
+        } else if (typeof hljs !== 'undefined') {
+            document.querySelectorAll('pre code').forEach((block) => {
+                hljs.highlightBlock(block);
+            });
+        }
+    }
+};

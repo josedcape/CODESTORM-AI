@@ -1321,6 +1321,39 @@ def generate_project():
 
                 # Añadir características adicionales
                 if tech_data.get('features') and isinstance(tech_data.get('features'), list):
+
+@constructor_bp.route('/api/dev-assistant/chat', methods=['POST'])
+def dev_assistant_chat():
+    data = request.json
+    message = data.get('message', '')
+    session_id = data.get('sessionId', str(uuid.uuid4()))
+    intervention_mode = data.get('interventionMode', False)
+    
+    # Aquí implementarías la lógica para procesar el mensaje
+    # y generar una respuesta del asistente
+    
+    # Simulación de respuesta
+    time.sleep(1)  # Simular tiempo de procesamiento
+    
+    # Ejemplo de respuesta
+    if "función" in message.lower() or "agregar" in message.lower():
+        response = {
+            "message": "He analizado tu solicitud y puedo implementar esa función. Aquí está el código:\n\n```javascript\n/**\n * Valida si una dirección de correo electrónico es válida\n * @param {string} email - El correo electrónico a validar\n * @return {boolean} - true si es válido, false si no\n */\nfunction validateEmail(email) {\n  const regex = /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/;\n  return regex.test(email);\n}\n```\n\n¿Quieres que aplique este cambio al archivo?",
+            "codeChanges": None  # No aplicamos cambios hasta confirmación
+        }
+    elif "error" in message.lower() or "depurar" in message.lower():
+        response = {
+            "message": "He encontrado un posible error en tu código. El problema parece estar en la línea donde intentas acceder a una propiedad de un objeto que podría ser null. Deberías agregar una verificación:\n\n```javascript\n// Código original con error\nconst userName = user.profile.name;\n\n// Código corregido\nconst userName = user && user.profile ? user.profile.name : '';\n```\n\n¿Quieres que aplique esta corrección?",
+            "codeChanges": None
+        }
+    else:
+        response = {
+            "message": "Entiendo tu solicitud. Para implementar esto necesitaría más detalles sobre el contexto específico. ¿Podrías indicarme en qué archivo quieres hacer estos cambios y proporcionar más información sobre la funcionalidad deseada?",
+            "codeChanges": None
+        }
+    
+    return jsonify(response)
+
                     for feature in tech_data.get('features'):
                         if feature and feature not in features:
                             features.append(feature)
