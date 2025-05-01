@@ -1,3 +1,100 @@
+
+/* Estilos para la visualización de código en el chat */
+.code-block {
+    background-color: #1e1e1e;
+    border-radius: 8px;
+    margin: 15px 0;
+    overflow: hidden;
+    border: 1px solid #444;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+}
+
+.code-header {
+    background-color: #2d2d2d;
+    color: #e0e0e0;
+    padding: 8px 16px;
+    font-family: monospace;
+    font-size: 12px;
+    text-transform: uppercase;
+    border-bottom: 1px solid #3d3d3d;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.code-block pre {
+    margin: 0;
+    padding: 16px;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    color: #e0e0e0;
+    font-family: 'Courier New', monospace;
+    font-size: 14px;
+    line-height: 1.5;
+    background-color: transparent;
+    overflow-x: auto;
+    max-height: 400px;
+}
+
+.code-block code {
+    background-color: transparent;
+    padding: 0;
+    font-family: 'Courier New', monospace;
+}
+
+.assistant-message p {
+    margin-bottom: 10px;
+}
+
+.assistant-message a {
+    color: #1E88E5;
+    text-decoration: none;
+}
+
+.assistant-message a:hover {
+    text-decoration: underline;
+}
+
+/* Colores de sintaxis para resaltado básico */
+.language-javascript .keyword, 
+.language-typescript .keyword,
+.language-python .keyword { 
+    color: #569CD6; 
+}
+
+.language-javascript .string, 
+.language-python .string,
+.language-html .string,
+.language-css .string { 
+    color: #CE9178; 
+}
+
+.language-javascript .number,
+.language-python .number { 
+    color: #B5CEA8; 
+}
+
+.language-javascript .comment,
+.language-python .comment { 
+    color: #6A9955; 
+}
+
+.language-html .tag { 
+    color: #569CD6; 
+}
+
+.language-html .attr { 
+    color: #9CDCFE; 
+}
+
+.language-css .property { 
+    color: #9CDCFE; 
+}
+
+.language-css .value { 
+    color: #CE9178; 
+}
+
 /* Estilos para el componente de chat de CODESTORM */
 
 /* Contenedor principal del chat */
