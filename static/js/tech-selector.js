@@ -1,3 +1,4 @@
+
 // Controlador de selección de tecnologías
 class TechSelector {
   constructor() {
@@ -84,82 +85,150 @@ class TechSelector {
         description: 'Para APIs de alto rendimiento con UI reactiva'
       }
     ];
+
+    // Añadir estilos para notificaciones
+    this.initNotificationStyles();
+  }
+
+  // Inicializar estilos para notificaciones
+  initNotificationStyles() {
+    if (!document.getElementById('notification-styles')) {
+      const style = document.createElement('style');
+      style.id = 'notification-styles';
+      style.textContent = `
+        .notification {
+          position: fixed;
+          bottom: 20px;
+          right: 20px;
+          padding: 15px;
+          border-radius: 8px;
+          box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+          display: flex;
+          align-items: center;
+          min-width: 300px;
+          max-width: 450px;
+          z-index: 9999;
+          animation: slideIn 0.3s ease-out, fadeOut 0.5s ease-out 2.5s forwards;
+        }
+        .notification-success {
+          background: #28a745;
+          color: white;
+        }
+        .notification-info {
+          background: #17a2b8;
+          color: white;
+        }
+        .notification-warning {
+          background: #ffc107;
+          color: #212529;
+        }
+        .notification-icon {
+          font-size: 24px;
+          margin-right: 15px;
+        }
+        .notification-content p {
+          margin: 0;
+        }
+        @keyframes slideIn {
+          from { transform: translateX(100%); }
+          to { transform: translateX(0); }
+        }
+        @keyframes fadeOut {
+          from { opacity: 1; }
+          to { opacity: 0; }
+        }
+      `;
+      document.head.appendChild(style);
+    }
+  }
+
+  // Mostrar notificación
+  showNotification(message, type = 'success') {
+    // Crear elemento de notificación
+    const notification = document.createElement('div');
+    notification.className = `notification notification-${type}`;
+    notification.innerHTML = `
+      <div class="notification-icon">
+        <i class="fas ${type === 'success' ? 'fa-check-circle' : type === 'warning' ? 'fa-exclamation-circle' : 'fa-info-circle'}"></i>
+      </div>
+      <div class="notification-content">
+        <p>${message}</p>
+      </div>
+    `;
+
+    // Añadir al DOM
+    document.body.appendChild(notification);
+
+    // Eliminar después de 3 segundos
+    setTimeout(() => {
+      if (document.body.contains(notification)) {
+        notification.remove();
+      }
+    }, 3000);
   }
 
   // Generar HTML para opciones de tecnología
   generateTechOptions(categoryName, options) {
-    let html = '';
-    options.forEach(option => {
-      html += `
-        <div class="tech-option-card" data-tech-id="${option.id}" data-category="${categoryName}">
-          <div class="tech-icon">
-            <i class="fab ${option.icon}"></i>
-          </div>
-          <div class="tech-details">
-            <h5>${option.name}</h5>
-            <p class="tech-description">${option.description}</p>
-          </div>
-          <div class="tech-select">
-            <div class="form-check">
-              <input class="form-check-input tech-checkbox" type="radio" name="${categoryName}" id="${option.id}">
-              <label class="form-check-label" for="${option.id}">
-                Seleccionar
-              </label>
-            </div>
+    return options.map(option => `
+      <div class="tech-option-card" data-tech-id="${option.id}" data-category="${categoryName}">
+        <div class="tech-icon">
+          <i class="fab ${option.icon}"></i>
+        </div>
+        <div class="tech-details">
+          <h5>${option.name}</h5>
+          <p class="tech-description">${option.description}</p>
+        </div>
+        <div class="tech-select">
+          <div class="form-check">
+            <input class="form-check-input tech-checkbox" type="radio" name="${categoryName}" id="${option.id}">
+            <label class="form-check-label" for="${option.id}">
+              Seleccionar
+            </label>
           </div>
         </div>
-      `;
-    });
-    return html;
+      </div>
+    `).join('');
   }
 
   // Generar HTML para características adicionales
   generateFeatureOptions(features) {
-    let html = '';
-    features.forEach(feature => {
-      html += `
-        <div class="col-md-6 col-lg-4 mb-3">
-          <div class="feature-card" data-feature-id="${feature.id}">
-            <div class="feature-icon">
-              <i class="fas ${feature.icon}"></i>
-            </div>
-            <div class="feature-details">
-              <h6>${feature.name}</h6>
-              <p class="feature-description small">${feature.description}</p>
-            </div>
-            <div class="feature-select">
-              <div class="form-check">
-                <input class="form-check-input feature-checkbox" type="checkbox" id="feature-${feature.id}">
-                <label class="form-check-label" for="feature-${feature.id}"></label>
-              </div>
+    return features.map(feature => `
+      <div class="col-md-6 col-lg-4 mb-3">
+        <div class="feature-card" data-feature-id="${feature.id}">
+          <div class="feature-icon">
+            <i class="fas ${feature.icon}"></i>
+          </div>
+          <div class="feature-details">
+            <h6>${feature.name}</h6>
+            <p class="feature-description small">${feature.description}</p>
+          </div>
+          <div class="feature-select">
+            <div class="form-check">
+              <input class="form-check-input feature-checkbox" type="checkbox" id="feature-${feature.id}">
+              <label class="form-check-label" for="feature-${feature.id}"></label>
             </div>
           </div>
         </div>
-      `;
-    });
-    return html;
+      </div>
+    `).join('');
   }
 
   // Generar HTML para plantillas predefinidas
   generatePresetOptions(presets) {
-    let html = '';
-    presets.forEach((preset, index) => {
-      html += `
-        <div class="col-md-6 mb-3">
-          <div class="preset-card" data-preset-index="${index}">
-            <h5>${preset.name}</h5>
-            <p>${preset.description}</p>
-            <div class="preset-tech-pills">
-              <span class="badge bg-primary">${this.getTechName('backend', preset.backend)}</span>
-              <span class="badge bg-success">${this.getTechName('frontend', preset.frontend)}</span>
-              <span class="badge bg-info">${this.getTechName('database', preset.database)}</span>
-            </div>
-            <button class="btn btn-sm btn-outline-primary mt-2 select-preset-btn">Seleccionar</button>
+    return presets.map((preset, index) => `
+      <div class="col-md-6 mb-3">
+        <div class="preset-card" data-preset-index="${index}">
+          <h5>${preset.name}</h5>
+          <p>${preset.description}</p>
+          <div class="preset-tech-pills">
+            <span class="badge bg-primary">${this.getTechName('backend', preset.backend)}</span>
+            <span class="badge bg-success">${this.getTechName('frontend', preset.frontend)}</span>
+            <span class="badge bg-info">${this.getTechName('database', preset.database)}</span>
           </div>
+          <button class="btn btn-sm btn-outline-primary mt-2 select-preset-btn">Seleccionar</button>
         </div>
-      `;
-    });
-    return html;
+      </div>
+    `).join('');
   }
 
   // Obtener nombre de tecnología por ID
@@ -168,14 +237,28 @@ class TechSelector {
     return tech ? tech.name : 'Desconocido';
   }
 
+  // Método auxiliar para obtener nombre legible de categoría
+  getCategoryName(category) {
+    const names = {
+      'backend': 'backend',
+      'frontend': 'frontend',
+      'database': 'base de datos'
+    };
+    return names[category] || category;
+  }
+
   // Aplicar una plantilla predefinida
   applyPreset(presetIndex) {
     const preset = this.presetStacks[presetIndex];
     if (!preset) return false;
 
+    // Seleccionar tecnologías
     this.selectTech('backend', preset.backend);
     this.selectTech('frontend', preset.frontend);
     this.selectTech('database', preset.database);
+
+    // Mostrar notificación
+    this.showNotification(`¡Stack aplicado! Has seleccionado el stack "${preset.name}".`, 'success');
 
     return true;
   }
@@ -194,6 +277,10 @@ class TechSelector {
       selectedEl.classList.add('selected');
       const radio = selectedEl.querySelector('input[type="radio"]');
       if (radio) radio.checked = true;
+
+      // Mostrar notificación
+      const techName = this.getTechName(category, techId);
+      this.showNotification(`Has seleccionado ${techName} como ${this.getCategoryName(category)}`, 'info');
     }
 
     // Actualizar resumen
@@ -205,6 +292,8 @@ class TechSelector {
   // Alternar una característica adicional
   toggleFeature(featureId) {
     const index = this.selectedTech.additionalFeatures.indexOf(featureId);
+    const feature = this.options.additionalFeatures.find(f => f.id === featureId);
+    if (!feature) return false;
 
     if (index === -1) {
       // Añadir la característica
@@ -213,6 +302,13 @@ class TechSelector {
       // Actualizar UI
       const featureEl = document.querySelector(`[data-feature-id="${featureId}"]`);
       if (featureEl) featureEl.classList.add('selected');
+
+      // Marcar el checkbox
+      const checkbox = document.getElementById(`feature-${featureId}`);
+      if (checkbox) checkbox.checked = true;
+
+      // Mostrar notificación
+      this.showNotification(`Has añadido la característica: ${feature.name}`, 'info');
     } else {
       // Quitar la característica
       this.selectedTech.additionalFeatures.splice(index, 1);
@@ -220,6 +316,13 @@ class TechSelector {
       // Actualizar UI
       const featureEl = document.querySelector(`[data-feature-id="${featureId}"]`);
       if (featureEl) featureEl.classList.remove('selected');
+
+      // Desmarcar el checkbox
+      const checkbox = document.getElementById(`feature-${featureId}`);
+      if (checkbox) checkbox.checked = false;
+
+      // Mostrar notificación
+      this.showNotification(`Has eliminado la característica: ${feature.name}`, 'warning');
     }
 
     // Actualizar resumen
@@ -233,31 +336,20 @@ class TechSelector {
     const summaryEl = document.getElementById('tech-selection-summary');
     if (!summaryEl) return;
 
-    let backendName = 'No seleccionado';
-    let frontendName = 'No seleccionado';
-    let databaseName = 'No seleccionado';
+    const backendTech = this.options.backend.find(b => b.id === this.selectedTech.backend);
+    const frontendTech = this.options.frontend.find(f => f.id === this.selectedTech.frontend);
+    const databaseTech = this.options.database.find(d => d.id === this.selectedTech.database);
 
-    if (this.selectedTech.backend) {
-      const backend = this.options.backend.find(b => b.id === this.selectedTech.backend);
-      if (backend) backendName = backend.name;
-    }
-
-    if (this.selectedTech.frontend) {
-      const frontend = this.options.frontend.find(f => f.id === this.selectedTech.frontend);
-      if (frontend) frontendName = frontend.name;
-    }
-
-    if (this.selectedTech.database) {
-      const database = this.options.database.find(d => d.id === this.selectedTech.database);
-      if (database) databaseName = database.name;
-    }
+    const backendName = backendTech ? backendTech.name : 'No seleccionado';
+    const frontendName = frontendTech ? frontendTech.name : 'No seleccionado';
+    const databaseName = databaseTech ? databaseTech.name : 'No seleccionado';
 
     // Calcular compatibilidad y complejidad
     const compatibility = this.calculateCompatibility();
     const complexity = this.calculateComplexity();
 
     // Construir HTML del resumen
-    const html = `
+    summaryEl.innerHTML = `
       <div class="stack-summary-header">
         <h5>Tu Stack Tecnológico</h5>
       </div>
@@ -317,8 +409,6 @@ class TechSelector {
         </div>
       </div>
     `;
-
-    summaryEl.innerHTML = html;
 
     // Actualizar estado del botón de continuar
     const continueBtn = document.getElementById('tech-selection-continue');
@@ -455,364 +545,505 @@ class TechSelector {
 
   // Enviar datos al backend para iniciar la generación
   startGeneration() {
-        // Obtener datos adicionales para mejorar la generación de código
-        const appDescription = document.getElementById('app-description').value;
+    // Obtener datos adicionales para mejorar la generación de código
+    const appDescription = document.getElementById('app-description')?.value || '';
 
-        // Añadir información específica sobre las tecnologías seleccionadas al prompt
-        let enhancedDescription = appDescription;
+    // Añadir información específica sobre las tecnologías seleccionadas al prompt
+    let enhancedDescription = appDescription;
 
-        if (this.selectedTech.backend) {
-            enhancedDescription += `\nUtilizando ${this.selectedTech.backend} como backend.`;
-        }
+    if (this.selectedTech.backend) {
+      const backendName = this.getTechName('backend', this.selectedTech.backend);
+      enhancedDescription += `\nUtilizando ${backendName} como backend.`;
+    }
 
-        if (this.selectedTech.frontend) {
-            enhancedDescription += `\nUtilizando ${this.selectedTech.frontend} para el frontend.`;
-        }
+    if (this.selectedTech.frontend) {
+      const frontendName = this.getTechName('frontend', this.selectedTech.frontend);
+      enhancedDescription += `\nUtilizando ${frontendName} para el frontend.`;
+    }
 
-        if (this.selectedTech.database) {
-            enhancedDescription += `\nCon ${this.selectedTech.database} como base de datos.`;
-        }
+    if (this.selectedTech.database) {
+      const databaseName = this.getTechName('database', this.selectedTech.database);
+      enhancedDescription += `\nCon ${databaseName} como base de datos.`;
+    }
 
-        // Añadir información sobre las características seleccionadas
-        if (this.selectedTech.additionalFeatures.length > 0) {
-            enhancedDescription += "\nCaracterísticas específicas que debe implementar:";
-            this.selectedTech.additionalFeatures.forEach(feature => {
-                const featureName = this.options.additionalFeatures.find(f => f.id === feature)?.name || feature;
-                enhancedDescription += `\n- ${featureName}`;
+    // Añadir información sobre las características seleccionadas
+    if (this.selectedTech.additionalFeatures.length > 0) {
+      enhancedDescription += "\nCaracterísticas específicas que debe implementar:";
+      this.selectedTech.additionalFeatures.forEach(feature => {
+        const featureName = this.options.additionalFeatures.find(f => f.id === feature)?.name || feature;
+        enhancedDescription += `\n- ${featureName}`;
+      });
+    }
+
+    // Añadir instrucciones específicas para la generación de código real
+    enhancedDescription += "\n\nIMPORTANTE: Generar código funcional completo, no esqueletos o plantillas. Implementar todas las características solicitadas con código real.";
+
+    const projectData = {
+      description: enhancedDescription,
+      features: this.selectedTech.additionalFeatures,
+      agent: "developer", // Usar el agente desarrollador para código real
+      model: "openai", // Usar OpenAI por defecto para máxima calidad
+      tech_data: {
+        backend: this.selectedTech.backend,
+        frontend: this.selectedTech.frontend,
+        database: this.selectedTech.database,
+        features: this.selectedTech.additionalFeatures,
+        generationMode: "fullCode" // Modo de generación completa
+      },
+      options: {
+        includeTests: document.getElementById('include-tests')?.checked || false,
+        includeDocs: document.getElementById('include-docs')?.checked || false,
+        generateCompleteCode: true, // Flag explícito para generar código completo
+        optimizeForProduction: true
+      }
+    };
+
+    // Mostrar mensaje de espera
+    this.showWaitingMessage("Preparando la generación de código completo...");
+
+    fetch('/api/constructor/generate', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(projectData)
+    })
+    .then(response => {
+      if (!response.ok) {
+        throw new Error(`Error de servidor: ${response.status}`);
+      }
+      return response.json();
+    })
+    .then(data => {
+      if (data.success) {
+        console.log('Generación iniciada:', data);
+
+        // Guardar el ID del proyecto
+        sessionStorage.setItem('current_project_id', data.project_id);
+
+        // Iniciar el polling de estado
+        this.startStatusPolling(data.project_id);
+
+        // Actualizar la UI para mostrar la pantalla de progreso
+        this.showProgressScreen(data.project_id);
+      } else {
+        console.error('Error iniciando generación:', data.error);
+        this.showError(data.error);
+      }
+    })
+    .catch(error => {
+      console.error('Error en la solicitud:', error);
+      this.showError('Error de conexión: ' + error.message);
+
+      // Reactivar el botón después de un error
+      document.getElementById('generate-button').disabled = false;
+    });
+  }
+
+  // Mostrar mensaje de espera durante la preparación
+  showWaitingMessage(message) {
+    const waitingElement = document.createElement('div');
+    waitingElement.className = 'waiting-message';
+    waitingElement.innerHTML = `
+      <div class="spinner"></div>
+      <p>${message}</p>
+      <p class="small">Estamos preparando todo para generar código real y completo según tus especificaciones</p>
+    `;
+
+    // Añadir estilos para el spinner
+    const style = document.createElement('style');
+    style.textContent = `
+      .waiting-message {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0,0,0,0.8);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        z-index: 9999;
+        color: white;
+        text-align: center;
+        padding: 20px;
+      }
+      .waiting-message p {
+        margin: 15px 0;
+        font-size: 18px;
+      }
+      .waiting-message .small {
+        font-size: 14px;
+        opacity: 0.8;
+      }
+      .spinner {
+        width: 50px;
+        height: 50px;
+        border: 5px solid rgba(255,255,255,0.3);
+        border-radius: 50%;
+        border-top-color: white;
+        animation: spin 1s ease-in-out infinite;
+      }
+      @keyframes spin {
+        to { transform: rotate(360deg); }
+      }
+    `;
+    document.head.appendChild(style);
+    document.body.appendChild(waitingElement);
+
+    // Eliminar después de mostrar la pantalla de progreso
+    setTimeout(() => {
+      if (document.body.contains(waitingElement)) {
+        document.body.removeChild(waitingElement);
+      }
+    }, 5000);
+  }
+
+  // Mostrar pantalla de progreso
+  showProgressScreen(projectId) {
+    // Implementar la visualización de la pantalla de progreso
+    const progressContainer = document.getElementById('generation-progress-container');
+    if (progressContainer) {
+      document.getElementById('tech-selector-container').style.display = 'none';
+      document.getElementById('constructor-container').style.display = 'none';
+      progressContainer.style.display = 'block';
+
+      // Actualizar el ID del proyecto en la interfaz
+      const projectIdElement = document.getElementById('project-id-display');
+      if (projectIdElement) {
+        projectIdElement.textContent = projectId;
+      }
+    }
+      }
+
+      // Iniciar polling de estado
+      startStatusPolling(projectId) {
+        // Implementar el polling de estado
+        const checkStatus = () => {
+          fetch(`/api/constructor/status/${projectId}`)
+            .then(response => response.json())
+            .then(data => {
+              this.updateProgressUI(data);
+
+              if (data.status !== 'completed' && data.status !== 'failed') {
+                setTimeout(checkStatus, 3000); // Verificar cada 3 segundos
+              }
+            })
+            .catch(error => {
+              console.error('Error al verificar estado:', error);
+              setTimeout(checkStatus, 5000); // Reintentar después de 5 segundos en caso de error
             });
-        }
-
-        // Añadir instrucciones específicas para la generación de código real
-        enhancedDescription += "\n\nIMPORTANTE: Generar código funcional completo, no esqueletos o plantillas. Implementar todas las características solicitadas con código real.";
-
-        const projectData = {
-            description: enhancedDescription,
-            features: this.selectedTech.additionalFeatures,
-            agent: "developer", // Usar el agente desarrollador para código real
-            model: "openai", // Usar OpenAI por defecto para máxima calidad
-            tech_data: {
-                backend: this.selectedTech.backend,
-                frontend: this.selectedTech.frontend,
-                database: this.selectedTech.database,
-                features: this.selectedTech.additionalFeatures,
-                generationMode: "fullCode" // Modo de generación completa
-            },
-            options: {
-                includeTests: document.getElementById('include-tests')?.checked || false,
-                includeDocs: document.getElementById('include-docs')?.checked || false,
-                generateCompleteCode: true, // Flag explícito para generar código completo
-                optimizeForProduction: true
-            }
         };
 
-        // Mostrar mensaje de espera
-        this.showWaitingMessage("Preparando la generación de código completo...");
+        checkStatus(); // Iniciar el proceso de verificación
+      }
 
-        fetch('/api/constructor/generate', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(projectData)
-        })
-        .then(response => {
-            if (!response.ok) {
-                throw new Error(`Error de servidor: ${response.status}`);
+      // Actualizar UI de progreso
+      updateProgressUI(statusData) {
+        const progressBar = document.getElementById('generation-progress-bar');
+        const statusText = document.getElementById('generation-status-text');
+        const logContainer = document.getElementById('generation-log');
+
+        if (!progressBar || !statusText || !logContainer) return;
+
+        // Actualizar barra de progreso
+        const progressPercentage = statusData.progress || 0;
+        progressBar.style.width = `${progressPercentage}%`;
+        progressBar.setAttribute('aria-valuenow', progressPercentage);
+
+        // Actualizar texto de estado
+        statusText.textContent = statusData.status_message || statusData.status || 'Procesando...';
+
+        // Añadir nuevos mensajes al log
+        if (statusData.logs && Array.isArray(statusData.logs)) {
+          statusData.logs.forEach(log => {
+            // Verificar si el mensaje ya existe para evitar duplicados
+            const messageId = `log-${log.timestamp}-${log.message.substring(0, 20).replace(/\s+/g, '-')}`;
+            if (!document.getElementById(messageId)) {
+              const logEntry = document.createElement('div');
+              logEntry.id = messageId;
+              logEntry.className = `log-entry log-${log.level || 'info'}`;
+              logEntry.innerHTML = `
+                <span class="log-time">${new Date(log.timestamp).toLocaleTimeString()}</span>
+                <span class="log-message">${log.message}</span>
+              `;
+              logContainer.appendChild(logEntry);
+              logContainer.scrollTop = logContainer.scrollHeight;
             }
-            return response.json();
-        })
-        .then(data => {
-            if (data.success) {
-                console.log('Generación iniciada:', data);
+          });
+        }
 
-                // Guardar el ID del proyecto
-                sessionStorage.setItem('current_project_id', data.project_id);
+        // Si el proceso ha finalizado, mostrar botones de acción
+        if (statusData.status === 'completed') {
+          const actionsContainer = document.getElementById('generation-actions');
+          if (actionsContainer) {
+            actionsContainer.innerHTML = `
+              <button class="btn btn-success" onclick="downloadProject('${statusData.project_id}')">
+                <i class="fas fa-download"></i> Descargar Proyecto
+              </button>
+              <button class="btn btn-primary" onclick="viewProjectDetails('${statusData.project_id}')">
+                <i class="fas fa-info-circle"></i> Ver Detalles
+              </button>
+            `;
+            actionsContainer.style.display = 'block';
+          }
+        } else if (statusData.status === 'failed') {
+          const actionsContainer = document.getElementById('generation-actions');
+          if (actionsContainer) {
+            actionsContainer.innerHTML = `
+              <div class="alert alert-danger">
+                <i class="fas fa-exclamation-triangle"></i> Error: ${statusData.error || 'Ha ocurrido un error durante la generación'}
+              </div>
+              <button class="btn btn-warning" onclick="retryGeneration('${statusData.project_id}')">
+                <i class="fas fa-redo"></i> Reintentar
+              </button>
+            `;
+            actionsContainer.style.display = 'block';
+          }
+        }
+      }
 
-                // Iniciar el polling de estado
-                this.startStatusPolling(data.project_id);
-
-                // Actualizar la UI para mostrar la pantalla de progreso
-                this.showProgressScreen(data.project_id);
-            } else {
-                console.error('Error iniciando generación:', data.error);
-                this.showError(data.error);
-            }
-        })
-        .catch(error => {
-            console.error('Error en la solicitud:', error);
-            this.showError('Error de conexión: ' + error.message);
-
-            // Reactivar el botón después de un error
-            document.getElementById('generate-button').disabled = false;
-        });
-    }
-}
-
-    // Mostrar mensaje de espera durante la preparación
-    showWaitingMessage(message) {
-        const waitingElement = document.createElement('div');
-        waitingElement.className = 'waiting-message';
-        waitingElement.innerHTML = `
-            <div class="spinner"></div>
-            <p>${message}</p>
-            <p class="small">Estamos preparando todo para generar código real y completo según tus especificaciones</p>
+      // Mostrar mensaje de error
+      showError(errorMessage) {
+        const errorElement = document.createElement('div');
+        errorElement.className = 'error-message';
+        errorElement.innerHTML = `
+          <div class="error-icon">
+            <i class="fas fa-exclamation-triangle"></i>
+          </div>
+          <div class="error-content">
+            <h4>Error</h4>
+            <p>${errorMessage}</p>
+            <button class="btn btn-sm btn-outline-light mt-2 close-error-btn">Cerrar</button>
+          </div>
         `;
 
-        // Añadir estilos para el spinner
+        // Añadir estilos para el mensaje de error
         const style = document.createElement('style');
         style.textContent = `
-            .waiting-message {
-                position: fixed;
-                top: 0;
-                left: 0;
-                right: 0;
-                bottom: 0;
-                background: rgba(0,0,0,0.8);
-                display: flex;
-                flex-direction: column;
-                align-items: center;
-                justify-content: center;
-                z-index: 9999;
-                color: white;
-                text-align: center;
-                padding: 20px;
-            }
-            .waiting-message p {
-                margin: 15px 0;
-                font-size: 18px;
-            }
-            .waiting-message .small {
-                font-size: 14px;
-                opacity: 0.8;
-            }
-            .spinner {
-                width: 50px;
-                height: 50px;
-                border: 5px solid rgba(255,255,255,0.3);
-                border-radius: 50%;
-                border-top-color: white;
-                animation: spin 1s ease-in-out infinite;
-            }
-            @keyframes spin {
-                to { transform: rotate(360deg); }
-            }
+          .error-message {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: #dc3545;
+            color: white;
+            border-radius: 8px;
+            padding: 15px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            z-index: 9999;
+            display: flex;
+            max-width: 400px;
+          }
+          .error-icon {
+            font-size: 24px;
+            margin-right: 15px;
+            display: flex;
+            align-items: center;
+          }
+          .error-content h4 {
+            margin: 0 0 10px 0;
+          }
+          .error-content p {
+            margin: 0;
+            opacity: 0.9;
+          }
         `;
         document.head.appendChild(style);
-        document.body.appendChild(waitingElement);
+        document.body.appendChild(errorElement);
 
-        // Eliminar después de mostrar la pantalla de progreso
-        setTimeout(() => {
-            if (document.body.contains(waitingElement)) {
-                document.body.removeChild(waitingElement);
+        // Configurar el botón para cerrar el mensaje
+        const closeBtn = errorElement.querySelector('.close-error-btn');
+        if (closeBtn) {
+          closeBtn.addEventListener('click', () => {
+            if (document.body.contains(errorElement)) {
+              document.body.removeChild(errorElement);
             }
-        }, 5000);
-    }
-}
-
-// Inicializar cuando el DOM esté listo
-document.addEventListener('DOMContentLoaded', function() {
-  if (document.getElementById('tech-selector-container')) {
-    window.techSelector = new TechSelector();
-
-    // Generar HTML de opciones
-    document.getElementById('backend-options').innerHTML = 
-      window.techSelector.generateTechOptions('backend', window.techSelector.options.backend);
-
-    document.getElementById('frontend-options').innerHTML = 
-      window.techSelector.generateTechOptions('frontend', window.techSelector.options.frontend);
-
-    document.getElementById('database-options').innerHTML = 
-      window.techSelector.generateTechOptions('database', window.techSelector.options.database);
-
-    document.getElementById('features-options').innerHTML = 
-      window.techSelector.generateFeatureOptions(window.techSelector.options.additionalFeatures);
-
-    document.getElementById('preset-stacks').innerHTML = 
-      window.techSelector.generatePresetOptions(window.techSelector.presetStacks);
-
-    // Asignar eventos
-    // Selección de tecnología
-    document.querySelectorAll('.tech-option-card').forEach(card => {
-      card.addEventListener('click', function() {
-        const techId = this.dataset.techId;
-        const category = this.dataset.category;
-        window.techSelector.selectTech(category, techId);
-      });
-    });
-
-    // Selección de características
-    document.querySelectorAll('.feature-card').forEach(card => {
-      card.addEventListener('click', function() {
-        const featureId = this.dataset.featureId;
-        window.techSelector.toggleFeature(featureId);
-      });
-    });
-
-    // Selección de plantillas
-    document.querySelectorAll('.select-preset-btn').forEach(btn => {
-      btn.addEventListener('click', function() {
-        const presetCard = this.closest('.preset-card');
-        if (presetCard) {
-          const presetIndex = parseInt(presetCard.dataset.presetIndex);
-          window.techSelector.applyPreset(presetIndex);
+          });
         }
-      });
-    });
 
-    // Continuar con la selección
-    document.getElementById('tech-selection-continue').addEventListener('click', function() {
-      // Ocultar selector y mostrar constructor
-      document.getElementById('tech-selector-container').style.display = 'none';
-      document.getElementById('constructor-container').style.display = 'block';
+        // Auto-eliminar después de 10 segundos
+        setTimeout(() => {
+          if (document.body.contains(errorElement)) {
+            document.body.removeChild(errorElement);
+          }
+        }, 10000);
+      }
+    }
 
-      // Pasar la selección al proceso de construcción
-      const techSelection = window.techSelector.getSelectionData();
-      document.getElementById('project-tech-data').value = window.techSelector.exportSelection();
+    // Inicializar cuando el DOM esté listo
+    document.addEventListener('DOMContentLoaded', function() {
+      const techSelectorContainer = document.getElementById('tech-selector-container');
+      if (techSelectorContainer) {
+        window.techSelector = new TechSelector();
 
-      // Actualizar resumen en la interfaz de construcción
-      document.getElementById('selected-tech-summary').innerHTML = `
-        <div class="d-flex align-items-center mb-3">
-          <div class="tech-badge bg-primary me-2">
-            <i class="fab ${getTechIcon('backend', techSelection.backend)}"></i>
-          </div>
-          <span>${window.techSelector.getTechName('backend', techSelection.backend)}</span>
-        </div>
-        <div class="d-flex align-items-center mb-3">
-          <div class="tech-badge bg-success me-2">
-            <i class="fab ${getTechIcon('frontend', techSelection.frontend)}"></i>
-          </div>
-          <span>${window.techSelector.getTechName('frontend', techSelection.frontend)}</span>
-        </div>
-        <div class="d-flex align-items-center">
-          <div class="tech-badge bg-info me-2">
-            <i class="fas fa-database"></i>
-          </div>
-          <span>${window.techSelector.getTechName('database', techSelection.database)}</span>
-        </div>
-      `;
+        // Generar HTML de opciones
+        document.getElementById('backend-options').innerHTML = 
+          window.techSelector.generateTechOptions('backend', window.techSelector.options.backend);
 
-      // Mostrar características seleccionadas
-      if (techSelection.features.length > 0) {
-        let featuresHtml = '<div class="selected-features-list mt-3">';
-        techSelection.features.forEach(featureId => {
-          const feature = window.techSelector.options.additionalFeatures.find(f => f.id === featureId);
-          if (feature) {
-            featuresHtml += `<span class="badge bg-secondary me-2 mb-2">${feature.name}</span>`;
+        document.getElementById('frontend-options').innerHTML = 
+          window.techSelector.generateTechOptions('frontend', window.techSelector.options.frontend);
+
+        document.getElementById('database-options').innerHTML = 
+          window.techSelector.generateTechOptions('database', window.techSelector.options.database);
+
+        document.getElementById('features-options').innerHTML = 
+          window.techSelector.generateFeatureOptions(window.techSelector.options.additionalFeatures);
+
+        document.getElementById('preset-stacks').innerHTML = 
+          window.techSelector.generatePresetOptions(window.techSelector.presetStacks);
+
+        // Asignar eventos mediante delegación
+        document.addEventListener('click', function(e) {
+          // Manejo específico para botones de plantillas
+          if (e.target.classList.contains('select-preset-btn')) {
+            const presetCard = e.target.closest('.preset-card');
+            if (presetCard) {
+              const presetIndex = parseInt(presetCard.dataset.presetIndex);
+              window.techSelector.applyPreset(presetIndex);
+            }
+            return; // Evitar procesamiento adicional
+          }
+
+          // Manejo de tarjetas de tecnología
+          if (e.target.closest('.tech-option-card')) {
+            const card = e.target.closest('.tech-option-card');
+            const techId = card.dataset.techId;
+            const category = card.dataset.category;
+            window.techSelector.selectTech(category, techId);
+          }
+
+          // Manejo de tarjetas de características
+          if (e.target.closest('.feature-card')) {
+            const card = e.target.closest('.feature-card');
+            const featureId = card.dataset.featureId;
+            window.techSelector.toggleFeature(featureId);
+          }
+
+          // Manejo del botón continuar
+          if (e.target.id === 'tech-selection-continue') {
+            // Ocultar selector y mostrar constructor
+            document.getElementById('tech-selector-container').style.display = 'none';
+            document.getElementById('constructor-container').style.display = 'block';
+
+            // Pasar la selección al proceso de construcción
+            const techSelection = window.techSelector.getSelectionData();
+            document.getElementById('project-tech-data').value = window.techSelector.exportSelection();
+
+            // Actualizar resumen en la interfaz de construcción
+            updateConstructorSummary(techSelection);
+
+            // Mostrar notificación
+            window.techSelector.showNotification('¡Selección completada! Ahora puedes describir tu proyecto.', 'success');
+          }
+
+          // Manejo del botón generar
+          if (e.target.id === 'generate-button') {
+            e.target.disabled = true;
+            window.techSelector.startGeneration();
           }
         });
-        featuresHtml += '</div>';
-        document.getElementById('selected-features').innerHTML = featuresHtml;
+
+        // Inicializar resumen
+        window.techSelector.updateSummary();
+      }
+
+      // Función auxiliar para actualizar resumen en el constructor
+      function updateConstructorSummary(techSelection) {
+        const summaryElement = document.getElementById('selected-tech-summary');
+        if (!summaryElement) return;
+
+        summaryElement.innerHTML = `
+          <div class="d-flex align-items-center mb-3">
+            <div class="tech-badge bg-primary me-2">
+              <i class="fab ${getTechIcon('backend', techSelection.backend)}"></i>
+            </div>
+            <span>${window.techSelector.getTechName('backend', techSelection.backend)}</span>
+          </div>
+          <div class="d-flex align-items-center mb-3">
+            <div class="tech-badge bg-success me-2">
+              <i class="fab ${getTechIcon('frontend', techSelection.frontend)}"></i>
+            </div>
+            <span>${window.techSelector.getTechName('frontend', techSelection.frontend)}</span>
+          </div>
+          <div class="d-flex align-items-center">
+            <div class="tech-badge bg-info me-2">
+              <i class="fas fa-database"></i>
+            </div>
+            <span>${window.techSelector.getTechName('database', techSelection.database)}</span>
+          </div>
+        `;
+
+        // Mostrar características seleccionadas
+        const featuresElement = document.getElementById('selected-features');
+        if (featuresElement && techSelection.features.length > 0) {
+          let featuresHtml = '<div class="selected-features-list mt-3">';
+          techSelection.features.forEach(featureId => {
+            const feature = window.techSelector.options.additionalFeatures.find(f => f.id === featureId);
+            if (feature) {
+              featuresHtml += `<span class="badge bg-secondary me-2 mb-2">${feature.name}</span>`;
+            }
+          });
+          featuresHtml += '</div>';
+          featuresElement.innerHTML = featuresHtml;
+        }
+      }
+
+      // Función auxiliar para obtener icono
+      function getTechIcon(category, techId) {
+        const tech = window.techSelector?.options[category]?.find(t => t.id === techId);
+        return tech ? tech.icon : 'fa-code';
       }
     });
 
-    // Inicializar resumen
-    window.techSelector.updateSummary();
-  }
+    // Funciones globales para acciones de proyecto
+    function downloadProject(projectId) {
+      window.location.href = `/api/constructor/download/${projectId}`;
+    }
 
-  // Función auxiliar para obtener icono
-  function getTechIcon(category, techId) {
-    const tech = window.techSelector.options[category].find(t => t.id === techId);
-    return tech ? tech.icon : 'fa-code';
-  }
-});
+    function viewProjectDetails(projectId) {
+      window.location.href = `/projects/${projectId}`;
+    }
 
-
-// Obtener referencia al formulario de constructor
-    const constructorForm = document.getElementById('constructor-form');
-    
-// Evento de envío del formulario
-    if (constructorForm) {
-      constructorForm.addEventListener('submit', function(e) {
-        e.preventDefault();
-
-        // Obtener valores del formulario
-        const description = document.getElementById('project-description').value.trim();
-        const agent = document.getElementById('agent-selector')?.value || 'developer';
-        const model = document.getElementById('model-selector')?.value || 'openai';
-        const includeTests = document.getElementById('include-tests')?.checked || false;
-        const includeDocs = document.getElementById('include-docs')?.checked || false;
-        const includeDeployment = document.getElementById('include-deployment').checked;
-        const includeCICD = document.getElementById('include-ci-cd').checked;
-        const features = getSelectedFeatures();
-        const techData = document.getElementById('project-tech-data').value;
-
-        if (!description) {
-            alert('Por favor, describe tu aplicación');
-            return;
+    function retryGeneration(projectId) {
+      fetch(`/api/constructor/retry/${projectId}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
         }
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          // Reiniciar la UI de progreso
+          const progressBar = document.getElementById('generation-progress-bar');
+          const statusText = document.getElementById('generation-status-text');
+          const actionsContainer = document.getElementById('generation-actions');
 
-        // Mostrar sección de progreso
-        progressSection.style.display = 'block';
-        resultSection.style.display = 'none';
-        generateBtn.disabled = true;
-        progressBar.className = 'progress-bar progress-bar-striped progress-bar-animated';
-        progressBar.style.width = '0%';
-        progressBar.setAttribute('aria-valuenow', 0);
-        progressBar.textContent = '0%';
-        generationConsole.innerHTML = '';
+          if (progressBar) progressBar.style.width = '0%';
+          if (statusText) statusText.textContent = 'Reiniciando generación...';
+          if (actionsContainer) actionsContainer.style.display = 'none';
 
-        // Iniciar generación del proyecto
-        fetch('/api/constructor/generate', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                description: description,
-                agent: agent,
-                model: model,
-                options: {
-                    includeTests,
-                    includeDocs,
-                    includeDeployment,
-                    includeCICD
-                },
-                features: features,
-                tech_data: techData // Incluir datos de tecnología seleccionada
-            }),
-        })
-        .then(response => {
-            // Verificar si la respuesta es JSON válido antes de procesarla
-            const contentType = response.headers.get("content-type");
-            if (contentType && contentType.indexOf("application/json") !== -1) {
-                return response.json();
-            } else {
-                // Si no es JSON, convertir a texto y luego lanzar error
-                return response.text().then(text => {
-                    throw new Error(`Respuesta no válida del servidor: ${text.substring(0, 100)}...`);
-                });
-            }
-        })
-        .then(data => {
-            if (data.success) {
-                projectId = data.project_id;
-                addConsoleMessage(`Proyecto iniciado con ID: ${projectId}`);
-                addConsoleMessage(`Tiempo estimado: ${data.estimated_time}`);
-                startStatusCheck(projectId);
+          // Reiniciar el polling de estado
+          window.techSelector.startStatusPolling(projectId);
 
-                // Actualizar progreso inicial
-                progressBar.style.width = '5%';
-                progressBar.setAttribute('aria-valuenow', 5);
-                progressBar.textContent = '5%';
-            } else {
-                showFailedState(data.error);
-            }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            showFailedState(error.message || "Error de conexión con el servidor");
+          // Mostrar notificación
+          window.techSelector.showNotification('Reiniciando la generación del proyecto...', 'info');
+        } else {
+          window.techSelector.showError(data.error || 'Error al reintentar la generación');
+        }
+      })
+      .catch(error => {
+        window.techSelector.showError('Error de conexión: ' + error.message);
+      });
+    }
 
-            // Intentar recuperar el estado automáticamente
-            setTimeout(() => {
-                addConsoleMessage("Intentando recuperar estado automáticamente...", "info");
-
-                // Generar un ID de proyecto temporal si es necesario
-                if (!projectId) {
-                    projectId = 'app_' + Math.random().toString(36).substring(2, 10) + '_' + Math.floor(Date.now() / 1000);
-                    addConsoleMessage(`Usando ID temporal: ${projectId}`, "info");
-                }
-
-                startStatusCheck(projectId);
-            }, 3000);
-        });
-    });
+    // Función para obtener características seleccionadas (para el formulario constructor)
+    function getSelectedFeatures() {
+      const features = [];
+      document.querySelectorAll('.feature-checkbox:checked').forEach(checkbox => {
+        const featureId = checkbox.id.replace('feature-', '');
+        features.push(featureId);
+      });
+      return features;
+    }

@@ -297,6 +297,7 @@ def generate_content(prompt, system_prompt, model="openai", temperature=0.7):
 
     # Esto no debería ocurrir, pero por si acaso
     raise ValueError("No se pudo generar contenido con ningún modelo disponible por razones desconocidas.")
+
 def create_file_with_agent(description, file_type, filename, agent_id, workspace_path, model="openai"):
     """
     Crea un archivo utilizando un agente especializado.
@@ -423,7 +424,7 @@ def create_file_with_agent(description, file_type, filename, agent_id, workspace
         logging.debug(f"Contenido generado (primeros 200 caracteres): {file_content[:200]}")
 
         # Extraer código del contenido si el modelo aún incluye markdown u otros elementos
-        code_pattern = r"```(?:\w+)?\\s*([\\s\\S]*?)\\s*```"
+        code_pattern = r"```(?:\w+)?\s*([\s\S]*?)\s*```"
         code_match = re.search(code_pattern, file_content)
 
         if code_match:
@@ -529,3 +530,44 @@ def analyze_code(code, language="python", instructions="Mejorar el código", mod
         prompt = f"""Analiza el siguiente código de {language}:
 ```{language}
 {code}
+```
+
+Instrucciones: {instructions}
+
+Proporciona:
+1. Una versión mejorada del código
+2. Explicación de los problemas encontrados
+3. Sugerencias específicas para mejorar la calidad, rendimiento o seguridad
+"""
+
+        # Generar análisis con temperatura baja para precisión
+        analysis = generate_content(prompt, system_prompt, model, temperature=0.3)
+
+        # Extraer secciones del análisis
+        improved_code_pattern = r"```(?:\w+)?\s*([\s\S]*?)\s*```"
+        improved_code_match = re.search(improved_code_pattern, analysis)
+
+        improved_code = improved_code_match.group(1).strip() if improved_code_match else ""
+
+        # Dividir el resto del análisis en explicaciones y sugerencias
+        remaining_text = re.sub(improved_code_pattern, "", analysis).strip()
+
+        # Intentar separar explicaciones y sugerencias
+        parts = re.split(r"(?:^|\n)#+\s*(?:Sugerencias|Recomendaciones|Mejoras)(?:\s*:)?", remaining_text, flags=re.IGNORECASE)
+
+        explanations = parts[0].strip() if len(parts) > 0 else ""
+        suggestions = parts[1].strip() if len(parts) > 1 else ""
+
+        return {
+            'success': True,
+            'improved_code': improved_code,
+            'explanations': explanations,
+            'suggestions': suggestions or explanations  # Si no hay sugerencias específicas, usar explicaciones
+        }
+
+    except Exception as e:
+        logging.error(f"Error analizando código: {str(e)}")
+        return {
+            'success': False,
+            'error': str(e)
+        }
