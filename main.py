@@ -566,24 +566,143 @@ def api_chat():
                     'available_models': available_apis
                 })
 
-        # Generar una respuesta simulada para la demostración
-        respuesta = f"Hola, soy el agente {agent_id} usando el modelo {model_choice}. Recibí tu mensaje: '{user_message}'. "
-        respuesta += "Este es un mensaje de demostración porque aún no hay una API configurada. Configura una API en el panel de Secrets para obtener respuestas reales."
+        # Configurar prompts según el agente
+        agent_prompts = {
+            'developer': "Eres un Agente de Desarrollo experto en optimización y edición de código en tiempo real. Tu objetivo es ayudar a los usuarios con tareas de programación, desde la corrección de errores hasta la implementación de funcionalidades completas.",
+            'architect': "Eres un Agente de Arquitectura especializado en diseñar arquitecturas escalables y optimizadas. Ayudas a los usuarios a tomar decisiones sobre la estructura del código, patrones de diseño y selección de tecnologías.",
+            'advanced': "Eres un Agente Avanzado de Software con experiencia en integraciones complejas y funcionalidades avanzadas. Puedes asesorar sobre tecnologías emergentes, optimización de rendimiento y soluciones a problemas técnicos sofisticados.",
+            'general': "Eres un asistente de desarrollo de software experto y útil. Respondes preguntas y ayudas con tareas de programación de manera clara y concisa."
+        }
 
-        # Mensaje adicional si se solicita alguna acción específica
-        if "crear" in user_message.lower() or "genera" in user_message.lower():
+        system_prompt = agent_prompts.get(agent_id, agent_prompts['general'])
+        
+        # Preparar el contexto de conversación
+        formatted_context = []
+        for msg in data.get('context', []):
+            role = msg.get('role', 'user')
+            if role not in ['user', 'assistant', 'system']:
+                role = 'user'
+            formatted_context.append({
+                "role": role,
+                "content": msg.get('content', '')
+            })
+        
+        # Procesar la solicitud con el modelo adecuado
+        respuesta = None
+        if model_choice == 'openai' and openai_api_key:
+            try:
+                messages = [{"role": "system", "content": system_prompt}]
+                for msg in formatted_context:
+                    messages.append({"role": msg['role'], "content": msg['content']})
+                messages.append({"role": "user", "content": user_message})
+
+                # Usar el modelo más avanzado disponible: GPT-4o
+                openai_model = "gpt-4o"
+                
+                try:
+                    # Intentar con cliente nuevo primero
+                    openai_client = openai.OpenAI()
+                    completion = openai_client.chat.completions.create(
+                        model=openai_model,
+                        messages=messages,
+                        temperature=0.7,
+                        max_tokens=2000
+                    )
+                    respuesta = completion.choices[0].message.content
+                except Exception as e:
+                    # Fallback al cliente antiguo si es necesario
+                    completion = openai.ChatCompletion.create(
+                        model=openai_model,
+                        messages=messages,
+                        temperature=0.7,
+                        max_tokens=2000
+                    )
+                    respuesta = completion.choices[0].message.content
+                
+            except Exception as e:
+                logging.error(f"Error con API de OpenAI: {str(e)}")
+                return jsonify({
+                    'success': False,
+                    'error': f"Error con OpenAI API: {str(e)}",
+                    'agent_id': agent_id,
+                    'model': model_choice
+                })
+                
+        elif model_choice == 'anthropic' and anthropic_api_key:
+            try:
+                import anthropic
+                from anthropic import Anthropic
+
+                client = Anthropic(api_key=anthropic_api_key)
+
+                messages = []
+                for msg in formatted_context:
+                    messages.append({"role": msg['role'], "content": msg['content']})
+                messages.append({"role": "user", "content": user_message})
+
+                completion = client.messages.create(
+                    model="claude-3-5-sonnet-latest",
+                    messages=messages,
+                    max_tokens=2000,
+                    temperature=0.7,
+                    system=system_prompt
+                )
+
+                respuesta = completion.content[0].text
+                
+            except Exception as e:
+                logging.error(f"Error con API de Anthropic: {str(e)}")
+                return jsonify({
+                    'success': False,
+                    'error': f"Error con Anthropic API: {str(e)}",
+                    'agent_id': agent_id,
+                    'model': model_choice
+                })
+                
+        elif model_choice == 'gemini' and gemini_api_key:
+            try:
+                # Make sure Gemini is configured properly
+                if not hasattr(genai, '_configured') or not genai._configured:
+                    genai.configure(api_key=gemini_api_key)
+
+                model = genai.GenerativeModel('gemini-1.5-pro')
+
+                full_prompt = system_prompt + "\n\n"
+                for msg in formatted_context:
+                    role_prefix = "Usuario: " if msg['role'] == 'user' else "Asistente: "
+                    full_prompt += role_prefix + msg['content'] + "\n\n"
+                full_prompt += "Usuario: " + user_message + "\n\nAsistente: "
+
+                gemini_response = model.generate_content(full_prompt)
+                respuesta = gemini_response.text
+                
+            except Exception as e:
+                logging.error(f"Error con API de Gemini: {str(e)}")
+                return jsonify({
+                    'success': False,
+                    'error': f"Error con Gemini API: {str(e)}",
+                    'agent_id': agent_id,
+                    'model': model_choice
+                })
+        
+        # Si no se pudo generar una respuesta, mostrar un mensaje de error
+        if not respuesta:
+            return jsonify({
+                'success': False,
+                'error': f"No se pudo generar una respuesta con el modelo {model_choice}. Verifica que la API esté configurada correctamente.",
+                'agent_id': agent_id,
+                'model': model_choice,
+                'available_models': available_apis
+            })
             respuesta += "\n\nPuedo ayudarte a crear ese componente. ¿Quieres que te muestre un ejemplo de código?"
-        elif "error" in user_message.lower() or "problema" in user_message.lower():
-            respuesta += "\n\nVeo que mencionas un problema. Para ayudarte mejor, ¿podrías compartir más detalles o mostrarme el código que está causando problemas?"
-
-        # Devolver respuesta
+        # Devolver respuesta real de la API
         return jsonify({
             'success': True,
             'response': respuesta,
             'agent_id': agent_id,
             'model': model_choice,
             'available_models': available_apis,
-            'is_demo': True
+            'is_demo': False
         })
     except Exception as e:
         logging.error(f"Error en API de chat: {str(e)}")
