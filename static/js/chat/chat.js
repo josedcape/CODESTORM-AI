@@ -720,6 +720,22 @@ async function sendMessage() {
 }
 
 /**
+ * Añade un mensaje al contenedor de chat
+ * @param {string} messageHTML - HTML del mensaje a añadir
+ */
+function appendMessageToChat(messageHTML) {
+    const messagesContainer = document.getElementById('messages-container');
+    if (messagesContainer) {
+        const messageWrapper = document.createElement('div');
+        messageWrapper.className = 'message-container';
+        messageWrapper.innerHTML = messageHTML;
+        messagesContainer.appendChild(messageWrapper);
+    } else {
+        console.error('Contenedor de mensajes no encontrado');
+    }
+}
+
+/**
  * Añade mensaje del usuario al chat
  * @param {string} message - Mensaje a mostrar
  */
@@ -772,6 +788,16 @@ function getCurrentTime() {
     const hours = String(now.getHours()).padStart(2, '0');
     const minutes = String(now.getMinutes()).padStart(2, '0');
     return `${hours}:${minutes}`;
+}
+
+/**
+ * Desplaza el chat hacia abajo
+ */
+function scrollToBottom() {
+    const messagesContainer = document.getElementById('messages-container');
+    if (messagesContainer) {
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    }
 }
 
 
