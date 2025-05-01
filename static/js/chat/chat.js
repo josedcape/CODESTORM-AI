@@ -103,13 +103,13 @@ window.copyCode = function(button) {
     const preElement = button.closest('.code-block-container').querySelector('pre');
     const codeElement = preElement.querySelector('code');
     const textToCopy = codeElement.textContent;
-    
+
     navigator.clipboard.writeText(textToCopy).then(() => {
         const originalText = button.textContent;
         button.textContent = '¡Copiado!';
         button.style.backgroundColor = 'rgba(40, 167, 69, 0.3)';
         button.style.borderColor = 'rgba(40, 167, 69, 0.5)';
-        
+
         setTimeout(() => {
             button.textContent = originalText;
             button.style.backgroundColor = '';
@@ -120,7 +120,7 @@ window.copyCode = function(button) {
         button.textContent = 'Error al copiar';
         button.style.backgroundColor = 'rgba(220, 53, 69, 0.3)';
         button.style.borderColor = 'rgba(220, 53, 69, 0.5)';
-        
+
         setTimeout(() => {
             button.textContent = 'Copiar';
             button.style.backgroundColor = '';
@@ -154,7 +154,7 @@ window.copyCode = function(button) {
 
     // Verificar conexión con el servidor - versión mejorada
     checkServerConnection();
-    
+
     // Verificar modelos disponibles
     checkAvailableModels();
 
@@ -266,7 +266,7 @@ function setupUIElements() {
                 modelName = window.app.chat.activeModel;
             }
             addSystemMessage(`Modelo cambiado a: ${modelName}`);
-            
+
             // Asegurarse de que el modelo se actualice en toda la aplicación
             localStorage.setItem('codestorm_active_model', window.app.chat.activeModel);
         });
@@ -296,15 +296,15 @@ function setupUIElements() {
 async function checkAvailableModels() {
     const modelSelect = document.getElementById('model-select');
     const modelStatus = document.getElementById('model-status');
-    
+
     if (!modelSelect || !modelStatus) return;
-    
+
     try {
         const response = await fetch('/api/health');
         if (response.ok) {
             const data = await response.json();
             const apis = data.apis || {};
-            
+
             // Habilitar/deshabilitar opciones según disponibilidad
             let availableModels = [];
             for (const [model, status] of Object.entries(apis)) {
@@ -319,11 +319,11 @@ async function checkAvailableModels() {
                     }
                 }
             }
-            
+
             if (availableModels.length > 0) {
                 modelStatus.textContent = `Modelos disponibles: ${availableModels.join(', ')}`;
                 modelStatus.className = 'mt-2 small text-success';
-                
+
                 // Seleccionar el primer modelo disponible
                 const firstAvailable = Array.from(modelSelect.options).find(option => !option.disabled);
                 if (firstAvailable && window.app.chat) {
@@ -911,571 +911,4 @@ function showHTMLPreview(htmlContent) {
                 <meta charset="UTF-8">
                 <meta name="viewport" content="width=device-width, initial-scale=1.0">
                 <!-- Bootstrap CSS -->
-                <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-                <style>
-                    body { padding: 20px; }
-                    .preview-container { border: 1px solid #dee2e6; padding: 20px; border-radius: 6px; }
-                </style>
-            </head>
-            <body>
-                <div class="container">
-                    <div class="row mb-3">
-                        <div class="col">
-                            <h3>Vista Previa HTML</h3>
-                            <p class="text-muted">Generado por Codestorm Assistant</p>
-                        </div>
-                    </div>
-                    <div class="preview-container">
-                        ${htmlContent}
-                    </div>
-                </div>
-            </body>
-            </html>
-        `);
-        previewWindow.document.close();
-    } else {
-        alert('No se pudo abrir la vista previa. Verifica que no estén bloqueadas las ventanas emergentes.');
-    }
-}
-
-/**
- * Copia el contenido al portapapeles
- * @param {string} elementId - ID del elemento que contiene el contenido
- * @param {string} type - Tipo de contenido ('message' o 'code')
- * @param {string} content - Contenido a copiar (opcional, solo para 'code')
- * @param {string} buttonId - ID del botón de copiar (opcional)
- */
-function copyToClipboard(elementId, type, content, buttonId) {
-    let textToCopy = '';
-
-    if (type === 'code' && content) {
-        // Asegurarse de que content sea realmente el texto a copiar
-        textToCopy = content;
-        console.log("Contenido a copiar (código):", textToCopy.substring(0, 50) + "...");
-    } else if (type === 'message' && elementId) {
-        const messageElement = document.getElementById(elementId);
-        if (messageElement) {
-            const contentElement = messageElement.querySelector('.message-content');
-            if (contentElement) {
-                // Usar innerText para obtener el texto formateado como se muestra, incluyendo saltos de línea
-                textToCopy = contentElement.innerText || contentElement.textContent;
-                
-                // Verificar que no estamos copiando el ID u otro texto incorrecto
-                if (!textToCopy || textToCopy === elementId || textToCopy.length < 5) {
-                    console.warn("Contenido posiblemente incorrecto, intentando método alternativo");
-                    
-                    // Método alternativo: obtener HTML y convertirlo a texto plano
-                    const html = contentElement.innerHTML;
-                    const div = document.createElement('div');
-                    div.innerHTML = html;
-                    
-                    // Extraer texto de todos los nodos hijos recursivamente
-                    const extractTextFromNode = (node) => {
-                        let result = '';
-                        if (node.nodeType === Node.TEXT_NODE) {
-                            result += node.textContent;
-                        } else if (node.nodeType === Node.ELEMENT_NODE) {
-                            // Añadir saltos de línea para elementos específicos
-                            if (node.tagName === 'BR' || node.tagName === 'P' || node.tagName === 'DIV') {
-                                result += '\n';
-                            }
-                            // Procesar nodos hijos
-                            for (const child of node.childNodes) {
-                                result += extractTextFromNode(child);
-                            }
-                            // Añadir salto de línea después de ciertos elementos
-                            if (node.tagName === 'P' || node.tagName === 'DIV') {
-                                result += '\n';
-                            }
-                        }
-                        return result;
-                    };
-                    
-                    textToCopy = extractTextFromNode(div).trim();
-                }
-                
-                console.log("Contenido a copiar (mensaje):", textToCopy.substring(0, 50) + "...");
-            }
-        }
-    }
-
-    // Verificar que tenemos contenido para copiar
-    if (!textToCopy) {
-        console.error("No hay contenido para copiar");
-        addSystemMessage('No hay contenido para copiar');
-        return;
-    }
-
-    // Usar la API de portapapeles moderna
-    try {
-        navigator.clipboard.writeText(textToCopy)
-            .then(() => {
-                // Mostrar confirmación
-                if (buttonId) {
-                    const button = document.getElementById(buttonId);
-                    if (button) {
-                        const originalHTML = button.innerHTML;
-                        button.innerHTML = '<i class="bi bi-check"></i>';
-                        button.classList.add('btn-success');
-
-                        setTimeout(() => {
-                            button.innerHTML = originalHTML;
-                            button.classList.remove('btn-success');
-                        }, 2000);
-                    }
-                } else {
-                    addSystemMessage('Contenido copiado al portapapeles');
-                }
-            })
-            .catch(err => {
-                console.error('Error al copiar:', err);
-                addSystemMessage('No se pudo copiar al portapapeles');
-            });
-    } catch (err) {
-        // Fallback para navegadores que no soportan clipboard API
-        const textarea = document.createElement('textarea');
-        textarea.value = textToCopy;
-        textarea.style.position = 'fixed';
-        textarea.style.opacity = '0';
-        document.body.appendChild(textarea);
-        textarea.select();
-
-        try {
-            document.execCommand('copy');
-            if (buttonId) {
-                const button = document.getElementById(buttonId);
-                if (button) {
-                    const originalHTML = button.innerHTML;
-                    button.innerHTML = '<i class="bi bi-check"></i>';
-                    button.classList.add('btn-success');
-
-                    setTimeout(() => {
-                        button.innerHTML = originalHTML;
-                        button.classList.remove('btn-success');
-                    }, 2000);
-                }
-            } else {
-                addSystemMessage('Contenido copiado al portapapeles');
-            }
-        } catch (e) {
-            console.error('Error al usar fallback de copia:', e);
-            addSystemMessage('No se pudo copiar al portapapeles');
-        }
-
-        document.body.removeChild(textarea);
-    }
-}
-
-
-/**
- * Formatea el contenido del mensaje (markdown, código, etc)
- * @param {string} content - Contenido a formatear
- * @returns {string} Contenido formateado con HTML
- */
-function formatMessageContent(content) {
-    if (!content) return '';
-
-    // Procesar bloques de código primero para evitar conflictos
-    const codeBlocks = [];
-    content = content.replace(/```([a-zA-Z]*)\n([\s\S]+?)```/g, (match, language, code) => {
-        const placeholder = `__CODE_BLOCK_${codeBlocks.length}__`;
-        codeBlocks.push({ language: language || 'plaintext', code });
-        return placeholder;
-    });
-
-    // Procesar código en línea
-    const inlineCode = [];
-    content = content.replace(/`([^`]+)`/g, (match, code) => {
-        const placeholder = `__INLINE_CODE_${inlineCode.length}__`;
-        inlineCode.push(code);
-        return placeholder;
-    });
-
-    // Procesar elementos Markdown
-    content = content
-        // Titulares
-        .replace(/^### (.*$)/gm, '<h3>$1</h3>')
-        .replace(/^## (.*$)/gm, '<h2>$1</h2>')
-        .replace(/^# (.*$)/gm, '<h1>$1</h1>')
-
-        // Enlaces
-        .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>')
-
-        // Negrita
-        .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
-        .replace(/__([^_]+)__/g, '<strong>$1</strong>')
-
-        // Cursiva
-        .replace(/\*([^*]+)\*/g, '<em>$1</em>')
-        .replace(/_([^_]+)_/g, '<em>$1</em>')
-    // Citas
-    .replace(/^\> (.*$)/gm, '<blockquote>$1</blockquote>')
-
-    // Líneas horizontales
-    .replace(/^\s*[\-=_]{3,}\s*$/gm, '<hr>');
-
-
-                    // Procesar listas de manera más robusta
-                    const lines = content.split('\n');
-                    let inList = false;
-                    let listType = '';
-
-                    for (let i = 0; i < lines.length; i++) {
-                    const line = lines[i];
-
-                    if (line.match(/^\s*\* /)) {
-                        if (!inList || listType !== 'ul') {
-                            lines[i] = inList ? '</'+listType+'><ul><li>' + line.replace(/^\s*\* /, '') : '<ul><li>' + line.replace(/^\s*\* /, '');
-                            inList = true;
-                            listType = 'ul';
-                        } else {
-                            lines[i] = '<li>' + line.replace(/^\s*\* /, '') + '</li>';
-                        }
-                    } else if (line.match(/^\s*\- /)) {
-                        if (!inList || listType !== 'ul') {
-                            lines[i] = inList ? '</'+listType+'><ul><li>' + line.replace(/^\s*\- /, '') : '<ul><li>' + line.replace(/^\s*\- /, '');
-                            inList = true;
-                            listType = 'ul';
-                        } else {
-                            lines[i] = '<li>' + line.replace(/^\s*\- /, '') + '</li>';
-                        }
-                    } else if (line.match(/^\s*\d+\. /)) {
-                        if (!inList || listType !== 'ol') {
-                            lines[i] = inList ? '</'+listType+'><ol><li>' + line.replace(/^\s*\d+\. /, '') : '<ol><li>' + line.replace(/^\s*\d+\. /, '');
-                            inList = true;
-                            listType = 'ol';
-                        } else {
-                            lines[i] = '<li>' + line.replace(/^\s*\d+\. /, '') + '</li>';
-                        }
-                    } else if (inList) {
-                        lines[i-1] += '</li>';
-                        lines[i] = '</'+listType+'>' + line;
-                        inList = false;
-                    }
-                    }
-
-                    if (inList) {
-                    lines[lines.length-1] += '</li></'+listType+'>';
-                    }
-
-                    content = lines.join('\n');
-
-                    // Restaurar bloques de código con mejor formato
-                    codeBlocks.forEach((block, i) => {
-                    const escapedCode = block.code
-                        .replace(/</g, '&lt;')
-                        .replace(/>/g, '&gt;');
-                    content = content.replace(
-                        `__CODE_BLOCK_${i}__`, 
-                        `<div class="code-block-container">
-                          <div class="code-toolbar">
-                            <span class="code-language">${block.language || 'code'}</span>
-                            <button class="code-copy-btn" onclick="copyCode(this)">Copiar</button>
-                          </div>
-                          <pre><code class="language-${block.language || ''}">${escapedCode}</code></pre>
-                         </div>`
-                    );
-                    });
-
-                    // Restaurar código en línea
-                    inlineCode.forEach((code, i) => {
-                    const escapedCode = code
-                        .replace(/</g, '&lt;')
-                        .replace(/>/g, '&gt;');
-                    content = content.replace(
-                        `__INLINE_CODE_${i}__`, 
-                        `<code>${escapedCode}</code>`
-                    );
-                    });
-
-                    // Preservar saltos de línea
-                    content = content.replace(/\n/g, '<br>');
-
-                    return content;
-}
-
-/**
- * Actualiza la información del agente seleccionado
- * @param {string} agentId - ID del agente
- */
-function updateAgentInfo(agentId) {
-    // Asegurarse de que los agentes estén definidos
-    if (!window.app.chat.availableAgents || Object.keys(window.app.chat.availableAgents).length === 0) {
-        console.log('Agentes no disponibles, usando valores predeterminados');
-        // Definir agentes predeterminados si no existen
-        window.app.chat.availableAgents = window.app.chat.availableAgents || {
-            'developer': {
-                name: 'Agente de Desarrollo',
-                description: 'Experto en desarrollo frontend y soluciones de código profesionales',
-                capabilities: [
-                    'Diseño y desarrollo de interfaces web responsivas',
-                    'Optimización de rendimiento y accesibilidad',
-                    'Integración de frameworks y librerías modernas',
-                    'Automatización y CI/CD para proyectos',
-                    'Generación de código escalable y mantenible'
-                ],
-                icon: 'code-slash'
-            },
-            'architect': {
-                name: 'Agente de Arquitectura',
-                description: 'Diseñador de arquitecturas escalables y optimizadas',
-                capabilities: [
-                    'Definición de estructura del proyecto',
-                    'Selección de tecnologías y frameworks',
-                    'Asesoría en elección de bases de datos',
-                    'Implementación de microservicios',
-                    'Planificación de UI/UX y patrones de diseño'
-                ],
-                icon: 'diagram-3'
-            },
-            'advanced': {
-                name: 'Agente Avanzado de Software',
-                description: 'Especialista en integraciones complejas y funciones avanzadas',
-                capabilities: [
-                    'Gestión de APIs y microservicios',
-                    'Optimización de backend',
-                    'Automatización avanzada de procesos',
-                    'Manejo de autenticación y autorización',
-                    'Conexiones a la nube y servicios de terceros'
-                ],
-                icon: 'gear-wide-connected'
-            },
-            'general': {
-                name: 'Asistente General',
-                description: 'Asistente versátil para diversas tareas de programación',
-                capabilities: [
-                    'Resolución de consultas generales',
-                    'Asistencia en proyectos diversos',
-                    'Explicación de conceptos técnicos',
-                    'Recomendaciones de buenas prácticas',
-                    'Orientación en elección de tecnologías'
-                ],
-                icon: 'person-check'
-            }
-        };
-    }
-
-    const agent = window.app.chat.availableAgents[agentId] || window.app.chat.availableAgents.general;
-    const {agentInfo, agentCapabilities, agentBadge} = window.app.chat.elements;
-
-    // Actualizar información del agente
-    if (agentInfo) {
-        agentInfo.innerHTML = `
-            <i class="bi bi-${agent.icon} agent-icon"></i>
-            <div>
-                <h3>${agent.name}</h3>
-                <p>${agent.description}</p>
-            </div>
-        `;
-    }
-
-    // Actualizar lista de capacidades
-    if (agentCapabilities && agent.capabilities) {
-        agentCapabilities.innerHTML = '';
-        agent.capabilities.forEach(capability => {
-            const item = document.createElement('li');
-            item.textContent = capability;
-            agentCapabilities.appendChild(item);
-        });
-    }
-
-    // Actualizar badge del agente
-    if (agentBadge) {
-        agentBadge.textContent = agent.name;
-    }
-}
-
-/**
- * Ajusta la altura del textarea automáticamente
- * @param {HTMLTextAreaElement} textarea - Elemento textarea
- */
-function adjustTextareaHeight(textarea) {
-    if (!textarea) return;
-
-    // Restablecer altura para obtener la correcta
-    textarea.style.height = 'auto';
-
-    // Calcular nueva altura (con límite máximo)
-    const maxHeight = 200; // altura máxima en px
-    const newHeight = Math.min(textarea.scrollHeight, maxHeight);
-
-    // Establecer nueva altura
-    textarea.style.height = `${newHeight}px`;
-
-    // Añadir/quitar clase de scroll si es necesario
-    if (textarea.scrollHeight > maxHeight) {
-        textarea.classList.add('scrollable');
-    } else {
-        textarea.classList.remove('scrollable');
-    }
-}
-
-/**
- * Añade un mensaje al contenedor de chat
- * @param {string} messageHTML - HTML del mensaje
- */
-function appendMessageToChat(messageHTML) {
-    const {messagesContainer} = window.app.chat.elements;
-    if (!messagesContainer) return;
-
-    // Crear elemento temporal para insertar HTML
-    const tempDiv = document.createElement('div');
-    tempDiv.innerHTML = messageHTML;
-
-    // Añadir el nodo al contenedor
-    messagesContainer.appendChild(tempDiv.firstElementChild);
-}
-
-/**
- * Desplaza el chat hasta abajo
- */
-function scrollToBottom() {
-    const {messagesContainer} = window.app.chat.elements;
-    if (!messagesContainer) return;
-
-    messagesContainer.scrollTop = messagesContainer.scrollHeight;
-}
-
-/**
- * Obtiene la hora actual formateada (HH:MM)
- * @returns {string} Hora formateada
- */
-function getCurrentTime() {
-    const now = new Date();
-    let hours = now.getHours();
-    let minutes = now.getMinutes();
-
-    // Añadir ceros iniciales si es necesario
-    hours = hours < 10 ? '0' + hours : hours;
-    minutes = minutes < 10 ? '0' + minutes : minutes;
-
-    return `${hours}:${minutes}`;
-}
-
-/**
- * Registra información en la consola sin mostrarla en la interfaz
- * @param {string} message - Mensaje a registrar
- * @param {any} data - Datos adicionales (opcional)
- */
-function silentLog(message, data) {
-    // Verificar que window.app y window.app.chat existan antes de acceder a debugMode
-    if (window.app && window.app.chat && window.app.chat.debugMode) {
-        console.log(`[DEBUG] ${message}`, data !== undefined ? data : '');
-    } else {
-        console.log(`[INFO] ${message}`, data !== undefined ? data : '');
-    }
-}
-
-/**
- * Exporta la conversación actual a un archivo
- * @param {string} format - Formato de exportación ('json', 'html', 'markdown')
- */
-function exportConversation(format = 'json') {
-    const {messagesContainer} = window.app.chat.elements;
-    if (!messagesContainer) {
-        addSystemMessage("No se pudo exportar la conversación");
-        return;
-    }
-
-    let content = '';
-    const filename = `codestorm-chat-${new Date().toISOString().slice(0, 10)}.${format}`;
-
-    try {
-        switch (format) {
-            case 'json':
-                // Exportar como JSON
-                const jsonData = [];
-                window.app.chat.context.forEach(msg => {
-                    jsonData.push({
-                        role: msg.role,
-                        content: msg.content,
-                        timestamp: new Date().toISOString()
-                    });
-                });
-                content = JSON.stringify(jsonData, null, 2);
-                break;
-
-            case 'markdown':
-                // Exportar como Markdown
-                window.app.chat.context.forEach(msg => {
-                    if (msg.role === 'user') {
-                        content += `## Usuario\n\n${msg.content}\n\n`;
-                    } else if (msg.role === 'assistant') {
-                        content += `## Asistente\n\n${msg.content}\n\n`;
-                    }
-                });
-                break;
-
-            case 'html':
-                // Exportar como HTML
-                content = `<!DOCTYPE html>
-                <html>
-                <head>
-                    <meta charset="UTF-8">
-                    <title>Conversación de Codestorm Assistant</title>
-                    <style>
-                        body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; }
-                        .message { margin-bottom: 20px; padding: 10px; border-radius: 5px; }
-                        .user { background-color: #f0f0f0; }
-                        .assistant { background-color: #e6f7ff; }
-                        pre { background-color: #f5f5f5; padding: 10px; border-radius: 5px; overflow-x: auto; }
-                        code { font-family: monospace; }
-                    </style>
-                </head>
-                <body>
-                    <h1>Conversación de Codestorm Assistant</h1>
-                    <p>Exportado el ${new Date().toLocaleString()}</p>
-                    <div class="conversation">`;
-
-                window.app.chat.context.forEach(msg => {
-                    if (msg.role === 'user') {
-                        content += `<div class="message user"><strong>Usuario:</strong><div>${formatMessageContent(msg.content)}</div></div>`;
-                    } else if (msg.role === 'assistant') {
-                        content += `<div class="message assistant"><strong>Asistente:</strong><div>${formatMessageContent(msg.content)}</div></div>`;
-                    }
-                });
-
-                content += `</div></body></html>`;
-                break;
-
-            default:
-                throw new Error(`Formato no soportado: ${format}`);
-        }
-
-        // Crear y descargar el archivo
-        const blob = new Blob([content], { type: `text/${format === 'json' ? 'json' : format === 'html' ? 'html' : 'plain'}` });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = filename;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-
-        addSystemMessage(`Conversación exportada como ${format.toUpperCase()}`);
-    } catch (error) {
-        console.error('Error al exportar conversación:', error);
-        addSystemMessage(`Error al exportar conversación: ${error.message}`);
-    }
-}
-
-/**
- * Borra la conversación actual
- */
-function clearConversation() {
-    if (!confirm('¿Estás seguro de que deseas borrar toda la conversación?')) {
-        return;
-    }
-
-    const {messagesContainer} = window.app.chat.elements;
-    if (messagesContainer) {
-        messagesContainer.innerHTML = '';
-        window.app.chat.context = [];
-        window.app.chat.chatMessageId = 0;
-        addSystemMessage("Conversación borrada");
-    }
-}
-
-// Inicializar chat cuando el DOM esté completamente cargado
-document.addEventListener('DOMContentLoaded', window.initializeChat);
+                <link href([a-zA-Z]*)\n([\s\S]+?)
