@@ -222,6 +222,9 @@ function setupUIElements() {
                 modelName = window.app.chat.activeModel;
             }
             addSystemMessage(`Modelo cambiado a: ${modelName}`);
+            
+            // Asegurarse de que el modelo se actualice en toda la aplicación
+            localStorage.setItem('codestorm_active_model', window.app.chat.activeModel);
         });
     }
 

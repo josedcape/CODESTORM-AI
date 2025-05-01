@@ -532,8 +532,43 @@ def api_chat():
 
         logging.info(f"Mensaje procesado: {user_message} por agente {agent_id} usando {model_choice}")
 
-        # Verificar si hay una API configurada
-        respuesta = None
+        # Verificar qué APIs están disponibles
+        available_apis = []
+        if openai_api_key:
+            available_apis.append('openai')
+        if anthropic_api_key:
+            available_apis.append('anthropic')
+        if gemini_api_key:
+            available_apis.append('gemini')
+
+        # Si no hay APIs configuradas, mostrar mensaje informativo
+        if not available_apis:
+            return jsonify({
+                'success': False,
+                'response': "No hay APIs configuradas. Por favor configure al menos una API key (OpenAI, Anthropic o Gemini) en el panel de Secrets.",
+                'agent_id': agent_id,
+                'model': model_choice,
+                'available_models': []
+            })
+            
+        # Si el modelo elegido no está disponible, usar el primero disponible
+        if model_choice not in available_apis:
+            fallback_model = available_apis[0] if available_apis else None
+            if fallback_model:
+                logging.warning(f"Modelo {model_choice} no disponible, usando {fallback_model}")
+                model_choice = fallback_model
+            else:
+                return jsonify({
+                    'success': False,
+                    'error': f"El modelo '{model_choice}' no está configurado. Por favor configure una API key válida o seleccione otro modelo.",
+                    'agent_id': agent_id,
+                    'model': model_choice,
+                    'available_models': available_apis
+                })
+
+        # Generar una respuesta simulada para la demostración
+        respuesta = f"Hola, soy el agente {agent_id} usando el modelo {model_choice}. Recibí tu mensaje: '{user_message}'. "
+        respuesta += "Este es un mensaje de demostración porque aún no hay una API configurada. Configura una API en el panel de Secrets para obtener respuestas reales."
 
         # Mensaje adicional si se solicita alguna acción específica
         if "crear" in user_message.lower() or "genera" in user_message.lower():
@@ -541,14 +576,14 @@ def api_chat():
         elif "error" in user_message.lower() or "problema" in user_message.lower():
             respuesta += "\n\nVeo que mencionas un problema. Para ayudarte mejor, ¿podrías compartir más detalles o mostrarme el código que está causando problemas?"
 
-        # Indicar que el modelo no está disponible
-        logging.warning(f"Modelo no disponible: {model_choice}")
-
+        # Devolver respuesta
         return jsonify({
-            'success': False,
-            'error': f"El modelo '{model_choice}' no está configurado. Por favor configure una API key válida o seleccione otro modelo.",
+            'success': True,
+            'response': respuesta,
             'agent_id': agent_id,
-            'model': model_choice
+            'model': model_choice,
+            'available_models': available_apis,
+            'is_demo': True
         })
     except Exception as e:
         logging.error(f"Error en API de chat: {str(e)}")
