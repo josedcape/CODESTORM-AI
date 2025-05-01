@@ -528,9 +528,8 @@ def api_chat():
 
         logging.info(f"Mensaje procesado: {user_message} por agente {agent_id} usando {model_choice}")
 
-        # Simulación de respuesta si las APIs no están configuradas
-        # Esto permite una experiencia de demostración funcional
-        respuesta = f"Hola, soy el agente {agent_id}. Recibí tu mensaje: '{user_message}'. ¿En qué puedo ayudarte hoy? (Respuesta generada localmente)"
+        # Verificar si hay una API configurada
+        respuesta = None ¿En qué puedo ayudarte hoy? (Respuesta generada localmente)"
 
         # Mensaje adicional si se solicita alguna acción específica
         if "crear" in user_message.lower() or "genera" in user_message.lower():
@@ -538,12 +537,12 @@ def api_chat():
         elif "error" in user_message.lower() or "problema" in user_message.lower():
             respuesta += "\n\nVeo que mencionas un problema. Para ayudarte mejor, ¿podrías compartir más detalles o mostrarme el código que está causando problemas?"
 
-        # Indicar disponibilidad de los modelos
+        # Indicar que el modelo no está disponible
         logging.warning(f"Modelo no disponible: {model_choice}")
 
         return jsonify({
-            'success': True,
-            'response': respuesta,
+            'success': False,
+            'error': f"El modelo '{model_choice}' no está configurado. Por favor configure una API key válida o seleccione otro modelo.",
             'agent_id': agent_id,
             'model': model_choice
         })
