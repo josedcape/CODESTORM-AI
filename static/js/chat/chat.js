@@ -642,7 +642,7 @@ function addAgentMessage(message, agentId) {
                 ${formattedMessage}
             </div>
             <div class="message-actions">
-                <button id="${copyBtnId}" class="btn btn-sm btn-icon" onclick="copyToClipboard('${messageId}', 'message', null, '${copyBtnId}')" title="Copiar mensaje">
+                <button id="${copyBtnId}" class="btn btn-sm btn-icon" onclick="copyToClipboard('${messageId}', 'message', null, '${copyBtnId}')" data-message-id="${messageId}" title="Copiar mensaje">
                     <i class="bi bi-clipboard"></i>
                 </button>
             </div>
@@ -892,11 +892,20 @@ function copyToClipboard(elementId, type, content, buttonId) {
             if (contentElement) {
                 // Obtener el texto plano del contenido del mensaje, manteniendo saltos de línea pero sin HTML
                 textToCopy = contentElement.innerText || contentElement.textContent;
+                // Asegurarse de que no estamos copiando el ID del mensaje
+                if (textToCopy === elementId) {
+                    console.error("Error: se está copiando el ID en lugar del contenido");
+                    // Intentar obtener el contenido de otra manera
+                    textToCopy = Array.from(contentElement.childNodes)
+                        .map(node => node.nodeType === 3 ? node.textContent : node.innerText || node.textContent)
+                        .join('');
+                }
             }
         }
     }
 
     if (textToCopy) {
+        console.log("Copiando al portapapeles:", textToCopy.substring(0, 50) + "...");
         // Usar la API de portapapeles moderna
         try {
             navigator.clipboard.writeText(textToCopy)
