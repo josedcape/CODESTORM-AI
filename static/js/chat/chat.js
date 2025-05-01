@@ -626,6 +626,7 @@ function addUserMessage(message) {
 function addAgentMessage(message, agentId) {
     const agent = window.app.chat.availableAgents[agentId] || window.app.chat.availableAgents.general;
     const messageId = `msg-${++window.app.chat.chatMessageId}`;
+    const copyBtnId = `copy-btn-${messageId}`;
     const formattedMessage = formatMessageContent(message);
 
     const messageHTML = `
@@ -641,7 +642,7 @@ function addAgentMessage(message, agentId) {
                 ${formattedMessage}
             </div>
             <div class="message-actions">
-                <button class="btn btn-sm btn-icon" onclick="copyToClipboard('${messageId}', 'message')" title="Copiar mensaje">
+                <button id="${copyBtnId}" class="btn btn-sm btn-icon" onclick="copyToClipboard('${messageId}', 'message', null, '${copyBtnId}')" title="Copiar mensaje">
                     <i class="bi bi-clipboard"></i>
                 </button>
             </div>
@@ -889,16 +890,49 @@ function copyToClipboard(elementId, type, content, buttonId) {
         if (messageElement) {
             const contentElement = messageElement.querySelector('.message-content');
             if (contentElement) {
-                // Obtener el texto plano, manteniendo saltos de línea pero sin HTML
-                textToCopy = contentElement.innerText;
+                // Obtener el texto plano del contenido del mensaje, manteniendo saltos de línea pero sin HTML
+                textToCopy = contentElement.innerText || contentElement.textContent;
             }
         }
     }
 
     if (textToCopy) {
-        navigator.clipboard.writeText(textToCopy)
-            .then(() => {
-                // Mostrar confirmación
+        // Usar la API de portapapeles moderna
+        try {
+            navigator.clipboard.writeText(textToCopy)
+                .then(() => {
+                    // Mostrar confirmación
+                    if (buttonId) {
+                        const button = document.getElementById(buttonId);
+                        if (button) {
+                            const originalHTML = button.innerHTML;
+                            button.innerHTML = '<i class="bi bi-check"></i>';
+                            button.classList.add('btn-success');
+
+                            setTimeout(() => {
+                                button.innerHTML = originalHTML;
+                                button.classList.remove('btn-success');
+                            }, 2000);
+                        }
+                    } else {
+                        addSystemMessage('Contenido copiado al portapapeles');
+                    }
+                })
+                .catch(err => {
+                    console.error('Error al copiar:', err);
+                    addSystemMessage('No se pudo copiar al portapapeles');
+                });
+        } catch (err) {
+            // Fallback para navegadores que no soportan clipboard API
+            const textarea = document.createElement('textarea');
+            textarea.value = textToCopy;
+            textarea.style.position = 'fixed';
+            textarea.style.opacity = '0';
+            document.body.appendChild(textarea);
+            textarea.select();
+            
+            try {
+                document.execCommand('copy');
                 if (buttonId) {
                     const button = document.getElementById(buttonId);
                     if (button) {
@@ -914,11 +948,13 @@ function copyToClipboard(elementId, type, content, buttonId) {
                 } else {
                     addSystemMessage('Contenido copiado al portapapeles');
                 }
-            })
-            .catch(err => {
-                console.error('Error al copiar:', err);
+            } catch (e) {
+                console.error('Error al usar fallback de copia:', e);
                 addSystemMessage('No se pudo copiar al portapapeles');
-            });
+            }
+            
+            document.body.removeChild(textarea);
+        }
     }
 }
 
