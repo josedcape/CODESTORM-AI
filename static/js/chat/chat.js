@@ -895,16 +895,43 @@ function copyToClipboard(elementId, type, content, buttonId) {
         if (messageElement) {
             const contentElement = messageElement.querySelector('.message-content');
             if (contentElement) {
-                // Obtener el texto plano del contenido del mensaje, manteniendo saltos de línea pero sin HTML
+                // Usar innerText para obtener el texto formateado como se muestra, incluyendo saltos de línea
                 textToCopy = contentElement.innerText || contentElement.textContent;
-                // Asegurarse de que no estamos copiando el ID del mensaje
-                if (textToCopy === elementId) {
-                    console.error("Error: se está copiando el ID en lugar del contenido");
-                    // Intentar obtener el contenido de otra manera
-                    textToCopy = Array.from(contentElement.childNodes)
-                        .map(node => node.nodeType === 3 ? node.textContent : node.innerText || node.textContent)
-                        .join('');
+                
+                // Verificar que no estamos copiando el ID u otro texto incorrecto
+                if (!textToCopy || textToCopy === elementId || textToCopy.length < 5) {
+                    console.warn("Contenido posiblemente incorrecto, intentando método alternativo");
+                    
+                    // Método alternativo: obtener HTML y convertirlo a texto plano
+                    const html = contentElement.innerHTML;
+                    const div = document.createElement('div');
+                    div.innerHTML = html;
+                    
+                    // Extraer texto de todos los nodos hijos recursivamente
+                    const extractTextFromNode = (node) => {
+                        let result = '';
+                        if (node.nodeType === Node.TEXT_NODE) {
+                            result += node.textContent;
+                        } else if (node.nodeType === Node.ELEMENT_NODE) {
+                            // Añadir saltos de línea para elementos específicos
+                            if (node.tagName === 'BR' || node.tagName === 'P' || node.tagName === 'DIV') {
+                                result += '\n';
+                            }
+                            // Procesar nodos hijos
+                            for (const child of node.childNodes) {
+                                result += extractTextFromNode(child);
+                            }
+                            // Añadir salto de línea después de ciertos elementos
+                            if (node.tagName === 'P' || node.tagName === 'DIV') {
+                                result += '\n';
+                            }
+                        }
+                        return result;
+                    };
+                    
+                    textToCopy = extractTextFromNode(div).trim();
                 }
+                
                 console.log("Contenido a copiar (mensaje):", textToCopy.substring(0, 50) + "...");
             }
         }
