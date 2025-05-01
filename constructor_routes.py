@@ -1317,6 +1317,275 @@ def generate_project():
                     db_feature = f"Base de datos: {tech_data.get('database')}"
                     if db_feature not in features:
                         features.append(db_feature)
+
+# Endpoints para el Asistente Interactivo
+
+@constructor_bp.route('/api/assistant/chat', methods=['POST'])
+def assistant_chat():
+    """Procesa mensajes del asistente interactivo."""
+    try:
+        # Obtener datos de la solicitud
+        data = request.get_json()
+        if not data:
+            return jsonify({'success': False, 'error': 'No se proporcionaron datos'})
+        
+        message = data.get('message', '')
+        context = data.get('context', {})
+        
+        if not message:
+            return jsonify({'success': False, 'error': 'Mensaje vacío'})
+        
+        # Registrar la solicitud
+        logging.info(f"Mensaje recibido para asistente: {message[:50]}...")
+        
+        # Obtener IDs de proyecto y estado actual
+        project_id = context.get('projectId')
+        mode = context.get('mode', 'information')
+        current_stage = context.get('currentStage')
+        
+        # Construir prompt para el asistente
+        system_prompt = """Eres un asistente de desarrollo especializado en ayudar a modificar funciones específicas en proyectos de software.
+Tu objetivo es proporcionar respuestas precisas y útiles para ayudar al usuario a modificar o crear código en su proyecto.
+
+Cuando el usuario solicite modificar alguna función o archivo específico:
+1. Analiza cuidadosamente la solicitud para entender qué parte del código necesita ser modificada
+2. Proporciona código claro y bien documentado para la modificación
+3. Explica brevemente qué hace el código y cómo soluciona el problema
+4. Si es necesario, sugiere acciones específicas que pueden ser automatizadas
+
+Utiliza bloques de código con triple backtick para mostrar el código, incluyendo el lenguaje correspondiente:
+```javascript
+// Código JavaScript aquí
+```
+
+```python
+# Código Python aquí
+```
+
+```css
+/* Código CSS aquí */
+```
+
+Actualmente estás en modo: """ + mode
+
+        if project_id and project_id in project_status:
+            # Agregar información sobre el proyecto actual si está disponible
+            project_info = project_status.get(project_id, {})
+            system_prompt += f"""
+
+Información del proyecto actual:
+- ID: {project_id}
+- Estado: {project_info.get('status', 'desconocido')}
+- Etapa actual: {project_info.get('current_stage', 'desconocida')}
+- Progreso: {project_info.get('progress', 0)}%
+"""
+        
+        # Determinar qué modelo usar para responder
+        model_to_use = 'openai'  # Por defecto usar OpenAI
+        
+        # Verificar disponibilidad de APIs
+        if os.environ.get('OPENAI_API_KEY'):
+            model_to_use = 'openai'
+        elif os.environ.get('ANTHROPIC_API_KEY'):
+            model_to_use = 'anthropic'
+        elif os.environ.get('GEMINI_API_KEY'):
+            model_to_use = 'gemini'
+        
+        # Preparar datos para generar la respuesta
+        response_text = None
+        actions = []
+        
+        # Generar respuesta usando el modelo disponible
+        if model_to_use == 'openai' and os.environ.get('OPENAI_API_KEY'):
+            try:
+                openai_client = openai.OpenAI()
+                completion = openai_client.chat.completions.create(
+                    model="gpt-4o",
+                    messages=[
+                        {"role": "system", "content": system_prompt},
+                        {"role": "user", "content": message}
+                    ],
+                    temperature=0.7,
+                    max_tokens=1500
+                )
+                response_text = completion.choices[0].message.content
+            except Exception as e:
+                logging.error(f"Error con OpenAI API: {str(e)}")
+                return jsonify({'success': False, 'error': f"Error al generar respuesta: {str(e)}"})
+        
+        elif model_to_use == 'anthropic' and os.environ.get('ANTHROPIC_API_KEY'):
+            try:
+                import anthropic
+                client = anthropic.Anthropic(api_key=os.environ.get('ANTHROPIC_API_KEY'))
+                
+                message_response = client.messages.create(
+                    model="claude-3-opus-20240229",
+                    max_tokens=1500,
+                    temperature=0.7,
+                    system=system_prompt,
+                    messages=[
+                        {"role": "user", "content": message}
+                    ]
+                )
+                
+                response_text = message_response.content[0].text
+            except Exception as e:
+                logging.error(f"Error con Anthropic API: {str(e)}")
+                return jsonify({'success': False, 'error': f"Error al generar respuesta: {str(e)}"})
+        
+        elif model_to_use == 'gemini' and os.environ.get('GEMINI_API_KEY'):
+            try:
+                import google.generativeai as genai
+                genai.configure(api_key=os.environ.get('GEMINI_API_KEY'))
+                
+                model = genai.GenerativeModel('gemini-1.5-pro')
+                prompt = f"{system_prompt}\n\nUsuario: {message}\n\nAsistente:"
+                
+                response = model.generate_content(prompt)
+                response_text = response.text
+            except Exception as e:
+                logging.error(f"Error con Gemini API: {str(e)}")
+                return jsonify({'success': False, 'error': f"Error al generar respuesta: {str(e)}"})
+        
+        else:
+            return jsonify({
+                'success': False, 
+                'error': 'No hay modelos de IA configurados. Por favor configura al menos una API key.'
+            })
+        
+        # Si estamos en modo intervención y hay un proyecto activo, intentar detectar acciones
+        if mode == 'intervention' and project_id and project_id in project_status:
+            # Por simplicidad, solo detectamos algunas acciones básicas
+            # En una implementación real, esto sería más sofisticado
+            
+            # Detectar si la respuesta sugiere agregar un archivo
+            if "crear un nuevo archivo" in response_text.lower() or "crear archivo" in response_text.lower():
+                # Extraer posible nombre de archivo de la respuesta
+                import re
+                file_match = re.search(r'`([^`]+\.[a-zA-Z0-9]+)`', response_text)
+                
+                if file_match:
+                    filename = file_match.group(1)
+                    actions.append({
+                        'type': 'add_file',
+                        'filename': filename,
+                        'content': 'Por determinar'
+                    })
+            
+            # Detectar si la respuesta sugiere modificar un archivo existente
+            if "modificar el archivo" in response_text.lower() or "modificar archivo" in response_text.lower():
+                # Extraer posible nombre de archivo de la respuesta
+                import re
+                file_match = re.search(r'`([^`]+\.[a-zA-Z0-9]+)`', response_text)
+                
+                if file_match:
+                    filename = file_match.group(1)
+                    actions.append({
+                        'type': 'modify_file',
+                        'filename': filename,
+                        'changes': 'Por determinar'
+                    })
+        
+        return jsonify({
+            'success': True,
+            'response': response_text,
+            'actions': actions,
+            'model_used': model_to_use
+        })
+    
+    except Exception as e:
+        logging.error(f"Error en asistente de chat: {str(e)}")
+        logging.error(traceback.format_exc())
+        return jsonify({'success': False, 'error': str(e)})
+
+@constructor_bp.route('/api/assistant/execute-action', methods=['POST'])
+def execute_assistant_action():
+    """Ejecuta una acción solicitada por el asistente."""
+    try:
+        data = request.get_json()
+        project_id = data.get('project_id')
+        action = data.get('action')
+        
+        if not project_id or not action:
+            return jsonify({'success': False, 'error': 'Falta project_id o action'})
+        
+        if project_id not in project_status:
+            return jsonify({'success': False, 'error': 'Proyecto no encontrado'})
+        
+        # Registrar la acción
+        logging.info(f"Ejecutando acción: {action.get('type')} para proyecto {project_id}")
+        
+        # Actualmente solo simularemos la ejecución para mostrar el flujo
+        # En una implementación real, aquí se realizarían las acciones en los archivos del proyecto
+        
+        action_type = action.get('type')
+        
+        if action_type == 'add_file':
+            # Simular agregar archivo
+            return jsonify({
+                'success': True,
+                'message': f"Archivo {action.get('filename')} agregado (simulación)",
+                'action_type': action_type
+            })
+        
+        elif action_type == 'modify_file':
+            # Simular modificar archivo
+            return jsonify({
+                'success': True,
+                'message': f"Archivo {action.get('filename')} modificado (simulación)",
+                'action_type': action_type
+            })
+        
+        elif action_type == 'notification':
+            # Notificación simple
+            return jsonify({
+                'success': True,
+                'message': action.get('message', 'Notificación'),
+                'action_type': action_type
+            })
+        
+        else:
+            return jsonify({
+                'success': False,
+                'error': f"Tipo de acción no soportado: {action_type}"
+            })
+    
+    except Exception as e:
+        logging.error(f"Error al ejecutar acción: {str(e)}")
+        logging.error(traceback.format_exc())
+        return jsonify({'success': False, 'error': str(e)})
+
+@constructor_bp.route('/api/assistant/intervention-mode', methods=['POST'])
+def set_intervention_mode():
+    """Configura el modo de intervención para un proyecto."""
+    try:
+        data = request.get_json()
+        project_id = data.get('project_id')
+        is_intervening = data.get('is_intervening', False)
+        
+        if not project_id:
+            return jsonify({'success': False, 'error': 'Falta project_id'})
+        
+        if project_id not in project_status:
+            return jsonify({'success': False, 'error': 'Proyecto no encontrado'})
+        
+        # Guardar el estado de intervención en el proyecto
+        project_status[project_id]['intervention_mode'] = is_intervening
+        
+        # Registrar el cambio
+        mode_str = "activado" if is_intervening else "desactivado"
+        logging.info(f"Modo intervención {mode_str} para proyecto {project_id}")
+        
+        return jsonify({
+            'success': True,
+            'project_id': project_id,
+            'intervention_mode': is_intervening
+        })
+    
+    except Exception as e:
+        logging.error(f"Error al configurar modo intervención: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)})
+
                 
                 # Añadir características adicionales
                 if tech_data.get('features') and isinstance(tech_data.get('features'), list):

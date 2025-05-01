@@ -625,14 +625,31 @@
     </div>
     <div class="chat-body" id="assistant-chat-messages">
         <div class="system-message">
-            <p>¡Hola! Soy tu asistente de desarrollo. Puedo ayudarte a modificar tu proyecto durante su construcción.</p>
-            <p>Algunos ejemplos de lo que puedo hacer:</p>
-            <ul>
-                <li>Añadir nuevas funcionalidades</li>
-                <li>Crear archivos de configuración</li>
-                <li>Modificar el diseño</li>
-                <li>Ajustar parámetros técnicos</li>
-            </ul>
+            <p><strong>¡Hola! Soy tu asistente de desarrollo interactivo.</strong> Puedo ayudarte a modificar funciones específicas de tu proyecto durante su construcción.</p>
+            <div class="mt-3">
+                <h6 class="mb-2"><i class="bi bi-diagram-3"></i> Ejemplos de modificaciones que puedo realizar:</h6>
+                <ul class="mb-3">
+                    <li>Añadir nueva función a un archivo existente: <code>"Agrega una función de validación de email al archivo utils.js"</code></li>
+                    <li>Modificar un componente: <code>"Modifica el componente Botón para que tenga un estado de carga"</code></li>
+                    <li>Optimizar código: <code>"Refactoriza esta función para usar async/await en lugar de promesas"</code></li>
+                    <li>Cambiar estilos: <code>"Actualiza los estilos CSS para que los botones sean más redondeados"</code></li>
+                    <li>Depurar problemas: <code>"Ayúdame a encontrar el error en esta función que causa un TypeError"</code></li>
+                </ul>
+            </div>
+            
+            <div class="mt-3">
+                <h6 class="mb-2"><i class="bi bi-lightbulb"></i> Cómo interactuar conmigo para mejores resultados:</h6>
+                <ol>
+                    <li>Describe claramente qué función o parte del código quieres modificar</li>
+                    <li>Especifica el archivo donde se encuentra (si lo conoces)</li>
+                    <li>Explica el comportamiento actual y el deseado</li>
+                    <li>Si es necesario, activa el <span class="badge bg-danger">Modo intervención</span> para que pueda realizar cambios directos en el proyecto</li>
+                </ol>
+            </div>
+            
+            <div class="alert alert-info mt-3">
+                <i class="bi bi-info-circle"></i> Cuando activas el <strong>Modo intervención</strong>, puedo realizar cambios directos en los archivos de tu proyecto. Esto es útil cuando necesitas modificaciones precisas en funciones específicas.
+            </div>
         </div>
     </div>
     <div class="chat-input">
@@ -656,6 +673,7 @@
 {% block scripts %}
 <script src="{{ url_for('static', filename='js/tech-selector.js') }}"></script>
 <script src="{{ url_for('static', filename='js/chat/code-formatter.js') }}"></script>
+<script src="{{ url_for('static', filename='js/chat/interaction.js') }}"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     const constructorForm = document.getElementById('constructor-form');

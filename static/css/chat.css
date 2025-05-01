@@ -1,4 +1,3 @@
-
 /* Estilos para la visualización de código en el chat */
 .code-block {
     background-color: #1e1e1e;
@@ -592,4 +591,305 @@ pre code {
     font-family: 'JetBrains Mono', monospace;
     font-size: 0.85rem;
     line-height: 1.5;
+}
+
+/* Estilos para el Asistente de Chat */
+.chat-float-button {
+    position: fixed;
+    bottom: 30px;
+    right: 30px;
+    z-index: 9999;
+}
+
+.chat-float-button button {
+    width: 60px;
+    height: 60px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    transition: all 0.3s ease;
+}
+
+.chat-float-button button:hover {
+    transform: scale(1.05);
+}
+
+.chat-float-button button i {
+    font-size: 24px;
+}
+
+.chat-panel {
+    position: fixed;
+    bottom: 100px;
+    right: 30px;
+    width: 400px;
+    height: 600px;
+    background-color: #222;
+    border-radius: 15px;
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4);
+    display: flex;
+    flex-direction: column;
+    z-index: 9998;
+    overflow: hidden;
+    transition: all 0.3s ease;
+    border: 1px solid rgba(30, 136, 229, 0.3);
+}
+
+.chat-header {
+    background: linear-gradient(90deg, #091428 0%, #0A2149 100%);
+    color: white;
+    padding: 12px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid rgba(30, 136, 229, 0.5);
+}
+
+.chat-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 15px;
+    background-color: #1a1a1a;
+    scrollbar-width: thin;
+    scrollbar-color: #444 #222;
+}
+
+.chat-body::-webkit-scrollbar {
+    width: 8px;
+}
+
+.chat-body::-webkit-scrollbar-track {
+    background: #222;
+}
+
+.chat-body::-webkit-scrollbar-thumb {
+    background-color: #444;
+    border-radius: 10px;
+}
+
+.chat-input {
+    padding: 15px;
+    background-color: #2a2a2a;
+    border-top: 1px solid #444;
+}
+
+.message {
+    margin-bottom: 15px;
+    max-width: 85%;
+    word-wrap: break-word;
+    position: relative;
+}
+
+.user-message {
+    margin-left: auto;
+    background-color: #1E88E5;
+    color: white;
+    padding: 10px 15px;
+    border-radius: 15px 15px 3px 15px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.assistant-message {
+    margin-right: auto;
+    background-color: #333;
+    color: white;
+    padding: 12px 15px;
+    border-radius: 15px 15px 15px 3px;
+    border-left: 3px solid #1E88E5;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.message-time {
+    font-size: 0.7rem;
+    opacity: 0.7;
+    margin-top: 4px;
+    text-align: right;
+}
+
+.message-actions {
+    position: absolute;
+    right: 5px;
+    top: 5px;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+}
+
+.assistant-message:hover .message-actions {
+    opacity: 1;
+}
+
+.message-actions .btn {
+    background: rgba(0, 0, 0, 0.3);
+    color: rgba(255, 255, 255, 0.8);
+    width: 24px;
+    height: 24px;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    border-radius: 4px;
+}
+
+.message-actions .btn:hover {
+    background: rgba(0, 0, 0, 0.5);
+    color: white;
+}
+
+.system-message {
+    background-color: #1c1c1c;
+    border-left: 3px solid #1E88E5;
+    padding: 15px;
+    margin-bottom: 20px;
+    border-radius: 5px;
+    font-size: 0.95rem;
+    color: #e0e0e0;
+    line-height: 1.5;
+}
+
+.system-message ul, .system-message ol {
+    padding-left: 20px;
+    margin: 10px 0;
+}
+
+.system-message li {
+    margin-bottom: 5px;
+}
+
+.system-message code {
+    background-color: #333;
+    color: #e0e0e0;
+    padding: 2px 4px;
+    border-radius: 3px;
+    font-family: 'Consolas', 'Monaco', monospace;
+    font-size: 0.9em;
+}
+
+.context-badge {
+    font-size: 0.7rem;
+    padding: 2px 8px;
+    background-color: #555;
+    border-radius: 10px;
+    margin-right: 5px;
+    color: #ccc;
+}
+
+.action-message {
+    text-align: center;
+    margin: 10px 0;
+    font-size: 0.85rem;
+    color: #aaa;
+    background-color: rgba(30, 136, 229, 0.1);
+    padding: 8px;
+    border-radius: 4px;
+}
+
+/* Animación para el botón de intervención */
+@keyframes pulse {
+    0% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.1); opacity: 0.7; }
+    100% { transform: scale(1); opacity: 1; }
+}
+
+.intervention-active {
+    animation: pulse 2s infinite;
+    background-color: #dc3545 !important;
+}
+
+/* Indicador de escritura */
+.typing-indicator {
+    display: flex;
+    padding: 8px 12px;
+    background-color: #333;
+    border-radius: 15px;
+    margin-bottom: 15px;
+    width: fit-content;
+    align-items: center;
+}
+
+.typing-indicator span {
+    width: 8px;
+    height: 8px;
+    margin: 0 2px;
+    background-color: #999;
+    border-radius: 50%;
+    opacity: 0.6;
+    display: inline-block;
+}
+
+.typing-indicator span:nth-child(1) {
+    animation: typing 1s infinite 0s;
+}
+.typing-indicator span:nth-child(2) {
+    animation: typing 1s infinite 0.33s;
+}
+.typing-indicator span:nth-child(3) {
+    animation: typing 1s infinite 0.66s;
+}
+
+@keyframes typing {
+    0% { transform: translateY(0px); }
+    50% { transform: translateY(-5px); }
+    100% { transform: translateY(0px); }
+}
+
+/* Estilos para bloques de código */
+.code-block-container {
+    margin: 15px 0;
+    border-radius: 6px;
+    overflow: hidden;
+    background-color: #1f1f1f;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.code-toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background-color: #2d2d2d;
+    padding: 6px 10px;
+    font-size: 0.8rem;
+    border-bottom: 1px solid #444;
+}
+
+.code-language {
+    color: #888;
+    font-family: 'Consolas', 'Monaco', monospace;
+    text-transform: uppercase;
+    font-size: 0.7rem;
+    letter-spacing: 0.5px;
+}
+
+.code-copy-btn {
+    background: none;
+    border: 1px solid #555;
+    color: #ccc;
+    font-size: 0.8rem;
+    padding: 3px 6px;
+    border-radius: 3px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.code-copy-btn:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+    color: white;
+    border-color: #777;
+}
+
+.code-block-container pre {
+    margin: 0;
+    padding: 12px;
+    overflow-x: auto;
+    background-color: #1f1f1f;
+    font-family: 'Consolas', 'Monaco', monospace;
+    font-size: 0.9rem;
+    line-height: 1.5;
+}
+
+.code-block-container code {
+    color: #e0e0e0;
+    display: block;
+    padding: 0;
+    background: none;
+    border: none;
+    white-space: pre;
 }
