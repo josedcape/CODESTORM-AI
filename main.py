@@ -529,7 +529,7 @@ def api_chat():
         logging.info(f"Mensaje procesado: {user_message} por agente {agent_id} usando {model_choice}")
 
         # Verificar si hay una API configurada
-        respuesta = None ¿En qué puedo ayudarte hoy? (Respuesta generada localmente)"
+        respuesta = None
 
         # Mensaje adicional si se solicita alguna acción específica
         if "crear" in user_message.lower() or "genera" in user_message.lower():
