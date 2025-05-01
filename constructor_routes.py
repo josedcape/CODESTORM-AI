@@ -1325,6 +1325,30 @@ def generate_project():
                         if feature and feature not in features:
                             features.append(feature)
 
+        # Generate a unique project ID
+        project_id = f"app_{uuid.uuid4().hex[:8]}_{int(time.time())}"
+
+        # Create a workspace for the project
+        create_project_workspace(project_id)
+
+        # Start the generation process in a background thread
+        thread = Thread(target=generate_application, args=(project_id, description, agent, model, options, features))
+        thread.daemon = True
+        thread.start()
+
+        return jsonify({
+            'success': True,
+            'message': 'Generación de proyecto iniciada',
+            'project_id': project_id,
+            'estimated_time': '2-5 minutos'
+        })
+    except Exception as e:
+        logging.error(f"Error initiating project generation: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
 @constructor_bp.route('/api/dev-assistant/chat', methods=['POST'])
 def dev_assistant_chat():
     data = request.json
