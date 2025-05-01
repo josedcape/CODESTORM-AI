@@ -490,7 +490,8 @@ def handle_chat_internal(request_data):
             logging.warning(f"Modelo no disponible: {model_choice}")
             return {
                 'response': message,
-                'error': None
+                'error': None,
+                'available_models': available_models
             }
 
     except Exception as e:
@@ -773,7 +774,7 @@ def process_natural_command():
     """Process natural language input and return corresponding command."""
     try:
         data = request.json
-        # Support both'text' and 'instruction' for backward compatibility
+        # Supportboth'text' and 'instruction' for backward compatibility
         text = data.get('text', '') or data.get('instruction', '')
         model_choice = data.get('model', 'openai')
         user_id = data.get('user_id', 'default')

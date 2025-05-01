@@ -834,19 +834,12 @@ code {
             <div class="mb-3">
                 <label for="model-select" class="form-label">Modelo de IA:</label>
                 <select id="model-select" class="form-select-dark">
-                    <option value="gpt-4o">GPT-4o - Modelo avanzado de OpenAI con excelente seguimiento de instrucciones</option>
-                    <option value="gpt-o3">GPT-o3 - Versión optimizada para generación y análisis de código</option>
-                    <option value="claude-3-opus">Claude 3 Opus - Modelo premium de Anthropic con razonamiento avanzado</option>
-                    <option value="claude-3.7-sonnet" selected>Claude 3.7 Sonnet - Especializado en desarrollo y automatización con alto contexto</option>
-                    <option value="claude-code">Claude Code - Experto en refactorización, debugging e integración Git</option>
-                    <option value="gpt-4.1-std">GPT-4.1 Standard - Modelo principal de OpenAI con 1M de tokens</option>
-                    <option value="gpt-4.1-mini">GPT-4.1 Mini - Versión más ligera y rápida de GPT-4.1</option>
-                    <option value="gpt-4.1-nano">GPT-4.1 Nano - Versión ultraligera para respuestas rápidas</option>
-                    <option value="gemini-1.5-pro">Gemini 1.5 Pro - Análisis de grandes bases de código con 1M de tokens</option>
-                    <option value="gemini-2.0-flash">Gemini 2.0 Flash - Alta velocidad y eficiencia con entrada multimodal</option>
-                    <option value="gemini-1.0-ultra">Gemini 1.0 Ultra - Especializado en tareas complejas de programación</option>
-                    <option value="gemma">Gemma - Modelo ligero open source de Google para código y dispositivos</option>
-                    </select>
+                    <option value="openai" selected>OpenAI (GPT-4o) - Modelo avanzado con excelente seguimiento de instrucciones</option>
+                    <option value="anthropic">Anthropic (Claude) - Especializado en desarrollo y automatización</option>
+                    <option value="gemini">Google (Gemini) - Análisis de grandes bases de código</option>
+                    </select                    <div id="model-status" class="mt-2 small text-info">
+                        Verificando disponibilidad de modelos...
+                    </div>
                     </div>
 
                     <div class="mb-3">
@@ -1004,18 +997,9 @@ code {
                     }
                     },
                     availableModels: {
-                    'gpt-4o': 'GPT-4o - Modelo avanzado de OpenAI con excelente seguimiento de instrucciones',
-                    'gpt-o3': 'GPT-o3 - Versión optimizada para generación y análisis de código',
-                    'claude-3-opus': 'Claude 3 Opus - Modelo premium de Anthropic con razonamiento avanzado',
-                    'claude-3.7-sonnet': 'Claude 3.7 Sonnet - Especializado en desarrollo y automatización con alto contexto',
-                    'claude-code': 'Claude Code - Experto en refactorización, debugging e integración Git',
-                    'gpt-4.1-std': 'GPT-4.1 Standard - Modelo principal de OpenAI con 1M de tokens de contexto',
-                    'gpt-4.1-mini': 'GPT-4.1 Mini - Versión más ligera y rápida de GPT-4.1',
-                    'gpt-4.1-nano': 'GPT-4.1 Nano - Versión ultraligera para respuestas rápidas',
-                    'gemini-1.5-pro': 'Gemini 1.5 Pro - Análisis de grandes bases de código con 1M de tokens',
-                    'gemini-2.0-flash': 'Gemini 2.0 Flash - Alta velocidad y eficiencia con entrada multimodal',
-                    'gemini-1.0-ultra': 'Gemini 1.0 Ultra - Especializado en tareas complejas y competencias de programación',
-                    'gemma': 'Gemma - Modelo ligero open source de Google para código y dispositivos'
+                    'openai': 'OpenAI (GPT-4o) - Modelo avanzado con excelente seguimiento de instrucciones',
+                    'anthropic': 'Anthropic (Claude) - Especializado en desarrollo y automatización',
+                    'gemini': 'Google (Gemini) - Análisis de grandes bases de código'
                     },
                     apiEndpoints: {
                     chat: '/api/chat',

@@ -110,6 +110,9 @@ window.initializeChat = function() {
 
     // Verificar conexión con el servidor - versión mejorada
     checkServerConnection();
+    
+    // Verificar modelos disponibles
+    checkAvailableModels();
 
     // Inicializar características avanzadas
     setupDocumentFeatures();
@@ -212,7 +215,13 @@ function setupUIElements() {
         modelSelect.addEventListener('change', () => {
             window.app.chat.activeModel = modelSelect.value;
             silentLog('Modelo cambiado a:', window.app.chat.activeModel);
-            addSystemMessage(`Modelo cambiado a: ${window.app.chat.availableModels[window.app.chat.activeModel]}`);
+            let modelName = "desconocido";
+            if (window.app.chat.availableModels && window.app.chat.activeModel in window.app.chat.availableModels) {
+                modelName = window.app.chat.availableModels[window.app.chat.activeModel];
+            } else {
+                modelName = window.app.chat.activeModel;
+            }
+            addSystemMessage(`Modelo cambiado a: ${modelName}`);
         });
     }
 
@@ -234,6 +243,60 @@ function setupUIElements() {
     // Actualizar info del agente inicial
     updateAgentInfo(window.app.chat.activeAgent);
 }
+/**
+ * Verifica los modelos disponibles y actualiza la interfaz
+ */
+async function checkAvailableModels() {
+    const modelSelect = document.getElementById('model-select');
+    const modelStatus = document.getElementById('model-status');
+    
+    if (!modelSelect || !modelStatus) return;
+    
+    try {
+        const response = await fetch('/api/health');
+        if (response.ok) {
+            const data = await response.json();
+            const apis = data.apis || {};
+            
+            // Habilitar/deshabilitar opciones según disponibilidad
+            let availableModels = [];
+            for (const [model, status] of Object.entries(apis)) {
+                const option = modelSelect.querySelector(`option[value="${model}"]`);
+                if (option) {
+                    if (status === 'ok') {
+                        option.disabled = false;
+                        availableModels.push(model);
+                    } else {
+                        option.disabled = true;
+                        option.textContent += ' (no configurado)';
+                    }
+                }
+            }
+            
+            if (availableModels.length > 0) {
+                modelStatus.textContent = `Modelos disponibles: ${availableModels.join(', ')}`;
+                modelStatus.className = 'mt-2 small text-success';
+                
+                // Seleccionar el primer modelo disponible
+                const firstAvailable = Array.from(modelSelect.options).find(option => !option.disabled);
+                if (firstAvailable && window.app.chat) {
+                    firstAvailable.selected = true;
+                    window.app.chat.activeModel = firstAvailable.value;
+                }
+            } else {
+                modelStatus.textContent = 'No hay modelos disponibles. Configure al menos una API en el panel de Secrets.';
+                modelStatus.className = 'mt-2 small text-danger';
+            }
+        }
+    } catch (error) {
+        console.error('Error al verificar modelos disponibles:', error);
+        if (modelStatus) {
+            modelStatus.textContent = 'Error al verificar disponibilidad de modelos';
+            modelStatus.className = 'mt-2 small text-danger';
+        }
+    }
+}
+
 /**
  * Comprueba la conexión con el servidor de manera optimizada
  */
