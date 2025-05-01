@@ -768,11 +768,11 @@ def process_code_endpoint():
             'success': False,
             'error': f'Error al procesar la solicitud: {str(e)}'
         }), 500
-
 @app.route('/api/process_natural', methods=['POST'])
 def process_natural_command():
     """Process natural language input and return corresponding command."""
-    try:        data = request.json
+    try:
+        data = request.json
         # Support both'text' and 'instruction' for backward compatibility
         text = data.get('text', '') or data.get('instruction', '')
         model_choice = data.get('model', 'openai')
