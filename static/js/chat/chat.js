@@ -62,13 +62,13 @@ window.initializeChat = function() {
     window.app.chat.availableAgents = window.app.chat.availableAgents || {
         'developer': {
             name: 'Agente de Desarrollo',
-            description: 'Especialista en optimización y edición de código en tiempo real',
+            description: 'Experto en desarrollo frontend y soluciones de código profesionales',
             capabilities: [
-                'Programación en múltiples lenguajes',
-                'Depuración de código y resolución de errores',
-                'Implementación de funcionalidades',
-                'Pruebas y optimización de rendimiento',
-                'Gestión de dependencias y librerías'
+                'Diseño y desarrollo de interfaces web responsivas',
+                'Optimización de rendimiento y accesibilidad',
+                'Integración de frameworks y librerías modernas',
+                'Automatización y CI/CD para proyectos',
+                'Generación de código escalable y mantenible'
             ],
             icon: 'code-slash'
         },
@@ -83,6 +83,18 @@ window.initializeChat = function() {
                 'Planificación de UI/UX y patrones de diseño'
             ],
             icon: 'diagram-3'
+        },
+        'advanced': {
+            name: 'Agente Avanzado de Software',
+            description: 'Especialista en integraciones complejas y funciones avanzadas',
+            capabilities: [
+                'Gestión de APIs y microservicios',
+                'Optimización de backend',
+                'Automatización avanzada de procesos',
+                'Manejo de autenticación y autorización',
+                'Conexiones a la nube y servicios de terceros'
+            ],
+            icon: 'gear-wide-connected'
         },
         'general': {
             name: 'Asistente General',
@@ -1043,13 +1055,13 @@ function updateAgentInfo(agentId) {
         window.app.chat.availableAgents = window.app.chat.availableAgents || {
             'developer': {
                 name: 'Agente de Desarrollo',
-                description: 'Especialista en optimización y edición de código en tiempo real',
+                description: 'Experto en desarrollo frontend y soluciones de código profesionales',
                 capabilities: [
-                    'Programación en múltiples lenguajes',
-                    'Depuración de código y resolución de errores',
-                    'Implementación de funcionalidades',
-                    'Pruebas y optimización de rendimiento',
-                    'Gestión de dependencias y librerías'
+                    'Diseño y desarrollo de interfaces web responsivas',
+                    'Optimización de rendimiento y accesibilidad',
+                    'Integración de frameworks y librerías modernas',
+                    'Automatización y CI/CD para proyectos',
+                    'Generación de código escalable y mantenible'
                 ],
                 icon: 'code-slash'
             },
@@ -1064,6 +1076,18 @@ function updateAgentInfo(agentId) {
                     'Planificación de UI/UX y patrones de diseño'
                 ],
                 icon: 'diagram-3'
+            },
+            'advanced': {
+                name: 'Agente Avanzado de Software',
+                description: 'Especialista en integraciones complejas y funciones avanzadas',
+                capabilities: [
+                    'Gestión de APIs y microservicios',
+                    'Optimización de backend',
+                    'Automatización avanzada de procesos',
+                    'Manejo de autenticación y autorización',
+                    'Conexiones a la nube y servicios de terceros'
+                ],
+                icon: 'gear-wide-connected'
             },
             'general': {
                 name: 'Asistente General',
