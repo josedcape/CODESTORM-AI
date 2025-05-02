@@ -369,6 +369,22 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // Módulo para la interacción con el agente de desarrollo en el chat
 document.addEventListener('DOMContentLoaded', function() {
+    // Inicializar los objetos globales necesarios
+    window.app = window.app || {};
+    window.app.chat = window.app.chat || {};
+    
+    // Establecer los endpoints API si no existen
+    if (!window.app.chat.apiEndpoints) {
+        window.app.chat.apiEndpoints = {
+            chat: '/api/chat',
+            fallback: '/api/generate',
+            health: '/api/health',
+            processCode: '/api/process_code',
+            execute: '/api/execute_command',
+            files: '/api/files'
+        };
+    }
+    
     // Referencias a elementos del DOM
     const assistantPanel = document.getElementById('assistant-chat-panel');
     const chatButton = document.getElementById('toggle-assistant-chat');
