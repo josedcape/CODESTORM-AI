@@ -517,6 +517,11 @@ def handle_chat_internal(request_data):
 def index():
     return render_template('index.html')
 
+@app.route('/health')
+def simple_health_check():
+    """Simple health check endpoint."""
+    return jsonify({"status": "ok", "message": "Server is running"}), 200
+
 @app.route('/chat')
 def chat():
     """Render the chat page with specialized agents."""
@@ -1160,7 +1165,7 @@ def health_check():
     """Health check endpoint for the application."""
     try:
         # Obtener el estado actual de las APIs desde la configuración
-        api_keys = app.config.get('API_KEYS', {})
+        api_keys = app.config.get('API_KEYS', {}) if hasattr(app, 'config') else {}
         
         apis = {
             "openai": "ok" if api_keys.get('openai') else "not configured",
@@ -1173,6 +1178,9 @@ def health_check():
         
         # Registrar cada solicitud de verificación de salud
         logging.info(f"Verificación de salud solicitada en: {time.time()}")
+        
+        # Comprobar si sys está importado
+        import sys
         
         response = {
             "status": "ok",

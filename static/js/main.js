@@ -191,14 +191,29 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Verificar disponibilidad de APIs
     fetch('/api/health')
-        .then(response => response.json())
+        .then(response => {
+            if (!response.ok) {
+                console.warn(`API health check returned status: ${response.status}`);
+                // If the main health check fails, try a simpler one
+                return fetch('/health').then(r => {
+                    if (!r.ok) {
+                        throw new Error(`Both health checks failed: ${response.status}`);
+                    }
+                    return r.json();
+                });
+            }
+            return response.json();
+        })
         .then(data => {
             console.log('Estado de la API:', data.status || 'OK');
+            // Update UI based on API status (implementation not shown here)
+
         })
         .catch(error => {
             console.warn('Error al verificar estado de API:', error);
             showNotification('Algunas funciones del asistente podrían no estar disponibles', 'warning');
         });
+
 
     // Función para mostrar una notificación de API no configurada
     window.showApiNotConfiguredNotification = function(modelName) {

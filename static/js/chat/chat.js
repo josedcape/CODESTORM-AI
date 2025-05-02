@@ -594,22 +594,36 @@ function removeLoadingMessage(messageId) {
     }
 }
 
+// Verificar conexión con el servidor
 function checkServerConnection() {
-    // Asegurarse de que apiEndpoints exista y tenga la propiedad health
-    const healthEndpoint = (window.app && window.app.chat && window.app.chat.apiEndpoints && window.app.chat.apiEndpoints.health) 
-                         ? window.app.chat.apiEndpoints.health 
-                         : '/api/health';
-
-    fetch(healthEndpoint)
+    // Intentar primero el endpoint principal, luego el simple si falla
+    return fetch('/api/health')
         .then(response => {
             if (!response.ok) {
-                throw new Error(`Error de conexión al servidor: ${response.status}`);
+                console.warn(`Health check returned status: ${response.status}, trying simple endpoint`);
+                // Si falla, intentar con el endpoint simple
+                return fetch('/health').then(r => {
+                    if (!r.ok) {
+                        console.error('Both health checks failed');
+                        throw new Error('Error de conexión al servidor: ' + response.status);
+                    }
+                    return r.json();
+                });
             }
-            silentLog('Conexión con el servidor establecida correctamente');
+            return response.json();
+        })
+        .then(data => {
+            if (data.status !== 'ok' && data.status !== 'limited') {
+                throw new Error('Servidor no disponible: ' + data.status);
+            }
+            // También aceptar estado 'limited' para funcionalidad básica
+            return data;
         })
         .catch(error => {
             console.error('Error al verificar la conexión con el servidor:', error);
-            addSystemMessage(`Error de conexión al servidor: ${error.message}`);
+            // Si falla todo, intentar continuar con funcionalidad limitada
+            window.serverOffline = true;
+            throw error;
         });
 }
 
