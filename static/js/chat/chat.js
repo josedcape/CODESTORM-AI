@@ -526,15 +526,25 @@ function loadHighlightJS() {
  * Configurar elementos de la UI y referencias
  */
 function setupUIElements() {
+    // Inicializar el objeto elements si no existe
+    if (!window.app.chat.elements) {
+        window.app.chat.elements = {};
+    }
+    
     // Obtener referencias a los elementos de la UI
-    window.app.chat.elements.messagesContainer = document.getElementById('messages-container');
-    window.app.chat.elements.messageInput = document.getElementById('message-input');
-    window.app.chat.elements.sendButton = document.getElementById('send-button');
+    window.app.chat.elements.messagesContainer = document.getElementById('messages-container') || 
+                                              document.getElementById('assistant-chat-messages') || 
+                                              document.getElementById('chat-messages');
+    window.app.chat.elements.messageInput = document.getElementById('message-input') || 
+                                         document.getElementById('assistant-chat-input');
+    window.app.chat.elements.sendButton = document.getElementById('send-button') || 
+                                       document.getElementById('send-assistant-message');
 
-    // Agregar manejadores de eventos
+    // Agregar manejadores de eventos solo si los elementos existen
     if (window.app.chat.elements.sendButton) {
         window.app.chat.elements.sendButton.addEventListener('click', sendMessage);
     }
+    
     if (window.app.chat.elements.messageInput) {
         window.app.chat.elements.messageInput.addEventListener('keydown', function(event) {
             if (event.key === 'Enter' && !event.shiftKey) {
@@ -542,10 +552,10 @@ function setupUIElements() {
                 sendMessage();
             }
         });
+        
+        // Ajustar altura inicial del textarea
+        adjustTextareaHeight(window.app.chat.elements.messageInput);
     }
-
-    // Ajustar altura inicial del textarea
-    adjustTextareaHeight(window.app.chat.elements.messageInput);
 
     silentLog('Elementos de la UI configurados');
 }
@@ -595,6 +605,8 @@ function setupDocumentFeatures() {
 }
 
 function adjustTextareaHeight(textarea) {
-    textarea.style.height = 'auto';
-    textarea.style.height = `${textarea.scrollHeight}px`;
+    if (textarea) {
+        textarea.style.height = 'auto';
+        textarea.style.height = `${textarea.scrollHeight}px`;
+    }
 }
