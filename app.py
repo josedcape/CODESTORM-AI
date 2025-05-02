@@ -1,3 +1,234 @@
+
+# Añadir estas rutas a tu app principal o importarlas desde constructor_routes.py
+
+@app.route('/api/constructor/start', methods=['POST'])
+def start_constructor():
+    data = request.json
+    project_id = data.get('project_id')
+    description = data.get('description')
+    tech_data = data.get('tech_data')
+    
+    if not project_id or not description:
+        return jsonify({'success': False, 'error': 'Faltan datos requeridos'}), 400
+    
+    try:
+        # Almacenar información del proyecto para seguimiento
+        project_data = {
+            'id': project_id,
+            'description': description,
+            'tech_data': tech_data,
+            'agent_type': data.get('agent_type', 'developer'),
+            'model_type': data.get('model_type', 'openai'),
+            'progress': 0,
+            'current_stage': 'Inicializando',
+            'messages': [],
+            'paused': False,
+            'start_time': datetime.now().isoformat(),
+            'settings': {
+                'include_tests': data.get('include_tests', False),
+                'include_docs': data.get('include_docs', False),
+                'include_deployment': data.get('include_deployment', False),
+                'include_ci_cd': data.get('include_ci_cd', False)
+            }
+        }
+        
+        # En un sistema real, almacenarías esto en una base de datos
+        # Para este ejemplo, lo guardamos en la sesión
+        session[f'project_{project_id}'] = project_data
+        
+        # Iniciar proceso de desarrollo en segundo plano
+        threading.Thread(target=simulate_development_process, args=(project_id,)).start()
+        
+        return jsonify({
+            'success': True,
+            'message': 'Desarrollo iniciado correctamente',
+            'project_id': project_id
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/constructor/progress/<project_id>', methods=['GET'])
+def get_constructor_progress(project_id):
+    try:
+        # Obtener datos del proyecto desde la sesión
+        project_key = f'project_{project_id}'
+        if project_key not in session:
+            return jsonify({'success': False, 'error': 'Proyecto no encontrado'}), 404
+        
+        project_data = session[project_key]
+        
+        # Extraer mensajes no leídos y marcarlos como leídos
+        new_messages = project_data.get('new_messages', [])
+        project_data['new_messages'] = []  # Limpiar mensajes nuevos
+        session[project_key] = project_data  # Actualizar sesión
+        
+        return jsonify({
+            'success': True,
+            'progress': project_data['progress'],
+            'current_stage': project_data['current_stage'],
+            'messages': new_messages,
+            'paused': project_data.get('paused', False)
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/constructor/pause/<project_id>', methods=['POST'])
+def pause_constructor(project_id):
+    try:
+        # Obtener datos del proyecto desde la sesión
+        project_key = f'project_{project_id}'
+        if project_key not in session:
+            return jsonify({'success': False, 'error': 'Proyecto no encontrado'}), 404
+        
+        project_data = session[project_key]
+        project_data['paused'] = True
+        
+        # Añadir mensaje sobre la pausa
+        if 'new_messages' not in project_data:
+            project_data['new_messages'] = []
+        project_data['new_messages'].append('Proceso de desarrollo pausado por el usuario')
+        
+        session[project_key] = project_data
+        
+        return jsonify({
+            'success': True,
+            'message': 'Desarrollo pausado correctamente'
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/constructor/resume/<project_id>', methods=['POST'])
+def resume_constructor(project_id):
+    try:
+        # Obtener datos del proyecto desde la sesión
+        project_key = f'project_{project_id}'
+        if project_key not in session:
+            return jsonify({'success': False, 'error': 'Proyecto no encontrado'}), 404
+        
+        project_data = session[project_key]
+        project_data['paused'] = False
+        
+        # Añadir mensaje sobre la reanudación
+        if 'new_messages' not in project_data:
+            project_data['new_messages'] = []
+        project_data['new_messages'].append('Proceso de desarrollo reanudado con los cambios aplicados')
+        
+        session[project_key] = project_data
+        
+        return jsonify({
+            'success': True,
+            'message': 'Desarrollo reanudado correctamente'
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+# Función para simular el proceso de desarrollo en segundo plano
+def simulate_development_process(project_id):
+    project_key = f'project_{project_id}'
+    stages = [
+        'Analizando requerimientos',
+        'Diseñando arquitectura',
+        'Configurando entorno',
+        'Generando estructura de proyecto',
+        'Implementando componentes base',
+        'Desarrollando funcionalidades',
+        'Integrando base de datos',
+        'Implementando API',
+        'Configurando interfaz de usuario',
+        'Realizando pruebas',
+        'Optimizando rendimiento',
+        'Preparando documentación',
+        'Finalizando proyecto'
+    ]
+    
+    try:
+        # Incrementar progreso gradualmente
+        for i, stage in enumerate(stages):
+            # Verificar si el proyecto existe y si está pausado
+            if project_key not in session:
+                return
+            
+            project_data = session[project_key]
+            
+            # Establecer etapa actual
+            project_data['current_stage'] = stage
+            
+            # Calcular progreso basado en la etapa actual
+            progress_per_stage = 100 / len(stages)
+            base_progress = i * progress_per_stage
+            
+            # Para cada etapa, incrementar gradualmente
+            for step in range(1, 11):  # 10 pasos por etapa
+                # Verificar pausa
+                if project_key not in session:
+                    return
+                
+                project_data = session[project_key]
+                if project_data.get('paused', False):
+                    # Esperar mientras está pausado
+                    while True:
+                        time.sleep(1)
+                        if project_key not in session:
+                            return
+                        
+                        project_data = session[project_key]
+                        if not project_data.get('paused', False):
+                            break
+                
+                # Calcular progreso actual
+                current_progress = base_progress + (step * (progress_per_stage / 10))
+                project_data['progress'] = min(round(current_progress, 1), 100)
+                
+                # Añadir mensaje detallado ocasionalmente (cada 3 pasos)
+                if step % 3 == 0 or step == 10:
+                    if 'new_messages' not in project_data:
+                        project_data['new_messages'] = []
+                    
+                    messages = [
+                        f"Trabajando en: {stage}",
+                        f"Completado paso {step}/10 de {stage}"
+                    ]
+                    
+                    # Añadir mensajes específicos según la etapa
+                    if stage == 'Analizando requerimientos' and step == 9:
+                        messages.append("Análisis completado: Se han identificado los componentes principales")
+                    elif stage == 'Diseñando arquitectura' and step == 10:
+                        messages.append("Arquitectura definida: Estructura MVC con capas de servicio")
+                    elif stage == 'Configurando entorno' and step == 5:
+                        messages.append("Dependencias instaladas correctamente")
+                    elif stage == 'Desarrollando funcionalidades' and step == 8:
+                        messages.append("Implementada autenticación y autorización")
+                    elif stage == 'Integrando base de datos' and step == 7:
+                        messages.append("Esquema de base de datos generado y validado")
+                    
+                    project_data['new_messages'].extend(messages)
+                
+                # Actualizar sesión
+                session[project_key] = project_data
+                
+                # Simular tiempo de procesamiento
+                time.sleep(random.uniform(1.5, 3.5))
+        
+        # Finalizar proceso
+        if project_key in session:
+            project_data = session[project_key]
+            project_data['progress'] = 100
+            project_data['current_stage'] = 'Proyecto completado'
+            if 'new_messages' not in project_data:
+                project_data['new_messages'] = []
+            project_data['new_messages'].append("¡Proyecto generado exitosamente!")
+            project_data['end_time'] = datetime.now().isoformat()
+            session[project_key] = project_data
+    
+    except Exception as e:
+        print(f"Error en proceso de desarrollo: {str(e)}")
+        if project_key in session:
+            project_data = session[project_key]
+            if 'new_messages' not in project_data:
+                project_data['new_messages'] = []
+            project_data['new_messages'].append(f"Error en el proceso de desarrollo: {str(e)}")
+            session[project_key] = project_data
+
 from dotenv import load_dotenv
 import openai
 import anthropic

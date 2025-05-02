@@ -531,7 +531,7 @@
                         </div>
 
                         <div class="d-grid gap-2">
-                            <button type="submit" class="btn btn-primary btn-futuristic" id="generate-btn">
+                            <button type="button" class="btn btn-primary btn-futuristic" id="generate-btn">
                                 <i class="bi bi-stars me-2"></i> Generar Aplicación
                             </button>
                         </div>
@@ -676,6 +676,255 @@
 <script src="{{ url_for('static', filename='js/chat/chat.js') }}"></script>
 <script>
     document.addEventListener('DOMContentLoaded', function() {
+        // Manejar el botón de generar aplicación
+        const generateBtn = document.getElementById('generate-btn');
+        const constructorForm = document.getElementById('constructor-form');
+        const generationProgress = document.getElementById('generation-progress');
+        const pauseDevelopmentBtn = document.getElementById('pause-development-btn');
+        const resumeDevelopmentBtn = document.getElementById('resume-development-btn');
+        const generationConsole = document.getElementById('generation-console');
+        let projectId = null;
+        
+        if (generateBtn && constructorForm) {
+            generateBtn.addEventListener('click', function(event) {
+                event.preventDefault(); // Evitar la recarga de la página
+                
+                // Validar el formulario
+                const projectDescription = document.getElementById('project-description').value.trim();
+                if (!projectDescription) {
+                    alert('Por favor, describe tu aplicación');
+                    return;
+                }
+                
+                // Mostrar la sección de progreso
+                if (generationProgress) {
+                    generationProgress.style.display = 'block';
+                    
+                    // Generar ID único para el proyecto
+                    projectId = 'project_' + Date.now();
+                    
+                    // Recopilar datos del formulario
+                    const formData = new FormData(constructorForm);
+                    const techData = document.getElementById('project-tech-data').value;
+                    const agentType = document.getElementById('agent-selector').value;
+                    const modelType = document.getElementById('model-selector').value;
+                    
+                    // Enviar solicitud al servidor
+                    fetch('/api/constructor/start', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            project_id: projectId,
+                            description: projectDescription,
+                            tech_data: techData,
+                            agent_type: agentType,
+                            model_type: modelType,
+                            include_tests: document.getElementById('include-tests').checked,
+                            include_docs: document.getElementById('include-docs').checked,
+                            include_deployment: document.getElementById('include-deployment').checked,
+                            include_ci_cd: document.getElementById('include-ci-cd').checked
+                        })
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            // Iniciar monitoreo de progreso
+                            startProgressMonitoring(projectId);
+                            addConsoleMessage('Desarrollo iniciado: ' + data.message);
+                        } else {
+                            addConsoleMessage('Error al iniciar desarrollo: ' + data.error, 'error');
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        addConsoleMessage('Error de conexión: ' + error.message, 'error');
+                    });
+                }
+            });
+        }
+        
+        // Manejar botones de pausar/reanudar desarrollo
+        if (pauseDevelopmentBtn) {
+            pauseDevelopmentBtn.addEventListener('click', function() {
+                if (!projectId) {
+                    addConsoleMessage('No hay un proyecto en desarrollo', 'warning');
+                    return;
+                }
+                
+                fetch(`/api/constructor/pause/${projectId}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        addConsoleMessage('Desarrollo pausado - El asistente está listo para modificaciones', 'info');
+                        pauseDevelopmentBtn.style.display = 'none';
+                        resumeDevelopmentBtn.style.display = 'inline-block';
+                        
+                        // Abrir el asistente automáticamente
+                        const assistantBtn = document.getElementById('toggle-assistant-chat');
+                        if (assistantBtn) {
+                            assistantBtn.click();
+                        }
+                        
+                        // Detener animación barra de progreso
+                        const progressBar = document.getElementById('progress-bar');
+                        if (progressBar) {
+                            progressBar.classList.remove('progress-bar-animated');
+                        }
+                    } else {
+                        addConsoleMessage('Error al pausar el desarrollo: ' + data.error, 'error');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error al pausar desarrollo:', error);
+                    addConsoleMessage('Error al pausar el desarrollo', 'error');
+                });
+            });
+        }
+        
+        if (resumeDevelopmentBtn) {
+            resumeDevelopmentBtn.addEventListener('click', function() {
+                if (!projectId) {
+                    addConsoleMessage('No hay un proyecto en desarrollo', 'warning');
+                    return;
+                }
+                
+                fetch(`/api/constructor/resume/${projectId}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        addConsoleMessage('Desarrollo reanudado con los nuevos cambios', 'success');
+                        resumeDevelopmentBtn.style.display = 'none';
+                        pauseDevelopmentBtn.style.display = 'inline-block';
+                        
+                        // Reanudar animación barra de progreso
+                        const progressBar = document.getElementById('progress-bar');
+                        if (progressBar) {
+                            progressBar.classList.add('progress-bar-animated');
+                        }
+                    } else {
+                        addConsoleMessage('Error al reanudar el desarrollo: ' + data.error, 'error');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error al reanudar desarrollo:', error);
+                    addConsoleMessage('Error al reanudar el desarrollo', 'error');
+                });
+            });
+        }
+        
+        // Función para monitorear el progreso
+        function startProgressMonitoring(projectId) {
+            // Iniciar intervalo para consultar el progreso
+            const progressInterval = setInterval(function() {
+                fetch(`/api/constructor/progress/${projectId}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            updateProgress(data.progress, data.current_stage, data.messages);
+                            
+                            // Si el progreso llegó al 100%, detener el intervalo
+                            if (data.progress >= 100) {
+                                clearInterval(progressInterval);
+                                onDevelopmentComplete();
+                            }
+                        } else {
+                            console.error('Error al obtener progreso:', data.error);
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error de conexión:', error);
+                    });
+            }, 2000); // Consultar cada 2 segundos
+        }
+        
+        // Función para actualizar el progreso en la UI
+        function updateProgress(progress, stage, messages) {
+            const progressBar = document.getElementById('progress-bar');
+            const progressText = document.getElementById('progress-text');
+            const currentStage = document.getElementById('current-stage');
+            
+            if (progressBar) {
+                progressBar.style.width = `${progress}%`;
+                progressBar.setAttribute('aria-valuenow', progress);
+                progressBar.textContent = `${progress}%`;
+            }
+            
+            if (progressText) {
+                progressText.textContent = `${progress}% completado`;
+            }
+            
+            if (currentStage && stage) {
+                currentStage.textContent = stage;
+            }
+            
+            // Agregar mensajes a la consola
+            if (messages && messages.length > 0) {
+                messages.forEach(msg => {
+                    addConsoleMessage(msg);
+                });
+            }
+            
+            // Mostrar información del framework cuando llegue al 20%
+            if (progress >= 20) {
+                const frameworkInfo = document.getElementById('framework-info');
+                if (frameworkInfo) {
+                    frameworkInfo.classList.remove('d-none');
+                }
+            }
+        }
+        
+        // Función para agregar mensajes a la consola
+        function addConsoleMessage(message, type = 'info') {
+            if (!generationConsole) return;
+            
+            const messageElement = document.createElement('div');
+            messageElement.className = `console-message ${type}`;
+            
+            const timestamp = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', second:'2-digit'});
+            messageElement.innerHTML = `[${timestamp}] ${message}`;
+            
+            generationConsole.appendChild(messageElement);
+            generationConsole.scrollTop = generationConsole.scrollHeight;
+        }
+        
+        // Función para manejar la finalización del desarrollo
+        function onDevelopmentComplete() {
+            const generationResult = document.getElementById('generation-result');
+            if (generationResult) {
+                generationResult.style.display = 'block';
+            }
+            
+            addConsoleMessage('¡Desarrollo completado!', 'success');
+            
+            // Configurar botones de resultado
+            const viewAppBtn = document.getElementById('view-app-btn');
+            const downloadAppBtn = document.getElementById('download-app-btn');
+            
+            if (viewAppBtn && projectId) {
+                viewAppBtn.addEventListener('click', function() {
+                    window.open(`/api/constructor/preview/${projectId}`, '_blank');
+                });
+            }
+            
+            if (downloadAppBtn && projectId) {
+                downloadAppBtn.addEventListener('click', function() {
+                    window.location.href = `/api/constructor/download/${projectId}`;
+                });
+            }
+        }
+        
         // Si la función initializeChat no está definida, la definimos
         if (typeof initializeChat !== 'function') {
             window.initializeChat = function() {

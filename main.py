@@ -1,14 +1,18 @@
-from flask import Flask, render_template, request, jsonify, session, redirect, send_file
+from flask import Flask, render_template, request, jsonify, session, redirect, url_for
+import os
+import json
+import uuid
+import datetime
+import threading
+import time
+import random
+from datetime import datetime
 from flask_cors import CORS
 from flask_socketio import SocketIO, emit
-import os
 import logging
-import json
-from dotenv import load_dotenv
 import openai
 import google.generativeai as genai
 import subprocess
-import time
 import shutil
 from pathlib import Path
 import traceback
@@ -780,43 +784,7 @@ def process_code_endpoint():
                     model="gpt-4o",
                     messages=[
                         {"role": "system", "content": f"Eres un experto programador. Tu tarea es corregir el siguiente código en {language} según las instrucciones proporcionadas. El código resultante debe ser limpio, optimizado y SIN COMENTARIOS explicativos dentro del código. Devuelve el código corregido, una lista de cambios realizados y una explicación clara separada del código."},
-                        {"role": "user", "content": f"CÓDIGO:\n```{language}\n{code}\n```\n\nINSTRUCCIONES:\n{instructions}\n\nResponde en formato JSON con las siguientes claves:\n- correctedCode: el código corregido completo sin comentarios explicativos\n- changes: una lista de objetos, cada uno con 'description' y 'lineNumbers'\n- explanation: una explicación detallada de los cambios"}
-                    ],
-                    response_format={"type": "json_object"}
-                )
-
-                result_text = response.choices[0].message.content
-                try:
-                    result = json.loads(result_text)
-                    logging.info("Código corregido con OpenAI")
-                except json.JSONDecodeError as json_err:
-                    logging.error(f"Error al decodificar JSON de OpenAI: {str(json_err)}")
-                    logging.error(f"Respuesta recibida: {result_text[:500]}")
-                    return jsonify({
-                        'success': False,
-                        'error': f'Error al procesar la respuesta JSON de OpenAI: {str(json_err)}'
-                    }), 500
-
-            except Exception as e:
-                logging.error(f"Error con API de OpenAI: {str(e)}")
-                return jsonify({
-                    'success': False,
-                    'error': f'Error al conectar con OpenAI: {str(e)}'
-                }), 500
-
-        elif model == 'anthropic' and anthropic_api_key:
-            try:
-                import anthropic
-                from anthropic import Anthropic
-
-                client = Anthropic(api_key=anthropic_api_key)
-
-                response = client.messages.create(
-                    model="claude-3-5-sonnet-latest",
-                    max_tokens=4000,
-                    system=f"Eres un experto programador. Tu tarea es corregir el siguiente código en {language} según las instrucciones proporcionadas. Devuelve el código corregido, una lista de cambios realizados y una explicación clara en formato JSON.",
-                    messages=[
-                        {"role": "user", "content": f"CÓDIGO:\n```{language}\n{code}\n```\n\nINSTRUCCIONES:\n{instructions}\n\nResponde en formato JSON con las siguientes claves:\n- correctedCode: el código corregido completo\n- changes: una lista de objetos, cada uno con 'description' y 'lineNumbers'\n- explanation: una explicación detallada de los cambios"}
+                        {"role": "user", "content": f"CÓDIGO:\n```{language}\n{code}\n```\n\nINSTRUCCIONES:\n{instructions}\n\nResponde en formato JSON con las siguientes claves{language}\n{code}\n```\n\nINSTRUCCIONES:\n{instructions}\n\nResponde en formato JSON con las siguientes claves:\n- correctedCode: el código corregido completo\n- changes: una lista de objetos, cada uno con 'description' y 'lineNumbers'\n- explanation: una explicación detallada de los cambios"}
                     ],
                     temperature=0.1
                 )
@@ -1672,4 +1640,3 @@ if __name__ == '__main__':
     except Exception as e:
         logging.critical(f"Error fatal al iniciar el servidor: {str(e)}")
         logging.critical(traceback.format_exc())
-
