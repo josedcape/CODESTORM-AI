@@ -676,6 +676,32 @@
 {% endblock %}
 <script>
     document.addEventListener('DOMContentLoaded', function() {
+        // Inicializar el chat del asistente
+        const assistantPanel = document.getElementById('assistant-chat-panel');
+        const chatButton = document.getElementById('toggle-assistant-chat');
+        const closeButton = document.getElementById('close-assistant-chat');
+        const chatInput = document.getElementById('assistant-chat-input');
+        const sendButton = document.getElementById('send-assistant-message');
+        const messagesContainer = document.getElementById('assistant-chat-messages');
+        
+        // Configurar eventos para abrir/cerrar el panel del asistente
+        if (chatButton) {
+            chatButton.addEventListener('click', function() {
+                if (assistantPanel.style.display === 'none' || !assistantPanel.style.display) {
+                    assistantPanel.style.display = 'flex';
+                    if (chatInput) chatInput.focus();
+                } else {
+                    assistantPanel.style.display = 'none';
+                }
+            });
+        }
+        
+        if (closeButton) {
+            closeButton.addEventListener('click', function() {
+                assistantPanel.style.display = 'none';
+            });
+        }
+
         // Manejar el botón de generar aplicación
         const generateBtn = document.getElementById('generate-btn');
         if (generateBtn) {
@@ -825,6 +851,82 @@
         const resumeDevelopmentBtn = document.getElementById('resume-development-btn');
         const generationConsole = document.getElementById('generation-console');
         let projectId = null;
+        
+        // Inicializar el sistema de chat para el asistente de desarrollo
+        if (sendButton && chatInput) {
+            sendButton.addEventListener('click', function() {
+                const message = chatInput.value.trim();
+                if (!message) return;
+                
+                // Agregar mensaje del usuario
+                const userMsg = document.createElement('div');
+                userMsg.className = 'message user-message';
+                userMsg.textContent = message;
+                messagesContainer.appendChild(userMsg);
+                messagesContainer.scrollTop = messagesContainer.scrollHeight;
+                
+                // Limpiar input
+                chatInput.value = '';
+                
+                // Mostrar indicador de escritura
+                const typingIndicator = document.createElement('div');
+                typingIndicator.className = 'typing-indicator';
+                typingIndicator.id = 'typing-indicator';
+                
+                for (let i = 0; i < 3; i++) {
+                    const bubble = document.createElement('div');
+                    bubble.className = 'typing-bubble';
+                    typingIndicator.appendChild(bubble);
+                }
+                
+                messagesContainer.appendChild(typingIndicator);
+                messagesContainer.scrollTop = messagesContainer.scrollHeight;
+                
+                // Enviar mensaje al backend
+                fetch('/api/chat', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        message: message,
+                        model: 'openai',
+                        intervention_mode: document.getElementById('intervention-mode').checked
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    // Eliminar indicador de escritura
+                    document.getElementById('typing-indicator')?.remove();
+                    
+                    // Agregar respuesta del asistente
+                    const assistantMsg = document.createElement('div');
+                    assistantMsg.className = 'message assistant-message';
+                    assistantMsg.innerHTML = data.response || data.message || 'No se pudo obtener una respuesta.';
+                    messagesContainer.appendChild(assistantMsg);
+                    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    document.getElementById('typing-indicator')?.remove();
+                    
+                    // Mostrar error
+                    const errorMsg = document.createElement('div');
+                    errorMsg.className = 'system-message';
+                    errorMsg.innerHTML = `<p><i class="bi bi-exclamation-triangle-fill text-warning"></i> <strong>Error:</strong> ${error.message}</p>`;
+                    messagesContainer.appendChild(errorMsg);
+                    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+                });
+            });
+            
+            // Enviar con Enter
+            chatInput.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    sendButton.click();
+                }
+            });
+        }
 
         if (generateBtn && constructorForm) {
             generateBtn.addEventListener('click', function(event) {

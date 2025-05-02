@@ -980,3 +980,192 @@ class DevelopmentAssistant {
 document.addEventListener('DOMContentLoaded', function() {
     window.developmentAssistant = new DevelopmentAssistant();
 });
+/**
+ * Chat Interaction - Módulo para manejar la interacción con el asistente de desarrollo en el chat
+ * Versión: 1.0.1
+ */
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Inicializar los objetos globales necesarios
+    window.app = window.app || {};
+    window.app.chat = window.app.chat || {};
+    
+    // Establecer los endpoints API si no existen
+    if (!window.app.chat.apiEndpoints) {
+        window.app.chat.apiEndpoints = {
+            chat: '/api/chat',
+            fallback: '/api/generate',
+            health: '/api/health',
+            processCode: '/api/process_code',
+            execute: '/api/execute_command',
+            files: '/api/files'
+        };
+    }
+    
+    // Referencias a elementos del DOM
+    const assistantPanel = document.getElementById('assistant-chat-panel');
+    const chatButton = document.getElementById('toggle-assistant-chat');
+    const closeButton = document.getElementById('close-assistant-chat');
+    const chatInput = document.getElementById('assistant-chat-input');
+    const sendButton = document.getElementById('send-assistant-message');
+    const messagesContainer = document.getElementById('assistant-chat-messages');
+    const interventionToggle = document.getElementById('intervention-mode');
+
+    // Verificar que los elementos existan
+    if (!assistantPanel || !chatButton || !chatInput || !sendButton || !messagesContainer) {
+        console.warn('Elementos del chat no encontrados completamente');
+        return;
+    }
+    
+    let chatActive = false;
+    
+    // Funciones para manejar el chat
+    function toggleChat() {
+        if (assistantPanel.style.display === 'none' || !assistantPanel.style.display) {
+            showChat();
+        } else {
+            hideChat();
+        }
+    }
+
+    function showChat() {
+        assistantPanel.style.display = 'flex';
+        chatActive = true;
+        if (chatInput) chatInput.focus();
+    }
+
+    function hideChat() {
+        assistantPanel.style.display = 'none';
+        chatActive = false;
+    }
+    
+    // Inicializar eventos
+    chatButton.addEventListener('click', toggleChat);
+    closeButton.addEventListener('click', hideChat);
+    
+    // Manejar envío de mensajes
+    sendButton.addEventListener('click', function() {
+        const message = chatInput.value.trim();
+        if (!message) return;
+        
+        // Agregar mensaje del usuario
+        addUserMessage(message);
+        
+        // Limpiar input
+        chatInput.value = '';
+        
+        // Mostrar indicador de escritura
+        showTypingIndicator();
+        
+        // Enviar mensaje al backend
+        fetch(window.app.chat.apiEndpoints.chat, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                message: message,
+                model: 'openai',
+                intervention_mode: interventionToggle ? interventionToggle.checked : true
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            // Eliminar indicador de escritura
+            hideTypingIndicator();
+            
+            // Agregar respuesta del asistente
+            if (data.response || data.message) {
+                addAssistantMessage(data.response || data.message);
+            } else {
+                addSystemMessage("No se pudo obtener una respuesta clara del asistente.");
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            hideTypingIndicator();
+            
+            // Mostrar error
+            addSystemMessage(`Error al comunicarse con el asistente: ${error.message}`);
+        });
+    });
+    
+    // Enviar con Enter
+    chatInput.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            sendButton.click();
+        }
+    });
+    
+    // Funciones auxiliares
+    function addUserMessage(message) {
+        const messageElement = document.createElement('div');
+        messageElement.className = 'message user-message';
+        messageElement.textContent = message;
+        messagesContainer.appendChild(messageElement);
+        scrollToBottom();
+    }
+    
+    function addAssistantMessage(message) {
+        const messageElement = document.createElement('div');
+        messageElement.className = 'message assistant-message';
+        messageElement.innerHTML = formatMessage(message);
+        messagesContainer.appendChild(messageElement);
+        scrollToBottom();
+    }
+    
+    function addSystemMessage(message) {
+        const messageElement = document.createElement('div');
+        messageElement.className = 'system-message';
+        messageElement.innerHTML = message;
+        messagesContainer.appendChild(messageElement);
+        scrollToBottom();
+    }
+    
+    function formatMessage(message) {
+        // Formateo básico de Markdown
+        return message
+            .replace(/```([^`]+)```/g, '<pre><code>$1</code></pre>')
+            .replace(/`([^`]+)`/g, '<code>$1</code>')
+            .replace(/\n/g, '<br>');
+    }
+    
+    function showTypingIndicator() {
+        const typingIndicator = document.createElement('div');
+        typingIndicator.className = 'typing-indicator';
+        typingIndicator.id = 'typing-indicator';
+        
+        for (let i = 0; i < 3; i++) {
+            const bubble = document.createElement('div');
+            bubble.className = 'typing-bubble';
+            typingIndicator.appendChild(bubble);
+        }
+        
+        messagesContainer.appendChild(typingIndicator);
+        scrollToBottom();
+    }
+    
+    function hideTypingIndicator() {
+        const typingIndicator = document.getElementById('typing-indicator');
+        if (typingIndicator) {
+            typingIndicator.remove();
+        }
+    }
+    
+    function scrollToBottom() {
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    }
+    
+    // Exponer API pública
+    window.app.chat.interface = {
+        showChat,
+        hideChat,
+        toggleChat,
+        addUserMessage,
+        addAssistantMessage,
+        addSystemMessage
+    };
+    
+    console.log("Módulo de chat del asistente inicializado correctamente");
+});
