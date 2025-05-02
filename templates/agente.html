@@ -704,6 +704,172 @@
         
         // Ahora llamamos a la función
         initializeChat();
+        
+        // Configurar el comportamiento del botón flotante del asistente
+        const toggleButton = document.getElementById('toggle-assistant-chat');
+        const closeButton = document.getElementById('close-assistant-chat');
+        const chatPanel = document.getElementById('assistant-chat-panel');
+        const chatInput = document.getElementById('assistant-chat-input');
+        const sendButton = document.getElementById('send-assistant-message');
+        const messagesContainer = document.getElementById('assistant-chat-messages');
+        
+        if (toggleButton && chatPanel) {
+            toggleButton.addEventListener('click', function() {
+                if (chatPanel.style.display === 'none' || !chatPanel.style.display) {
+                    chatPanel.style.display = 'flex';
+                    if (chatInput) chatInput.focus();
+                } else {
+                    chatPanel.style.display = 'none';
+                }
+            });
+        }
+        
+        if (closeButton && chatPanel) {
+            closeButton.addEventListener('click', function() {
+                chatPanel.style.display = 'none';
+            });
+        }
+        
+        // Manejar envío de mensajes
+        if (sendButton && chatInput && messagesContainer) {
+            sendButton.addEventListener('click', function() {
+                sendAssistantMessage();
+            });
+            
+            chatInput.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    sendAssistantMessage();
+                }
+            });
+        }
+        
+        // Función para enviar mensajes al asistente
+        function sendAssistantMessage() {
+            const message = chatInput.value.trim();
+            if (!message) return;
+            
+            // Agregar mensaje del usuario al chat
+            addMessageToChat('user', message);
+            
+            // Limpiar input
+            chatInput.value = '';
+            
+            // Verificar si el modo intervención está activado
+            const interventionMode = document.getElementById('intervention-mode');
+            const interventionEnabled = interventionMode ? interventionMode.checked : false;
+            
+            // Preparar datos para enviar
+            const requestData = {
+                message: message,
+                model: window.app.chat.activeModel || 'openai',
+                agent_id: window.app.chat.activeAgent || 'developer',
+                intervention_mode: interventionEnabled,
+                context: window.app.chat.context || []
+            };
+            
+            // Mostrar indicador de escritura
+            showTypingIndicator();
+            
+            // Enviar solicitud al servidor
+            fetch('/api/chat', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(requestData)
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`Error: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                // Ocultar indicador de escritura
+                hideTypingIndicator();
+                
+                // Agregar respuesta del asistente
+                if (data.response) {
+                    addMessageToChat('assistant', data.response);
+                    
+                    // Guardar en el contexto
+                    if (window.app.chat.context) {
+                        window.app.chat.context.push({ role: 'user', content: message });
+                        window.app.chat.context.push({ role: 'assistant', content: data.response });
+                        
+                        // Mantener un tamaño razonable del contexto (últimos 10 mensajes)
+                        if (window.app.chat.context.length > 20) {
+                            window.app.chat.context = window.app.chat.context.slice(-20);
+                        }
+                    }
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                hideTypingIndicator();
+                addMessageToChat('system', `Error al enviar mensaje: ${error.message}`);
+            });
+        }
+        
+        // Función para agregar mensajes al chat
+        function addMessageToChat(role, content) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${role}-message`;
+            
+            // Formatear contenido (procesar código, etc.)
+            let formattedContent = content;
+            
+            // Formatear bloques de código
+            formattedContent = formattedContent.replace(/```([\s\S]+?)```/g, function(match, code) {
+                const langMatch = code.match(/^([a-zA-Z]+)\n([\s\S]+)$/);
+                if (langMatch) {
+                    const language = langMatch[1];
+                    const codeContent = langMatch[2];
+                    return `<pre><code class="language-${language}">${codeContent}</code></pre>`;
+                } else {
+                    return `<pre><code>${code}</code></pre>`;
+                }
+            });
+            
+            // Formatear código en línea
+            formattedContent = formattedContent.replace(/`([^`]+)`/g, '<code>$1</code>');
+            
+            // Convertir saltos de línea en <br>
+            formattedContent = formattedContent.replace(/\n/g, '<br>');
+            
+            messageDiv.innerHTML = formattedContent;
+            
+            if (messagesContainer) {
+                messagesContainer.appendChild(messageDiv);
+                messagesContainer.scrollTop = messagesContainer.scrollHeight;
+            }
+        }
+        
+        // Función para mostrar indicador de escritura
+        function showTypingIndicator() {
+            if (!messagesContainer) return;
+            
+            const indicatorDiv = document.createElement('div');
+            indicatorDiv.id = 'typing-indicator';
+            indicatorDiv.className = 'typing-indicator';
+            indicatorDiv.innerHTML = `
+                <div class="typing-bubble"></div>
+                <div class="typing-bubble"></div>
+                <div class="typing-bubble"></div>
+            `;
+            
+            messagesContainer.appendChild(indicatorDiv);
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+        
+        // Función para ocultar indicador de escritura
+        function hideTypingIndicator() {
+            const indicator = document.getElementById('typing-indicator');
+            if (indicator) {
+                indicator.remove();
+            }
+        }
     });
 </script>
 {% endblock %}

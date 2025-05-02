@@ -861,3 +861,20 @@ body {
     margin-top: 5px;
     transition: all 0.3s ease;
 }
+
+.chat-panel {
+    position: fixed;
+    bottom: 100px;
+    left: 30px; /* Posicionado a la izquierda */
+    width: 380px;
+    height: 500px;
+    background-color: #222;
+    border-radius: 15px;
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4);
+    display: none; /* Inicialmente oculto */
+    flex-direction: column;
+    z-index: 9998;
+    overflow: hidden;
+    transition: all 0.3s ease;
+    border: 1px solid #1E88E5;
+}

@@ -1,4 +1,356 @@
 
+/**
+ * Chat Interaction - Módulo para manejar la interacción con el asistente de desarrollo en el chat
+ * Versión: 1.0.1
+ */
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Referencias a elementos del DOM
+    const assistantPanel = document.getElementById('assistant-chat-panel');
+    const chatButton = document.getElementById('toggle-assistant-chat');
+    const closeButton = document.getElementById('close-assistant-chat');
+    const chatInput = document.getElementById('assistant-chat-input');
+    const sendButton = document.getElementById('send-assistant-message');
+    const messagesContainer = document.getElementById('assistant-chat-messages');
+    const interventionToggle = document.getElementById('intervention-mode');
+
+    // Verificar que los elementos existan
+    if (!assistantPanel || !chatButton) {
+        console.warn('Elementos del chat no encontrados completamente');
+        return;
+    }
+
+    // Estado del chat
+    let chatActive = false;
+    let isSending = false;
+    let chatContext = [];
+
+    // Configurar manejadores de eventos
+    chatButton.addEventListener('click', toggleChat);
+    if (closeButton) closeButton.addEventListener('click', hideChat);
+    if (sendButton) sendButton.addEventListener('click', sendMessage);
+    if (chatInput) {
+        chatInput.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendMessage();
+            }
+        });
+    }
+    
+    if (interventionToggle) {
+        interventionToggle.addEventListener('change', function() {
+            const isEnabled = interventionToggle.checked;
+            if (isEnabled) {
+                interventionToggle.parentElement.classList.add('text-danger');
+                chatButton.classList.add('intervention-active');
+                addSystemMessage("Modo intervención activado: puedo realizar cambios directos en los archivos del proyecto.");
+            } else {
+                interventionToggle.parentElement.classList.remove('text-danger');
+                chatButton.classList.remove('intervention-active');
+                addSystemMessage("Modo intervención desactivado: no realizaré cambios directos en los archivos.");
+            }
+        });
+    }
+
+    // Funciones para manejar el chat
+    function toggleChat() {
+        if (assistantPanel.style.display === 'none' || !assistantPanel.style.display) {
+            showChat();
+        } else {
+            hideChat();
+        }
+    }
+
+    function showChat() {
+        assistantPanel.style.display = 'flex';
+        chatActive = true;
+        if (chatInput) chatInput.focus();
+    }
+
+    function hideChat() {
+        assistantPanel.style.display = 'none';
+        chatActive = false;
+    }
+
+    function sendMessage() {
+        if (isSending || !chatInput) return;
+        
+        const message = chatInput.value.trim();
+        if (!message) return;
+        
+        // Agregar mensaje del usuario al chat
+        addUserMessage(message);
+        
+        // Limpiar input
+        chatInput.value = '';
+        
+        // Verificar si el modo intervención está activado
+        const interventionEnabled = interventionToggle ? interventionToggle.checked : false;
+        
+        // Indicar que estamos enviando un mensaje
+        isSending = true;
+        if (sendButton) sendButton.disabled = true;
+        
+        // Preparar datos para enviar
+        const requestData = {
+            message: message,
+            model: window.app && window.app.chat ? window.app.chat.activeModel : 'openai',
+            agent_id: window.app && window.app.chat ? window.app.chat.activeAgent : 'developer',
+            intervention_mode: interventionEnabled,
+            context: chatContext
+        };
+        
+        // Mostrar indicador de escritura
+        addTypingIndicator();
+        
+        // Enviar solicitud al servidor
+        fetch('/api/chat', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(requestData)
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`Error: ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            // Eliminar indicador de escritura
+            removeTypingIndicator();
+            
+            // Agregar respuesta del asistente
+            if (data.response) {
+                addAssistantMessage(data.response);
+                
+                // Guardar en el contexto
+                chatContext.push({ role: 'user', content: message });
+                chatContext.push({ role: 'assistant', content: data.response });
+                
+                // Mantener un tamaño razonable del contexto (últimos 10 mensajes)
+                if (chatContext.length > 20) {
+                    chatContext = chatContext.slice(-20);
+                }
+                
+                // Si hay cambios de archivos propuestos, mostrar botón para aplicarlos
+                if (data.file_changes && data.file_changes.length > 0) {
+                    addFileChangesMessage(data.file_changes);
+                }
+            } else if (data.error) {
+                addSystemMessage(`Error: ${data.error}`);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            removeTypingIndicator();
+            addSystemMessage(`Error al enviar mensaje: ${error.message}`);
+        })
+        .finally(() => {
+            isSending = false;
+            if (sendButton) sendButton.disabled = false;
+        });
+    }
+
+    // Funciones para agregar mensajes al chat
+    function addUserMessage(content) {
+        if (!messagesContainer) return;
+        
+        const messageDiv = document.createElement('div');
+        messageDiv.className = 'message user-message';
+        messageDiv.textContent = content;
+        
+        messagesContainer.appendChild(messageDiv);
+        scrollToBottom();
+    }
+
+    function addAssistantMessage(content) {
+        if (!messagesContainer) return;
+        
+        const messageDiv = document.createElement('div');
+        messageDiv.className = 'message assistant-message';
+        
+        // Formatear contenido (procesar código, enlaces, etc.)
+        messageDiv.innerHTML = formatMessage(content);
+        
+        messagesContainer.appendChild(messageDiv);
+        scrollToBottom();
+        
+        // Aplicar highlight.js si está disponible
+        if (window.hljs) {
+            messageDiv.querySelectorAll('pre code').forEach(block => {
+                window.hljs.highlightElement(block);
+            });
+        }
+    }
+
+    function addSystemMessage(content) {
+        if (!messagesContainer) return;
+        
+        const messageDiv = document.createElement('div');
+        messageDiv.className = 'message system-message';
+        messageDiv.innerHTML = content;
+        
+        messagesContainer.appendChild(messageDiv);
+        scrollToBottom();
+    }
+
+    function addFileChangesMessage(fileChanges) {
+        if (!messagesContainer) return;
+        
+        const messageDiv = document.createElement('div');
+        messageDiv.className = 'message action-message';
+        
+        let filesList = '<ul class="file-changes-list">';
+        fileChanges.forEach(change => {
+            filesList += `<li>${change.file_path} - ${change.change_type}</li>`;
+        });
+        filesList += '</ul>';
+        
+        messageDiv.innerHTML = `
+            <div class="file-changes">
+                <p>Cambios propuestos (${fileChanges.length} ${fileChanges.length === 1 ? 'archivo' : 'archivos'}):</p>
+                ${filesList}
+                <button class="btn btn-sm btn-primary mt-2 apply-changes-btn">Aplicar cambios</button>
+            </div>
+        `;
+        
+        messagesContainer.appendChild(messageDiv);
+        scrollToBottom();
+        
+        // Agregar evento para aplicar cambios
+        const applyButton = messageDiv.querySelector('.apply-changes-btn');
+        if (applyButton) {
+            applyButton.addEventListener('click', function() {
+                applyFileChanges(fileChanges);
+            });
+        }
+    }
+
+    function addTypingIndicator() {
+        if (!messagesContainer) return;
+        
+        // Eliminar indicador existente si lo hay
+        removeTypingIndicator();
+        
+        const indicatorDiv = document.createElement('div');
+        indicatorDiv.id = 'typing-indicator';
+        indicatorDiv.className = 'typing-indicator';
+        indicatorDiv.innerHTML = `
+            <div class="typing-bubble"></div>
+            <div class="typing-bubble"></div>
+            <div class="typing-bubble"></div>
+        `;
+        
+        messagesContainer.appendChild(indicatorDiv);
+        scrollToBottom();
+    }
+
+    function removeTypingIndicator() {
+        const indicator = document.getElementById('typing-indicator');
+        if (indicator) {
+            indicator.remove();
+        }
+    }
+
+    // Funciones de utilidad
+    function formatMessage(content) {
+        if (!content) return '';
+        
+        // Escapar HTML
+        let formatted = escapeHtml(content);
+        
+        // Formatear bloques de código
+        formatted = formatted.replace(/```([\s\S]+?)```/g, function(match, code) {
+            const langMatch = code.match(/^([a-zA-Z]+)\n([\s\S]+)$/);
+            if (langMatch) {
+                const language = langMatch[1];
+                const codeContent = langMatch[2];
+                return `<pre><code class="language-${language}">${codeContent}</code></pre>`;
+            } else {
+                return `<pre><code>${code}</code></pre>`;
+            }
+        });
+        
+        // Formatear código en línea
+        formatted = formatted.replace(/`([^`]+)`/g, '<code>$1</code>');
+        
+        // Formatear enlaces
+        formatted = formatted.replace(/\[(.*?)\]\((.*?)\)/g, '<a href="$2" target="_blank">$1</a>');
+        
+        // Convertir saltos de línea en <br>
+        formatted = formatted.replace(/\n/g, '<br>');
+        
+        return formatted;
+    }
+
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    function scrollToBottom() {
+        if (messagesContainer) {
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+    }
+
+    function applyFileChanges(fileChanges) {
+        fetch('/api/apply_changes', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ changes: fileChanges })
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`Error: ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.success) {
+                addSystemMessage(`Cambios aplicados correctamente a ${fileChanges.length} ${fileChanges.length === 1 ? 'archivo' : 'archivos'}.`);
+            } else {
+                addSystemMessage(`Error al aplicar cambios: ${data.error}`);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            addSystemMessage(`Error al aplicar cambios: ${error.message}`);
+        });
+    }
+
+    // Inicialización adicional
+    function loadHighlightJS() {
+        if (window.hljs) return Promise.resolve();
+        
+        return new Promise((resolve, reject) => {
+            const script = document.createElement('script');
+            script.src = 'https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/highlight.min.js';
+            script.onload = function() {
+                const css = document.createElement('link');
+                css.rel = 'stylesheet';
+                css.href = 'https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/github-dark.min.css';
+                document.head.appendChild(css);
+                resolve();
+            };
+            script.onerror = reject;
+            document.head.appendChild(script);
+        });
+    }
+    
+    // Cargar highlight.js para resaltado de código
+    loadHighlightJS().catch(error => {
+        console.warn('No se pudo cargar highlight.js:', error);
+    });
+});
+
+
 // Módulo para la interacción con el agente de desarrollo en el chat
 document.addEventListener('DOMContentLoaded', function() {
     // Referencias a elementos del DOM
