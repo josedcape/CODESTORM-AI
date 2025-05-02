@@ -387,9 +387,15 @@ document.addEventListener('DOMContentLoaded', function() {
                     const badgeClass = importance === 'alta' ? 'cyber-badge-danger' :
                                       importance === 'media' ? 'cyber-badge-warning' : 'cyber-badge-info';
 
-                    // Información de línea
-                    const lineInfo = change.lineNumbers ?
-                        `<span class="cyber-badge cyber-badge-secondary">Línea(s): ${change.lineNumbers.join(', ')}</span>` : '';
+                    // Información de línea (verificando que lineNumbers sea un array)
+                    let lineInfo = '';
+                    if (change.lineNumbers && Array.isArray(change.lineNumbers)) {
+                        lineInfo = `<span class="cyber-badge cyber-badge-secondary">Línea(s): ${change.lineNumbers.join(', ')}</span>`;
+                    } else if (change.lineNumbers && typeof change.lineNumbers === 'string') {
+                        lineInfo = `<span class="cyber-badge cyber-badge-secondary">Línea(s): ${change.lineNumbers}</span>`;
+                    } else if (change.lineNumbers && typeof change.lineNumbers === 'number') {
+                        lineInfo = `<span class="cyber-badge cyber-badge-secondary">Línea: ${change.lineNumbers}</span>`;
+                    }
 
                     item.innerHTML = `
                         <div class="d-flex justify-content-between align-items-center">
