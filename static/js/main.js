@@ -190,7 +190,7 @@ document.addEventListener('DOMContentLoaded', function() {
             // Asegurar que los objetos necesarios estén inicializados
             window.app = window.app || {};
             window.app.chat = window.app.chat || {};
-            
+
             // Inicializar endpoints API
             window.app.apiEndpoints = window.app.apiEndpoints || {
                 chat: '/api/chat',
@@ -200,10 +200,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 execute: '/api/execute_command',
                 files: '/api/files'
             };
-            
+
             // Asignar endpoints al chat
             window.app.chat.apiEndpoints = window.app.apiEndpoints;
-            
+
             // Verificar explícitamente que los endpoints existan
             console.log('API Endpoints configurados:', window.app.chat.apiEndpoints);
 
@@ -294,6 +294,35 @@ document.addEventListener('DOMContentLoaded', function() {
                 processBtn.disabled = true;
                 processBtn.innerHTML = '<span class="btn-content"><div class="btn-spinner"></div> Procesando...</span>';
 
+                // Mostrar la barra de progreso
+                const progressContainer = document.getElementById('progress-container');
+                const progressBar = document.getElementById('correction-progress-bar');
+                const progressStatus = document.getElementById('progress-status');
+
+                if (progressContainer) progressContainer.style.display = 'block';
+                if (progressBar) progressBar.style.width = '0%';
+                if (progressStatus) progressStatus.textContent = 'Iniciando corrección...';
+
+                // Simular progreso (ya que el proceso real ocurre en el servidor)
+                let progress = 0;
+                const progressInterval = setInterval(() => {
+                    if (progress < 95) {
+                        progress += Math.random() * 10;
+                        if (progress > 95) progress = 95; // Máximo antes de completar
+
+                        if (progressBar) progressBar.style.width = `${progress}%`;
+
+                        // Mostrar mensaje cuando esté cerca de terminar
+                        if (progress > 75 && progressStatus) {
+                            progressStatus.textContent = 'Ya casi finalizamos, paciencia...';
+                        } else if (progress > 50 && progressStatus) {
+                            progressStatus.textContent = 'Optimizando el código...';
+                        } else if (progress > 20 && progressStatus) {
+                            progressStatus.textContent = 'Analizando errores...';
+                        }
+                    }
+                }, 800);
+
                 // Llamar a la API para procesar el código
                 fetch('/api/process_code', {
                     method: 'POST',
@@ -356,16 +385,22 @@ document.addEventListener('DOMContentLoaded', function() {
 
                     window.showNotification?.('Código corregido exitosamente', 'success') || 
                     console.log('Código corregido exitosamente');
+                    clearInterval(progressInterval); //Detener el intervalo después de completar
+                    if (progressStatus) progressStatus.textContent = 'Corrección completada!';
                 })
                 .catch(error => {
                     console.error('Error:', error);
                     window.showNotification?.(`Error: ${error.message}`, 'error') || 
                     alert(`Error: ${error.message}`);
+                    clearInterval(progressInterval); //Detener el intervalo en caso de error
+                    if (progressStatus) progressStatus.textContent = 'Error durante la corrección.';
+
                 })
                 .finally(() => {
                     // Restaurar botón
                     processBtn.disabled = false;
                     processBtn.innerHTML = '<span class="btn-content"><i class="bi bi-wrench"></i> Corregir código</span>';
+                    if (progressContainer) progressContainer.style.display = 'none'; //Ocultar el contenedor de progreso
                 });
             });
         }
