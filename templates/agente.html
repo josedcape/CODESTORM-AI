@@ -713,6 +713,18 @@
         const sendButton = document.getElementById('send-assistant-message');
         const messagesContainer = document.getElementById('assistant-chat-messages');
         
+        // Asegurarse de que los endpoints de la API estén configurados
+        if (!window.app.chat.apiEndpoints) {
+            window.app.chat.apiEndpoints = {
+                chat: '/api/chat',
+                fallback: '/api/generate',
+                health: '/api/health',
+                processCode: '/api/process_code',
+                execute: '/api/execute_command',
+                files: '/api/files'
+            };
+        }
+        
         if (toggleButton && chatPanel) {
             toggleButton.addEventListener('click', function() {
                 if (chatPanel.style.display === 'none' || !chatPanel.style.display) {

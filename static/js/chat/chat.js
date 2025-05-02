@@ -581,7 +581,12 @@ function removeLoadingMessage(messageId) {
 }
 
 function checkServerConnection() {
-    fetch(window.app.chat.apiEndpoints.health)
+    // Asegurarse de que apiEndpoints exista y tenga la propiedad health
+    const healthEndpoint = (window.app && window.app.chat && window.app.chat.apiEndpoints && window.app.chat.apiEndpoints.health) 
+                         ? window.app.chat.apiEndpoints.health 
+                         : '/api/health';
+    
+    fetch(healthEndpoint)
         .then(response => {
             if (!response.ok) {
                 throw new Error(`Error de conexión al servidor: ${response.status}`);
