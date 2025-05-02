@@ -8,15 +8,21 @@
 window.app = window.app || {};
 window.app.chat = window.app.chat || {};
 
-// Configuración de endpoints de API
-window.app.chat.apiEndpoints = {
-    chat: '/api/chat',
-    fallback: '/api/generate',
-    health: '/api/health',
-    processCode: '/api/process_code',
-    execute: '/api/execute_command',
-    files: '/api/files'
-};
+// Asegurarse de que los endpoints API estén definidos
+if (!window.app.apiEndpoints && !window.app.chat.apiEndpoints) {
+    window.app.apiEndpoints = {
+        chat: '/api/chat',
+        fallback: '/api/generate',
+        health: '/api/health',
+        processCode: '/api/process_code',
+        execute: '/api/execute_command',
+        files: '/api/files'
+    };
+
+    // Asignar endpoints al chat
+    window.app.chat.apiEndpoints = window.app.apiEndpoints;
+    console.log('Endpoints API inicializados:', window.app.chat.apiEndpoints);
+}
 
 /**
  * Función para logging silencioso (debug)

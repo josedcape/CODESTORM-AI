@@ -1171,13 +1171,36 @@ code {
 
                     // Verificar que el script de chat se cargó correctamente y esperar si es necesario
                     function checkAndInitializeChat() {
-                    if (typeof initializeChat === 'function') {
-                    console.log("Iniciando chat...");
-                    initializeChat();
-                    } else {
-                    console.warn("Esperando a que la función initializeChat esté disponible...");
-                    setTimeout(checkAndInitializeChat, 200);
+                        if (typeof window.initializeChat === 'function') {
+                            console.log("Iniciando chat...");
+                            window.initializeChat();
+                            setupAgentSelector();
+                        } else if (typeof initializeChat === 'function') {
+                            console.log("Iniciando chat con función local...");
+                            initializeChat();
+                            setupAgentSelector();
+                        } else {
+                            console.warn("Esperando a que la función initializeChat esté disponible...");
+                            // Intentar cargar de nuevo después de un tiempo
+                            setTimeout(checkAndInitializeChat, 300);
+                        }
                     }
+
+                    // Asegurarse de que la app está inicializada
+                    window.app = window.app || {};
+                    window.app.chat = window.app.chat || {};
+
+                    // Asegurar que apiEndpoints exista
+                    if (!window.app.apiEndpoints) {
+                        window.app.apiEndpoints = {
+                            chat: '/api/chat',
+                            fallback: '/api/generate',
+                            health: '/api/health',
+                            processCode: '/api/process_code',
+                            execute: '/api/execute_command',
+                            files: '/api/files'
+                        };
+                        window.app.chat.apiEndpoints = window.app.apiEndpoints;
                     }
 
                     checkAndInitializeChat();
