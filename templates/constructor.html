@@ -169,6 +169,14 @@
     .badge.bg-warning {
         background: linear-gradient(135deg, #ffc107, #d39e00) !important;
     }
+
+    .tech-selector-nav {
+      background-color: #1a2942;
+      padding: 1rem;
+      border-radius: 5px;
+      margin-bottom: 1.5rem;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+    }
 </style>
 {% endblock %}
 
@@ -187,14 +195,14 @@
                     <div class="alert alert-info">
                         <i class="bi bi-info-circle me-2"></i> El Constructor utiliza agentes especializados para generar tu aplicación completa basada en tu descripción y stack tecnológico seleccionado.
                     </div>
-                    
+
                     <!-- Selector de Tecnologías -->
                     <div id="tech-selector-container">
                         <div class="tech-selector-header">
                             <h3>Plan de Desarrollo <i class="bi bi-check2-circle"></i></h3>
                             <p>Selecciona el stack tecnológico que prefieres para tu aplicación</p>
                         </div>
-                        
+
                         <div class="tech-selector-nav">
                             <ul class="nav nav-pills nav-fill" id="techSelectorTab" role="tablist">
                                 <li class="nav-item" role="presentation">
@@ -224,69 +232,69 @@
                                 </li>
                             </ul>
                         </div>
-                        
+
                         <div class="tab-content tech-selector-tab-content" id="techSelectorContent">
                             <!-- Plantillas Predefinidas -->
                             <div class="tab-pane fade show active" id="presets-content" role="tabpanel">
                                 <h5>Plantillas de Stack Tecnológico</h5>
                                 <p class="text-muted mb-4">Selecciona una plantilla predefinida o personaliza tu stack manualmente en las otras pestañas</p>
-                                
+
                                 <div class="row" id="preset-stacks">
                                     <!-- El contenido se generará dinámicamente -->
                                 </div>
                             </div>
-                            
+
                             <!-- Backend -->
                             <div class="tab-pane fade" id="backend-content" role="tabpanel">
                                 <h5>Selecciona tu Backend</h5>
                                 <p class="text-muted mb-4">El backend es responsable de la lógica de negocio y el procesamiento de datos</p>
-                                
+
                                 <div id="backend-options">
                                     <!-- El contenido se generará dinámicamente -->
                                 </div>
                             </div>
-                            
+
                             <!-- Frontend -->
                             <div class="tab-pane fade" id="frontend-content" role="tabpanel">
                                 <h5>Selecciona tu Frontend</h5>
                                 <p class="text-muted mb-4">El frontend es la interfaz que verán tus usuarios</p>
-                                
+
                                 <div id="frontend-options">
                                     <!-- El contenido se generará dinámicamente -->
                                 </div>
                             </div>
-                            
+
                             <!-- Base de Datos -->
                             <div class="tab-pane fade" id="database-content" role="tabpanel">
                                 <h5>Selecciona tu Base de Datos</h5>
                                 <p class="text-muted mb-4">La base de datos almacenará la información de tu aplicación</p>
-                                
+
                                 <div id="database-options">
                                     <!-- El contenido se generará dinámicamente -->
                                 </div>
                             </div>
-                            
+
                             <!-- Características Adicionales -->
                             <div class="tab-pane fade" id="features-content" role="tabpanel">
                                 <h5>Características Adicionales</h5>
                                 <p class="text-muted mb-4">Selecciona las características que requiere tu proyecto</p>
-                                
+
                                 <div class="row" id="features-options">
                                     <!-- El contenido se generará dinámicamente -->
                                 </div>
                             </div>
                         </div>
-                        
+
                         <!-- Resumen de selección -->
                         <div class="stack-summary" id="tech-selection-summary">
                             <!-- El contenido se generará dinámicamente -->
                         </div>
-                        
+
                         <div class="compatibility-notice">
                             <h6><i class="bi bi-info-circle me-1"></i> Consejo de compatibilidad</h6>
                             <p>Algunas combinaciones de tecnologías funcionan mejor juntas. Las plantillas predefinidas ofrecen la mejor compatibilidad garantizada.</p>
                         </div>
-                        
+
                         <div class="tech-selector-footer">
                             <button type="button" id="tech-selection-continue" class="btn btn-lg btn-primary btn-futuristic" disabled>
                                 <i class="bi bi-arrow-right me-2"></i> Continuar al desarrollo
@@ -297,7 +305,7 @@
                     <!-- Formulario de Construcción (inicialmente oculto) -->
                     <div id="constructor-container" style="display: none;">
                         <h4 class="mb-4">Detalles del Proyecto</h4>
-                        
+
                         <div class="row mb-4">
                             <div class="col-md-8">
                                 <div class="card bg-light">
@@ -317,7 +325,7 @@
                                 </div>
                             </div>
                         </div>
-                        
+
                         <form id="constructor-form">
                             <input type="hidden" id="project-tech-data" name="tech_data" value="">
                         <div class="mb-4">
@@ -468,26 +476,26 @@ document.addEventListener('DOMContentLoaded', function() {
     // Inicializar controlador de selector de tecnologías
     if (typeof TechSelector !== 'undefined') {
         window.techSelector = new TechSelector();
-        
+
         // Generar HTML de opciones
         document.getElementById('backend-options').innerHTML = 
             window.techSelector.generateTechOptions('backend', window.techSelector.options.backend);
-        
+
         document.getElementById('frontend-options').innerHTML = 
             window.techSelector.generateTechOptions('frontend', window.techSelector.options.frontend);
-        
+
         document.getElementById('database-options').innerHTML = 
             window.techSelector.generateTechOptions('database', window.techSelector.options.database);
-        
+
         document.getElementById('features-options').innerHTML = 
             window.techSelector.generateFeatureOptions(window.techSelector.options.additionalFeatures);
-        
+
         document.getElementById('preset-stacks').innerHTML = 
             window.techSelector.generatePresetOptions(window.techSelector.presetStacks);
-            
+
         // Inicializar resumen
         window.techSelector.updateSummary();
-        
+
         console.log('TechSelector inicializado correctamente');
     } else {
         console.error('Error: TechSelector no está definido. Verificar carga de tech-selector.js');
