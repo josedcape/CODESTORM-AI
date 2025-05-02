@@ -264,3 +264,337 @@ async function sendMessage() {
         addSystemMessage(`Error de conexión: ${error.message}`);
     }
 }
+
+/**
+ * Añade un mensaje del usuario al chat
+ * @param {string} message - El contenido del mensaje
+ */
+function addUserMessage(message) {
+    if (!message) return;
+
+    // Generar ID único para el mensaje
+    const messageId = `msg-${Date.now()}-${window.app.chat.chatMessageId++}`;
+
+    // HTML del mensaje
+    const messageHTML = `
+        <div id="${messageId}" class="message user-message">
+            <div class="message-sender">Tú</div>
+            <div class="message-content">${escapeHtml(message)}</div>
+            <div class="message-time">${getCurrentTime()}</div>
+        </div>
+    `;
+
+    // Añadir al chat y al contexto
+    appendMessageToChat(messageHTML);
+    window.app.chat.context.push({
+        role: 'user',
+        content: message
+    });
+
+    // Scroll automático
+    scrollToBottom();
+}
+
+/**
+ * Añade un mensaje del agente al chat
+ * @param {string} message - El contenido del mensaje
+ * @param {string} agentId - El ID del agente que responde
+ */
+function addAgentMessage(message, agentId) {
+    if (!message) return;
+
+    // Obtener información del agente
+    const agentName = getAgentName(agentId || window.app.chat.activeAgent);
+
+    // Generar ID único para el mensaje
+    const messageId = `msg-${Date.now()}-${window.app.chat.chatMessageId++}`;
+
+    // Formatear el mensaje (procesar código, enlaces, etc.)
+    const formattedMessage = formatMessage(message);
+
+    // HTML del mensaje
+    const messageHTML = `
+        <div id="${messageId}" class="message assistant-message">
+            <div class="message-sender">${agentName}</div>
+            <div class="message-content">${formattedMessage}</div>
+            <div class="message-actions">
+                <button id="copy-btn-${messageId}" class="copy-button" onclick="copyToClipboard('${messageId}')">
+                    <i class="bi bi-clipboard"></i>
+                </button>
+            </div>
+            <div class="message-time">${getCurrentTime()}</div>
+        </div>
+    `;
+
+    // Añadir al chat y al contexto
+    appendMessageToChat(messageHTML);
+    window.app.chat.context.push({
+        role: 'assistant',
+        content: message
+    });
+
+    // Aplicar highlight.js a bloques de código
+    try {
+        if (window.hljs) {
+            document.querySelectorAll(`#${messageId} pre code`).forEach((block) => {
+                hljs.highlightElement(block);
+            });
+        }
+    } catch (error) {
+        console.warn('Error al aplicar highlight.js:', error);
+    }
+
+    // Scroll automático
+    scrollToBottom();
+}
+
+/**
+ * Añade un mensaje del sistema al chat
+ * @param {string} message - El contenido del mensaje
+ */
+function addSystemMessage(message) {
+    if (!message) return;
+
+    // Generar ID único para el mensaje
+    const messageId = `system-${Date.now()}-${window.app.chat.chatMessageId++}`;
+
+    // HTML del mensaje
+    const messageHTML = `
+        <div id="${messageId}" class="message system-message">
+            <div class="message-content">${message}</div>
+        </div>
+    `;
+
+    // Añadir al chat
+    appendMessageToChat(messageHTML);
+
+    // Scroll automático
+    scrollToBottom();
+}
+
+/**
+ * Añade un HTML de mensaje al contenedor de chat
+ * @param {string} messageHTML - El HTML del mensaje a añadir
+ */
+function appendMessageToChat(messageHTML) {
+    const messagesContainer = window.app.chat.elements.messagesContainer || 
+                             document.getElementById('messages-container') || 
+                             document.getElementById('chat-messages');
+
+    if (messagesContainer) {
+        // Añadir mensaje al final del contenedor
+        messagesContainer.insertAdjacentHTML('beforeend', messageHTML);
+    } else {
+        console.error('No se encontró el contenedor de mensajes');
+    }
+}
+
+/**
+ * Formatea un mensaje para mostrar código, enlaces, etc.
+ * @param {string} message - El mensaje a formatear
+ * @returns {string} - El mensaje formateado con HTML
+ */
+function formatMessage(message) {
+    if (!message) return '';
+
+    // Escapar HTML para evitar inyección de código
+    let formatted = escapeHtml(message);
+
+    // Formatear bloques de código
+    formatted = formatted.replace(/```([\s\S]+?)```/g, function(match, code) {
+        // Detectar lenguaje si está especificado
+        const langMatch = code.match(/^([a-zA-Z]+)\n([\s\S]+)$/);
+
+        if (langMatch) {
+            const language = langMatch[1];
+            const codeContent = langMatch[2];
+            return `<pre><code class="language-${language}">${codeContent}</code></pre>`;
+        } else {
+            return `<pre><code>${code}</code></pre>`;
+        }
+    });
+
+    // Formatear código en línea
+    formatted = formatted.replace(/`([^`]+)`/g, '<code>$1</code>');
+
+    // Formatear enlaces
+    formatted = formatted.replace(/\[(.*?)\]\((.*?)\)/g, '<a href="$2" target="_blank">$1</a>');
+
+    // Convertir saltos de línea en <br>
+    formatted = formatted.replace(/\n/g, '<br>');
+
+    return formatted;
+}
+
+/**
+ * Hacer scroll al final del contenedor de mensajes
+ */
+function scrollToBottom() {
+    const messagesContainer = window.app.chat.elements.messagesContainer || 
+                             document.getElementById('messages-container') || 
+                             document.getElementById('chat-messages');
+
+    if (messagesContainer) {
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    }
+}
+
+/**
+ * Obtiene el nombre del agente a partir de su ID
+ * @param {string} agentId - ID del agente
+ * @returns {string} - Nombre del agente
+ */
+function getAgentName(agentId) {
+    const agents = window.app.chat.availableAgents || {};
+    return (agents[agentId] && agents[agentId].name) || 'Asistente';
+}
+
+/**
+ * Escapa caracteres HTML para evitar inyección de código
+ * @param {string} text - Texto a escapar
+ * @returns {string} - Texto escapado
+ */
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+/**
+ * Obtiene la hora actual formateada
+ * @returns {string} - Hora actual formateada
+ */
+function getCurrentTime() {
+    const now = new Date();
+    return now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+}
+
+/**
+ * Carga highlight.js para resaltado de código
+ */
+function loadHighlightJS() {
+    // Verificar si ya está cargado
+    if (window.hljs) {
+        silentLog('highlight.js ya está cargado');
+        return Promise.resolve();
+    }
+
+    return new Promise((resolve, reject) => {
+        try {
+            // Crear script para highlight.js
+            const highlightScript = document.createElement('script');
+            highlightScript.src = 'https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/highlight.min.js';
+            const codeBlockRegex = /```([a-z]*)\n([\s\S]+?)```/g;
+
+            // Callback cuando el script se carga
+            highlightScript.onload = function() {
+                // Crear link para CSS de highlight.js
+                const highlightCSS = document.createElement('link');
+                highlightCSS.rel = 'stylesheet';
+                highlightCSS.href = 'https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/github-dark.min.css';
+
+                // Añadir CSS
+                document.head.appendChild(highlightCSS);
+
+                silentLog('highlight.js cargado correctamente');
+
+                // Aplicar highlight a todos los bloques de código existentes
+                document.querySelectorAll('pre code').forEach((block) => {
+                    hljs.highlightElement(block);
+                });
+
+                resolve();
+            };
+
+            // Manejar errores
+            highlightScript.onerror = function(err) {
+                console.error('Error al cargar highlight.js:', err);
+                reject(err);
+            };
+
+            // Añadir script al DOM
+            document.head.appendChild(highlightScript);
+
+        } catch (error) {
+            console.error('Error al configurar highlight.js:', error);
+            reject(error);
+        }
+    });
+}
+
+/**
+ * Configurar elementos de la UI y referencias
+ */
+function setupUIElements() {
+    // Obtener referencias a los elementos de la UI
+    window.app.chat.elements.messagesContainer = document.getElementById('messages-container');
+    window.app.chat.elements.messageInput = document.getElementById('message-input');
+    window.app.chat.elements.sendButton = document.getElementById('send-button');
+
+    // Agregar manejadores de eventos
+    if (window.app.chat.elements.sendButton) {
+        window.app.chat.elements.sendButton.addEventListener('click', sendMessage);
+    }
+    if (window.app.chat.elements.messageInput) {
+        window.app.chat.elements.messageInput.addEventListener('keydown', function(event) {
+            if (event.key === 'Enter' && !event.shiftKey) {
+                event.preventDefault();
+                sendMessage();
+            }
+        });
+    }
+
+    // Ajustar altura inicial del textarea
+    adjustTextareaHeight(window.app.chat.elements.messageInput);
+
+    silentLog('Elementos de la UI configurados');
+}
+
+
+function addLoadingMessage() {
+    const messageId = `loading-${Date.now()}-${window.app.chat.chatMessageId++}`;
+    const messageHTML = `
+        <div id="${messageId}" class="message loading-message">
+            <div class="message-content">Cargando...</div>
+        </div>
+    `;
+    appendMessageToChat(messageHTML);
+    scrollToBottom();
+    return messageId;
+}
+
+function removeLoadingMessage(messageId) {
+    const messageElement = document.getElementById(messageId);
+    if (messageElement) {
+        messageElement.remove();
+    }
+}
+
+function checkServerConnection() {
+    fetch(window.app.chat.apiEndpoints.health)
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`Error de conexión al servidor: ${response.status}`);
+            }
+            silentLog('Conexión con el servidor establecida correctamente');
+        })
+        .catch(error => {
+            console.error('Error al verificar la conexión con el servidor:', error);
+            addSystemMessage(`Error de conexión al servidor: ${error.message}`);
+        });
+}
+
+function checkAvailableModels() {
+    //Simulación de verificación de modelos.  En un entorno real, se haría una llamada a la API.
+    silentLog('Modelos disponibles:', window.app.chat.availableModels);
+}
+
+function setupDocumentFeatures() {
+    //Añadir cualquier característica adicional al documento aquí.
+    silentLog('Características del documento configuradas');
+}
+
+function adjustTextareaHeight(textarea) {
+    textarea.style.height = 'auto';
+    textarea.style.height = `${textarea.scrollHeight}px`;
+}
