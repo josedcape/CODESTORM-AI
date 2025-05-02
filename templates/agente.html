@@ -675,8 +675,36 @@ Entiendo el problema. Voy a proporcionarte el código corregido para que cuando 
 
 {% block scripts %}
 <script src="{{ url_for('static', filename='js/tech-selector.js') }}"></script>
+<script src="{{ url_for('static', filename='js/chat/chat.js') }}"></script>
 <script>
     document.addEventListener('DOMContentLoaded', function() {
+        // Si la función initializeChat no está definida, la definimos
+        if (typeof initializeChat !== 'function') {
+            window.initializeChat = function() {
+                console.log("Inicializando chat básico en agente.html");
+                // Configuración básica de chat
+                window.app = window.app || {};
+                window.app.chat = window.app.chat || {};
+                window.app.chat.context = [];
+                window.app.chat.chatMessageId = 0;
+                window.app.chat.activeModel = 'openai';
+                window.app.chat.activeAgent = 'developer';
+                
+                // Inicializar endpoints API
+                window.app.chat.apiEndpoints = {
+                    chat: '/api/chat',
+                    fallback: '/api/generate',
+                    health: '/api/health',
+                    processCode: '/api/process_code',
+                    execute: '/api/execute_command',
+                    files: '/api/files'
+                };
+                
+                console.log("Chat inicializado correctamente en agente.html");
+            }
+        }
+        
+        // Ahora llamamos a la función
         initializeChat();
     });
 </script>
