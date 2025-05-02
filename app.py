@@ -397,6 +397,71 @@ def format_code():
                 import cssbeautifier
                 opts = cssbeautifier.default_options()
                 formatted_code = cssbeautifier.beautify(code, opts)
+
+@app.route('/api/format_code', methods=['POST'])
+def format_code():
+    """
+    Formatea el código según el lenguaje especificado.
+    """
+    try:
+        data = request.json
+        if not data or 'code' not in data:
+            return jsonify({'success': False, 'error': 'No se proporcionó código para formatear'}), 400
+        
+        code = data['code']
+        language = data.get('language', 'python')
+        
+        # Formatear código según el lenguaje
+        formatted_code = code  # Por defecto, devolver el mismo código
+        
+        if language == 'python':
+            try:
+                import black
+                formatted_code = black.format_str(code, mode=black.Mode())
+            except Exception as e:
+                # Si black falla, intentar con autopep8
+                try:
+                    import autopep8
+                    formatted_code = autopep8.fix_code(code)
+                except Exception as e2:
+                    logging.warning(f"Error al formatear Python con autopep8: {str(e2)}")
+        
+        elif language in ['javascript', 'typescript', 'jsx', 'tsx']:
+            try:
+                import jsbeautifier
+                opts = jsbeautifier.default_options()
+                opts.indent_size = 2
+                opts.space_in_empty_paren = True
+                formatted_code = jsbeautifier.beautify(code, opts)
+            except Exception as e:
+                logging.warning(f"Error al formatear JavaScript/TypeScript: {str(e)}")
+        
+        elif language in ['html', 'xml']:
+            try:
+                from bs4 import BeautifulSoup
+                soup = BeautifulSoup(code, 'html.parser')
+                formatted_code = soup.prettify()
+            except Exception as e:
+                logging.warning(f"Error al formatear HTML/XML: {str(e)}")
+        
+        elif language in ['css', 'scss', 'less']:
+            try:
+                import cssbeautifier
+                opts = cssbeautifier.default_options()
+                opts.indent_size = 2
+                formatted_code = cssbeautifier.beautify(code, opts)
+            except Exception as e:
+                logging.warning(f"Error al formatear CSS: {str(e)}")
+        
+        return jsonify({
+            'success': True,
+            'formatted_code': formatted_code
+        })
+    
+    except Exception as e:
+        logging.error(f"Error al formatear código: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
             except Exception as e:
                 logging.warning(f"Error formateando CSS: {str(e)}")
 

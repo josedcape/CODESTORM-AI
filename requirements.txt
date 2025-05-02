@@ -31,3 +31,10 @@ flask-socketio
 google-generativeai
 openai
 python-dotenv
+
+# Dependencias para formateo de código
+black
+autopep8
+jsbeautifier
+cssbeautifier
+beautifulsoup4
