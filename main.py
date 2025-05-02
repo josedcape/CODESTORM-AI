@@ -600,7 +600,7 @@ def api_chat():
                 openai_model = "gpt-4o"
 
                 try:
-                    # Intentar con cliente nuevo primero
+                    # Crear cliente OpenAI
                     openai_client = openai.OpenAI()
                     completion = openai_client.chat.completions.create(
                         model=openai_model,
@@ -610,14 +610,8 @@ def api_chat():
                     )
                     respuesta = completion.choices[0].message.content
                 except Exception as e:
-                    # Fallback al cliente antiguo si es necesario
-                    completion = openai.ChatCompletion.create(
-                        model=openai_model,
-                        messages=messages,
-                        temperature=0.7,
-                        max_tokens=2000
-                    )
-                    respuesta = completion.choices[0].message.content
+                    logging.error(f"Error con OpenAI API: {str(e)}")
+                    respuesta = f"Error al procesar con OpenAI: {str(e)}"
 
             except Exception as e:
                 logging.error(f"Error con API de OpenAI: {str(e)}")
@@ -785,7 +779,8 @@ def process_code_endpoint():
 
         if model == 'openai' and openai_api_key:
             try:
-                response = openai.ChatCompletion.create(
+                client = openai.OpenAI()
+                response = client.chat.completions.create(
                     model="gpt-4o",
                     messages=[
                         {"role": "system", "content": f"Eres un experto programador. Tu tarea es corregir el siguiente código en {language} según las instrucciones proporcionadas. El código resultante debe ser limpio, optimizado y SIN COMENTARIOS explicativos dentro del código. Devuelve el código corregido, una lista de cambios realizados y una explicación clara separada del código."},
@@ -1575,7 +1570,8 @@ def handle_user_message(data):
                     {"role": "user", "content": user_message}
                 ]
 
-                completion = openai.ChatCompletion.create(
+                client = openai.OpenAI()
+                completion = client.chat.completions.create(
                     model="gpt-4o",
                     messages=messages,
                     temperature=0.7,
