@@ -219,6 +219,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 files: '/api/files'
             };
 
+            // Inicializar el objeto chat si no existe
+            if (!window.app.chat) {
+                window.app.chat = {};
+            }
+            
             // Asignar endpoints al chat
             window.app.chat.apiEndpoints = window.app.apiEndpoints;
 
