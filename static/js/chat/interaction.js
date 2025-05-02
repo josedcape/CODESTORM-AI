@@ -1,127 +1,228 @@
-
 /**
- * Chat Interaction - Módulo para manejar la interacción con el asistente de desarrollo en el chat
- * Versión: 1.0.1
+ * DevAssistant - Módulo unificado para el asistente de desarrollo interactivo
+ * Versión: 2.0.0
+ * 
+ * Funcionalidades:
+ * - Interfaz de chat interactiva con el asistente
+ * - Modo intervención para modificar archivos del proyecto
+ * - Visualización de código con resaltado de sintaxis
+ * - Ejecución de acciones sobre el proyecto (crear/modificar/eliminar archivos)
+ * - Seguimiento del contexto de la conversación
  */
 
-document.addEventListener('DOMContentLoaded', function() {
-    // Inicializar los objetos globales necesarios
-    window.app = window.app || {};
-    window.app.chat = window.app.chat || {};
-    
-    // Establecer los endpoints API si no existen
-    if (!window.app.chat.apiEndpoints) {
-        window.app.chat.apiEndpoints = {
-            chat: '/api/chat',
-            fallback: '/api/generate',
-            health: '/api/health',
-            processCode: '/api/process_code',
-            execute: '/api/execute_command',
-            files: '/api/files'
+class DevAssistant {
+    constructor(config = {}) {
+        // Configuración por defecto
+        this.config = Object.assign({
+            apiEndpoints: {
+                chat: '/api/assistant/chat',
+                execute: '/api/assistant/execute-action',
+                files: '/api/assistant/files',
+                interventionMode: '/api/assistant/intervention-mode',
+                applyChanges: '/api/assistant/apply-changes'
+            },
+            selectors: {
+                panel: '#assistant-chat-panel',
+                button: '#toggle-assistant-chat',
+                close: '#close-assistant-chat',
+                input: '#assistant-chat-input',
+                send: '#send-assistant-message',
+                messages: '#assistant-chat-messages',
+                intervention: '#intervention-mode'
+            }
+        }, config);
+
+        // Estado interno
+        this.state = {
+            active: false,
+            isSending: false,
+            chatContext: [],
+            sessionId: this.generateSessionId(),
+            projectId: window.projectId || null
         };
-    }
-    
-    // Referencias a elementos del DOM
-    const assistantPanel = document.getElementById('assistant-chat-panel');
-    const chatButton = document.getElementById('toggle-assistant-chat');
-    const closeButton = document.getElementById('close-assistant-chat');
-    const chatInput = document.getElementById('assistant-chat-input');
-    const sendButton = document.getElementById('send-assistant-message');
-    const messagesContainer = document.getElementById('assistant-chat-messages');
-    const interventionToggle = document.getElementById('intervention-mode');
 
-    // Verificar que los elementos existan
-    if (!assistantPanel || !chatButton) {
-        console.warn('Elementos del chat no encontrados completamente');
-        return;
-    }
+        // Inicializar elementos DOM
+        this.initDOM();
 
-    // Estado del chat
-    let chatActive = false;
-    let isSending = false;
-    let chatContext = [];
-
-    // Configurar manejadores de eventos
-    chatButton.addEventListener('click', toggleChat);
-    if (closeButton) closeButton.addEventListener('click', hideChat);
-    if (sendButton) sendButton.addEventListener('click', sendMessage);
-    if (chatInput) {
-        chatInput.addEventListener('keydown', function(e) {
-            if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                sendMessage();
-            }
-        });
-    }
-    
-    if (interventionToggle) {
-        interventionToggle.addEventListener('change', function() {
-            const isEnabled = interventionToggle.checked;
-            if (isEnabled) {
-                interventionToggle.parentElement.classList.add('text-danger');
-                chatButton.classList.add('intervention-active');
-                addSystemMessage("Modo intervención activado: puedo realizar cambios directos en los archivos del proyecto.");
-            } else {
-                interventionToggle.parentElement.classList.remove('text-danger');
-                chatButton.classList.remove('intervention-active');
-                addSystemMessage("Modo intervención desactivado: no realizaré cambios directos en los archivos.");
-            }
-        });
-    }
-
-    // Funciones para manejar el chat
-    function toggleChat() {
-        if (assistantPanel.style.display === 'none' || !assistantPanel.style.display) {
-            showChat();
+        // Si todos los elementos necesarios están presentes, inicializar eventos
+        if (this.elements.panel && this.elements.button && 
+            this.elements.input && this.elements.send && this.elements.messages) {
+            this.initEventListeners();
+            this.loadDependencies();
+            console.log('DevAssistant: Inicializado correctamente');
         } else {
-            hideChat();
+            console.error('DevAssistant: No se pudieron encontrar todos los elementos necesarios');
         }
     }
 
-    function showChat() {
-        assistantPanel.style.display = 'flex';
-        chatActive = true;
-        if (chatInput) chatInput.focus();
+    /**
+     * Inicializa las referencias a elementos DOM
+     */
+    initDOM() {
+        this.elements = {};
+        Object.keys(this.config.selectors).forEach(key => {
+            this.elements[key] = document.querySelector(this.config.selectors[key]);
+        });
     }
 
-    function hideChat() {
-        assistantPanel.style.display = 'none';
-        chatActive = false;
+    /**
+     * Inicializa los listeners de eventos
+     */
+    initEventListeners() {
+        // Abrir/cerrar panel
+        this.elements.button.addEventListener('click', () => this.toggleChat());
+        this.elements.close.addEventListener('click', () => this.hideChat());
+
+        // Enviar mensaje
+        this.elements.send.addEventListener('click', () => this.sendMessage());
+        this.elements.input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                this.sendMessage();
+            }
+        });
+
+        // Modo intervención
+        if (this.elements.intervention) {
+            this.elements.intervention.addEventListener('change', () => {
+                const isInterventionMode = this.elements.intervention.checked;
+
+                if (isInterventionMode) {
+                    this.elements.button.classList.add('intervention-active');
+                } else {
+                    this.elements.button.classList.remove('intervention-active');
+                }
+
+                this.notifyInterventionMode(isInterventionMode);
+            });
+        }
+
+        // Eventos para copiar código (delegación)
+        this.elements.messages.addEventListener('click', (e) => {
+            if (e.target.closest('.copy-message')) {
+                const messageEl = e.target.closest('.message');
+                if (messageEl) {
+                    const content = messageEl.querySelector('.message-content').innerText;
+                    this.copyToClipboard(content, e.target.closest('.copy-message'));
+                }
+            }
+
+            // Botón para aplicar cambios
+            if (e.target.closest('.apply-changes-btn')) {
+                const changesEl = e.target.closest('.file-changes');
+                if (changesEl && changesEl.dataset.changes) {
+                    try {
+                        const changes = JSON.parse(changesEl.dataset.changes);
+                        this.applyFileChanges(changes);
+                    } catch (err) {
+                        console.error('Error al parsear los cambios:', err);
+                    }
+                }
+            }
+        });
     }
 
-    function sendMessage() {
-        if (isSending || !chatInput) return;
-        
-        const message = chatInput.value.trim();
+    /**
+     * Carga dependencias externas (highlight.js)
+     */
+    loadDependencies() {
+        // Cargar highlight.js si no está disponible
+        if (!window.hljs) {
+            const script = document.createElement('script');
+            script.src = 'https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/highlight.min.js';
+            script.onload = () => {
+                const css = document.createElement('link');
+                css.rel = 'stylesheet';
+                css.href = 'https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/github-dark.min.css';
+                document.head.appendChild(css);
+            };
+            document.head.appendChild(script);
+        }
+    }
+
+    /**
+     * Muestra/oculta el panel de chat
+     */
+    toggleChat() {
+        if (this.state.active) {
+            this.hideChat();
+        } else {
+            this.showChat();
+        }
+    }
+
+    /**
+     * Muestra el panel de chat
+     */
+    showChat() {
+        this.elements.panel.style.display = 'flex';
+        this.state.active = true;
+        this.elements.input.focus();
+
+        // Mostrar mensaje de bienvenida si el chat está vacío
+        if (this.elements.messages.querySelectorAll('.message').length === 0) {
+            this.addSystemMessage("¡Bienvenido al asistente de desarrollo! Puedo ayudarte a modificar tu proyecto. Ejemplos de lo que puedo hacer:");
+            this.addSystemMessage(`
+                <ul>
+                    <li>Crear nuevos archivos o componentes</li>
+                    <li>Modificar archivos existentes</li>
+                    <li>Revisar código y sugerir mejoras</li>
+                    <li>Implementar nuevas funcionalidades</li>
+                    <li>Corregir errores en el código</li>
+                </ul>
+                <p>Para permitirme hacer cambios directos en los archivos, activa el "Modo intervención".</p>
+            `);
+        }
+    }
+
+    /**
+     * Oculta el panel de chat
+     */
+    hideChat() {
+        this.elements.panel.style.display = 'none';
+        this.state.active = false;
+    }
+
+    /**
+     * Envía un mensaje al asistente
+     */
+    sendMessage() {
+        if (this.state.isSending) return;
+
+        const message = this.elements.input.value.trim();
         if (!message) return;
-        
-        // Agregar mensaje del usuario al chat
-        addUserMessage(message);
-        
+
+        // Agregar mensaje del usuario
+        this.addUserMessage(message);
+
         // Limpiar input
-        chatInput.value = '';
-        
+        this.elements.input.value = '';
+
         // Verificar si el modo intervención está activado
-        const interventionEnabled = interventionToggle ? interventionToggle.checked : false;
-        
+        const interventionEnabled = this.elements.intervention ? this.elements.intervention.checked : false;
+
         // Indicar que estamos enviando un mensaje
-        isSending = true;
-        if (sendButton) sendButton.disabled = true;
-        
+        this.state.isSending = true;
+        if (this.elements.send) this.elements.send.disabled = true;
+
+        // Mostrar indicador de escritura
+        this.addTypingIndicator();
+
         // Preparar datos para enviar
         const requestData = {
             message: message,
-            model: window.app && window.app.chat ? window.app.chat.activeModel : 'openai',
-            agent_id: window.app && window.app.chat ? window.app.chat.activeAgent : 'developer',
-            intervention_mode: interventionEnabled,
-            context: chatContext
+            sessionId: this.state.sessionId,
+            projectId: this.state.projectId,
+            interventionMode: interventionEnabled,
+            context: {
+                chatHistory: this.state.chatContext.slice(-10), // Últimos 10 mensajes para contexto
+                currentStage: document.getElementById('current-stage')?.textContent || null,
+                progress: document.getElementById('progress-bar')?.getAttribute('aria-valuenow') || 0
+            }
         };
-        
-        // Mostrar indicador de escritura
-        addTypingIndicator();
-        
+
         // Enviar solicitud al servidor
-        fetch('/api/chat', {
+        fetch(this.config.apiEndpoints.chat, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -136,498 +237,88 @@ document.addEventListener('DOMContentLoaded', function() {
         })
         .then(data => {
             // Eliminar indicador de escritura
-            removeTypingIndicator();
-            
+            this.removeTypingIndicator();
+
             // Agregar respuesta del asistente
-            if (data.response) {
-                addAssistantMessage(data.response);
-                
+            if (data.response || data.message) {
+                const responseText = data.response || data.message;
+                this.addAssistantMessage(responseText);
+
                 // Guardar en el contexto
-                chatContext.push({ role: 'user', content: message });
-                chatContext.push({ role: 'assistant', content: data.response });
-                
-                // Mantener un tamaño razonable del contexto (últimos 10 mensajes)
-                if (chatContext.length > 20) {
-                    chatContext = chatContext.slice(-20);
+                this.state.chatContext.push({ role: 'user', content: message });
+                this.state.chatContext.push({ role: 'assistant', content: responseText });
+
+                // Si hay acciones para ejecutar
+                if (data.actions && data.actions.length > 0) {
+                    this.processActions(data.actions);
                 }
-                
-                // Si hay cambios de archivos propuestos, mostrar botón para aplicarlos
-                if (data.file_changes && data.file_changes.length > 0) {
-                    addFileChangesMessage(data.file_changes);
+
+                // Si hay cambios de archivos propuestos
+                if (data.fileChanges || data.file_changes) {
+                    const changes = data.fileChanges || data.file_changes;
+                    if (changes && changes.length > 0) {
+                        this.addFileChangesMessage(changes);
+                    }
                 }
             } else if (data.error) {
-                addSystemMessage(`Error: ${data.error}`);
+                this.addSystemMessage(`Error: ${data.error}`);
             }
         })
         .catch(error => {
             console.error('Error:', error);
-            removeTypingIndicator();
-            addSystemMessage(`Error al enviar mensaje: ${error.message}`);
+            this.removeTypingIndicator();
+            this.addSystemMessage(`Error al enviar mensaje: ${error.message}`);
         })
         .finally(() => {
-            isSending = false;
-            if (sendButton) sendButton.disabled = false;
+            this.state.isSending = false;
+            if (this.elements.send) this.elements.send.disabled = false;
         });
     }
 
-    // Funciones para agregar mensajes al chat
-    function addUserMessage(content) {
-        if (!messagesContainer) return;
-        
-        const messageDiv = document.createElement('div');
-        messageDiv.className = 'message user-message';
-        messageDiv.textContent = content;
-        
-        messagesContainer.appendChild(messageDiv);
-        scrollToBottom();
-    }
-
-    function addAssistantMessage(content) {
-        if (!messagesContainer) return;
-        
-        const messageDiv = document.createElement('div');
-        messageDiv.className = 'message assistant-message';
-        
-        // Formatear contenido (procesar código, enlaces, etc.)
-        messageDiv.innerHTML = formatMessage(content);
-        
-        messagesContainer.appendChild(messageDiv);
-        scrollToBottom();
-        
-        // Aplicar highlight.js si está disponible
-        if (window.hljs) {
-            messageDiv.querySelectorAll('pre code').forEach(block => {
-                window.hljs.highlightElement(block);
-            });
-        }
-    }
-
-    function addSystemMessage(content) {
-        if (!messagesContainer) return;
-        
-        const messageDiv = document.createElement('div');
-        messageDiv.className = 'message system-message';
-        messageDiv.innerHTML = content;
-        
-        messagesContainer.appendChild(messageDiv);
-        scrollToBottom();
-    }
-
-    function addFileChangesMessage(fileChanges) {
-        if (!messagesContainer) return;
-        
-        const messageDiv = document.createElement('div');
-        messageDiv.className = 'message action-message';
-        
-        let filesList = '<ul class="file-changes-list">';
-        fileChanges.forEach(change => {
-            filesList += `<li>${change.file_path} - ${change.change_type}</li>`;
-        });
-        filesList += '</ul>';
-        
-        messageDiv.innerHTML = `
-            <div class="file-changes">
-                <p>Cambios propuestos (${fileChanges.length} ${fileChanges.length === 1 ? 'archivo' : 'archivos'}):</p>
-                ${filesList}
-                <button class="btn btn-sm btn-primary mt-2 apply-changes-btn">Aplicar cambios</button>
-            </div>
-        `;
-        
-        messagesContainer.appendChild(messageDiv);
-        scrollToBottom();
-        
-        // Agregar evento para aplicar cambios
-        const applyButton = messageDiv.querySelector('.apply-changes-btn');
-        if (applyButton) {
-            applyButton.addEventListener('click', function() {
-                applyFileChanges(fileChanges);
-            });
-        }
-    }
-
-    function addTypingIndicator() {
-        if (!messagesContainer) return;
-        
-        // Eliminar indicador existente si lo hay
-        removeTypingIndicator();
-        
-        const indicatorDiv = document.createElement('div');
-        indicatorDiv.id = 'typing-indicator';
-        indicatorDiv.className = 'typing-indicator';
-        indicatorDiv.innerHTML = `
-            <div class="typing-bubble"></div>
-            <div class="typing-bubble"></div>
-            <div class="typing-bubble"></div>
-        `;
-        
-        messagesContainer.appendChild(indicatorDiv);
-        scrollToBottom();
-    }
-
-    function removeTypingIndicator() {
-        const indicator = document.getElementById('typing-indicator');
-        if (indicator) {
-            indicator.remove();
-        }
-    }
-
-    // Funciones de utilidad
-    function formatMessage(content) {
-        if (!content) return '';
-        
-        // Escapar HTML
-        let formatted = escapeHtml(content);
-        
-        // Formatear bloques de código
-        formatted = formatted.replace(/```([\s\S]+?)```/g, function(match, code) {
-            const langMatch = code.match(/^([a-zA-Z]+)\n([\s\S]+)$/);
-            if (langMatch) {
-                const language = langMatch[1];
-                const codeContent = langMatch[2];
-                return `<pre><code class="language-${language}">${codeContent}</code></pre>`;
-            } else {
-                return `<pre><code>${code}</code></pre>`;
-            }
-        });
-        
-        // Formatear código en línea
-        formatted = formatted.replace(/`([^`]+)`/g, '<code>$1</code>');
-        
-        // Formatear enlaces
-        formatted = formatted.replace(/\[(.*?)\]\((.*?)\)/g, '<a href="$2" target="_blank">$1</a>');
-        
-        // Convertir saltos de línea en <br>
-        formatted = formatted.replace(/\n/g, '<br>');
-        
-        return formatted;
-    }
-
-    function escapeHtml(text) {
-        const div = document.createElement('div');
-        div.textContent = text;
-        return div.innerHTML;
-    }
-
-    function scrollToBottom() {
-        if (messagesContainer) {
-            messagesContainer.scrollTop = messagesContainer.scrollHeight;
-        }
-    }
-
-    function applyFileChanges(fileChanges) {
-        fetch('/api/apply_changes', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ changes: fileChanges })
-        })
-        .then(response => {
-            if (!response.ok) {
-                throw new Error(`Error: ${response.status}`);
-            }
-            return response.json();
-        })
-        .then(data => {
-            if (data.success) {
-                addSystemMessage(`Cambios aplicados correctamente a ${fileChanges.length} ${fileChanges.length === 1 ? 'archivo' : 'archivos'}.`);
-            } else {
-                addSystemMessage(`Error al aplicar cambios: ${data.error}`);
-            }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            addSystemMessage(`Error al aplicar cambios: ${error.message}`);
-        });
-    }
-
-    // Inicialización adicional
-    function loadHighlightJS() {
-        if (window.hljs) return Promise.resolve();
-        
-        return new Promise((resolve, reject) => {
-            const script = document.createElement('script');
-            script.src = 'https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/highlight.min.js';
-            script.onload = function() {
-                const css = document.createElement('link');
-                css.rel = 'stylesheet';
-                css.href = 'https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/github-dark.min.css';
-                document.head.appendChild(css);
-                resolve();
-            };
-            script.onerror = reject;
-            document.head.appendChild(script);
-        });
-    }
-    
-    // Cargar highlight.js para resaltado de código
-    loadHighlightJS().catch(error => {
-        console.warn('No se pudo cargar highlight.js:', error);
-    });
-});
-
-
-// Módulo para la interacción con el agente de desarrollo en el chat
-document.addEventListener('DOMContentLoaded', function() {
-    // Inicializar los objetos globales necesarios
-    window.app = window.app || {};
-    window.app.chat = window.app.chat || {};
-    
-    // Establecer los endpoints API si no existen
-    if (!window.app.chat.apiEndpoints) {
-        window.app.chat.apiEndpoints = {
-            chat: '/api/chat',
-            fallback: '/api/generate',
-            health: '/api/health',
-            processCode: '/api/process_code',
-            execute: '/api/execute_command',
-            files: '/api/files'
-        };
-    }
-    
-    // Referencias a elementos del DOM
-    const assistantPanel = document.getElementById('assistant-chat-panel');
-    const chatButton = document.getElementById('toggle-assistant-chat');
-    const closeButton = document.getElementById('close-assistant-chat');
-    const chatInput = document.getElementById('assistant-chat-input');
-    const sendButton = document.getElementById('send-assistant-message');
-    const messagesContainer = document.getElementById('assistant-chat-messages');
-    const interventionToggle = document.getElementById('intervention-mode');
-
-    // Verificar que los elementos existan
-    if (!assistantPanel || !chatButton || !chatInput || !sendButton || !messagesContainer) {
-        console.error('Elementos del chat no encontrados');
-        return;
-    }
-
-    // Estado del chat
-    let chatActive = false;
-    let isSending = false;
-    let chatContext = [];
-
-    // Abrir/cerrar panel de chat
-    chatButton.addEventListener('click', function() {
-        if (assistantPanel.style.display === 'none' || assistantPanel.style.display === '') {
-            assistantPanel.style.display = 'flex';
-            chatActive = true;
-            chatInput.focus();
-            
-            // Mostrar mensaje de bienvenida si el chat está vacío
-            if (messagesContainer.querySelectorAll('.message').length === 0) {
-                addSystemMessage("¡Bienvenido al asistente interactivo! Puedo ayudarte a modificar funciones específicas mientras trabajas en tu proyecto. Ejemplos de cosas que puedes pedirme:");
-                addSystemMessage(`
-                    <ul>
-                        <li>Agregar una función para validar formularios</li>
-                        <li>Modificar el estilo CSS de los botones</li>
-                        <li>Crear un componente de contador</li>
-                        <li>Convertir una función a async/await</li>
-                        <li>Optimizar una consulta a base de datos</li>
-                    </ul>
-                    <p>¿En qué puedo ayudarte hoy?</p>
-                `);
-            }
-        } else {
-            assistantPanel.style.display = 'none';
-            chatActive = false;
-        }
-    });
-
-    closeButton.addEventListener('click', function() {
-        assistantPanel.style.display = 'none';
-        chatActive = false;
-    });
-
-    // Enviar mensaje con Enter
-    chatInput.addEventListener('keydown', function(e) {
-        if (e.key === 'Enter' && !e.shiftKey) {
-            e.preventDefault();
-            sendMessage();
-        }
-    });
-
-    // Enviar mensaje con botón
-    sendButton.addEventListener('click', sendMessage);
-
-    // Función para enviar mensaje
-    function sendMessage() {
-        if (isSending) return;
-        
-        const message = chatInput.value.trim();
-        if (!message) return;
-        
-        // Agregar mensaje del usuario a la UI
-        addUserMessage(message);
-        
-        // Limpiar input
-        chatInput.value = '';
-        
-        // Obtener contexto relevante
-        const projectId = window.projectId || null;
-        const activeStage = document.getElementById('current-stage')?.textContent || null;
-        const progress = document.getElementById('progress-bar')?.getAttribute('aria-valuenow') || 0;
-        
-        // Preparar datos para la API
-        const requestData = {
-            message: message,
-            context: {
-                projectId: projectId,
-                mode: interventionToggle.checked ? 'intervention' : 'information',
-                currentStage: activeStage,
-                progress: progress,
-                chatHistory: chatContext.slice(-5) // Últimos 5 mensajes para contexto
-            }
-        };
-        
-        // Mostrar indicador de escritura
-        const typingIndicator = addTypingIndicator();
-        
-        // Marcar como enviando
-        isSending = true;
-        
-        // Enviar al servidor
-        fetch('/api/assistant/chat', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(requestData)
-        })
-        .then(response => response.json())
-        .then(data => {
-            // Quitar indicador de escritura
-            if (typingIndicator) {
-                typingIndicator.remove();
-            }
-            
-            // Procesar respuesta
-            if (data.success) {
-                // Agregar respuesta a la UI
-                addAgentMessage(data.response);
-                
-                // Actualizar contexto
-                chatContext.push({ role: 'user', content: message });
-                chatContext.push({ role: 'assistant', content: data.response });
-                
-                // Procesar acciones si existen
-                if (data.actions && data.actions.length > 0) {
-                    processAgentActions(data.actions);
-                }
-            } else {
-                // Mostrar error
-                addSystemMessage(`Error: ${data.error || 'No se pudo procesar tu solicitud'}`);
-            }
-            
-            // Restaurar estado
-            isSending = false;
-        })
-        .catch(error => {
-            console.error('Error al comunicarse con el asistente:', error);
-            
-            // Quitar indicador de escritura
-            if (typingIndicator) {
-                typingIndicator.remove();
-            }
-            
-            // Mostrar error
-            addSystemMessage('Error de conexión: No se pudo contactar al servidor');
-            
-            // Restaurar estado
-            isSending = false;
-        });
-    }
-
-    // Agregar mensaje del usuario
-    function addUserMessage(message) {
-        const messageEl = document.createElement('div');
-        messageEl.className = 'message user-message';
-        messageEl.innerHTML = `
-            <div class="message-content">${message.replace(/\n/g, '<br>')}</div>
-            <div class="message-time">${getCurrentTime()}</div>
-        `;
-        messagesContainer.appendChild(messageEl);
-        scrollToBottom();
-    }
-
-    // Agregar mensaje del agente
-    function addAgentMessage(message) {
-        const messageEl = document.createElement('div');
-        messageEl.className = 'message assistant-message';
-        
-        // Formatear el mensaje (código, etc.) si está disponible la función
-        const formattedMessage = window.formatCodeResponse 
-            ? window.formatCodeResponse(message)
-            : message.replace(/\n/g, '<br>');
-        
-        messageEl.innerHTML = `
-            <div class="message-content">${formattedMessage}</div>
-            <div class="message-time">${getCurrentTime()}</div>
-            <div class="message-actions">
-                <button class="btn btn-sm btn-icon copy-message" title="Copiar mensaje">
-                    <i class="bi bi-clipboard"></i>
-                </button>
-            </div>
-        `;
-        
-        // Agregar evento para copiar mensaje
-        const copyBtn = messageEl.querySelector('.copy-message');
-        if (copyBtn) {
-            copyBtn.addEventListener('click', function() {
-                const content = messageEl.querySelector('.message-content').innerText;
-                navigator.clipboard.writeText(content)
-                    .then(() => {
-                        this.innerHTML = '<i class="bi bi-check"></i>';
-                        setTimeout(() => {
-                            this.innerHTML = '<i class="bi bi-clipboard"></i>';
-                        }, 2000);
-                    })
-                    .catch(err => console.error('Error al copiar:', err));
-            });
-        }
-        
-        messagesContainer.appendChild(messageEl);
-        
-        // Aplicar resaltado de sintaxis si existe hljs
-        if (window.hljs) {
-            messageEl.querySelectorAll('pre code').forEach(block => {
-                hljs.highlightElement(block);
-            });
-        }
-        
-        scrollToBottom();
-    }
-
-    // Agregar mensaje del sistema
-    function addSystemMessage(message) {
-        const messageEl = document.createElement('div');
-        messageEl.className = 'message system-message';
-        messageEl.innerHTML = `<div class="message-content">${message}</div>`;
-        messagesContainer.appendChild(messageEl);
-        scrollToBottom();
-    }
-
-    // Agregar indicador de escritura
-    function addTypingIndicator() {
-        const indicator = document.createElement('div');
-        indicator.className = 'typing-indicator';
-        indicator.innerHTML = '<span></span><span></span><span></span>';
-        messagesContainer.appendChild(indicator);
-        scrollToBottom();
-        return indicator;
-    }
-
-    // Procesar acciones del agente
-    function processAgentActions(actions) {
+    /**
+     * Procesa acciones devueltas por el asistente
+     * @param {Array} actions - Lista de acciones a ejecutar
+     */
+    processActions(actions) {
         actions.forEach(action => {
-            // Mostrar notificación de acción
-            addActionMessage(`${getActionDescription(action)}`);
-            
-            // Ejecutar la acción en el proyecto
-            executeAction(action);
+            this.addActionMessage(`Ejecutando: ${this.getActionDescription(action)}`);
+
+            fetch(this.config.apiEndpoints.execute, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    project_id: this.state.projectId,
+                    action: action
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    this.addActionMessage(`✅ Acción completada: ${data.message || ''}`);
+
+                    // Actualizar UI si es necesario
+                    if (data.new_progress) {
+                        this.updateProgressUI(data.new_progress);
+                    }
+                } else {
+                    this.addActionMessage(`❌ Error en acción: ${data.error || 'Error desconocido'}`);
+                }
+            })
+            .catch(error => {
+                console.error('Error al ejecutar acción:', error);
+                this.addActionMessage(`❌ Error de comunicación`);
+            });
         });
     }
 
-    // Obtener descripción de la acción
-    function getActionDescription(action) {
+    /**
+     * Obtiene descripción legible de una acción
+     * @param {Object} action - Acción a describir
+     * @return {string} - Descripción de la acción
+     */
+    getActionDescription(action) {
         switch (action.type) {
             case 'add_file':
                 return `Añadiendo archivo: ${action.filename}`;
@@ -639,125 +330,78 @@ document.addEventListener('DOMContentLoaded', function() {
                 return `Añadiendo característica: ${action.feature}`;
             case 'modify_config':
                 return `Modificando configuración: ${action.config_name}`;
-            case 'restart_stage':
-                return `Reiniciando etapa: ${action.stage_name}`;
-            case 'notification':
-                return `${action.message}`;
             default:
                 return `Ejecutando acción: ${action.type}`;
         }
     }
 
-    // Ejecutar acción
-    function executeAction(action) {
-        if (!window.projectId) {
-            console.error('No hay un proyecto activo');
-            addSystemMessage('Error: No hay un proyecto activo para aplicar los cambios');
-            return;
-        }
+    /**
+     * Aplica cambios de archivos propuestos
+     * @param {Array} fileChanges - Lista de cambios a aplicar
+     */
+    applyFileChanges(fileChanges) {
+        this.addSystemMessage('Aplicando cambios en archivos...');
 
-        fetch('/api/assistant/execute-action', {
+        fetch(this.config.apiEndpoints.applyChanges, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify({
-                project_id: window.projectId,
-                action: action
+            body: JSON.stringify({ 
+                changes: fileChanges,
+                projectId: this.state.projectId
             })
         })
-        .then(response => response.json())
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`Error: ${response.status}`);
+            }
+            return response.json();
+        })
         .then(data => {
             if (data.success) {
-                addActionMessage(`✅ Acción completada: ${data.message || ''}`);
-                
-                // Actualizar UI si es necesario
-                if (data.new_progress) {
-                    updateProgressUI(data.new_progress);
+                this.addSystemMessage(`✅ Cambios aplicados correctamente a ${fileChanges.length} ${fileChanges.length === 1 ? 'archivo' : 'archivos'}.`);
+
+                // Si hay archivos modificados, mostrarlos
+                if (data.modifiedFiles && data.modifiedFiles.length > 0) {
+                    let filesList = '<ul>';
+                    data.modifiedFiles.forEach(file => {
+                        filesList += `<li>${file}</li>`;
+                    });
+                    filesList += '</ul>';
+                    this.addSystemMessage(`Archivos modificados: ${filesList}`);
                 }
             } else {
-                addActionMessage(`❌ Error en acción: ${data.error || 'Error desconocido'}`);
+                this.addSystemMessage(`❌ Error al aplicar cambios: ${data.error || 'Error desconocido'}`);
             }
         })
         .catch(error => {
-            console.error('Error al ejecutar acción:', error);
-            addActionMessage(`❌ Error de comunicación`);
+            console.error('Error:', error);
+            this.addSystemMessage(`❌ Error al aplicar cambios: ${error.message}`);
         });
     }
 
-    // Actualizar barra de progreso
-    function updateProgressUI(progress) {
-        const progressBar = document.getElementById('progress-bar');
-        const progressText = document.getElementById('progress-text');
-        
-        if (progressBar && progress) {
-            progressBar.style.width = `${progress}%`;
-            progressBar.setAttribute('aria-valuenow', progress);
-            progressBar.textContent = `${progress}%`;
-        }
-        
-        if (progressText && progress) {
-            progressText.textContent = `${progress}% completado`;
-        }
-    }
-
-    // Agregar mensaje de acción
-    function addActionMessage(message) {
-        const actionEl = document.createElement('div');
-        actionEl.className = 'action-message';
-        actionEl.innerHTML = `<i class="bi bi-gear-fill me-1"></i> ${message}`;
-        messagesContainer.appendChild(actionEl);
-        scrollToBottom();
-    }
-
-    // Hora actual formateada
-    function getCurrentTime() {
-        const now = new Date();
-        let hours = now.getHours();
-        let minutes = now.getMinutes();
-        
-        // Añadir ceros iniciales si es necesario
-        hours = hours < 10 ? '0' + hours : hours;
-        minutes = minutes < 10 ? '0' + minutes : minutes;
-        
-        return `${hours}:${minutes}`;
-    }
-
-    // Desplazar al final del chat
-    function scrollToBottom() {
-        messagesContainer.scrollTop = messagesContainer.scrollHeight;
-    }
-
-    // Verificar si el modo intervención está activo al iniciar
-    if (interventionToggle) {
-        interventionToggle.addEventListener('change', function() {
-            if (this.checked) {
-                chatButton.classList.add('intervention-active');
-                
-                // Notificar cambio de modo si hay un proyecto activo
-                if (window.projectId) {
-                    notifyInterventionMode(window.projectId, true);
-                }
+    /**
+     * Notifica al servidor sobre el cambio de modo intervención
+     * @param {boolean} isIntervening - Estado del modo intervención
+     */
+    notifyInterventionMode(isIntervening) {
+        if (!this.state.projectId) {
+            if (isIntervening) {
+                this.addSystemMessage('Modo intervención activado. Puedo realizar cambios directos en el proyecto.');
             } else {
-                chatButton.classList.remove('intervention-active');
-                
-                // Notificar cambio de modo si hay un proyecto activo
-                if (window.projectId) {
-                    notifyInterventionMode(window.projectId, false);
-                }
+                this.addSystemMessage('Modo intervención desactivado. Solo puedo proporcionar información.');
             }
-        });
-    }
+            return;
+        }
 
-    // Notificar al servidor sobre el cambio de modo intervención
-    function notifyInterventionMode(projectId, isIntervening) {
-        fetch('/api/assistant/intervention-mode', {
+        fetch(this.config.apiEndpoints.interventionMode, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({
-                project_id: projectId,
+                project_id: this.state.projectId,
                 is_intervening: isIntervening
             })
         })
@@ -765,9 +409,9 @@ document.addEventListener('DOMContentLoaded', function() {
         .then(data => {
             if (data.success) {
                 if (isIntervening) {
-                    addSystemMessage('Modo intervención activado. Puedo modificar el proyecto en desarrollo.');
+                    this.addSystemMessage('Modo intervención activado. Puedo realizar cambios directos en el proyecto.');
                 } else {
-                    addSystemMessage('Modo intervención desactivado. Ahora solo puedo proporcionarte información.');
+                    this.addSystemMessage('Modo intervención desactivado. Solo puedo proporcionar información.');
                 }
             } else {
                 console.error('Error al cambiar modo intervención:', data.error);
@@ -778,195 +422,240 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Inicializar
-    console.log('Asistente de chat interactivo inicializado');
-});
-/**
- * Maneja la interacción con el asistente de desarrollo
- */
-class DevelopmentAssistant {
-    constructor() {
-        this.chatInput = document.getElementById('assistant-chat-input');
-        this.chatMessages = document.getElementById('assistant-chat-messages');
-        this.sendButton = document.getElementById('send-assistant-message');
-        this.interventionMode = document.getElementById('intervention-mode');
-        
-        this.isWaitingResponse = false;
-        this.sessionId = this.generateSessionId();
-        
-        this.initEventListeners();
-    }
-    
-    initEventListeners() {
-        // Enviar mensaje al hacer clic en el botón
-        this.sendButton.addEventListener('click', () => this.sendMessage());
-        
-        // Enviar mensaje al presionar Enter
-        this.chatInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                this.sendMessage();
-            }
-        });
-    }
-    
     /**
-     * Envía el mensaje al asistente
+     * Actualiza la UI de progreso del proyecto
+     * @param {number} progress - Nuevo valor de progreso
      */
-    sendMessage() {
-        const message = this.chatInput.value.trim();
-        if (!message || this.isWaitingResponse) return;
-        
-        // Añadir mensaje del usuario al chat
-        this.addUserMessage(message);
-        this.chatInput.value = '';
-        
-        // Mostrar indicador de escritura
-        this.showTypingIndicator();
-        this.isWaitingResponse = true;
-        
-        // Enviar mensaje al backend
-        this.sendToBackend(message)
-            .then(response => {
-                // Ocultar indicador de escritura
-                this.hideTypingIndicator();
-                
-                // Añadir respuesta del asistente
-                this.addAssistantMessage(response.message);
-                
-                // Aplicar cambios de código si es necesario
-                if (response.codeChanges) {
-                    this.applyCodeChanges(response.codeChanges);
-                }
-                
-                this.isWaitingResponse = false;
-            })
-            .catch(error => {
-                this.hideTypingIndicator();
-                this.addSystemMessage(`Error: No se pudo obtener respuesta. ${error.message}`);
-                this.isWaitingResponse = false;
-            });
+    updateProgressUI(progress) {
+        const progressBar = document.getElementById('progress-bar');
+        const progressText = document.getElementById('progress-text');
+
+        if (progressBar && progress) {
+            progressBar.style.width = `${progress}%`;
+            progressBar.setAttribute('aria-valuenow', progress);
+            progressBar.textContent = `${progress}%`;
+        }
+
+        if (progressText && progress) {
+            progressText.textContent = `${progress}% completado`;
+        }
     }
-    
+
     /**
-     * Envía el mensaje al backend
-     * @param {string} message - Mensaje a enviar
-     * @return {Promise} - Promesa con la respuesta
-     */
-    sendToBackend(message) {
-        return fetch('/api/dev-assistant/chat', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                message: message,
-                sessionId: this.sessionId,
-                interventionMode: this.interventionMode.checked
-            })
-        })
-        .then(response => {
-            if (!response.ok) {
-                throw new Error('Error en la comunicación con el servidor');
-            }
-            return response.json();
-        });
-    }
-    
-    /**
-     * Añade un mensaje del usuario al chat
-     * @param {string} message - Mensaje del usuario
+     * Agrega un mensaje del usuario al chat
+     * @param {string} message - Contenido del mensaje
      */
     addUserMessage(message) {
-        const messageElement = document.createElement('div');
-        messageElement.className = 'message user-message';
-        messageElement.textContent = message;
-        this.chatMessages.appendChild(messageElement);
+        const messageEl = document.createElement('div');
+        messageEl.className = 'message user-message';
+        messageEl.innerHTML = `
+            <div class="message-content">${this.escapeHtml(message).replace(/\n/g, '<br>')}</div>
+            <div class="message-time">${this.getCurrentTime()}</div>
+        `;
+        this.elements.messages.appendChild(messageEl);
         this.scrollToBottom();
     }
-    
+
     /**
-     * Añade un mensaje del asistente al chat
-     * @param {string} message - Mensaje del asistente
+     * Agrega un mensaje del asistente al chat
+     * @param {string} message - Contenido del mensaje
      */
     addAssistantMessage(message) {
-        const messageElement = document.createElement('div');
-        messageElement.className = 'message assistant-message';
-        messageElement.innerHTML = CodeFormatter.formatCode(message);
-        this.chatMessages.appendChild(messageElement);
-        
-        // Aplicar resaltado de sintaxis si hay código
-        CodeFormatter.highlightAll();
+        const messageEl = document.createElement('div');
+        messageEl.className = 'message assistant-message';
+
+        // Formatear el mensaje (código, etc.)
+        const formattedMessage = this.formatMessage(message);
+
+        messageEl.innerHTML = `
+            <div class="message-content">${formattedMessage}</div>
+            <div class="message-time">${this.getCurrentTime()}</div>
+            <div class="message-actions">
+                <button class="btn btn-sm btn-icon copy-message" title="Copiar mensaje">
+                    <i class="bi bi-clipboard"></i>
+                </button>
+            </div>
+        `;
+
+        this.elements.messages.appendChild(messageEl);
+
+        // Aplicar resaltado de sintaxis si existe hljs
+        if (window.hljs) {
+            messageEl.querySelectorAll('pre code').forEach(block => {
+                window.hljs.highlightElement(block);
+            });
+        }
+
         this.scrollToBottom();
     }
-    
+
     /**
-     * Añade un mensaje del sistema al chat
-     * @param {string} message - Mensaje del sistema
+     * Agrega un mensaje del sistema al chat
+     * @param {string} message - Contenido del mensaje
      */
     addSystemMessage(message) {
-        const messageElement = document.createElement('div');
-        messageElement.className = 'system-message';
-        messageElement.innerHTML = message;
-        this.chatMessages.appendChild(messageElement);
+        const messageEl = document.createElement('div');
+        messageEl.className = 'message system-message';
+        messageEl.innerHTML = `<div class="message-content">${message}</div>`;
+        this.elements.messages.appendChild(messageEl);
         this.scrollToBottom();
     }
-    
+
     /**
-     * Muestra el indicador de escritura
+     * Agrega un mensaje de acción al chat
+     * @param {string} message - Contenido del mensaje
      */
-    showTypingIndicator() {
-        const typingIndicator = document.createElement('div');
-        typingIndicator.className = 'typing-indicator';
-        typingIndicator.id = 'typing-indicator';
-        
-        for (let i = 0; i < 3; i++) {
-            const bubble = document.createElement('div');
-            bubble.className = 'typing-bubble';
-            typingIndicator.appendChild(bubble);
-        }
-        
-        this.chatMessages.appendChild(typingIndicator);
+    addActionMessage(message) {
+        const actionEl = document.createElement('div');
+        actionEl.className = 'action-message';
+        actionEl.innerHTML = `<i class="bi bi-gear-fill me-1"></i> ${message}`;
+        this.elements.messages.appendChild(actionEl);
         this.scrollToBottom();
     }
-    
+
     /**
-     * Oculta el indicador de escritura
+     * Agrega un mensaje con cambios de archivos propuestos
+     * @param {Array} fileChanges - Lista de cambios propuestos
      */
-    hideTypingIndicator() {
-        const typingIndicator = document.getElementById('typing-indicator');
-        if (typingIndicator) {
-            typingIndicator.remove();
+    addFileChangesMessage(fileChanges) {
+        const messageDiv = document.createElement('div');
+        messageDiv.className = 'message action-message';
+
+        let filesList = '<ul class="file-changes-list">';
+        fileChanges.forEach(change => {
+            filesList += `<li>${change.file_path || change.filename} - ${change.change_type || change.type}</li>`;
+        });
+        filesList += '</ul>';
+
+        messageDiv.innerHTML = `
+            <div class="file-changes" data-changes='${JSON.stringify(fileChanges)}'>
+                <p>Cambios propuestos (${fileChanges.length} ${fileChanges.length === 1 ? 'archivo' : 'archivos'}):</p>
+                ${filesList}
+                <button class="btn btn-sm btn-primary mt-2 apply-changes-btn">Aplicar cambios</button>
+            </div>
+        `;
+
+        this.elements.messages.appendChild(messageDiv);
+        this.scrollToBottom();
+    }
+
+    /**
+     * Agrega un indicador de escritura al chat
+     */
+    addTypingIndicator() {
+        // Eliminar indicador existente si lo hay
+        this.removeTypingIndicator();
+
+        const indicatorDiv = document.createElement('div');
+        indicatorDiv.id = 'typing-indicator';
+        indicatorDiv.className = 'typing-indicator';
+        indicatorDiv.innerHTML = `
+            <div class="typing-bubble"></div>
+            <div class="typing-bubble"></div>
+            <div class="typing-bubble"></div>
+        `;
+
+        this.elements.messages.appendChild(indicatorDiv);
+        this.scrollToBottom();
+    }
+
+    /**
+     * Elimina el indicador de escritura
+     */
+    removeTypingIndicator() {
+        const indicator = document.getElementById('typing-indicator');
+        if (indicator) {
+            indicator.remove();
         }
     }
-    
+
     /**
-     * Aplica cambios de código en el proyecto
-     * @param {Object} changes - Cambios a aplicar
+     * Formatea un mensaje para mostrar código y otros elementos
+     * @param {string} content - Contenido a formatear
+     * @return {string} - Contenido formateado
      */
-    applyCodeChanges(changes) {
-        if (changes.success) {
-            this.addSystemMessage(`
-                <p><i class="bi bi-check-circle-fill text-success"></i> <strong>Cambios aplicados:</strong></p>
-                <ul>
-                    ${changes.files.map(file => `<li>Modificado: ${file}</li>`).join('')}
-                </ul>
-            `);
-        } else {
-            this.addSystemMessage(`
-                <p><i class="bi bi-exclamation-triangle-fill text-warning"></i> <strong>No se pudieron aplicar todos los cambios:</strong></p>
-                <p>${changes.error}</p>
-            `);
-        }
+    formatMessage(content) {
+        if (!content) return '';
+
+        // Escapar HTML
+        let formatted = this.escapeHtml(content);
+
+        // Formatear bloques de código
+        formatted = formatted.replace(/```([\s\S]+?)```/g, function(match, code) {
+            const langMatch = code.match(/^([a-zA-Z]+)\n([\s\S]+)$/);
+            if (langMatch) {
+                const language = langMatch[1];
+                const codeContent = langMatch[2];
+                return `<pre><code class="language-${language}">${codeContent}</code></pre>`;
+            } else {
+                return `<pre><code>${code}</code></pre>`;
+            }
+        });
+
+        // Formatear código en línea
+        formatted = formatted.replace(/`([^`]+)`/g, '<code>$1</code>');
+
+        // Formatear enlaces
+        formatted = formatted.replace(/\[(.*?)\]\((.*?)\)/g, '<a href="$2" target="_blank">$1</a>');
+
+        // Convertir saltos de línea en <br>
+        formatted = formatted.replace(/\n/g, '<br>');
+
+        return formatted;
     }
-    
+
+    /**
+     * Escapa caracteres HTML
+     * @param {string} text - Texto a escapar
+     * @return {string} - Texto escapado
+     */
+    escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    /**
+     * Copia texto al portapapeles
+     * @param {string} text - Texto a copiar
+     * @param {HTMLElement} button - Botón que inició la acción
+     */
+    copyToClipboard(text, button) {
+        navigator.clipboard.writeText(text)
+            .then(() => {
+                // Cambiar icono temporalmente
+                const originalHTML = button.innerHTML;
+                button.innerHTML = '<i class="bi bi-check"></i>';
+                setTimeout(() => {
+                    button.innerHTML = originalHTML;
+                }, 2000);
+            })
+            .catch(err => console.error('Error al copiar:', err));
+    }
+
     /**
      * Desplaza el chat hacia abajo
      */
     scrollToBottom() {
-        this.chatMessages.scrollTop = this.chatMessages.scrollHeight;
+        this.elements.messages.scrollTop = this.elements.messages.scrollHeight;
     }
-    
+
+    /**
+     * Obtiene la hora actual formateada
+     * @return {string} - Hora formateada (HH:MM)
+     */
+    getCurrentTime() {
+        const now = new Date();
+        let hours = now.getHours();
+        let minutes = now.getMinutes();
+
+        // Añadir ceros iniciales si es necesario
+        hours = hours < 10 ? '0' + hours : hours;
+        minutes = minutes < 10 ? '0' + minutes : minutes;
+
+        return `${hours}:${minutes}`;
+    }
+
     /**
      * Genera un ID de sesión único
      * @return {string} - ID de sesión
@@ -974,198 +663,23 @@ class DevelopmentAssistant {
     generateSessionId() {
         return 'session_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
     }
+
+    /**
+     * Establece el ID del proyecto actual
+     * @param {string} projectId - ID del proyecto
+     */
+    setProjectId(projectId) {
+        this.state.projectId = projectId;
+        console.log(`DevAssistant: Proyecto establecido a ${projectId}`);
+    }
 }
 
-// Inicializar el asistente cuando el DOM esté listo
+// Inicializar cuando el DOM esté listo
 document.addEventListener('DOMContentLoaded', function() {
-    window.developmentAssistant = new DevelopmentAssistant();
-});
-/**
- * Chat Interaction - Módulo para manejar la interacción con el asistente de desarrollo en el chat
- * Versión: 1.0.1
- */
+    window.devAssistant = new DevAssistant();
 
-document.addEventListener('DOMContentLoaded', function() {
-    // Inicializar los objetos globales necesarios
-    window.app = window.app || {};
-    window.app.chat = window.app.chat || {};
-    
-    // Establecer los endpoints API si no existen
-    if (!window.app.chat.apiEndpoints) {
-        window.app.chat.apiEndpoints = {
-            chat: '/api/chat',
-            fallback: '/api/generate',
-            health: '/api/health',
-            processCode: '/api/process_code',
-            execute: '/api/execute_command',
-            files: '/api/files'
-        };
+    // Si hay un ID de proyecto disponible, establecerlo
+    if (window.projectId) {
+        window.devAssistant.setProjectId(window.projectId);
     }
-    
-    // Referencias a elementos del DOM
-    const assistantPanel = document.getElementById('assistant-chat-panel');
-    const chatButton = document.getElementById('toggle-assistant-chat');
-    const closeButton = document.getElementById('close-assistant-chat');
-    const chatInput = document.getElementById('assistant-chat-input');
-    const sendButton = document.getElementById('send-assistant-message');
-    const messagesContainer = document.getElementById('assistant-chat-messages');
-    const interventionToggle = document.getElementById('intervention-mode');
-
-    // Verificar que los elementos existan
-    if (!assistantPanel || !chatButton || !chatInput || !sendButton || !messagesContainer) {
-        console.warn('Elementos del chat no encontrados completamente');
-        return;
-    }
-    
-    let chatActive = false;
-    
-    // Funciones para manejar el chat
-    function toggleChat() {
-        if (assistantPanel.style.display === 'none' || !assistantPanel.style.display) {
-            showChat();
-        } else {
-            hideChat();
-        }
-    }
-
-    function showChat() {
-        assistantPanel.style.display = 'flex';
-        chatActive = true;
-        if (chatInput) chatInput.focus();
-    }
-
-    function hideChat() {
-        assistantPanel.style.display = 'none';
-        chatActive = false;
-    }
-    
-    // Inicializar eventos
-    chatButton.addEventListener('click', toggleChat);
-    closeButton.addEventListener('click', hideChat);
-    
-    // Manejar envío de mensajes
-    sendButton.addEventListener('click', function() {
-        const message = chatInput.value.trim();
-        if (!message) return;
-        
-        // Agregar mensaje del usuario
-        addUserMessage(message);
-        
-        // Limpiar input
-        chatInput.value = '';
-        
-        // Mostrar indicador de escritura
-        showTypingIndicator();
-        
-        // Enviar mensaje al backend
-        fetch(window.app.chat.apiEndpoints.chat, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                message: message,
-                model: 'openai',
-                intervention_mode: interventionToggle ? interventionToggle.checked : true
-            })
-        })
-        .then(response => response.json())
-        .then(data => {
-            // Eliminar indicador de escritura
-            hideTypingIndicator();
-            
-            // Agregar respuesta del asistente
-            if (data.response || data.message) {
-                addAssistantMessage(data.response || data.message);
-            } else {
-                addSystemMessage("No se pudo obtener una respuesta clara del asistente.");
-            }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            hideTypingIndicator();
-            
-            // Mostrar error
-            addSystemMessage(`Error al comunicarse con el asistente: ${error.message}`);
-        });
-    });
-    
-    // Enviar con Enter
-    chatInput.addEventListener('keydown', function(e) {
-        if (e.key === 'Enter' && !e.shiftKey) {
-            e.preventDefault();
-            sendButton.click();
-        }
-    });
-    
-    // Funciones auxiliares
-    function addUserMessage(message) {
-        const messageElement = document.createElement('div');
-        messageElement.className = 'message user-message';
-        messageElement.textContent = message;
-        messagesContainer.appendChild(messageElement);
-        scrollToBottom();
-    }
-    
-    function addAssistantMessage(message) {
-        const messageElement = document.createElement('div');
-        messageElement.className = 'message assistant-message';
-        messageElement.innerHTML = formatMessage(message);
-        messagesContainer.appendChild(messageElement);
-        scrollToBottom();
-    }
-    
-    function addSystemMessage(message) {
-        const messageElement = document.createElement('div');
-        messageElement.className = 'system-message';
-        messageElement.innerHTML = message;
-        messagesContainer.appendChild(messageElement);
-        scrollToBottom();
-    }
-    
-    function formatMessage(message) {
-        // Formateo básico de Markdown
-        return message
-            .replace(/```([^`]+)```/g, '<pre><code>$1</code></pre>')
-            .replace(/`([^`]+)`/g, '<code>$1</code>')
-            .replace(/\n/g, '<br>');
-    }
-    
-    function showTypingIndicator() {
-        const typingIndicator = document.createElement('div');
-        typingIndicator.className = 'typing-indicator';
-        typingIndicator.id = 'typing-indicator';
-        
-        for (let i = 0; i < 3; i++) {
-            const bubble = document.createElement('div');
-            bubble.className = 'typing-bubble';
-            typingIndicator.appendChild(bubble);
-        }
-        
-        messagesContainer.appendChild(typingIndicator);
-        scrollToBottom();
-    }
-    
-    function hideTypingIndicator() {
-        const typingIndicator = document.getElementById('typing-indicator');
-        if (typingIndicator) {
-            typingIndicator.remove();
-        }
-    }
-    
-    function scrollToBottom() {
-        messagesContainer.scrollTop = messagesContainer.scrollHeight;
-    }
-    
-    // Exponer API pública
-    window.app.chat.interface = {
-        showChat,
-        hideChat,
-        toggleChat,
-        addUserMessage,
-        addAssistantMessage,
-        addSystemMessage
-    };
-    
-    console.log("Módulo de chat del asistente inicializado correctamente");
 });
