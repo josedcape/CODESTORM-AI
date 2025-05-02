@@ -674,4 +674,10 @@ Entiendo el problema. Voy a proporcionarte el código corregido para que cuando 
 {% endblock %}
 
 {% block scripts %}
-<script src="{{ url_for
+<script src="{{ url_for('static', filename='js/tech-selector.js') }}"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        initializeChat();
+    });
+</script>
+{% endblock %}

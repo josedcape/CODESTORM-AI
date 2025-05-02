@@ -722,6 +722,11 @@ def agente():
     """Ruta a la página del agente."""
     return render_template('agente.html')
 
+@app.route('/agent')
+def agent_en():
+    """Ruta alternativa para la página del agente."""
+    return redirect('/agente')
+
 @app.route('/preview')
 def preview():
     """Render the preview page."""
