@@ -469,7 +469,7 @@
                             </div>
                         </div>
 
-                        <form id="constructor-form">
+                        <form id="constructor-form" onsubmit="return false;">
                             <input type="hidden" id="project-tech-data" name="tech_data" value="">
                         <div class="mb-4">
                             <label for="project-description" class="form-label">Describe tu aplicación</label>
@@ -677,6 +677,147 @@
 <script>
     document.addEventListener('DOMContentLoaded', function() {
         // Manejar el botón de generar aplicación
+        const generateBtn = document.getElementById('generate-btn');
+        if (generateBtn) {
+            generateBtn.addEventListener('click', function(event) {
+                event.preventDefault();
+                
+                // Verificar que se haya ingresado una descripción
+                const projectDescription = document.getElementById('project-description').value.trim();
+                if (!projectDescription) {
+                    alert('Por favor, describe tu aplicación');
+                    return;
+                }
+                
+                // Mostrar el indicador de progreso
+                document.getElementById('constructor-form').style.display = 'none';
+                document.getElementById('generation-progress').style.display = 'block';
+                
+                // Recopilar datos del formulario
+                const techData = document.getElementById('project-tech-data').value;
+                const agentType = document.getElementById('agent-selector').value;
+                const modelType = document.getElementById('model-selector').value;
+                
+                // Generar ID único para el proyecto
+                const projectId = 'project_' + Date.now();
+                
+                // Enviar solicitud al servidor
+                fetch('/api/constructor/start', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        project_id: projectId,
+                        description: projectDescription,
+                        tech_data: techData,
+                        agent_type: agentType,
+                        model_type: modelType,
+                        include_tests: document.getElementById('include-tests').checked,
+                        include_docs: document.getElementById('include-docs').checked,
+                        include_deployment: document.getElementById('include-deployment').checked,
+                        include_ci_cd: document.getElementById('include-ci-cd').checked,
+                        features: Array.from(document.querySelectorAll('#features-tags .feature-tag'))
+                            .map(tag => tag.dataset.feature || tag.textContent.trim())
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        // Iniciar monitoreo de progreso
+                        startProgressMonitoring(projectId);
+                    } else {
+                        // Mostrar error
+                        document.getElementById('generation-console').innerHTML += 
+                            `<div class="error-line">Error: ${data.error || 'No se pudo iniciar la generación'}</div>`;
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    document.getElementById('generation-console').innerHTML += 
+                        `<div class="error-line">Error de conexión: ${error.message}</div>`;
+                });
+            });
+        }
+        
+        // Función para monitorear el progreso
+        function startProgressMonitoring(projectId) {
+            const progressBar = document.getElementById('progress-bar');
+            const currentStage = document.getElementById('current-stage');
+            const generationConsole = document.getElementById('generation-console');
+            
+            // Función para verificar el estado del proyecto
+            function checkStatus() {
+                fetch(`/api/constructor/status/${projectId}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            // Actualizar barra de progreso
+                            progressBar.style.width = `${data.progress}%`;
+                            progressBar.setAttribute('aria-valuenow', data.progress);
+                            progressBar.textContent = `${data.progress}%`;
+                            
+                            // Actualizar estado actual
+                            currentStage.textContent = data.current_stage;
+                            
+                            // Actualizar mensajes de consola si hay nuevos
+                            if (data.console_message) {
+                                const timestamp = new Date(data.console_message.time * 1000).toLocaleTimeString();
+                                generationConsole.innerHTML += 
+                                    `<div class="console-line">[${timestamp}] ${data.console_message.message}</div>`;
+                                generationConsole.scrollTop = generationConsole.scrollHeight;
+                            }
+                            
+                            // Verificar si está completado o hubo error
+                            if (data.status === 'completed') {
+                                document.getElementById('generation-progress').style.display = 'none';
+                                document.getElementById('generation-result').style.display = 'block';
+                                
+                                // Configurar botones de resultado
+                                const viewBtn = document.getElementById('view-app-btn');
+                                const downloadBtn = document.getElementById('download-app-btn');
+                                
+                                if (viewBtn) {
+                                    viewBtn.addEventListener('click', function() {
+                                        window.open(`/api/constructor/preview/${projectId}`, '_blank');
+                                    });
+                                }
+                                
+                                if (downloadBtn) {
+                                    downloadBtn.addEventListener('click', function() {
+                                        window.location.href = `/api/constructor/download/${projectId}`;
+                                    });
+                                }
+                            } else if (data.status === 'failed') {
+                                document.getElementById('result-message').className = 'alert alert-danger';
+                                document.getElementById('result-message').innerHTML = 
+                                    `<i class="bi bi-exclamation-circle me-2"></i> Error: ${data.error || 'Hubo un problema durante la generación'}`;
+                                document.getElementById('generation-progress').style.display = 'none';
+                                document.getElementById('generation-result').style.display = 'block';
+                            } else {
+                                // Continuar verificando el estado cada 2 segundos
+                                setTimeout(checkStatus, 2000);
+                            }
+                        } else {
+                            // Manejar error en la verificación del estado
+                            generationConsole.innerHTML += 
+                                `<div class="error-line">Error al verificar estado: ${data.error || 'Problema de conexión'}</div>`;
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        generationConsole.innerHTML += 
+                            `<div class="error-line">Error de conexión: ${error.message}</div>`;
+                        // Intentar nuevamente después de un tiempo
+                        setTimeout(checkStatus, 5000);
+                    });
+            }
+            
+            // Iniciar verificación de estado
+            checkStatus();
+        }
+    });
+</script>
         const generateBtn = document.getElementById('generate-btn');
         const constructorForm = document.getElementById('constructor-form');
         const generationProgress = document.getElementById('generation-progress');
