@@ -922,4 +922,5 @@ function loadHighlightJS() {
 
             // Crear script para highlight.js
             const highlightScript = document.createElement('script');
-            highlightScript.src = 'https://cdnjs.const codeBlockRegex = /```([a-z]*)\n([\s\S]+?)
+            highlightScript.src = 'https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/highlight.min.js';
+            const codeBlockRegex = /```([a-z]*)\n([\s\S]+?)```/g;
