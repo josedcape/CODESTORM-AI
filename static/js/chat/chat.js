@@ -226,7 +226,7 @@ async function sendMessage() {
     };
 
     // Mostrar indicador de carga
-    const loadingMessageId = addLoadingMessage();
+    showLoadingIndicator();
 
     try {
         const response = await fetch(window.app.chat.apiEndpoints.chat, {
@@ -241,7 +241,7 @@ async function sendMessage() {
         silentLog('Respuesta recibida:', data);
 
         // Eliminar indicador de carga
-        removeLoadingMessage(loadingMessageId);
+        removeLoadingIndicator();
 
         // Habilitar botón de envío
         if (sendButton) {
@@ -255,7 +255,7 @@ async function sendMessage() {
         }
     } catch (error) {
         // Eliminar indicador de carga y habilitar botón
-        removeLoadingMessage(loadingMessageId);
+        removeLoadingIndicator();
         if (sendButton) {
             sendButton.disabled = false;
             sendButton.style.opacity = '1';
@@ -530,7 +530,7 @@ function setupUIElements() {
     if (!window.app.chat.elements) {
         window.app.chat.elements = {};
     }
-    
+
     // Obtener referencias a los elementos de la UI
     window.app.chat.elements.messagesContainer = document.getElementById('messages-container') || 
                                               document.getElementById('assistant-chat-messages') || 
@@ -544,7 +544,7 @@ function setupUIElements() {
     if (window.app.chat.elements.sendButton) {
         window.app.chat.elements.sendButton.addEventListener('click', sendMessage);
     }
-    
+
     if (window.app.chat.elements.messageInput) {
         window.app.chat.elements.messageInput.addEventListener('keydown', function(event) {
             if (event.key === 'Enter' && !event.shiftKey) {
@@ -552,7 +552,7 @@ function setupUIElements() {
                 sendMessage();
             }
         });
-        
+
         // Ajustar altura inicial del textarea
         adjustTextareaHeight(window.app.chat.elements.messageInput);
     }
@@ -585,7 +585,7 @@ function checkServerConnection() {
     const healthEndpoint = (window.app && window.app.chat && window.app.chat.apiEndpoints && window.app.chat.apiEndpoints.health) 
                          ? window.app.chat.apiEndpoints.health 
                          : '/api/health';
-    
+
     fetch(healthEndpoint)
         .then(response => {
             if (!response.ok) {
@@ -615,3 +615,129 @@ function adjustTextareaHeight(textarea) {
         textarea.style.height = `${textarea.scrollHeight}px`;
     }
 }
+
+// Función para mostrar el indicador de carga en lugar de "Cargando..."
+function showLoadingIndicator() {
+    const messagesContainer = document.getElementById('messages-container');
+    if (!messagesContainer) return;
+
+    const loadingMessage = document.createElement('div');
+    loadingMessage.className = 'message-container loading-message';
+    loadingMessage.id = 'loading-indicator';
+
+    const typingIndicator = document.createElement('div');
+    typingIndicator.className = 'typing-indicator';
+
+    // Crear los tres puntos de animación
+    for (let i = 0; i < 3; i++) {
+        const dot = document.createElement('span');
+        typingIndicator.appendChild(dot);
+    }
+
+    loadingMessage.appendChild(typingIndicator);
+    messagesContainer.appendChild(loadingMessage);
+    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+}
+
+function removeLoadingIndicator() {
+    const loadingIndicator = document.getElementById('loading-indicator');
+    if (loadingIndicator) {
+        loadingIndicator.remove();
+    }
+}
+
+// Configurar el selector de agentes personalizado
+function setupAgentSelector() {
+    const agentOptions = document.querySelectorAll('.agent-option');
+    const agentSelect = document.getElementById('agent-select');
+
+    if (!agentOptions.length || !agentSelect) return;
+
+    agentOptions.forEach(option => {
+        option.addEventListener('click', function() {
+            const value = this.dataset.value;
+
+            // Actualizar la opción seleccionada visualmente
+            agentOptions.forEach(opt => opt.classList.remove('selected'));
+            this.classList.add('selected');
+
+            // Actualizar el select oculto
+            agentSelect.value = value;
+
+            // Disparar el evento change para que se actualice el agente
+            const event = new Event('change');
+            agentSelect.dispatchEvent(event);
+
+            // Mostrar notificación
+            showNotification(`Agente cambiado a: ${this.querySelector('.agent-option-text').textContent}`);
+        });
+    });
+}
+
+// Función para mostrar notificaciones
+function showNotification(message, type = 'info') {
+    const notificationContainer = document.createElement('div');
+    notificationContainer.className = 'toast-notification';
+
+    let icon = 'info-circle';
+    if (type === 'success') icon = 'check-circle';
+    if (type === 'error') icon = 'exclamation-circle';
+
+    notificationContainer.innerHTML = `
+        <i class="bi bi-${icon}"></i>
+        <span>${message}</span>
+    `;
+
+    document.body.appendChild(notificationContainer);
+
+    // Remover después de la animación
+    setTimeout(() => {
+        notificationContainer.remove();
+    }, 3000);
+}
+
+function initializeChat() {
+    console.log("Iniciando chat...");
+
+    // Configurar el entorno del chat
+    setupEventListeners();
+    checkAPIStatus();
+
+    // Actualizar la UI con el agente inicial
+    const initialAgent = document.getElementById('agent-select').value;
+    setActiveAgent(initialAgent);
+
+    // Reemplazar la función de mostrar carga en los mensajes
+    window.showLoadingIndicator = showLoadingIndicator;
+}
+
+// Placeholder functions -  These would need to be implemented based on your actual application logic.
+function setupEventListeners() {
+    // Add your event listeners here
+    console.log('Event listeners setup')
+}
+
+function checkAPIStatus() {
+    //Check API status here
+    console.log('API status checked')
+}
+
+function setActiveAgent(agentId) {
+    // Set the active agent
+    console.log(`Active agent set to: ${agentId}`)
+}
+
+
+// Verificar que el script de chat se cargó correctamente y esperar si es necesario
+function checkAndInitializeChat() {
+    if (typeof initializeChat === 'function') {
+        console.log("Iniciando chat...");
+        initializeChat();
+        setupAgentSelector();
+    } else {
+        console.warn("Esperando a que la función initializeChat esté disponible...");
+        setTimeout(checkAndInitializeChat, 200);
+    }
+}
+
+checkAndInitializeChat();

@@ -494,6 +494,7 @@ body {
     display: flex;
     align-items: center;
     gap: 0.3rem;
+    margin-left: 0.5rem;
 }
 
 .typing-indicator span {
@@ -520,6 +521,35 @@ body {
     40% {
         transform: scale(1);
     }
+}
+
+/* Toast de notificación */
+.toast-notification {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background: linear-gradient(135deg, var(--primary-light) 0%, var(--primary-medium) 100%);
+    border: 1px solid var(--accent-gold);
+    color: var(--text-light);
+    padding: 12px 20px;
+    border-radius: 8px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3), var(--glow-gold);
+    z-index: 1000;
+    animation: fadeInOut 3s forwards;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.toast-notification i {
+    color: var(--accent-gold);
+}
+
+@keyframes fadeInOut {
+    0% { opacity: 0; transform: translateY(-20px); }
+    10% { opacity: 1; transform: translateY(0); }
+    90% { opacity: 1; transform: translateY(0); }
+    100% { opacity: 0; transform: translateY(-20px); }
 }
 
 /* Input Area */
@@ -685,6 +715,80 @@ code {
 }
 
 /* Footer */
+/* Selector de agentes con scroll horizontal */
+.agent-selector-container {
+    position: relative;
+    margin-bottom: 10px;
+    width: 100%;
+    overflow: hidden;
+}
+
+.agent-selector-scroll {
+    display: flex;
+    overflow-x: auto;
+    scrollbar-width: thin;
+    scrollbar-color: var(--accent-gold) var(--primary-dark);
+    padding: 5px 0;
+    scroll-behavior: smooth;
+    gap: 10px;
+}
+
+.agent-selector-scroll::-webkit-scrollbar {
+    height: 5px;
+}
+
+.agent-selector-scroll::-webkit-scrollbar-track {
+    background: var(--primary-dark);
+    border-radius: 10px;
+}
+
+.agent-selector-scroll::-webkit-scrollbar-thumb {
+    background: var(--accent-gold);
+    border-radius: 10px;
+}
+
+.agent-option {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    background: linear-gradient(135deg, var(--primary-dark) 0%, var(--primary-medium) 100%);
+    border: 1px solid var(--border-medium);
+    border-radius: 8px;
+    padding: 10px 15px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    min-width: 180px;
+}
+
+.agent-option:hover {
+    background: linear-gradient(135deg, var(--primary-medium) 0%, var(--primary-light) 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.agent-option.selected {
+    border: 1px solid var(--accent-gold);
+    box-shadow: 0 0 10px rgba(255, 193, 7, 0.3);
+}
+
+.agent-option-icon {
+    width: 30px;
+    height: 30px;
+    background-color: var(--primary-light);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 10px;
+    color: var(--accent-gold);
+}
+
+.agent-option-text {
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: var(--text-light);
+}
+
 .footer {
     background: linear-gradient(90deg, var(--primary-dark) 0%, var(--primary-medium) 100%);
     border-top: 1px solid var(--border-light);
@@ -845,13 +949,33 @@ code {
 
                     <div class="mb-3">
                     <label for="agent-select" class="form-label">Agente:</label>
-                    <select id="agent-select" class="form-select-dark">
-                    <option value="developer">Agente de Desarrollo</option>
-                    <option value="architect" selected>Agente de Arquitectura</option>
-                    <option value="advanced">Especialista Avanzado</option>
-                    <option value="general">Asistente General</option>
-                    </select>
+                    <div class="agent-selector-container">
+                        <div class="agent-selector-scroll">
+                            <div class="agent-option" data-value="developer">
+                                <div class="agent-option-icon"><i class="bi bi-code-slash"></i></div>
+                                <div class="agent-option-text">Agente de Desarrollo</div>
+                            </div>
+                            <div class="agent-option selected" data-value="architect">
+                                <div class="agent-option-icon"><i class="bi bi-diagram-3"></i></div>
+                                <div class="agent-option-text">Agente de Arquitectura</div>
+                            </div>
+                            <div class="agent-option" data-value="advanced">
+                                <div class="agent-option-icon"><i class="bi bi-braces-asterisk"></i></div>
+                                <div class="agent-option-text">Especialista Avanzado</div>
+                            </div>
+                            <div class="agent-option" data-value="general">
+                                <div class="agent-option-icon"><i class="bi bi-person-check"></i></div>
+                                <div class="agent-option-text">Asistente General</div>
+                            </div>
+                        </div>
                     </div>
+                    <select id="agent-select" class="form-select-dark d-none">
+                        <option value="developer">Agente de Desarrollo</option>
+                        <option value="architect" selected>Agente de Arquitectura</option>
+                        <option value="advanced">Especialista Avanzado</option>
+                        <option value="general">Asistente General</option>
+                    </select>
+                </div>
 
                     <div class="agent-card">
                     <div class="agent-header">
