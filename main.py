@@ -511,7 +511,7 @@ def api_chat():
                 'response': 'Error: Los datos enviados no son JSON válido'
             }), 400
 
-        logging.debug(f"Datos recibidos: {json.dumps(data)}")
+        logging.debug(f"Datos recibidos en /api/chat: {json.dumps(data)}")
 
         user_message = data.get('message', '')
         agent_id = data.get('agent_id', 'general')
@@ -522,6 +522,9 @@ def api_chat():
             return jsonify({'error': 'No message provided', 'response': 'Error: No se proporcionó un mensaje.'}), 400
 
         logging.info(f"Mensaje procesado: {user_message} por agente {agent_id} usando {model_choice}")
+        
+        # Registro adicional para verificar que la solicitud está llegando correctamente
+        print(f"Solicitud de chat recibida: Mensaje='{user_message}', Agente={agent_id}, Modelo={model_choice}")
 
         # Verificar qué APIs están disponibles
         available_apis = []
@@ -1138,11 +1141,24 @@ def health_check():
             "gemini": "ok" if gemini_api_key else "not configured"
         }
 
+        # Registrar cada solicitud de verificación de salud
+        print(f"Verificación de salud solicitada en: {time.time()}")
+        
         return jsonify({
             "status": "ok",
             "timestamp": time.time(),
             "version": "1.0.0",
-            "apis": apis
+            "apis": apis,
+            "chat_api_available": True,
+            "debug_info": {
+                "python_version": sys.version,
+                "endpoints_active": [
+                    "/api/chat",
+                    "/api/health",
+                    "/api/files",
+                    "/api/process_code"
+                ]
+            }
         })
     except Exception as e:
         logging.error(f"Error in health check: {str(e)}")

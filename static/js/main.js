@@ -179,7 +179,7 @@ document.addEventListener('DOMContentLoaded', function() {
             applyChanges: '/api/assistant/apply-changes'
         }
     };
-    
+
     // Verificar disponibilidad de APIs
     fetch('/api/health')
         .then(response => response.json())
@@ -223,7 +223,7 @@ document.addEventListener('DOMContentLoaded', function() {
             if (!window.app.chat) {
                 window.app.chat = {};
             }
-            
+
             // Asignar endpoints al chat
             window.app.chat.apiEndpoints = window.app.apiEndpoints;
 

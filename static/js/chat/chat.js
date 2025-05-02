@@ -235,7 +235,15 @@ async function sendMessage() {
     showLoadingIndicator();
 
     try {
-        const response = await fetch(window.app.chat.apiEndpoints.chat, {
+        // Verificar que el endpoint existe
+        const apiEndpoint = window.app.chat && window.app.chat.apiEndpoints && window.app.chat.apiEndpoints.chat 
+            ? window.app.chat.apiEndpoints.chat 
+            : '/api/chat';
+
+        console.log('Enviando mensaje al endpoint:', apiEndpoint);
+
+        // Enviar solicitud al servidor
+        const response = await fetch(apiEndpoint, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',

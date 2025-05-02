@@ -1138,8 +1138,10 @@ code {
                     </script>
 
                     <!-- Cargar scripts en orden correcto -->
-               <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+                    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
                     <script src="{{ url_for('static', filename='js/chat/chat.js') }}"></script>
+                    <script src="{{ url_for('static', filename='js/chat/agents.js') }}"></script>
+                    <script src="{{ url_for('static', filename='js/debug.js') }}"></script>
 
                     <script>
                     document.addEventListener('DOMContentLoaded', () => {
