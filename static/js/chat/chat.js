@@ -29,6 +29,45 @@ function silentLog(...args) {
 }
 
 /**
+ * Función para copiar el contenido de un mensaje al portapapeles
+ * @param {string} messageId - El id del mensaje a copiar
+ */
+function copyToClipboard(messageId, messageType) {
+    try {
+        const messageContent = document.querySelector(`#${messageId} .message-content`);
+        if (!messageContent) {
+            throw new Error('No se encontró el contenido del mensaje');
+        }
+
+        // Crear un elemento de texto temporal para copiar el contenido
+        const textArea = document.createElement('textarea');
+        textArea.value = messageContent.innerText || messageContent.textContent;
+        document.body.appendChild(textArea);
+
+        // Seleccionar y copiar el contenido del área de texto
+        textArea.select();
+        document.execCommand('copy');
+
+        // Eliminar el área de texto temporal
+        document.body.removeChild(textArea);
+
+        // Proveer feedback al usuario (por ejemplo, cambiar el texto del botón)
+        const copyButton = document.getElementById(`copy-btn-${messageId}`);
+        if (copyButton) {
+            copyButton.innerHTML = '<i class="bi bi-check"></i> Copiado';
+            setTimeout(() => {
+                copyButton.innerHTML = '<i class="bi bi-clipboard"></i>';
+            }, 2000); // Restablecer el ícono después de 2 segundos
+        }
+
+        silentLog(`Mensaje copiado: ${textArea.value}`);
+    } catch (error) {
+        console.error('Error al copiar el mensaje:', error);
+        alert('Error al copiar el mensaje');
+    }
+}
+
+/**
  * Inicializa el chat y configura los manejadores de eventos
  */
 window.initializeChat = function() {
@@ -140,410 +179,12 @@ window.initializeChat = function() {
     loadHighlightJS();
 };
 
-/**
- * Carga highlight.js para resaltado de sintaxis
- * @returns {Promise} Promesa que se resuelve cuando highlight.js está listo
- */
-function loadHighlightJS() {
-    return new Promise((resolve, reject) => {
-        silentLog('Cargando highlight.js para resaltado de sintaxis...');
-
-        // Verificar si highlight.js ya está cargado
-        if (window.hljs) {
-            silentLog('highlight.js ya está cargado.');
-            resolve(window.hljs);
-            return;
-        }
-
-        try {
-            // Crear enlace para el CSS de highlight.js
-            const highlightCSS = document.createElement('link');
-            highlightCSS.rel = 'stylesheet';
-            highlightCSS.href = 'https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/atom-one-dark.min.css';
-            document.head.appendChild(highlightCSS);
-
-            // Crear script para highlight.js
-            const highlightScript = document.createElement('script');
-            highlightScript.src = 'https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/highlight.min.js';
-            highlightScript.onload = function() {
-                silentLog('highlight.js cargado correctamente');
-                // Inicializar highlight.js
-                if (window.hljs) {
-                    window.hljs.configure({
-                        ignoreUnescapedHTML: true,
-                        languages: ['javascript', 'html', 'css', 'python', 'java', 'php', 'ruby', 'bash', 'json']
-                    });
-
-                    // Resaltar bloques de código existentes
-                    document.querySelectorAll('pre code').forEach(block => {
-                        window.hljs.highlightElement(block);
-                    });
-                    resolve(window.hljs);
-                } else {
-                    reject(new Error('highlight.js no se inicializó correctamente'));
-                }
-            };
-            highlightScript.onerror = function(e) {
-                reject(new Error('Error al cargar highlight.js: ' + e.message));
-            };
-            document.head.appendChild(highlightScript);
-        } catch (error) {
-            reject(error);
-        }
-    });
-}
-
-/**
- * Configura las referencias a elementos UI y sus eventos
- */
-function setupUIElements() {
-    // No es necesario reinicializar window.app.chat aquí ya que lo hacemos en initializeChat
-
-    // Elementos principales con manejo de errores
-    try {
-        window.app.chat.elements = {
-            chatContainer: document.getElementById('chat-container'),
-            messagesContainer: document.getElementById('messages-container'),
-            messageInput: document.getElementById('message-input'),
-            sendButton: document.getElementById('send-button'),
-            modelSelect: document.getElementById('model-select'),
-            agentSelect: document.getElementById('agent-select'),
-            agentInfo: document.getElementById('agent-info'),
-            agentCapabilities: document.getElementById('agent-capabilities'),
-            agentBadge: document.getElementById('agent-badge'),
-            statusIndicator: document.getElementById('status-indicator')
-        };
-
-        const {messageInput, sendButton, modelSelect, agentSelect} = window.app.chat.elements;
-
-        // Configurar eventos principales con verificación
-        if (sendButton) {
-            sendButton.addEventListener('click', sendMessage);
-        } else {
-            silentLog('Advertencia: Elemento sendButton no encontrado');
-        }
-
-        if (messageInput) {
-            messageInput.addEventListener('keydown', (e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault();
-                    sendMessage();
-                }
-                // Ajustar altura al contenido
-                setTimeout(() => {
-                    adjustTextareaHeight(messageInput);
-                }, 0);
-            });
-
-            // Ajustar altura al escribir
-            messageInput.addEventListener('input', () => {
-                adjustTextareaHeight(messageInput);
-            });
-        } else {
-            silentLog('Advertencia: Elemento messageInput no encontrado');
-        }
-
-        // Cambiar modelo de IA
-        if (modelSelect) {
-            modelSelect.addEventListener('change', () => {
-                window.app.chat.activeModel = modelSelect.value;
-                silentLog('Modelo cambiado a:', window.app.chat.activeModel);
-                let modelName = "desconocido";
-                if (window.app.chat.availableModels && window.app.chat.activeModel in window.app.chat.availableModels) {
-                    modelName = window.app.chat.availableModels[window.app.chat.activeModel];
-                } else {
-                    modelName = window.app.chat.activeModel;
-                }
-                addSystemMessage(`Modelo cambiado a: ${modelName}`);
-
-                // Asegurarse de que el modelo se actualice en toda la aplicación
-                localStorage.setItem('codestorm_active_model', window.app.chat.activeModel);
-            });
-        } else {
-            silentLog('Advertencia: Elemento modelSelect no encontrado');
-        }
-
-        // Cambiar agente
-        if (agentSelect) {
-            agentSelect.addEventListener('change', () => {
-                const previousAgent = window.app.chat.activeAgent;
-                window.app.chat.activeAgent = agentSelect.value;
-                updateAgentInfo(window.app.chat.activeAgent);
-                silentLog('Agente cambiado a:', window.app.chat.activeAgent);
-
-                // Añadir notificación solo si realmente cambió
-                if (previousAgent !== window.app.chat.activeAgent) {
-                    addSystemMessage(`Has cambiado al ${window.app.chat.availableAgents[window.app.chat.activeAgent].name}. ${window.app.chat.availableAgents[window.app.chat.activeAgent].description}`);
-                }
-            });
-        } else {
-            silentLog('Advertencia: Elemento agentSelect no encontrado');
-        }
-
-        // Actualizar info del agente inicial
-        updateAgentInfo(window.app.chat.activeAgent);
-    } catch (error) {
-        console.error('Error al configurar elementos de UI:', error);
-        addSystemMessage('Error al configurar interfaz. Por favor, recarga la página.');
-    }
-}
-
-/**
- * Actualiza la información mostrada del agente seleccionado
- * @param {string} agentId - ID del agente seleccionado
- */
-function updateAgentInfo(agentId) {
-    try {
-        const agent = window.app.chat.availableAgents[agentId];
-        if (!agent) {
-            silentLog(`Agente no encontrado: ${agentId}`);
-            return;
-        }
-
-        const { agentInfo, agentCapabilities, agentBadge } = window.app.chat.elements;
-
-        if (agentInfo) {
-            agentInfo.textContent = agent.description || '';
-        }
-
-        if (agentBadge) {
-            agentBadge.innerHTML = `<i class="bi bi-${agent.icon}"></i> ${agent.name}`;
-        }
-
-        if (agentCapabilities) {
-            // Limpiar capacidades anteriores
-            agentCapabilities.innerHTML = '';
-
-            // Añadir nuevas capacidades
-            if (agent.capabilities && Array.isArray(agent.capabilities)) {
-                const ul = document.createElement('ul');
-                ul.className = 'list-unstyled small';
-
-                agent.capabilities.forEach(capability => {
-                    const li = document.createElement('li');
-                    li.innerHTML = `<i class="bi bi-check2-circle text-success me-1"></i> ${capability}`;
-                    ul.appendChild(li);
-                });
-
-                agentCapabilities.appendChild(ul);
-            }
-        }
-    } catch (error) {
-        silentLog('Error al actualizar información del agente:', error);
-    }
-}
-
-/**
- * Verifica los modelos disponibles y actualiza la interfaz
- */
-async function checkAvailableModels() {
-    const modelSelect = document.getElementById('model-select');
-    const modelStatus = document.getElementById('model-status');
-
-    if (!modelSelect || !modelStatus) return;
-
-    try {
-        const response = await fetch('/api/health');
-        if (response.ok) {
-            const data = await response.json();
-            const apis = data.apis || {};
-
-            // Habilitar/deshabilitar opciones según disponibilidad
-            let availableModels = [];
-            for (const [model, status] of Object.entries(apis)) {
-                const option = modelSelect.querySelector(`option[value="${model}"]`);
-                if (option) {
-                    if (status === 'ok') {
-                        option.disabled = false;
-                        availableModels.push(model);
-                    } else {
-                        option.disabled = true;
-                        option.textContent += ' (no configurado)';
-                    }
-                }
-            }
-
-            if (availableModels.length > 0) {
-                modelStatus.textContent = `Modelos disponibles: ${availableModels.join(', ')}`;
-                modelStatus.className = 'mt-2 small text-success';
-
-                // Seleccionar el primer modelo disponible
-                const firstAvailable = Array.from(modelSelect.options).find(option => !option.disabled);
-                if (firstAvailable && window.app.chat) {
-                    firstAvailable.selected = true;
-                    window.app.chat.activeModel = firstAvailable.value;
-                }
-            } else {
-                modelStatus.textContent = 'No hay modelos disponibles. Configure al menos una API en el panel de Secrets.';
-                modelStatus.className = 'mt-2 small text-danger';
-            }
-        }
-    } catch (error) {
-        console.error('Error al verificar modelos disponibles:', error);
-        if (modelStatus) {
-            modelStatus.textContent = 'Error al verificar disponibilidad de modelos';
-            modelStatus.className = 'mt-2 small text-danger';
-        }
-    }
-}
-
-/**
- * Comprueba la conexión con el servidor de manera optimizada
- */
-async function checkServerConnection() {
-    silentLog('Verificando estado del servidor...');
-    const statusIndicator = document.getElementById('status-indicator');
-
-    // Asegurarse de que los endpoints estén definidos
-    if (!window.app || !window.app.chat || !window.app.chat.apiEndpoints) {
-        silentLog('Error: API endpoints no definidos');
-        if (statusIndicator) {
-            statusIndicator.style.backgroundColor = "#dc3545"; // rojo
-            statusIndicator.title = "Error de configuración";
-        }
-        return;
-    }
-
-    try {
-        // Verificar endpoints con timeout
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 5000);
-
-        const response = await fetch(window.app.chat.apiEndpoints.health, {
-            signal: controller.signal
-        });
-
-        clearTimeout(timeoutId);
-
-        if (response.ok) {
-            const data = await response.json();
-            if (data.status === 'ok') {
-                if (statusIndicator) {
-                    statusIndicator.style.backgroundColor = "#28a745"; // verde
-                    statusIndicator.title = "Servidor conectado";
-                }
-                return;
-            }
-        }
-
-        // Intentar endpoint alternativo
-        throw new Error('Health check failed');
-    } catch (error) {
-        silentLog('Error en health check:', error);
-
-        // Intentar endpoints alternativos
-        try {
-            const endpoints = [
-                window.app.chat.apiEndpoints.chat,
-                window.app.chat.apiEndpoints.fallback
-            ];
-
-            for (const endpoint of endpoints) {
-                try {
-                    const response = await fetch(endpoint, { method: 'OPTIONS' });
-                    if (response.ok || response.status === 204) {
-                        if (statusIndicator) {
-                            statusIndicator.style.backgroundColor = "#FFC107"; // amarillo
-                            statusIndicator.title = "Conexión parcial (usando endpoint alternativo)";
-                        }
-                        return;
-                    }
-                } catch (e) {
-                    continue;
-                }
-            }
-
-            // Si llegamos aquí, todos los endpoints fallaron
-            throw new Error('All endpoints failed');
-        } catch (finalError) {
-            if (statusIndicator) {
-                statusIndicator.style.backgroundColor = "#dc3545"; // rojo
-                statusIndicator.title = "Servidor desconectado";
-            }
-            addSystemMessage("Error de conexión: No se pudo conectar con el servidor.");
-        }
-    }
-}
-
-/**
- * Configura funcionalidades relacionadas con documentos
- */
-function setupDocumentFeatures() {
-    // Configuración silenciosa con manejo de errores
-    try {
-        // Registrar eventos de arrastrar y soltar para archivos
-        const dropZone = document.getElementById('chat-container');
-        if (dropZone) {
-            dropZone.addEventListener('dragover', (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                dropZone.classList.add('drag-over');
-            });
-
-            dropZone.addEventListener('dragleave', (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                dropZone.classList.remove('drag-over');
-            });
-
-            dropZone.addEventListener('drop', (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                dropZone.classList.remove('drag-over');
-
-                const files = e.dataTransfer.files;
-                if (files.length > 0) {
-                    handleFileDrop(files);
-                }
-            });
-        }
-
-        silentLog('Características de documentos inicializadas');
-    } catch (error) {
-        silentLog('Error al configurar características de documentos:', error);
-    }
-}
-
-/**
- * Maneja archivos soltados en la zona de chat
- * @param {FileList} files - Lista de archivos
- */
-function handleFileDrop(files) {
-    try {
-        const fileNames = Array.from(files).map(file => file.name);
-        addSystemMessage(`Archivos recibidos: ${fileNames.join(', ')}`);
-
-        // Implementar aquí la lógica para procesar archivos
-        // Por ahora solo mostramos los nombres
-    } catch (error) {
-        console.error('Error al procesar archivos:', error);
-        addSystemMessage('Error al procesar los archivos');
-    }
-}
-
-/**
- * Envía un mensaje al servidor y procesa la respuesta
- */
+// Función para enviar mensajes, configurar y manejar la lógica del chat
 async function sendMessage() {
     // Asegurarse de que window.app y window.app.chat estén inicializados
     if (!window.app || !window.app.chat) {
         console.error("Error: window.app.chat no está inicializado");
         addSystemMessage("Error: Inicialización incompleta. Recargando interfaz...");
-
-        // Inicializar objetos necesarios si no existen
-        window.app = window.app || {};
-        window.app.chat = window.app.chat || {};
-        window.app.chat.elements = window.app.chat.elements || {};
-        window.app.chat.context = window.app.chat.context || [];
-        window.app.chat.apiEndpoints = window.app.chat.apiEndpoints || {
-            chat: '/api/chat',
-            fallback: '/api/generate',
-            health: '/api/health',
-            processCode: '/api/process_code',
-            execute: '/api/execute_command',
-            files: '/api/files'
-        };
-
         // Reintentar setup
         setupUIElements();
     }
@@ -562,13 +203,6 @@ async function sendMessage() {
     // Añadir mensaje del usuario al chat y contexto
     addUserMessage(userMessage);
 
-    // Asegurarse de que el contexto exista
-    window.app.chat.context = window.app.chat.context || [];
-    window.app.chat.context.push({
-        role: 'user',
-        content: userMessage
-    });
-
     // Limpiar input y ajustar altura
     messageInput.value = '';
     adjustTextareaHeight(messageInput);
@@ -583,15 +217,11 @@ async function sendMessage() {
     // Mantener el contexto en un tamaño razonable (últimos 10 mensajes)
     const contextToSend = window.app.chat.context.slice(-10);
 
-    // Asegurarse de que los valores predeterminados estén disponibles
-    const activeAgent = window.app.chat.activeAgent || 'general';
-    const activeModel = window.app.chat.activeModel || 'gpt-4o';
-
     // Preparar datos para enviar al servidor
     const requestData = {
         message: userMessage,
-        agent_id: activeAgent,
-        model: activeModel,
+        agent_id: window.app.chat.activeAgent,
+        model: window.app.chat.activeModel,
         context: contextToSend
     };
 
@@ -599,32 +229,13 @@ async function sendMessage() {
     const loadingMessageId = addLoadingMessage();
 
     try {
-        // No mostrar el debug en la interfaz
-        silentLog('Enviando mensaje al servidor:', requestData);
-
-        // Asegurarse de usar la API endpoint correcta y tener un respaldo
-        const apiEndpoints = window.app.chat.apiEndpoints || {
-            chat: '/api/chat',
-            fallback: '/api/generate'
-        };
-
-        const apiUrl = apiEndpoints.chat || '/api/chat';
-
-        const response = await fetch(apiUrl, {
+        const response = await fetch(window.app.chat.apiEndpoints.chat, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify(requestData)
         });
-
-        // Verificar si hubo error HTTP
-        if (!response.ok) {
-            const errorData = await response.json().catch(() => ({
-                error: `${response.status} ${response.statusText}`
-            }));
-            throw new Error(errorData.error || `Error del servidor: ${response.status} ${response.statusText}`);
-        }
 
         const data = await response.json();
         silentLog('Respuesta recibida:', data);
@@ -640,287 +251,16 @@ async function sendMessage() {
 
         // Verificar diferentes formatos de respuesta
         if (data.response) {
-            // Formato estándar: data.response
-            // Añadir respuesta al contexto
-            window.app.chat.context.push({
-                role: 'assistant',
-                content: data.response
-            });
-
-            // Añadir mensaje del agente al chat
-            addAgentMessage(data.response, data.agent_id || data.agent || activeAgent);
-        } else if (data.message && data.success) {
-            // Formato alternativo: data.message con data.success
-            window.app.chat.context.push({
-                role: 'assistant',
-                content: data.message
-            });
-            addAgentMessage(data.message, data.agent_id || activeAgent);
-        } else if (data.error) {
-            addSystemMessage(`Error: ${data.error}`);
-
-            // Sugerir probar otro modelo si hay error de API
-            if (data.error.includes("API") || data.error.includes("OpenAI") || 
-                data.error.includes("Anthropic") || data.error.includes("Gemini")) {
-
-                addSystemMessage(`Sugerencia: Prueba con otro modelo de IA desde el menú de selección o verifica la configuración de la API.`);
-            }
-        } else {
-            addSystemMessage("El servidor respondió pero no envió ningún mensaje");
+            addAgentMessage(data.response, data.agent_id || window.app.chat.activeAgent);
         }
     } catch (error) {
         // Eliminar indicador de carga y habilitar botón
         removeLoadingMessage(loadingMessageId);
-
         if (sendButton) {
             sendButton.disabled = false;
             sendButton.style.opacity = '1';
         }
-
         silentLog('Error al enviar mensaje:', error);
         addSystemMessage(`Error de conexión: ${error.message}`);
-
-        // Intentar con el endpoint de respaldo si el principal falla
-        try {
-            addSystemMessage("Intentando con servidor de respaldo...");
-            const fallbackUrl = (window.app.chat.apiEndpoints || {}).fallback || '/api/generate';
-
-            const fallbackResponse = await fetch(fallbackUrl, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    message: userMessage,
-                    model: activeModel
-                })
-            });
-
-            if (fallbackResponse.ok) {
-                const fallbackData = await fallbackResponse.json();
-                if (fallbackData.response) {
-                    // Añadir respuesta al contexto
-                    window.app.chat.context.push({
-                        role: 'assistant',
-                        content: fallbackData.response
-                    });
-
-                    // Añadir mensaje del agente al chat
-                    addAgentMessage(fallbackData.response, activeAgent);
-                    addSystemMessage("Respuesta generada por el servidor de respaldo");
-                }
-            } else {
-                throw new Error("El servidor de respaldo también falló");
-            }
-        } catch (fallbackError) {
-            silentLog('Error en servidor de respaldo:', fallbackError);
-            addSystemMessage("No se pudo conectar con ningún servidor. Por favor, intenta más tarde.");
-        }
     }
 }
-
-/**
- * Añade un mensaje al contenedor de chat
- * @param {string} messageHTML - HTML del mensaje a añadir
- */
-function appendMessageToChat(messageHTML) {
-    const messagesContainer = document.getElementById('messages-container');
-    if (messagesContainer) {
-        const messageWrapper = document.createElement('div');
-        messageWrapper.className = 'message-container';
-        messageWrapper.innerHTML = messageHTML;
-        messagesContainer.appendChild(messageWrapper);
-    } else {
-        console.error('Contenedor de mensajes no encontrado');
-    }
-}
-
-/**
- * Añade mensaje del usuario al chat
- * @param {string} message - Mensaje a mostrar
- */
-function addUserMessage(message) {
-    const messageId = `msg-${++window.app.chat.chatMessageId}`;
-
-    const messageHTML = `
-        <div id="${messageId}" class="message user-message">
-            <div class="message-header">
-                <div class="message-avatar">
-                    <i class="bi bi-person-circle"></i>
-                </div>
-                <div class="message-info">
-                    <span class="message-sender">Tú</span>
-                    <span class="message-time">${getCurrentTime()}</span>
-                </div>
-                <div class="message-actions">
-                    <button id="copy-btn-${messageId}" class="btn btn-sm btn-outline-secondary" onclick="copyToClipboard('${messageId}', 'message', null, 'copy-btn-${messageId}')">
-                        <i class="bi bi-clipboard"></i>
-                    </button>
-                </div>
-            </div>
-            <div class="message-content">${formatMessageContent(message)}</div>
-        </div>
-    `;
-
-    appendMessageToChat(messageHTML);
-    scrollToBottom();
-}
-
-/**
- * Ajusta la altura de un textarea para mostrar todo su contenido
- * @param {HTMLTextAreaElement} textarea - El elemento textarea
- */
-function adjustTextareaHeight(textarea) {
-    if (!textarea) return;
-
-    // Restablecer altura para obtener una medida precisa
-    textarea.style.height = 'auto';
-    // Establecer altura basada en el contenido
-    textarea.style.height = `${Math.min(textarea.scrollHeight, 300)}px`;
-}
-
-/**
- * Obtiene la hora actual formateada
- * @returns {string} Hora actual en formato HH:MM
- */
-function getCurrentTime() {
-    const now = new Date();
-    const hours = String(now.getHours()).padStart(2, '0');
-    const minutes = String(now.getMinutes()).padStart(2, '0');
-    return `${hours}:${minutes}`;
-}
-
-/**
- * Desplaza el chat hacia abajo
- */
-function scrollToBottom() {
-    const messagesContainer = document.getElementById('messages-container');
-    if (messagesContainer) {
-        messagesContainer.scrollTop = messagesContainer.scrollHeight;
-    }
-}
-
-
-/**
- * Añade un mensaje del agente al chat
- * @param {string} message - Mensaje a mostrar
- * @param {string} agentId - ID del agente que envía el mensaje (opcional)
- */
-function addAgentMessage(message, agentId = 'general') {
-    const messageId = `msg-${++window.app.chat.chatMessageId}`;
-
-    // Obtener información del agente
-    let agentName = "Asistente";
-    let agentIcon = "person-check";
-
-    if (window.app.chat.availableAgents && agentId in window.app.chat.availableAgents) {
-        const agent = window.app.chat.availableAgents[agentId];
-        agentName = agent.name || "Asistente";
-        agentIcon = agent.icon || "person-check";
-    }
-
-    // Formatear y escapar el contenido del mensaje
-    let formattedMessage = message;
-
-    // Aplicar formateo de código y markdown
-    if (window.CodeFormatter && typeof window.CodeFormatter.formatCode === 'function') {
-        formattedMessage = window.CodeFormatter.formatCode(message);
-    } else {
-        // Aplicar formateo básico si el formateador avanzado no está disponible
-        formattedMessage = formatMessageContent(message);
-    }
-
-    const messageHTML = `
-        <div id="${messageId}" class="message assistant-message">
-            <div class="message-header">
-                <div class="message-avatar">
-                    <i class="bi bi-${agentIcon}"></i>
-                </div>
-                <div class="message-info">
-                    <span class="message-sender">${agentName}</span>
-                    <span class="message-time">${getCurrentTime()}</span>
-                </div>
-                <div class="message-actions">
-                    <button id="copy-btn-${messageId}" class="btn btn-sm btn-outline-secondary" onclick="copyToClipboard('${messageId}', 'message', null, 'copy-btn-${messageId}')">
-                        <i class="bi bi-clipboard"></i>
-                    </button>
-                </div>
-            </div>
-            <div class="message-content">${formattedMessage}</div>
-        </div>
-    `;
-
-    appendMessageToChat(messageHTML);
-    scrollToBottom();
-
-    // Resaltar bloques de código con highlight.js si está disponible
-    if (window.hljs) {
-        document.querySelectorAll(`#${messageId} pre code`).forEach(block => {
-            window.hljs.highlightElement(block);
-        });
-    } else {
-        // Cargar highlight.js si no está disponible
-        loadHighlightJS().then(() => {
-            document.querySelectorAll(`#${messageId} pre code`).forEach(block => {
-                window.hljs.highlightElement(block);
-            });
-        }).catch(error => {
-            silentLog('Error al resaltar código:', error);
-        });
-    }
-}
-
-/**
- * Añade un mensaje del sistema al chat
- * @param {string} message - Mensaje a mostrar
- */
-function addSystemMessage(message) {
-    const messageId = `msg-sys-${Date.now()}`;
-    const messageHTML = `
-        <div id="${messageId}" class="message system-message">
-            <div class="message-content">
-                <i class="bi bi-info-circle-fill me-2"></i>${message}
-            </div>
-        </div>
-    `;
-
-    appendMessageToChat(messageHTML);
-    scrollToBottom();
-}
-
-function removeLoadingMessage(loadingId) {
-    if (!loadingId) return;
-
-    const loadingElement = document.getElementById(loadingId);
-    if (loadingElement) {
-        loadingElement.remove();
-    }
-}
-
-
-/**
- * Promesa para cargar highlight.js
- * @returns {Promise} Promesa que se resuelve cuando highlight.js está cargado
- */
-function loadHighlightJS() {
-    return new Promise((resolve, reject) => {
-        silentLog('Cargando highlight.js para resaltado de sintaxis...');
-
-        // Si ya está cargado, resolver inmediatamente
-        if (window.hljs) {
-            silentLog('highlight.js ya está cargado.');
-            resolve();
-            return;
-        }
-
-        try {
-            // Crear enlace para el CSS de highlight.js
-            const highlightCSS = document.createElement('link');
-            highlightCSS.rel = 'stylesheet';
-            highlightCSS.href = 'https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/atom-one-dark.min.css';
-            document.head.appendChild(highlightCSS);
-
-            // Crear script para highlight.js
-            const highlightScript = document.createElement('script');
-            highlightScript.src = 'https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/highlight.min.js';
-            const codeBlockRegex = /```([a-z]*)\n([\s\S]+?)```/g;
