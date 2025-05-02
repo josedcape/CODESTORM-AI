@@ -1,4 +1,240 @@
 
+/* Estilos para el selector de tecnologías */
+.tech-selector-header {
+    margin-bottom: 30px;
+    text-align: center;
+}
+
+.tech-selector-nav {
+    margin-bottom: 20px;
+}
+
+.tech-selector-tab-content {
+    margin-bottom: 30px;
+    min-height: 400px;
+}
+
+.tech-option-card {
+    display: flex;
+    align-items: center;
+    background-color: #222;
+    border-radius: 10px;
+    padding: 15px;
+    margin-bottom: 15px;
+    transition: all 0.3s ease;
+    cursor: pointer;
+    border: 2px solid transparent;
+}
+
+.tech-option-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+    border-color: #1E88E5;
+}
+
+.tech-option-card.selected {
+    border-color: #1E88E5;
+    background-color: #1a3a5f;
+}
+
+.tech-icon {
+    font-size: 2.5rem;
+    width: 60px;
+    height: 60px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #1E88E5;
+    margin-right: 15px;
+}
+
+.tech-details {
+    flex: 1;
+}
+
+.tech-details h5 {
+    margin-bottom: 5px;
+    color: #fff;
+}
+
+.tech-description {
+    color: #aaa;
+    font-size: 0.9rem;
+    margin-bottom: 0;
+}
+
+.tech-select {
+    margin-left: 15px;
+}
+
+.form-check-input:checked {
+    background-color: #1E88E5;
+    border-color: #1E88E5;
+}
+
+/* Estilos para características */
+.feature-card {
+    background-color: #222;
+    border-radius: 10px;
+    padding: 15px;
+    height: 100%;
+    transition: all 0.3s ease;
+    cursor: pointer;
+    border: 2px solid transparent;
+    display: flex;
+    flex-direction: column;
+}
+
+.feature-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+    border-color: #1E88E5;
+}
+
+.feature-card.selected {
+    border-color: #1E88E5;
+    background-color: #1a3a5f;
+}
+
+.feature-icon {
+    font-size: 1.5rem;
+    margin-bottom: 10px;
+    color: #1E88E5;
+}
+
+.feature-details {
+    flex: 1;
+}
+
+.feature-details h6 {
+    margin-bottom: 5px;
+    color: #fff;
+}
+
+.feature-description {
+    color: #aaa;
+}
+
+/* Estilos para plantillas */
+.preset-card {
+    background-color: #222;
+    border-radius: 10px;
+    padding: 20px;
+    height: 100%;
+    transition: all 0.3s ease;
+    border: 2px solid transparent;
+}
+
+.preset-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+    border-color: #1E88E5;
+}
+
+.preset-card h5 {
+    color: #fff;
+    margin-bottom: 10px;
+}
+
+.preset-card p {
+    color: #aaa;
+    font-size: 0.9rem;
+    margin-bottom: 15px;
+}
+
+.preset-tech-pills {
+    margin-bottom: 15px;
+}
+
+.preset-tech-pills .badge {
+    margin-right: 5px;
+    padding: 6px 10px;
+}
+
+/* Estilos para resumen */
+.stack-summary {
+    background-color: #333;
+    border-radius: 10px;
+    padding: 20px;
+    margin: 30px 0;
+}
+
+.stack-summary-header {
+    margin-bottom: 20px;
+    border-bottom: 1px solid #444;
+    padding-bottom: 10px;
+}
+
+.stack-summary-content {
+    color: #ccc;
+}
+
+.tech-summary-item {
+    margin-bottom: 15px;
+    display: flex;
+    align-items: center;
+}
+
+.tech-label {
+    margin-right: 10px;
+    font-weight: bold;
+    min-width: 100px;
+}
+
+.tech-value {
+    padding: 5px 10px;
+    border-radius: 20px;
+}
+
+.indicator {
+    margin-bottom: 20px;
+}
+
+.indicator label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: bold;
+}
+
+.progress {
+    height: 12px;
+    background-color: #444;
+    margin-bottom: 5px;
+}
+
+.tech-selector-footer {
+    margin-top: 30px;
+    text-align: center;
+    padding-top: 20px;
+    border-top: 1px solid #444;
+}
+
+.compatibility-notice {
+    background-color: #333;
+    border-left: 4px solid #1E88E5;
+    padding: 15px;
+    margin: 20px 0;
+    border-radius: 0 5px 5px 0;
+}
+
+.compatibility-notice h6 {
+    color: #1E88E5;
+    margin-bottom: 5px;
+}
+
+.compatibility-notice p {
+    margin-bottom: 0;
+    color: #ccc;
+    font-size: 0.9rem;
+}
+
+.feature-pills .badge {
+    margin-right: 5px;
+    margin-bottom: 5px;
+    padding: 6px 10px;
+}
+
+
 /* Estilos para el Selector de Tecnologías */
 
 .tech-selector-header {
