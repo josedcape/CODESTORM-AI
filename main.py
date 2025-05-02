@@ -25,7 +25,7 @@ load_dotenv()
 
 # Inicializar app Flask
 app = Flask(__name__)
-app.secret_key = os.getenv('SECRET_KEY', 'default_secret_key')  # Añadido secret_key para session
+app.secret_key = os.getenv('SECRET_KEY', 'default_secret_key')
 CORS(app)
 socketio = SocketIO(app, cors_allowed_origins="*", async_mode='threading',
                     ping_timeout=60, ping_interval=25, logger=True, engineio_logger=True)
@@ -55,15 +55,14 @@ try:
                         'console_messages': [
                             {'time': time.time(), 'message': 'Proyecto recuperado del sistema de archivos'}
                         ],
-                        'start_time': time.time() - 3600,  # 1 hour ago
-                        'completion_time': time.time() - 60  # 1 minute ago
+                        'start_time': time.time() - 3600,
+                        'completion_time': time.time() - 60
                     }
     except Exception as load_err:
         logging.warning(f"Error preloading project statuses: {str(load_err)}")
 
 except Exception as e:
     logging.error(f"Error registering constructor blueprint: {str(e)}")
-
 
 # Recargar variables de entorno para asegurar que tenemos las últimas
 load_dotenv(override=True)
@@ -271,13 +270,12 @@ def get_user_workspace(user_id='default'):
 def session_info():
     """Return session information for the current user."""
     user_id = session.get('user_id', 'default')
-    # Create an instance of FileSystemManager to use its get_user_workspace method
     file_system_manager = FileSystemManager(socketio)
     workspace = file_system_manager.get_user_workspace(user_id)
 
     return jsonify({
         'user_id': user_id,
-        'workspace': str(workspace),  # Just return the path as a string without trying to make it relative
+        'workspace': str(workspace),
         'status': 'active'
     })
 
@@ -377,8 +375,6 @@ def handle_chat_internal(request_data):
                 "content": msg.get('content', '')
             })
 
-        USING_NEW_OPENAI_CLIENT = False  # Determine this based on your openai client version. This is a placeholder.
-
         if model_choice == 'openai':
             if openai_api_key:
                 try:
@@ -387,25 +383,16 @@ def handle_chat_internal(request_data):
                         messages.append({"role": msg['role'], "content": msg['content']})
                     messages.append({"role": "user", "content": user_message})
 
-                    # Usar el modelo más avanzado disponible: GPT-4o
                     openai_model = "gpt-4o"
 
-                    if USING_NEW_OPENAI_CLIENT:
-                        completion = client.chat.completions.create(
-                            model=openai_model,
-                            messages=messages,
-                            temperature=0.7,
-                            max_tokens=2000
-                        )
-                        response = completion.choices[0].message.content
-                    else:
-                        completion = openai.ChatCompletion.create(
-                            model=openai_model,
-                            messages=messages,
-                            temperature=0.7,
-                            max_tokens=2000
-                        )
-                        response = completion.choices[0].message.content
+                    openai_client = openai.OpenAI()
+                    completion = openai_client.chat.completions.create(
+                        model=openai_model,
+                        messages=messages,
+                        temperature=0.7,
+                        max_tokens=2000
+                    )
+                    response = completion.choices[0].message.content
                     logging.info(f"Respuesta generada con OpenAI ({openai_model}): {response[:100]}...")
 
                     return {'response': response, 'error': None}
@@ -472,7 +459,6 @@ def handle_chat_internal(request_data):
             else:
                 return {'response': f"El modelo 'gemini' no está disponible en este momento. Por favor configura una clave API en el panel de Secrets o selecciona otro modelo.", 'error': None}
         else:
-            # Mensaje descriptivo que orienta al usuario
             available_models = []
             if openai_api_key:
                 available_models.append("'openai'")
@@ -688,7 +674,7 @@ def api_chat():
                 'model': model_choice,
                 'available_models': available_apis
             })
-            respuesta += "\n\nPuedo ayudarte a crear ese componente. ¿Quieres que te muestre un ejemplo de código?"
+
         # Devolver respuesta real de la API
         return jsonify({
             'success': True,
@@ -763,11 +749,20 @@ def process_code_endpoint():
     """Process code for corrections and improvements."""
     try:
         data = request.json
+        if not data:
+            return jsonify({'success': False, 'error': 'No se recibieron datos JSON válidos'}), 400
+
         code = data.get('code', '')
         instructions = data.get('instructions', 'Corrige errores y mejora la calidad del código')
         language = data.get('language', 'python')
         model = data.get('model', 'openai')
         auto_fix = data.get('auto_fix', False)
+
+        if not code:
+            return jsonify({
+                'success': False,
+                'error': 'No se proporcionó código para procesar'
+            }), 400
 
         if auto_fix:
             auto_instructions = "MODO CORRECCIÓN AUTOMÁTICA: "
@@ -776,11 +771,7 @@ def process_code_endpoint():
             else:
                 instructions = auto_instructions + instructions
 
-        if not code:
-            return jsonify({
-                'success': False,
-                'error': 'No se proporcionó código para procesar'
-            }), 400
+        result = None
 
         if model == 'openai' and openai_api_key:
             try:
@@ -794,8 +785,17 @@ def process_code_endpoint():
                     response_format={"type": "json_object"}
                 )
 
-                result = json.loads(response.choices[0].message.content)
-                logging.info("Código corregido con OpenAI")
+                result_text = response.choices[0].message.content
+                try:
+                    result = json.loads(result_text)
+                    logging.info("Código corregido con OpenAI")
+                except json.JSONDecodeError as json_err:
+                    logging.error(f"Error al decodificar JSON de OpenAI: {str(json_err)}")
+                    logging.error(f"Respuesta recibida: {result_text[:500]}")
+                    return jsonify({
+                        'success': False,
+                        'error': f'Error al procesar la respuesta JSON de OpenAI: {str(json_err)}'
+                    }), 500
 
             except Exception as e:
                 logging.error(f"Error con API de OpenAI: {str(e)}")
@@ -821,20 +821,24 @@ def process_code_endpoint():
                     temperature=0.1
                 )
 
+                response_text = response.content[0].text.strip()
                 try:
-                    result = json.loads(response.content[0].text.strip())
+                    result = json.loads(response_text)
                 except json.JSONDecodeError:
-                    json_match = re.search(r'```(?\:json)?\s*(.*?)\s*```', response.content[0].text, re.DOTALL)
+                    # Intenta extraer JSON de la respuesta si está envuelto en bloques de código
+                    json_match = re.search(r'```(?:json)?\s*(.*?)\s*```', response_text, re.DOTALL)
                     if json_match:
                         try:
                             result = json.loads(json_match.group(1).strip())
                         except json.JSONDecodeError:
+                            logging.error(f"Error al decodificar JSON extraído de Anthropic: {json_match.group(1)[:500]}")
                             result = {
                                 "correctedCode": code,
                                 "changes": [{"description": "No se pudieron procesar los cambios correctamente", "lineNumbers": [1]}],
-                                "explanation": "Error al procesar la respuesta de Claude. Respuesta recibida: " + response.content[0].text[:200] + "..."
+                                "explanation": "Error al procesar la respuesta de Claude."
                             }
                     else:
+                        logging.error(f"No se encontró formato JSON en la respuesta de Anthropic: {response_text[:500]}")
                         result = {
                             "correctedCode": code,
                             "changes": [{"description": "No se encontró formato JSON en la respuesta", "lineNumbers": [1]}],
@@ -852,6 +856,10 @@ def process_code_endpoint():
 
         elif model == 'gemini' and gemini_api_key:
             try:
+                # Asegúrate de que Gemini está configurado correctamente
+                if not hasattr(genai, '_configured') or not genai._configured:
+                    genai.configure(api_key=gemini_api_key)
+
                 gemini_model = genai.GenerativeModel(
                     model_name='gemini-1.5-pro',
                     generation_config={
@@ -879,20 +887,33 @@ def process_code_endpoint():
                 """
 
                 response = gemini_model.generate_content(prompt)
+                response_text = response.text
 
-                json_match = re.search(r'```json(.*?)```', response.text, re.DOTALL)
-                if json_match:
-                    result = json.loads(json_match.group(1).strip())
-                else:
-                    json_match = re.search(r'{.*}', response.text, re.DOTALL)
+                # Intentar extraer JSON de la respuesta
+                try:
+                    # Primero intenta encontrar un bloque JSON
+                    json_match = re.search(r'```json\s*(.*?)\s*```', response_text, re.DOTALL)
                     if json_match:
-                        result = json.loads(json_match.group(0))
+                        result = json.loads(json_match.group(1).strip())
                     else:
-                        result = {
-                            "correctedCode": code,
-                            "changes": [],
-                            "explanation": "No se pudo procesar correctamente la respuesta del modelo."
-                        }
+                        # Si no hay bloque JSON, busca cualquier objeto JSON en la respuesta
+                        json_match = re.search(r'({.*})', response_text, re.DOTALL)
+                        if json_match:
+                            result = json.loads(json_match.group(0))
+                        else:
+                            logging.error(f"No se encontró formato JSON en la respuesta de Gemini: {response_text[:500]}")
+                            result = {
+                                "correctedCode": code,
+                                "changes": [],
+                                "explanation": "No se pudo procesar correctamente la respuesta del modelo."
+                            }
+                except json.JSONDecodeError as json_err:
+                    logging.error(f"Error al decodificar JSON de Gemini: {str(json_err)}")
+                    result = {
+                        "correctedCode": code,
+                        "changes": [],
+                        "explanation": f"Error al procesar la respuesta JSON: {str(json_err)}"
+                    }
 
                 logging.info("Código corregido con Gemini")
 
@@ -908,11 +929,18 @@ def process_code_endpoint():
                 'error': f'Modelo {model} no soportado o API no configurada'
             }), 400
 
-        if not result or 'correctedCode' not in result:
+        # Verificar que el resultado tenga la estructura esperada
+        if not result:
             return jsonify({
                 'success': False,
-                'error': 'La respuesta del modelo no incluye el código corregido'
+                'error': 'No se pudo obtener una respuesta válida del modelo'
             }), 500
+
+        if 'correctedCode' not in result:
+            result['correctedCode'] = code
+            result['changes'] = [{"description": "No se pudo procesar la corrección", "lineNumbers": [1]}]
+            result['explanation'] = "El modelo no devolvió código corregido en el formato esperado."
+            logging.warning(f"Respuesta sin código corregido: {str(result)[:200]}")
 
         return jsonify({
             'success': True,
@@ -928,12 +956,13 @@ def process_code_endpoint():
             'success': False,
             'error': f'Error al procesar la solicitud: {str(e)}'
         }), 500
+
 @app.route('/api/process_natural', methods=['POST'])
 def process_natural_command():
     """Process natural language input and return corresponding command."""
     try:
         data = request.json
-        # Supportboth'text' and 'instruction' for backward compatibility
+        # Support both 'text' and 'instruction' for backward compatibility
         text = data.get('text', '') or data.get('instruction', '')
         model_choice = data.get('model', 'openai')
         user_id = data.get('user_id', 'default')
@@ -1225,7 +1254,6 @@ def list_files_api():
             'success': False,
             'error': str(e)
         }), 500
-
 @app.route('/api/files/read', methods=['GET'])
 def read_file():
     """API para leer el contenido de un archivo en el workspace del usuario."""
@@ -1477,9 +1505,6 @@ def generate_project():
             'error': str(e)
         }), 500
 
-# Estas rutas ahora son manejadas por el constructor_bp blueprint
-# Se elimina el código duplicado para evitar conflictos de rutas
-
 @app.route('/api_status')
 def api_status():
     """Muestra el estado de las claves API configuradas."""
@@ -1647,3 +1672,4 @@ if __name__ == '__main__':
     except Exception as e:
         logging.critical(f"Error fatal al iniciar el servidor: {str(e)}")
         logging.critical(traceback.format_exc())
+
