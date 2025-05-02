@@ -72,58 +72,82 @@ except Exception as e:
 # Recargar variables de entorno para asegurar que tenemos las últimas
 load_dotenv(override=True)
 
-# Configurar claves API con manejo de errores mejorado
-openai_api_key = os.getenv('OPENAI_API_KEY')
-anthropic_api_key = os.getenv('ANTHROPIC_API_KEY')
-gemini_api_key = os.getenv('GEMINI_API_KEY')
-
-# Configurar OpenAI
-if openai_api_key:
+# Función para obtener y validar clave API
+def get_and_validate_api_key(env_var_name, service_name, validation_func=None):
+    api_key = os.getenv(env_var_name)
+    if not api_key:
+        logging.warning(f"{service_name} API key no configurada - funcionalidades de {service_name} estarán deshabilitadas")
+        return None
+    
+    # Si no hay función de validación, simplemente retornar la clave
+    if not validation_func:
+        logging.info(f"{service_name} API key configurada: {api_key[:5]}...{api_key[-5:] if len(api_key) > 10 else '***'}")
+        return api_key
+    
     try:
-        openai.api_key = openai_api_key
-        # Verificar que la clave funciona haciendo una llamada de prueba sencilla
-        openai_client = openai.OpenAI()
-        _ = openai_client.models.list()
-        logging.info(f"OpenAI API key verificada y configurada: {openai_api_key[:5]}...{openai_api_key[-5:]}")
+        # Validar la clave API usando la función proporcionada
+        is_valid = validation_func(api_key)
+        if is_valid:
+            logging.info(f"{service_name} API key verificada y configurada: {api_key[:5]}...{api_key[-5:] if len(api_key) > 10 else '***'}")
+            return api_key
+        else:
+            logging.error(f"La clave de {service_name} no es válida.")
+            return None
     except Exception as e:
-        logging.error(f"Error al configurar OpenAI API: {str(e)}")
-        logging.warning("La clave de OpenAI no es válida o el servicio no está disponible")
-        openai_api_key = None
-else:
-    logging.warning("OpenAI API key no configurada - funcionalidades de OpenAI estarán deshabilitadas")
+        logging.error(f"Error al validar la clave de {service_name}: {str(e)}")
+        logging.warning(f"La clave de {service_name} no pudo ser validada o el servicio no está disponible")
+        return None
 
-# Configurar Anthropic
-if anthropic_api_key:
+# Validadores para cada API
+def validate_openai_key(key):
+    if not key:
+        return False
+    try:
+        openai.api_key = key
+        client = openai.OpenAI(api_key=key)
+        _ = client.models.list()
+        return True
+    except Exception as e:
+        logging.error(f"Error al validar OpenAI API: {str(e)}")
+        return False
+
+def validate_anthropic_key(key):
+    if not key:
+        return False
     try:
         # Importar solo si la clave está configurada
         import anthropic
         from anthropic import Anthropic
-
-        # Verificar que la clave funciona haciendo una llamada de prueba
-        client = Anthropic(api_key=anthropic_api_key)
+        client = Anthropic(api_key=key)
         _ = client.models.list()
-        logging.info(f"Anthropic API key verificada y configurada: {anthropic_api_key[:5]}...{anthropic_api_key[-5:]}")
+        return True
     except Exception as e:
-        logging.error(f"Error al configurar Anthropic API: {str(e)}")
-        logging.warning("La clave de Anthropic no es válida o el servicio no está disponible")
-        anthropic_api_key = None
-else:
-    logging.warning("Anthropic API key no configurada - funcionalidades de Anthropic estarán deshabilitadas")
+        logging.error(f"Error al validar Anthropic API: {str(e)}")
+        return False
 
-# Configurar Gemini
-if gemini_api_key:
+def validate_gemini_key(key):
+    if not key:
+        return False
     try:
-        genai.configure(api_key=gemini_api_key)
-        # Verificar que la clave funciona listando modelos
+        genai.configure(api_key=key)
         models = genai.list_models()
         _ = list(models)  # Forzar evaluación
-        logging.info(f"Gemini API key verificada y configurada: {gemini_api_key[:5]}...{gemini_api_key[-5:]}")
+        return True
     except Exception as e:
-        logging.error(f"Error al configurar Gemini API: {str(e)}")
-        logging.warning("La clave de Gemini no es válida o el servicio no está disponible")
-        gemini_api_key = None
-else:
-    logging.warning("Gemini API key no configurada - funcionalidades de Gemini estarán deshabilitadas")
+        logging.error(f"Error al validar Gemini API: {str(e)}")
+        return False
+
+# Configurar claves API con manejo de errores mejorado
+openai_api_key = get_and_validate_api_key('OPENAI_API_KEY', 'OpenAI', validate_openai_key)
+anthropic_api_key = get_and_validate_api_key('ANTHROPIC_API_KEY', 'Anthropic', validate_anthropic_key)
+gemini_api_key = get_and_validate_api_key('GEMINI_API_KEY', 'Gemini', validate_gemini_key)
+
+# Almacenar las claves API en la configuración de la aplicación para acceso global
+app.config['API_KEYS'] = {
+    'openai': openai_api_key,
+    'anthropic': anthropic_api_key,
+    'gemini': gemini_api_key
+}
 
 # Mensaje informativo sobre el estado de las APIs
 if not any([openai_api_key, anthropic_api_key, gemini_api_key]):
@@ -1135,21 +1159,28 @@ def process_instructions():
 def health_check():
     """Health check endpoint for the application."""
     try:
+        # Obtener el estado actual de las APIs desde la configuración
+        api_keys = app.config.get('API_KEYS', {})
+        
         apis = {
-            "openai": "ok" if openai_api_key else "not configured",
-            "anthropic": "ok" if anthropic_api_key else "not configured",
-            "gemini": "ok" if gemini_api_key else "not configured"
+            "openai": "ok" if api_keys.get('openai') else "not configured",
+            "anthropic": "ok" if api_keys.get('anthropic') else "not configured",
+            "gemini": "ok" if api_keys.get('gemini') else "not configured"
         }
 
-        # Registrar cada solicitud de verificación de salud
-        print(f"Verificación de salud solicitada en: {time.time()}")
+        # Verificar si hay al menos una API configurada
+        any_api_available = any([key for key, value in api_keys.items() if value])
         
-        return jsonify({
+        # Registrar cada solicitud de verificación de salud
+        logging.info(f"Verificación de salud solicitada en: {time.time()}")
+        
+        response = {
             "status": "ok",
             "timestamp": time.time(),
             "version": "1.0.0",
             "apis": apis,
-            "chat_api_available": True,
+            "chat_api_available": any_api_available,
+            "available_models": [key for key, value in api_keys.items() if value],
             "debug_info": {
                 "python_version": sys.version,
                 "endpoints_active": [
@@ -1159,7 +1190,9 @@ def health_check():
                     "/api/process_code"
                 ]
             }
-        })
+        }
+        
+        return jsonify(response)
     except Exception as e:
         logging.error(f"Error in health check: {str(e)}")
         return jsonify({

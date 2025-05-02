@@ -587,8 +587,24 @@ document.addEventListener('DOMContentLoaded', function() {
 // Función para verificar disponibilidad de APIs
 function checkAPIAvailability() {
     fetch('/api/health')
-        .then(response => response.json())
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Error en la verificación de salud del API');
+            }
+            return response.json();
+        })
         .then(data => {
+            // Actualizar el estado global de APIs
+            if (window.app && window.app.apiStatus) {
+                const apis = data.apis || {};
+                window.app.apiStatus.openai = apis.openai === 'ok';
+                window.app.apiStatus.anthropic = apis.anthropic === 'ok';
+                window.app.apiStatus.gemini = apis.gemini === 'ok';
+                window.app.apiStatus.lastChecked = new Date().toISOString();
+                window.app.apiStatus.availableModels = data.available_models || [];
+            }
+            
+            // Actualizar la interfaz de usuario
             const apiStatus = document.getElementById('api-status');
             if (apiStatus) {
                 const apis = data.apis || {};
@@ -597,23 +613,31 @@ function checkAPIAvailability() {
                     .map(([name, _]) => name);
                 
                 if (availableApis.length > 0) {
-                    apiStatus.textContent = 'APIs disponibles: ' + availableApis.join(', ');
+                    apiStatus.innerHTML = '<span class="status-success"><i class="bi bi-check-circle"></i> APIs disponibles:</span> ' + availableApis.join(', ');
                     apiStatus.className = 'mt-2 small text-success';
                 } else {
-                    apiStatus.textContent = 'No hay APIs configuradas. Configura al menos una en el panel de Secrets.';
+                    apiStatus.innerHTML = '<span class="status-warning"><i class="bi bi-exclamation-triangle"></i> No hay APIs configuradas.</span> Configura al menos una en el panel de Secrets.';
                     apiStatus.className = 'mt-2 small text-warning';
                 }
                 
-                // Actualizar el selector de modelos
-                const modelSelector = document.getElementById('model-selector');
-                if (modelSelector) {
-                    // Deshabilitar opciones no disponibles
-                    Array.from(modelSelector.options).forEach(option => {
-                        const isAvailable = apis[option.value] === 'ok';
-                        option.disabled = !isAvailable;
-                        if (!isAvailable) {
-                            option.textContent += ' (no configurado)';
-                        }
+                // Actualizar selectores de modelos en todas las páginas
+                document.querySelectorAll('.model-selector, #model-selector, [data-role="model-selector"]').forEach(modelSelector => {
+                    if (modelSelector) {
+                        // Resetear opciones primero
+                        Array.from(modelSelector.options).forEach(option => {
+                            // Eliminar texto de "no configurado" si existe
+                            option.textContent = option.textContent.replace(' (no configurado)', '');
+                            option.disabled = false;
+                        });
+                        
+                        // Deshabilitar opciones no disponibles
+                        Array.from(modelSelector.options).forEach(option => {
+                            const isAvailable = apis[option.value] === 'ok';
+                            option.disabled = !isAvailable;
+                            if (!isAvailable) {
+                                option.textContent += ' (no configurado)';
+                            }
+                        });
                     });
                     
                     // Seleccionar el primer modelo disponible

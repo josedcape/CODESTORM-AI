@@ -180,6 +180,15 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     };
 
+    // Inicializar estado de las APIs
+    window.app.apiStatus = {
+        openai: false,
+        anthropic: false,
+        gemini: false,
+        lastChecked: null,
+        availableModels: []
+    };
+
     // Verificar disponibilidad de APIs
     fetch('/api/health')
         .then(response => response.json())
@@ -190,6 +199,33 @@ document.addEventListener('DOMContentLoaded', function() {
             console.warn('Error al verificar estado de API:', error);
             showNotification('Algunas funciones del asistente podrían no estar disponibles', 'warning');
         });
+
+    // Función para mostrar una notificación de API no configurada
+    window.showApiNotConfiguredNotification = function(modelName) {
+        const notification = document.createElement('div');
+        notification.className = 'api-notification';
+        notification.innerHTML = `
+            <div class="api-notification-content">
+                <i class="fa fa-exclamation-triangle"></i>
+                <span>El modelo ${modelName} no está disponible. Por favor configure la clave API en el panel de Secrets.</span>
+                <button class="close-notification">×</button>
+            </div>
+        `;
+        document.body.appendChild(notification);
+
+        // Añadir evento para cerrar la notificación
+        notification.querySelector('.close-notification').addEventListener('click', function() {
+            notification.remove();
+        });
+
+        // Auto-eliminar después de 5 segundos
+        setTimeout(() => {
+            if (document.body.contains(notification)) {
+                notification.remove();
+            }
+        }, 5000);
+    };
+
 
     // Inicializar la funcionalidad del asistente flotante
     if (typeof initFloatingAssistant === 'function') {
@@ -473,3 +509,33 @@ document.addEventListener('DOMContentLoaded', function() {
         };
     }
 });
+
+// Función para formatear fechas
+function formatDate(date) {
+    if (!(date instanceof Date)) {
+        date = new Date(date);
+    }
+
+    const options = {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+    };
+
+    return date.toLocaleDateString('es-ES', options);
+}
+
+// Función para formatear bytes a unidades legibles
+function formatBytes(bytes, decimals = 2) {
+    if (bytes === 0) return '0 Bytes';
+
+    const k = 1024;
+    const dm = decimals < 0 ? 0 : decimals;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB', 'PB'];
+
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+}
