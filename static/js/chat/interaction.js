@@ -14,13 +14,14 @@ class DevAssistant {
     constructor(config = {}) {
         // Configuración por defecto
         this.config = Object.assign({
-            apiEndpoints: {
-                chat: '/api/assistant/chat',
-                execute: '/api/assistant/execute-action',
-                files: '/api/assistant/files',
-                interventionMode: '/api/assistant/intervention-mode',
-                applyChanges: '/api/assistant/apply-changes'
-            },
+            apiEndpoints: window.app && window.app.apiEndpoints && window.app.apiEndpoints.assistant ? 
+                window.app.apiEndpoints.assistant : {
+                    chat: '/api/assistant/chat',
+                    execute: '/api/assistant/execute-action',
+                    files: '/api/assistant/files',
+                    interventionMode: '/api/assistant/intervention-mode',
+                    applyChanges: '/api/assistant/apply-changes'
+                },
             selectors: {
                 panel: '#assistant-chat-panel',
                 button: '#toggle-assistant-chat',
@@ -44,14 +45,36 @@ class DevAssistant {
         // Inicializar elementos DOM
         this.initDOM();
 
-        // Si todos los elementos necesarios están presentes, inicializar eventos
-        if (this.elements.panel && this.elements.button && 
-            this.elements.input && this.elements.send && this.elements.messages) {
+        // Verificar si los elementos necesarios están presentes
+        const missingElements = [];
+        if (!this.elements.panel) missingElements.push('panel');
+        if (!this.elements.button) missingElements.push('botón de chat');
+        if (!this.elements.input) missingElements.push('campo de entrada');
+        if (!this.elements.send) missingElements.push('botón de enviar');
+        if (!this.elements.messages) missingElements.push('contenedor de mensajes');
+        
+        if (missingElements.length === 0) {
+            // Todos los elementos necesarios están presentes
             this.initEventListeners();
             this.loadDependencies();
             console.log('DevAssistant: Inicializado correctamente');
         } else {
-            console.error('DevAssistant: No se pudieron encontrar todos los elementos necesarios');
+            // Crear elementos faltantes dinámicamente
+            console.warn(`DevAssistant: No se encontraron los siguientes elementos: ${missingElements.join(', ')}`);
+            this.createMissingElements(missingElements);
+            
+            // Reintentar inicialización
+            setTimeout(() => {
+                this.initDOM();
+                if (this.elements.panel && this.elements.button && 
+                    this.elements.input && this.elements.send && this.elements.messages) {
+                    this.initEventListeners();
+                    this.loadDependencies();
+                    console.log('DevAssistant: Inicializado correctamente tras crear elementos');
+                } else {
+                    console.error('DevAssistant: No se pudo inicializar incluso después de crear elementos');
+                }
+            }, 100);
         }
     }
 
@@ -123,7 +146,7 @@ class DevAssistant {
     }
 
     /**
-     * Carga dependencias externas (highlight.js)
+     * Carga dependencias externas y estilos necesarios
      */
     loadDependencies() {
         // Cargar highlight.js si no está disponible
@@ -137,6 +160,45 @@ class DevAssistant {
                 document.head.appendChild(css);
             };
             document.head.appendChild(script);
+        }
+        
+        // Cargar estilos del asistente si no están disponibles
+        if (!document.querySelector('link[href*="assistant.css"]')) {
+            const assistantStyles = document.createElement('link');
+            assistantStyles.rel = 'stylesheet';
+            assistantStyles.href = '/static/css/assistant.css';
+            document.head.appendChild(assistantStyles);
+            
+            // Estilo alternativo en caso de que el archivo no esté disponible
+            assistantStyles.onerror = () => {
+                console.warn('No se pudo cargar assistant.css, usando estilos embebidos');
+                const inlineStyles = document.createElement('style');
+                inlineStyles.textContent = `
+                    .assistant-container { position: fixed; bottom: 20px; right: 20px; z-index: 9999; }
+                    .assistant-button { width: 50px; height: 50px; border-radius: 50%; background: linear-gradient(135deg, #0A2E6B, #0D47A1); color: white; border: none; cursor: pointer; }
+                    .assistant-panel { position: fixed; bottom: 80px; right: 20px; width: 350px; height: 500px; background-color: #1E1E1E; border-radius: 10px; display: flex; flex-direction: column; overflow: hidden; }
+                    .assistant-header { background: linear-gradient(90deg, #0A2E6B, #0D47A1); color: white; padding: 10px 15px; display: flex; justify-content: space-between; align-items: center; }
+                    .assistant-close { background: none; border: none; color: white; cursor: pointer; }
+                    .assistant-messages { flex: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 10px; background-color: #2D2D2D; }
+                    .message { max-width: 80%; padding: 10px 15px; border-radius: 10px; }
+                    .user-message { align-self: flex-end; background-color: #0D47A1; color: white; }
+                    .assistant-message { align-self: flex-start; background-color: #3D3D3D; color: #E0E0E0; }
+                    .system-message { align-self: center; background-color: #424242; color: #BDBDBD; font-style: italic; max-width: 90%; }
+                    .assistant-footer { background-color: #1E1E1E; padding: 10px; border-top: 1px solid #333; }
+                    .assistant-input-group { display: flex; gap: 8px; }
+                    .assistant-input { flex: 1; border: 1px solid #444; background-color: #2D2D2D; color: white; border-radius: 5px; padding: 8px; }
+                    .assistant-send { width: 40px; background-color: #0D47A1; border: none; border-radius: 5px; color: white; cursor: pointer; }
+                `;
+                document.head.appendChild(inlineStyles);
+            };
+        }
+        
+        // Cargar Bootstrap Icons si no están disponibles
+        if (!document.querySelector('link[href*="bootstrap-icons"]')) {
+            const iconLink = document.createElement('link');
+            iconLink.rel = 'stylesheet';
+            iconLink.href = 'https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css';
+            document.head.appendChild(iconLink);
         }
     }
 
@@ -671,6 +733,111 @@ class DevAssistant {
     setProjectId(projectId) {
         this.state.projectId = projectId;
         console.log(`DevAssistant: Proyecto establecido a ${projectId}`);
+    }
+
+    /**
+     * Crea elementos HTML faltantes dinámicamente
+     * @param {Array} missingElements - Lista de elementos faltantes
+     */
+    createMissingElements(missingElements) {
+        // Verificar si ya existe el contenedor principal
+        let container = document.getElementById('assistant-chat-container');
+        if (!container) {
+            container = document.createElement('div');
+            container.id = 'assistant-chat-container';
+            container.className = 'assistant-container';
+            document.body.appendChild(container);
+        }
+
+        // Crear panel si falta
+        if (missingElements.includes('panel') && !document.querySelector(this.config.selectors.panel)) {
+            const panel = document.createElement('div');
+            panel.id = 'assistant-chat-panel';
+            panel.className = 'assistant-panel';
+            panel.style.display = 'none';
+            container.appendChild(panel);
+        }
+
+        // Crear botón si falta
+        if (missingElements.includes('botón de chat') && !document.querySelector(this.config.selectors.button)) {
+            const button = document.createElement('button');
+            button.id = 'toggle-assistant-chat';
+            button.className = 'assistant-button';
+            button.innerHTML = '<i class="bi bi-chat-dots-fill"></i>';
+            button.title = 'Asistente de desarrollo';
+            container.appendChild(button);
+        }
+
+        // Si falta el panel, crear su estructura interna
+        const panel = document.querySelector(this.config.selectors.panel) || document.getElementById('assistant-chat-panel');
+        if (panel) {
+            // Crear encabezado si no existe
+            if (!panel.querySelector('.assistant-header')) {
+                const header = document.createElement('div');
+                header.className = 'assistant-header';
+                header.innerHTML = `
+                    <h5>Asistente de Desarrollo</h5>
+                    <button id="close-assistant-chat" class="assistant-close"><i class="bi bi-x"></i></button>
+                `;
+                panel.appendChild(header);
+            }
+
+            // Crear contenedor de mensajes si falta
+            if (missingElements.includes('contenedor de mensajes') && !document.querySelector(this.config.selectors.messages)) {
+                const messages = document.createElement('div');
+                messages.id = 'assistant-chat-messages';
+                messages.className = 'assistant-messages';
+                panel.appendChild(messages);
+            }
+
+            // Crear pie con input y botón si faltan
+            if ((missingElements.includes('campo de entrada') || missingElements.includes('botón de enviar')) && 
+                (!document.querySelector(this.config.selectors.input) || !document.querySelector(this.config.selectors.send))) {
+                const footer = document.createElement('div');
+                footer.className = 'assistant-footer';
+                
+                const inputGroup = document.createElement('div');
+                inputGroup.className = 'assistant-input-group';
+                
+                const input = document.createElement('textarea');
+                input.id = 'assistant-chat-input';
+                input.className = 'assistant-input';
+                input.placeholder = 'Escribe tu mensaje...';
+                
+                const sendButton = document.createElement('button');
+                sendButton.id = 'send-assistant-message';
+                sendButton.className = 'assistant-send';
+                sendButton.innerHTML = '<i class="bi bi-send"></i>';
+                
+                inputGroup.appendChild(input);
+                inputGroup.appendChild(sendButton);
+                
+                // Agregar switch para modo intervención
+                const interventionDiv = document.createElement('div');
+                interventionDiv.className = 'intervention-switch';
+                interventionDiv.innerHTML = `
+                    <label class="switch">
+                        <input type="checkbox" id="intervention-mode">
+                        <span class="slider round"></span>
+                    </label>
+                    <span>Modo intervención</span>
+                `;
+                
+                footer.appendChild(inputGroup);
+                footer.appendChild(interventionDiv);
+                panel.appendChild(footer);
+            }
+        }
+
+        // Asegurar que Bootstrap Icons esté cargado
+        if (!document.querySelector('link[href*="bootstrap-icons"]')) {
+            const iconLink = document.createElement('link');
+            iconLink.rel = 'stylesheet';
+            iconLink.href = 'https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css';
+            document.head.appendChild(iconLink);
+        }
+
+        console.log('DevAssistant: Elementos creados dinámicamente');
     }
 }
 

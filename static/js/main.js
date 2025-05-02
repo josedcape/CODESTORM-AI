@@ -170,8 +170,26 @@ document.addEventListener('DOMContentLoaded', function() {
         health: '/api/health',
         processCode: '/api/process_code',
         execute: '/api/execute_command',
-        files: '/api/files'
+        files: '/api/files',
+        assistant: {
+            chat: '/api/assistant/chat',
+            execute: '/api/assistant/execute-action',
+            files: '/api/assistant/files',
+            interventionMode: '/api/assistant/intervention-mode',
+            applyChanges: '/api/assistant/apply-changes'
+        }
     };
+    
+    // Verificar disponibilidad de APIs
+    fetch('/api/health')
+        .then(response => response.json())
+        .then(data => {
+            console.log('Estado de la API:', data.status || 'OK');
+        })
+        .catch(error => {
+            console.warn('Error al verificar estado de API:', error);
+            showNotification('Algunas funciones del asistente podrían no estar disponibles', 'warning');
+        });
 
     // Inicializar la funcionalidad del asistente flotante
     if (typeof initFloatingAssistant === 'function') {
