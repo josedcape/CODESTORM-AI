@@ -195,8 +195,12 @@ async function sendMessage() {
         setupUIElements();
     }
 
-    const messageInput = document.getElementById('message-input');
-    const sendButton = document.getElementById('send-button');
+    // Intentar encontrar el elemento de entrada con diferentes IDs posibles
+    const messageInput = document.getElementById('message-input') || 
+                         document.getElementById('assistant-chat-input') || 
+                         document.getElementById('chat-input');
+    const sendButton = document.getElementById('send-button') || 
+                       document.getElementById('send-assistant-message');
 
     if (!messageInput) {
         console.error("Elemento de entrada de mensaje no encontrado");
@@ -236,10 +240,8 @@ async function sendMessage() {
     showLoadingIndicator();
 
     try {
-        // Verificar que el endpoint existe
-        const apiEndpoint = window.app.chat && window.app.chat.apiEndpoints && window.app.chat.apiEndpoints.chat 
-            ? window.app.chat.apiEndpoints.chat 
-            : '/api/assistant/chat'; // Default to corrected endpoint
+        // Verificar que el endpoint existe y usar uno que funcione
+        const apiEndpoint = '/api/chat'; // Usar directamente el endpoint correcto
 
         console.log('Enviando mensaje al endpoint:', apiEndpoint);
 

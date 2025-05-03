@@ -283,8 +283,8 @@ class DevAssistant {
             }
         };
 
-        // Enviar solicitud al servidor
-        fetch(this.config.apiEndpoints.chat, {
+        // Usar endpoint corregido
+        fetch('/api/chat', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
