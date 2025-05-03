@@ -234,6 +234,7 @@
         margin-bottom: 15px;
         max-width: 85%;
         word-wrap: break-word;
+        position: relative; /* Para posicionar los botones de acción */
     }
 
     .user-message {
@@ -322,6 +323,169 @@
         0% { transform: translateY(0px); }
         50% { transform: translateY(-5px); }
         100% { transform: translateY(0px); }
+    }
+
+    .message-actions {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        display: none;
+    }
+
+    .message:hover .message-actions {
+        display: block;
+    }
+
+    .message-actions-extended {
+        display: none;
+        margin-top: 10px;
+        text-align: right;
+    }
+
+    .message:hover .message-actions-extended {
+        display: flex;
+        justify-content: flex-end;
+        gap: 8px;
+    }
+
+    .apply-code-btn, .explore-files-btn, .contextualize-btn {
+        background-color: #1a202c;
+        color: #63b3ed;
+        border: 1px solid #2a4365;
+        border-radius: 4px;
+        padding: 4px 8px;
+        font-size: 0.8rem;
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    .apply-code-btn:hover, .explore-files-btn:hover, .contextualize-btn:hover {
+        background-color: #2d3748;
+        color: #90cdf4;
+    }
+
+    .code-selection-modal, .file-selection-modal {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.5);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+    }
+
+    .code-selection-dialog, .file-selection-dialog {
+        background-color: white;
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+        max-width: 800px;
+        width: 100%;
+    }
+
+    .code-blocks-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 15px;
+    }
+
+    .code-block-option {
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        padding: 10px;
+    }
+
+    .code-language-badge {
+        background-color: #f0f0f0;
+        padding: 3px 8px;
+        border-radius: 4px;
+        margin-right: 8px;
+    }
+
+    .file-selection-tabs {
+        display: flex;
+        margin-bottom: 15px;
+    }
+
+    .file-tab {
+        background-color: #eee;
+        padding: 8px 15px;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        margin-right: 10px;
+        cursor: pointer;
+    }
+
+    .file-tab.active {
+        background-color: #ddd;
+        font-weight: bold;
+    }
+
+    .file-panel {
+        margin-bottom: 20px;
+    }
+
+    .form-group {
+        margin-bottom: 10px;
+    }
+
+    .code-preview {
+        margin-bottom: 15px;
+    }
+
+    .dialog-actions {
+        text-align: right;
+    }
+
+    .related-files {
+        margin-top: 15px;
+    }
+
+    .files-list {
+        list-style: none;
+        padding: 0;
+    }
+
+    .file-item {
+        display: flex;
+        align-items: center;
+        margin-bottom: 5px;
+    }
+
+    .file-icon {
+        margin-right: 8px;
+    }
+
+    .file-path {
+        flex: 1;
+    }
+
+    .file-actions {
+        display: flex;
+        gap: 5px;
+    }
+
+    .code-context {
+        margin-top: 15px;
+    }
+
+    .context-section {
+        margin-top: 10px;
+    }
+
+    .file-content {
+        margin-top: 15px;
+    }
+
+    .file-header {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 10px;
     }
 </style>
 {% endblock %}
@@ -643,7 +807,7 @@
                     <li>Describe claramente qué función o parte del código quieres modificar</li>
                     <li>Especifica el archivo donde se encuentra (si lo conoces)</li>
                     <li>Explica el comportamiento actual y el deseado</li>
-                    <li>Si es necesario, activa el <span class="badge bg-danger">Modo intervención</span> para que pueda realizar cambios directos en el proyecto</li>
+                    <li>Si es necesario, activa el <span class="badge bg-danger">Modo intervención</span> para que pueda realizar cambios directos enel proyecto</li>
                 </ol>
             </div>
 
@@ -673,179 +837,7 @@
 {% block scripts %}
 <script src="{{ url_for('static', filename='js/tech-selector.js') }}"></script>
 <script src="{{ url_for('static', filename='js/chat/chat.js') }}"></script>
-{% endblock %}
 <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        // Inicializar el chat del asistente
-        const assistantPanel = document.getElementById('assistant-chat-panel');
-        const chatButton = document.getElementById('toggle-assistant-chat');
-        const closeButton = document.getElementById('close-assistant-chat');
-        const chatInput = document.getElementById('assistant-chat-input');
-        const sendButton = document.getElementById('send-assistant-message');
-        const messagesContainer = document.getElementById('assistant-chat-messages');
-
-        // Configurar eventos para abrir/cerrar el panel del asistente
-        if (chatButton) {
-            chatButton.addEventListener('click', function() {
-                if (assistantPanel.style.display === 'none' || !assistantPanel.style.display) {
-                    assistantPanel.style.display = 'flex';
-                    if (chatInput) chatInput.focus();
-                } else {
-                    assistantPanel.style.display = 'none';
-                }
-            });
-        }
-
-        if (closeButton) {
-            closeButton.addEventListener('click', function() {
-                assistantPanel.style.display = 'none';
-            });
-        }
-
-        // Manejar el botón de generar aplicación
-        const generateBtn = document.getElementById('generate-btn');
-        const constructorForm = document.getElementById('constructor-form');
-        const generationProgress = document.getElementById('generation-progress');
-
-        if (generateBtn) {
-            generateBtn.addEventListener('click', function(event) {
-                event.preventDefault();
-
-                // Verificar que se haya ingresado una descripción
-                const projectDescription = document.getElementById('project-description').value.trim();
-                if (!projectDescription) {
-                    alert('Por favor, describe tu aplicación');
-                    return;
-                }
-
-                // Mostrar el indicador de progreso
-                constructorForm.style.display = 'none';
-                generationProgress.style.display = 'block';
-
-                // Recopilar datos del formulario
-                const techData = document.getElementById('project-tech-data').value;
-                const agentType = document.getElementById('agent-selector').value;
-                const modelType = document.getElementById('model-selector').value;
-
-                // Generar ID único para el proyecto
-                const projectId = 'project_' + Date.now();
-
-                // Enviar solicitud al servidor
-                fetch('/api/constructor/start', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        project_id: projectId,
-                        description: projectDescription,
-                        tech_data: techData,
-                        agent_type: agentType,
-                        model_type: modelType,
-                        include_tests: document.getElementById('include-tests').checked,
-                        include_docs: document.getElementById('include-docs').checked,
-                        include_deployment: document.getElementById('include-deployment').checked,
-                        include_ci_cd: document.getElementById('include-ci-cd').checked,
-                        features: Array.from(document.querySelectorAll('#features-tags .feature-tag'))
-                            .map(tag => tag.dataset.feature || tag.textContent.trim())
-                    })
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        // Iniciar monitoreo de progreso
-                        startProgressMonitoring(projectId);
-                    } else {
-                        // Mostrar error
-                        document.getElementById('generation-console').innerHTML += 
-                            `<div class="error-line">Error: ${data.error || 'No se pudo iniciar la generación'}</div>`;
-                    }
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                    document.getElementById('generation-console').innerHTML += 
-                        `<div class="error-line">Error de conexión: ${error.message}</div>`;
-                });
-            });
-        }
-
-        // Función para monitorear el progreso
-        function startProgressMonitoring(projectId) {
-            const progressBar = document.getElementById('progress-bar');
-            const currentStage = document.getElementById('current-stage');
-            const generationConsole = document.getElementById('generation-console');
-
-            // Función para verificar el estado del proyecto
-            function checkStatus() {
-                fetch(`/api/constructor/status/${projectId}`)
-                    .then(response => response.json())
-                    .then(data => {
-                        if (data.success) {
-                            // Actualizar barra de progreso
-                            progressBar.style.width = `${data.progress}%`;
-                            progressBar.setAttribute('aria-valuenow', data.progress);
-                            progressBar.textContent = `${data.progress}%`;
-
-                            // Actualizar estado actual
-                            currentStage.textContent = data.current_stage;
-
-                            // Actualizar mensajes de consola si hay nuevos
-                            if (data.console_message) {
-                                const timestamp = new Date(data.console_message.time * 1000).toLocaleTimeString();
-                                generationConsole.innerHTML += 
-                                    `<div class="console-line">[${timestamp}] ${data.console_message.message}</div>`;
-                                generationConsole.scrollTop = generationConsole.scrollHeight;
-                            }
-
-                            // Verificar si está completado o hubo error
-                            if (data.status === 'completed') {
-                                document.getElementById('generation-progress').style.display = 'none';
-                                document.getElementById('generation-result').style.display = 'block';
-
-                                // Configurar botones de resultado
-                                const viewBtn = document.getElementById('view-app-btn');
-                                const downloadBtn = document.getElementById('download-app-btn');
-
-                                if (viewBtn) {
-                                    viewBtn.addEventListener('click', function() {
-                                        window.open(`/api/constructor/preview/${projectId}`, '_blank');
-                                    });
-                                }
-
-                                if (downloadBtn) {
-                                    downloadBtn.addEventListener('click', function() {
-                                        window.location.href = `/api/constructor/download/${projectId}`;
-                                    });
-                                }
-                            } else if (data.status === 'failed') {
-                                document.getElementById('result-message').className = 'alert alert-danger';
-                                document.getElementById('result-message').innerHTML = 
-                                    `<i class="bi bi-exclamation-circle me-2"></i> Error: ${data.error || 'Hubo un problema durante la generación'}`;
-                                document.getElementById('generation-progress').style.display = 'none';
-                                document.getElementById('generation-result').style.display = 'block';
-                            } else {
-                                // Continuar verificando el estado cada 2 segundos
-                                setTimeout(checkStatus, 2000);
-                            }
-                        } else {
-                            // Manejar error en la verificación del estado
-                            generationConsole.innerHTML += 
-                                `<div class="error-line">Error al verificar estado: ${data.error || 'Problema de conexión'}</div>`;
-                        }
-                    })
-                    .catch(error => {
-                        console.error('Error:', error);
-                        generationConsole.innerHTML += 
-                            `<div class="error-line">Error de conexión: ${error.message}</div>`;
-                        // Intentar nuevamente después de un tiempo
-                        setTimeout(checkStatus, 5000);
-                    });
-            }
-
-            // Iniciar verificación de estado
-            checkStatus();
-        }
-    });
     document.addEventListener('DOMContentLoaded', function() {
         // Referencias a elementos DOM
         const assistantPanel = document.getElementById('assistant-chat-panel');
@@ -1193,4 +1185,641 @@
         if (typeof initTechSelector === 'function') {
             initTechSelector();
         }
+
+        // Funciones para el asistente de programación
+
+        /**
+         * Aplica el código encontrado en un mensaje al proyecto
+         * @param {string} messageId - ID del mensaje que contiene el código
+         */
+        function applyCodeToProject(messageId) {
+            const message = document.getElementById(messageId);
+            if (!message) return;
+
+            // Buscar bloques de código en el mensaje
+            const codeBlocks = message.querySelectorAll('pre code');
+            if (codeBlocks.length === 0) {
+                showNotification('No se encontró código para aplicar', 'error');
+                return;
+            }
+
+            // Si hay más de un bloque, mostrar un diálogo de selección
+            if (codeBlocks.length > 1) {
+                showCodeSelectionDialog(messageId, codeBlocks);
+                return;
+            }
+
+            // Si solo hay un bloque, extraer la información y mostrar el diálogo de aplicación
+            const codeContent = codeBlocks[0].textContent;
+            const language = codeBlocks[0].className.replace('language-', '');
+
+            showFileSelectionDialog(codeContent, language);
+        }
+
+        /**
+         * Muestra un diálogo para seleccionar qué bloque de código aplicar
+         * @param {string} messageId - ID del mensaje
+         * @param {NodeList} codeBlocks - Lista de bloques de código
+         */
+        function showCodeSelectionDialog(messageId, codeBlocks) {
+            // Crear el modal de selección
+            const modal = document.createElement('div');
+            modal.className = 'code-selection-modal';
+            modal.innerHTML = `
+                <div class="code-selection-dialog">
+                    <h3>Seleccionar código para aplicar</h3>
+                    <div class="code-blocks-list">
+                        ${Array.from(codeBlocks).map((block, index) => {
+                            const language = block.className.replace('language-', '');
+                            const preview = block.textContent.substring(0, 100) + (block.textContent.length > 100 ? '...' : '');
+                            return `
+                                <div class="code-block-option" data-index="${index}">
+                                    <div class="code-block-header">
+                                        <span class="code-language-badge">${language}</span>
+                                        <button class="select-code-btn" onclick="selectCodeBlock('${messageId}', ${index})">Seleccionar</button>
+                                    </div>
+                                    <pre><code>${preview}</code></pre>
+                                </div>
+                            `;
+                        }).join('')}
+                    </div>
+                    <div class="dialog-actions">
+                        <button onclick="closeCodeSelectionDialog()">Cancelar</button>
+                    </div>
+                </div>
+            `;
+
+            document.body.appendChild(modal);
+        }
+
+        /**
+         * Selecciona un bloque de código específico
+         * @param {string} messageId - ID del mensaje
+         * @param {number} blockIndex - Índice del bloque de código
+         */
+        function selectCodeBlock(messageId, blockIndex) {
+            const message = document.getElementById(messageId);
+            const codeBlocks = message.querySelectorAll('pre code');
+
+            if (blockIndex >= 0 && blockIndex < codeBlocks.length) {
+                const codeContent = codeBlocks[blockIndex].textContent;
+                const language = codeBlocks[blockIndex].className.replace('language-', '');
+
+                closeCodeSelectionDialog();
+                showFileSelectionDialog(codeContent, language);
+            }
+        }
+
+        /**
+         * Cierra el diálogo de selección de código
+         */
+        function closeCodeSelectionDialog() {
+            const modal = document.querySelector('.code-selection-modal');
+            if (modal) {
+                document.body.removeChild(modal);
+            }
+        }
+
+        /**
+         * Muestra un diálogo para seleccionar o crear el archivo donde aplicar el código
+         * @param {string} codeContent - Contenido del código
+         * @param {string} language - Lenguaje del código
+         */
+        function showFileSelectionDialog(codeContent, language) {
+            // Sugerir extensión de archivo basada en el lenguaje
+            let fileExtension = '.txt';
+
+            switch (language) {
+                case 'javascript':
+                case 'js':
+                    fileExtension = '.js';
+                    break;
+                case 'typescript':
+                case 'ts':
+                    fileExtension = '.ts';
+                    break;
+                case 'python':
+                case 'py':
+                    fileExtension = '.py';
+                    break;
+                case 'html':
+                    fileExtension = '.html';
+                    break;
+                case 'css':
+                    fileExtension = '.css';
+                    break;
+                case 'json':
+                    fileExtension = '.json';
+                    break;
+            }
+
+            // Crear el modal de selección de archivo
+            const modal = document.createElement('div');
+            modal.className = 'file-selection-modal';
+            modal.innerHTML = `
+                <div class="file-selection-dialog">
+                    <h3>Aplicar código a archivo</h3>
+
+                    <div class="file-selection-tabs">
+                        <button id="new-file-tab" class="file-tab active" onclick="switchFileTab('new')">Nuevo archivo</button>
+                        <button id="existing-file-tab" class="file-tab" onclick="switchFileTab('existing')">Archivo existente</button>
+                    </div>
+
+                    <div id="new-file-panel" class="file-panel">
+                        <div class="form-group">
+                            <label for="new-file-name">Nombre de archivo:</label>
+                            <input type="text" id="new-file-name" placeholder="nombre_archivo${fileExtension}" value="nuevo_archivo${fileExtension}">
+                        </div>
+                        <div class="form-group">
+                            <label>
+                                <input type="checkbox" id="create-folder" onchange="toggleFolderInput()">
+                                Crear en una nueva carpeta
+                            </label>
+                        </div>
+                        <div class="form-group" id="folder-input" style="display: none;">
+                            <label for="folder-name">Nombre de carpeta:</label>
+                            <input type="text" id="folder-name" placeholder="nombre_carpeta">
+                        </div>
+                    </div>
+
+                    <div id="existing-file-panel" class="file-panel" style="display: none;">
+                        <div class="form-group">
+                            <label for="existing-file-path">Ruta del archivo:</label>
+                            <input type="text" id="existing-file-path" placeholder="ruta/al/archivo${fileExtension}">
+                        </div>
+                        <div class="form-group">
+                            <label>
+                                <input type="radio" name="replace-mode" value="replace" checked>
+                                Reemplazar contenido completo
+                            </label>
+                            <label>
+                                <input type="radio" name="replace-mode" value="append">
+                                Añadir al final del archivo
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="code-preview">
+                        <h4>Vista previa del código</h4>
+                        <pre><code class="language-${language}">${codeContent}</code></pre>
+                    </div>
+
+                    <div class="dialog-actions">
+                        <button onclick="applyCodeToFile('${encodeURIComponent(codeContent)}', '${language}')">Aplicar</button>
+                        <button onclick="closeFileSelectionDialog()">Cancelar</button>
+                    </div>
+                </div>
+            `;
+
+            document.body.appendChild(modal);
+
+            // Aplicar highlight.js a la vista previa
+            if (window.hljs) {
+                document.querySelectorAll('.code-preview pre code').forEach((block) => {
+                    hljs.highlightElement(block);
+                });
+            }
+        }
+
+        /**
+         * Cambia entre las pestañas de nuevo archivo y archivo existente
+         * @param {string} tab - Pestaña a mostrar ('new' o 'existing')
+         */
+        function switchFileTab(tab) {
+            const newFileTab = document.getElementById('new-file-tab');
+            const existingFileTab = document.getElementById('existing-file-tab');
+            const newFilePanel = document.getElementById('new-file-panel');
+            const existingFilePanel = document.getElementById('existing-file-panel');
+
+            if (tab === 'new') {
+                newFileTab.classList.add('active');
+                existingFileTab.classList.remove('active');
+                newFilePanel.style.display = 'block';
+                existingFilePanel.style.display = 'none';
+            } else {
+                newFileTab.classList.remove('active');
+                existingFileTab.classList.add('active');
+                newFilePanel.style.display = 'none';
+                existingFilePanel.style.display = 'block';
+            }
+        }
+
+        /**
+         * Muestra/oculta el campo de entrada de carpeta
+         */
+        function toggleFolderInput() {
+            const folderInput = document.getElementById('folder-input');
+            folderInput.style.display = document.getElementById('create-folder').checked ? 'block' : 'none';
+        }
+
+        /**
+         * Cierra el diálogo de selección de archivo
+         */
+        function closeFileSelectionDialog() {
+            const modal = document.querySelector('.file-selection-modal');
+            if (modal) {
+                document.body.removeChild(modal);
+            }
+        }
+
+        /**
+         * Aplica el código al archivo especificado
+         * @param {string} encodedCodeContent - Contenido del código codificado en URI
+         * @param {string} language - Lenguaje del código
+         */
+        function applyCodeToFile(encodedCodeContent, language) {
+            const codeContent = decodeURIComponent(encodedCodeContent);
+            const newFileTab = document.getElementById('new-file-tab');
+
+            // Determinar modo (nuevo archivo o existente)
+            const isNewFile = newFileTab.classList.contains('active');
+
+            let filePath = '';
+            let mode = 'replace';
+
+            if (isNewFile) {
+                const fileName = document.getElementById('new-file-name').value.trim();
+                if (!fileName) {
+                    showNotification('Debes especificar un nombre de archivo', 'error');
+                    return;
+                }
+
+                // Verificar si se creará en una carpeta
+                if (document.getElementById('create-folder').checked) {
+                    const folderName = document.getElementById('folder-name').value.trim();
+                    if (!folderName) {
+                        showNotification('Debes especificar un nombre de carpeta', 'error');
+                        return;
+                    }
+                    filePath = `${folderName}/${fileName}`;
+                } else {
+                    filePath = fileName;
+                }
+
+                mode = 'create';
+            } else {
+                filePath = document.getElementById('existing-file-path').value.trim();
+                if (!filePath) {
+                    showNotification('Debes especificar la ruta del archivo', 'error');
+                    return;
+                }
+
+                // Obtener modo de reemplazo
+                const replaceMode = document.querySelector('input[name="replace-mode"]:checked').value;
+                mode = replaceMode;
+            }
+
+            // Enviar solicitud al servidor
+            fetch('/api/file/write', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    file_path: filePath,
+                    content: codeContent,
+                    mode: mode,
+                    language: language
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showNotification(`Código aplicado a ${filePath}`, 'success');
+                    closeFileSelectionDialog();
+
+                    // Añadir mensaje del sistema informando de la acción
+                    addSystemMessage(`Se ha ${mode === 'create' ? 'creado' : (mode === 'append' ? 'actualizado' : 'reemplazado')} el archivo <code>${filePath}</code> con el código aplicado.`);
+                } else {
+                    showNotification(`Error: ${data.error || 'No se pudo aplicar el código'}`, 'error');
+                }
+            })
+            .catch(error => {
+                showNotification(`Error: ${error.message}`, 'error');
+            });
+        }
+
+        /**
+         * Explora archivos relacionados con el código en un mensaje
+         * @param {string} messageId - ID del mensaje que contiene el código
+         */
+        function exploreRelatedFiles(messageId) {
+            const message = document.getElementById(messageId);
+            if (!message) return;
+
+            // Buscar bloques de código en el mensaje
+            const codeBlocks = message.querySelectorAll('pre code');
+            if (codeBlocks.length === 0) {
+                showNotification('No se encontró código para analizar', 'error');
+                return;
+            }
+
+            // Extraer código y lenguaje del primer bloque
+            const codeContent = codeBlocks[0].textContent;
+            const language = codeBlocks[0].className.replace('language-', '');
+
+            // Mostrar indicador de carga
+            addSystemMessage(`<i class="bi bi-search"></i> Buscando archivos relacionados con el código...`);
+
+            // Enviar solicitud al servidor para buscar archivos relacionados
+            fetch('/api/file/find_related', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    code: codeContent,
+                    language: language
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success && data.files && data.files.length > 0) {
+                    // Mostrar archivos relacionados
+                    let filesMessage = `<div class="related-files">
+                        <h4><i class="bi bi-folder2"></i> Archivos relacionados encontrados:</h4>
+                        <ul class="files-list">`;
+
+                    data.files.forEach(file => {
+                        filesMessage += `
+                            <li class="file-item">
+                                <span class="file-icon"><i class="bi bi-file-code"></i></span>
+                                <span class="file-path">${file.path}</span>
+                                <span class="file-actions">
+                                    <button onclick="viewFileContent('${file.path}')" title="Ver contenido">
+                                        <i class="bi bi-eye"></i>
+                                    </button>
+                                    <button onclick="openFileInEditor('${file.path}')" title="Abrir en editor">
+                                        <i class="bi bi-pencil-square"></i>
+                                    </button>
+                                </span>
+                            </li>`;
+                    });
+
+                    filesMessage += `</ul></div>`;
+                    addSystemMessage(filesMessage);
+                } else {
+                    addSystemMessage(`<i class="bi bi-info-circle"></i> No se encontraron archivos relacionados con el código.`);
+                }
+            })
+            .catch(error => {
+                addSystemMessage(`<i class="bi bi-exclamation-triangle"></i> Error al buscar archivos relacionados: ${error.message}`);
+            });
+        }
+
+        /**
+         * Contextualiza el código con información del proyecto
+         * @param {string} messageId - ID del mensaje que contiene el código
+         */
+        function contextualizeCode(messageId) {
+            const message = document.getElementById(messageId);
+            if (!message) return;
+
+            // Buscar bloques de código en el mensaje
+            const codeBlocks = message.querySelectorAll('pre code');
+            if (codeBlocks.length === 0) {
+                showNotification('No se encontró código para contextualizar', 'error');
+                return;
+            }
+
+            // Extraer código y lenguaje del primer bloque
+            const codeContent = codeBlocks[0].textContent;
+            const language = codeBlocks[0].className.replace('language-', '');
+
+            // Mostrar indicador de carga
+            addSystemMessage(`<i class="bi bi-braces"></i> Contextualizando el código...`);
+
+            // Enviar solicitud al servidor para contextualizar el código
+            fetch('/api/code/contextualize', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    code: codeContent,
+                    language: language
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Mostrar contextualización
+                    let contextMessage = `<div class="code-context">
+                        <h4><i class="bi bi-braces"></i> Contextualización del código:</h4>
+                        <div class="context-details">
+                            ${data.explanation || 'No se pudo generar explicación'}
+                        </div>`;
+
+                    if (data.dependencies && data.dependencies.length > 0) {
+                        contextMessage += `
+                            <div class="context-section">
+                                <h5>Dependencias detectadas:</h5>
+                                <ul>
+                                    ${data.dependencies.map(dep => `<li>${dep}</li>`).join('')}
+                                </ul>
+                            </div>`;
+                    }
+
+                    if (data.references && data.references.length > 0) {
+                        contextMessage += `
+                            <div class="context-section">
+                                <h5>Referencias a otros archivos:</h5>
+                                <ul>
+                                    ${data.references.map(ref => `<li>${ref}</li>`).join('')}
+                                </ul>
+                            </div>`;
+                    }
+
+                    contextMessage += `</div>`;
+                    addSystemMessage(contextMessage);
+                } else {
+                    addSystemMessage(`<i class="bi bi-exclamation-triangle"></i> Error al contextualizar el código: ${data.error || 'Error desconocido'}`);
+                }
+            })
+            .catch(error => {
+                addSystemMessage(`<i class="bi bi-exclamation-triangle"></i> Error al contextualizar el código: ${error.message}`);
+            });
+        }
+
+        /**
+         * Ver el contenido de un archivo
+         * @param {string} filePath - Ruta del archivo
+         */
+        function viewFileContent(filePath) {
+            // Mostrar indicador de carga
+            addSystemMessage(`<i class="bi bi-hourglass-split"></i> Cargando contenido de ${filePath}...`);
+
+            // Solicitar el contenido del archivo
+            fetch('/api/file/read', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    file_path: filePath
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Determinar el lenguaje basado en la extensión
+                    const extension = filePath.split('.').pop().toLowerCase();
+                    let language = 'plaintext';
+
+                    switch (extension) {
+                        case 'js': language = 'javascript'; break;
+                        case 'ts': language = 'typescript'; break;
+                        case 'py': language = 'python'; break;
+                        case 'html': language = 'html'; break;
+                        case 'css': language = 'css'; break;
+                        case 'json': language = 'json'; break;
+                        // Añadir más mapeos según sea necesario
+                    }
+
+                    // Mostrar contenido del archivo
+                    const fileContent = `<div class="file-content">
+                        <div class="file-header">
+                            <span><i class="bi bi-file-earmark-code"></i> ${filePath}</span>
+                            <button onclick="openFileInEditor('${filePath}')" title="Abrir en editor">
+                                <i class="bi bi-pencil-square"></i> Editar
+                            </button>
+                        </div>
+                        <pre><code class="language-${language}">${data.content}</code></pre>
+                    </div>`;
+
+                    addSystemMessage(fileContent);
+
+                    // Aplicar highlight.js
+                    if (window.hljs) {
+                        document.querySelectorAll('.file-content pre code').forEach((block) => {
+                            hljs.highlightElement(block);
+                        });
+                    }
+                } else {
+                    addSystemMessage(`<i class="bi bi-exclamation-triangle"></i> Error al leer el archivo: ${data.error || 'Error desconocido'}`);
+                }
+            })
+            .catch(error => {
+                addSystemMessage(`<i class="bi bi-exclamation-triangle"></i> Error al leer el archivo: ${error.message}`);
+            });
+        }
+
+        /**
+         * Abre un archivo en el editor
+         * @param {string} filePath - Ruta del archivo
+         */
+        function openFileInEditor(filePath) {
+            // Redirigir a la página del editor con el archivo especificado
+            window.open(`/editor?file=${encodeURIComponent(filePath)}`, '_blank');
+        }
+
+        /**
+         * Muestra una notificación
+         * @param {string} message - Mensaje de la notificación
+         * @param {string} type - Tipo de notificación ('success', 'error', 'warning', 'info')
+         */
+        function showNotification(message, type = 'info') {
+            const notification = document.createElement('div');
+            notification.className = `notification notification-${type}`;
+            notification.textContent = message;
+            document.body.appendChild(notification);
+
+            setTimeout(() => {
+                document.body.removeChild(notification);
+            }, 3000);
+        }
+
+        /**
+         * Agrega un mensaje del sistema al chat
+         * @param {string} message - Mensaje a agregar
+         */
+        function addSystemMessage(message) {
+            const systemMsg = document.createElement('div');
+            systemMsg.className = 'message system-message';
+            systemMsg.innerHTML = message;
+            messagesContainer.appendChild(systemMsg);
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+
+
+        // Inicializar el sistema de chat para el asistente de desarrollo
+        if (sendButton && chatInput) {
+            sendButton.addEventListener('click', sendChatMessage);
+
+            // Enviar con Enter
+            chatInput.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    sendChatMessage();
+                }
+            });
+        }
+
+        // Función para enviar mensaje de chat
+        function sendChatMessage() {
+            const message = chatInput.value.trim();
+            if (!message) return;
+
+            // Agregar mensaje del usuario
+            const userMsg = document.createElement('div');
+            userMsg.className = 'message user-message';
+            userMsg.textContent = message;
+            messagesContainer.appendChild(userMsg);
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+
+            // Limpiar input
+            chatInput.value = '';
+
+            // Mostrar indicador de escritura
+            const typingIndicator = document.createElement('div');
+            typingIndicator.className = 'typing-indicator';
+            typingIndicator.id = 'typing-indicator';
+
+            for (let i = 0; i < 3; i++) {
+                const bubble = document.createElement('div');
+                bubble.className = 'typing-bubble';
+                typingIndicator.appendChild(bubble);
+            }
+
+            messagesContainer.appendChild(typingIndicator);
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+
+            // Enviar mensaje al backend
+            fetch('/api/chat', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    message: message,
+                    model: 'openai',
+                    intervention_mode: document.getElementById('intervention-mode').checked
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                // Eliminar indicador de escritura
+                document.getElementById('typing-indicator')?.remove();
+
+                // Agregar respuesta del asistente
+                const assistantMsg = document.createElement('div');
+                assistantMsg.className = 'message assistant-message';
+                assistantMsg.innerHTML = data.response || data.message || 'No se pudo obtener una respuesta.';
+                messagesContainer.appendChild(assistantMsg);
+                messagesContainer.scrollTop = messagesContainer.scrollHeight;
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                document.getElementById('typing-indicator')?.remove();
+
+                // Mostrar error
+                const errorMsg = document.createElement('div');
+                errorMsg.className = 'system-message';
+                errorMsg.innerHTML = `<p><i class="bi bi-exclamation-triangle-fill text-warning"></i> <strong>Error:</strong> ${error.message}</p>`;
+                messagesContainer.appendChild(errorMsg);
+                messagesContainer.scrollTop = messagesContainer.scrollHeight;
+            });
+        }
     });
+</script>
+{% endblock %}

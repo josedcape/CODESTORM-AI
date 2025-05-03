@@ -1,4 +1,3 @@
-
 # Añadir estas rutas a tu app principal o importarlas desde constructor_routes.py
 
 @app.route('/api/constructor/start', methods=['POST'])
@@ -3125,4 +3124,3 @@ def enhance_results(result, original_code, language, static_analysis):
         }
 
     return enhanced
-    
