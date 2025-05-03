@@ -151,7 +151,7 @@ gemini_valid = validate_gemini_key(gemini_api_key) if gemini_api_key != "tu_clav
 app.config['API_KEYS'] = {
     'openai': openai_api_key if openai_valid else None,
     'anthropic': anthropic_api_key if anthropic_valid else None,
-    'gemini': gemini_api_key if gemini_valid else Noneni_api_key
+    'gemini': gemini_api_key if gemini_valid else None
 }
 
 # Mensaje informativo sobre el estado de las APIs
