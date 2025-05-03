@@ -1,6 +1,3 @@
-# Environment variables
-.env
-
 # User workspaces
 user_workspaces/*
 !user_workspaces/.gitkeep

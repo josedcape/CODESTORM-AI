@@ -137,16 +137,21 @@ def validate_gemini_key(key):
         logging.error(f"Error al validar Gemini API: {str(e)}")
         return False
 
-# Configurar claves API con manejo de errores mejorado
-openai_api_key = get_and_validate_api_key('OPENAI_API_KEY', 'OpenAI', validate_openai_key)
-anthropic_api_key = get_and_validate_api_key('ANTHROPIC_API_KEY', 'Anthropic', validate_anthropic_key)
-gemini_api_key = get_and_validate_api_key('GEMINI_API_KEY', 'Gemini', validate_gemini_key)
+# Configurar claves API directamente en el código
+openai_api_key = "tu_clave_openai_aqui"  # Reemplaza con tu clave real de OpenAI
+anthropic_api_key = "tu_clave_anthropic_aqui"  # Reemplaza con tu clave real de Anthropic
+gemini_api_key = "tu_clave_gemini_aqui"  # Reemplaza con tu clave real de Gemini
+
+# Validar las claves API
+openai_valid = validate_openai_key(openai_api_key) if openai_api_key != "tu_clave_openai_aqui" else False
+anthropic_valid = validate_anthropic_key(anthropic_api_key) if anthropic_api_key != "tu_clave_anthropic_aqui" else False
+gemini_valid = validate_gemini_key(gemini_api_key) if gemini_api_key != "tu_clave_gemini_aqui" else False
 
 # Almacenar las claves API en la configuración de la aplicación para acceso global
 app.config['API_KEYS'] = {
-    'openai': openai_api_key,
-    'anthropic': anthropic_api_key,
-    'gemini': gemini_api_key
+    'openai': openai_api_key if openai_valid else None,
+    'anthropic': anthropic_api_key if anthropic_valid else None,
+    'gemini': gemini_api_key if gemini_valid else Noneni_api_key
 }
 
 # Mensaje informativo sobre el estado de las APIs

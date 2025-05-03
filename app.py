@@ -268,36 +268,39 @@ logging.basicConfig(
     ]
 )
 
-# Configurar APIs de IA correctamente
+# Configurar APIs de IA directamente en el código
 try:
-    openai_api_key = os.environ.get('OPENAI_API_KEY')
-    if openai_api_key:
+    # Configurar OpenAI API
+    openai_api_key = "tu_clave_openai_aqui"  # Reemplazar con tu clave real
+    if openai_api_key != "tu_clave_openai_aqui":
         # Configurar globalmente la API key de OpenAI
         openai.api_key = openai_api_key
         # Solo mostrar los primeros caracteres por seguridad
         masked_key = openai_api_key[:5] + "..." + openai_api_key[-5:]
         logging.info(f"OpenAI API key configurada: {masked_key}")
     else:
-        logging.warning("OPENAI_API_KEY no encontrada en variables de entorno.")
+        logging.warning("OpenAI API key no configurada correctamente.")
 except Exception as e:
     logging.error(f"Error al configurar OpenAI API: {str(e)}")
 
 try:
-    anthropic_api_key = os.environ.get('ANTHROPIC_API_KEY')
-    if anthropic_api_key:
+    # Configurar Anthropic API
+    anthropic_api_key = "tu_clave_anthropic_aqui"  # Reemplazar con tu clave real
+    if anthropic_api_key != "tu_clave_anthropic_aqui":
         logging.info("Anthropic API key configured successfully.")
     else:
-        logging.warning("ANTHROPIC_API_KEY no encontrada en variables de entorno.")
+        logging.warning("Anthropic API key no configurada correctamente.")
 except Exception as e:
     logging.error(f"Error al configurar Anthropic API: {str(e)}")
 
 try:
-    gemini_api_key = os.environ.get('GEMINI_API_KEY')
-    if gemini_api_key:
+    # Configurar Gemini API
+    gemini_api_key = "tu_clave_gemini_aqui"  # Reemplazar con tu clave real
+    if gemini_api_key != "tu_clave_gemini_aqui":
         genai.configure(api_key=gemini_api_key)
         logging.info("Gemini API key configured successfully.")
     else:
-        logging.warning("GEMINI_API_KEY no encontrada en variables de entorno.")
+        logging.warning("Gemini API key no configurada correctamente.")
 except Exception as e:
     logging.error(f"Error al configurar Gemini API: {str(e)}")
 
