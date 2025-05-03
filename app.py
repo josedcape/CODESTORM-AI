@@ -6,10 +6,10 @@ def start_constructor():
     project_id = data.get('project_id')
     description = data.get('description')
     tech_data = data.get('tech_data')
-    
+
     if not project_id or not description:
         return jsonify({'success': False, 'error': 'Faltan datos requeridos'}), 400
-    
+
     try:
         # Almacenar información del proyecto para seguimiento
         project_data = {
@@ -30,14 +30,14 @@ def start_constructor():
                 'include_ci_cd': data.get('include_ci_cd', False)
             }
         }
-        
+
         # En un sistema real, almacenarías esto en una base de datos
         # Para este ejemplo, lo guardamos en la sesión
         session[f'project_{project_id}'] = project_data
-        
+
         # Iniciar proceso de desarrollo en segundo plano
         threading.Thread(target=simulate_development_process, args=(project_id,)).start()
-        
+
         return jsonify({
             'success': True,
             'message': 'Desarrollo iniciado correctamente',
@@ -53,14 +53,14 @@ def get_constructor_progress(project_id):
         project_key = f'project_{project_id}'
         if project_key not in session:
             return jsonify({'success': False, 'error': 'Proyecto no encontrado'}), 404
-        
+
         project_data = session[project_key]
-        
+
         # Extraer mensajes no leídos y marcarlos como leídos
         new_messages = project_data.get('new_messages', [])
         project_data['new_messages'] = []  # Limpiar mensajes nuevos
         session[project_key] = project_data  # Actualizar sesión
-        
+
         return jsonify({
             'success': True,
             'progress': project_data['progress'],
@@ -78,17 +78,17 @@ def pause_constructor(project_id):
         project_key = f'project_{project_id}'
         if project_key not in session:
             return jsonify({'success': False, 'error': 'Proyecto no encontrado'}), 404
-        
+
         project_data = session[project_key]
         project_data['paused'] = True
-        
+
         # Añadir mensaje sobre la pausa
         if 'new_messages' not in project_data:
             project_data['new_messages'] = []
         project_data['new_messages'].append('Proceso de desarrollo pausado por el usuario')
-        
+
         session[project_key] = project_data
-        
+
         return jsonify({
             'success': True,
             'message': 'Desarrollo pausado correctamente'
@@ -103,17 +103,17 @@ def resume_constructor(project_id):
         project_key = f'project_{project_id}'
         if project_key not in session:
             return jsonify({'success': False, 'error': 'Proyecto no encontrado'}), 404
-        
+
         project_data = session[project_key]
         project_data['paused'] = False
-        
+
         # Añadir mensaje sobre la reanudación
         if 'new_messages' not in project_data:
             project_data['new_messages'] = []
         project_data['new_messages'].append('Proceso de desarrollo reanudado con los cambios aplicados')
-        
+
         session[project_key] = project_data
-        
+
         return jsonify({
             'success': True,
             'message': 'Desarrollo reanudado correctamente'
@@ -139,29 +139,29 @@ def simulate_development_process(project_id):
         'Preparando documentación',
         'Finalizando proyecto'
     ]
-    
+
     try:
         # Incrementar progreso gradualmente
         for i, stage in enumerate(stages):
             # Verificar si el proyecto existe y si está pausado
             if project_key not in session:
                 return
-            
+
             project_data = session[project_key]
-            
+
             # Establecer etapa actual
             project_data['current_stage'] = stage
-            
+
             # Calcular progreso basado en la etapa actual
             progress_per_stage = 100 / len(stages)
             base_progress = i * progress_per_stage
-            
+
             # Para cada etapa, incrementar gradualmente
             for step in range(1, 11):  # 10 pasos por etapa
                 # Verificar pausa
                 if project_key not in session:
                     return
-                
+
                 project_data = session[project_key]
                 if project_data.get('paused', False):
                     # Esperar mientras está pausado
@@ -169,25 +169,25 @@ def simulate_development_process(project_id):
                         time.sleep(1)
                         if project_key not in session:
                             return
-                        
+
                         project_data = session[project_key]
                         if not project_data.get('paused', False):
                             break
-                
+
                 # Calcular progreso actual
                 current_progress = base_progress + (step * (progress_per_stage / 10))
                 project_data['progress'] = min(round(current_progress, 1), 100)
-                
+
                 # Añadir mensaje detallado ocasionalmente (cada 3 pasos)
                 if step % 3 == 0 or step == 10:
                     if 'new_messages' not in project_data:
                         project_data['new_messages'] = []
-                    
+
                     messages = [
                         f"Trabajando en: {stage}",
                         f"Completado paso {step}/10 de {stage}"
                     ]
-                    
+
                     # Añadir mensajes específicos según la etapa
                     if stage == 'Analizando requerimientos' and step == 9:
                         messages.append("Análisis completado: Se han identificado los componentes principales")
@@ -199,15 +199,15 @@ def simulate_development_process(project_id):
                         messages.append("Implementada autenticación y autorización")
                     elif stage == 'Integrando base de datos' and step == 7:
                         messages.append("Esquema de base de datos generado y validado")
-                    
+
                     project_data['new_messages'].extend(messages)
-                
+
                 # Actualizar sesión
                 session[project_key] = project_data
-                
+
                 # Simular tiempo de procesamiento
                 time.sleep(random.uniform(1.5, 3.5))
-        
+
         # Finalizar proceso
         if project_key in session:
             project_data = session[project_key]
@@ -218,7 +218,7 @@ def simulate_development_process(project_id):
             project_data['new_messages'].append("¡Proyecto generado exitosamente!")
             project_data['end_time'] = datetime.now().isoformat()
             session[project_key] = project_data
-    
+
     except Exception as e:
         print(f"Error en proceso de desarrollo: {str(e)}")
         if project_key in session:
@@ -640,13 +640,13 @@ def format_code():
         data = request.json
         if not data or 'code' not in data:
             return jsonify({'success': False, 'error': 'No se proporcionó código para formatear'}), 400
-        
+
         code = data['code']
         language = data.get('language', 'python')
-        
+
         # Formatear código según el lenguaje
         formatted_code = code  # Por defecto, devolver el mismo código
-        
+
         if language == 'python':
             try:
                 import black
@@ -658,7 +658,7 @@ def format_code():
                     formatted_code = autopep8.fix_code(code)
                 except Exception as e2:
                     logging.warning(f"Error al formatear Python con autopep8: {str(e2)}")
-        
+
         elif language in ['javascript', 'typescript', 'jsx', 'tsx']:
             try:
                 import jsbeautifier
@@ -668,7 +668,7 @@ def format_code():
                 formatted_code = jsbeautifier.beautify(code, opts)
             except Exception as e:
                 logging.warning(f"Error al formatear JavaScript/TypeScript: {str(e)}")
-        
+
         elif language in ['html', 'xml']:
             try:
                 from bs4 import BeautifulSoup
@@ -676,7 +676,7 @@ def format_code():
                 formatted_code = soup.prettify()
             except Exception as e:
                 logging.warning(f"Error al formatear HTML/XML: {str(e)}")
-        
+
         elif language in ['css', 'scss', 'less']:
             try:
                 import cssbeautifier
@@ -685,15 +685,19 @@ def format_code():
                 formatted_code = cssbeautifier.beautify(code, opts)
             except Exception as e:
                 logging.warning(f"Error al formatear CSS: {str(e)}")
-        
+
         return jsonify({
             'success': True,
             'formatted_code': formatted_code
         })
-    
+
     except Exception as e:
         logging.error(f"Error al formatear código: {str(e)}")
-        return jsonify({'success': False, 'error': str(e)}), 500
+        logging.error(traceback.format_exc())
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
 
             except Exception as e:
                 logging.warning(f"Error formateando CSS: {str(e)}")
@@ -829,21 +833,7 @@ def generate_complex_file_internal(description, file_type="html", filename="", a
             try:
                 client = openai.OpenAI()
                 completion = client.chat.completions.create(
-                    model="gpt-4o",
-                    messages=[
-                        {"role": "system", "content": "Eres un asistente experto en desarrollo de software especializado en crear archivos de alta calidad."},
-                        {"role": "user", "content": prompt}
-                    ],
-                    temperature=0.7,
-                    max_tokens=3000
-                )
-                file_content = completion.choices[0].message.content.strip()
-            except Exception as e:
-                logging.error(f"Error en OpenAI al generar archivo: {str(e)}")
-                raise Exception(f"Error con OpenAI API: {str(e)}")
-
-        # Eliminar marcadores de código markdown
-        if file_content.startswith("```"):
+                    model=""):
             match = re.match(r"```(?:\w+)?\s*([\s\S]+?)\s*```", file_content)
             if match:
                 file_content = match.group(1).strip()
@@ -948,12 +938,12 @@ def log_processing_metrics(original_code, corrected_code, language, model):
         original_lines = len(original_code.split('\n'))
         corrected_lines = len(corrected_code.split('\n'))
         changed_lines_percent = abs(corrected_lines - original_lines) / original_lines * 100 if original_lines > 0 else 0
-        
+
         # Registrar métricas
         logging.info(f"Métricas de corrección - Modelo: {model}, Lenguaje: {language}")
         logging.info(f"Líneas originales: {original_lines}, Líneas corregidas: {corrected_lines}")
         logging.info(f"Cambio porcentual: {changed_lines_percent:.2f}%")
-        
+
         # Aquí se podrían implementar métricas más avanzadas como:
 
 def enhance_results(result, original_code, language, static_analysis):
@@ -1023,7 +1013,7 @@ def calculate_code_metrics(original_code, corrected_code, language):
         'performance_improvements': 0,
         'readability_improvements': 0
     }
-    
+
     # Estimar complejidad y otras métricas según el lenguaje
     try:
         # Complejidad ciclomática básica
@@ -1033,24 +1023,24 @@ def calculate_code_metrics(original_code, corrected_code, language):
             'java': ['if', 'for', 'while', 'try', 'switch', 'case', 'catch'],
             'cpp': ['if', 'for', 'while', 'try', 'switch', 'case', 'catch']
         }
-        
+
         lang_keywords = control_keywords.get(language, control_keywords['python'])
         complexity = 1
-        
+
         for keyword in lang_keywords:
             complexity += corrected_code.count(f' {keyword} ')
-        
+
         metrics['complexity'] = complexity
-        
+
         # Estimar errores corregidos contando líneas modificadas
         orig_lines = original_code.split('\n')
         corr_lines = corrected_code.split('\n')
-        
+
         metrics['errors_fixed'] = abs(len(orig_lines) - len(corr_lines))
-        
+
     except Exception as e:
         logging.warning(f"Error calculando métricas de código: {str(e)}")
-    
+
     return metrics
 
 def generate_diff(original_code, corrected_code):
@@ -1061,7 +1051,7 @@ def generate_diff(original_code, corrected_code):
         import difflib
         orig_lines = original_code.splitlines()
         corr_lines = corrected_code.splitlines()
-        
+
         diff = difflib.unified_diff(
             orig_lines, 
             corr_lines,
@@ -1080,24 +1070,24 @@ def summarize_issues(issues):
     """
     if not issues:
         return "No se encontraron problemas en el análisis estático."
-    
+
     categories = {}
     for issue in issues:
         category = issue.get('severity', 'unknown')
         if category not in categories:
             categories[category] = 0
         categories[category] += 1
-    
+
     summary = []
     for category, count in categories.items():
         summary.append(f"{count} {category}")
-    
+
     return f"Resumen de problemas: {', '.join(summary)}"
 
         # - Detección de patrones corregidos comunes
         # - Comparación de complejidad ciclomática
         # - Análisis de mejoras específicas por lenguaje
-        
+
     except Exception as e:
         logging.warning(f"Error al registrar métricas de procesamiento: {str(e)}")
 
@@ -1560,7 +1550,7 @@ Responde EXACTAMENTE en este formato JSON y nada más:
 
                 # Extraer el JSON de la respuesta de Gemini
                 import re
-                json_match = re.search(r'```json(.*?)```', response.text, re.DOTALL)
+                json_match = re.search(r'```json(.*?)', response.text, re.DOTALL)
                 if json_match:
                     result = json.loads(json_match.group(1).strip())
                 else:
@@ -2020,12 +2010,18 @@ def execute_command():
         return jsonify({'error': str(e)}), 500
 
 @app.route('/api/chat', methods=['POST'])
-def handle_chat():
-    """Procesa mensajes del chat usando el agente especializado seleccionado."""
+@app.route('/api/assistant/chat', methods=['POST'])  # Ruta adicional para compatibilidad
+def api_chat():
+    """API endpoint para manejar solicitudes de chat."""
     try:
-        logging.info("Solicitud recibida en /api/chat")
-        data = request.json
-        logging.debug(f"Datos recibidos: {json.dumps(data)}")
+        data = request.get_json(force=True, silent=True)
+
+        if not data:
+            logging.warning("No se recibieron datos JSON válidos")
+            return jsonify({
+                'error': 'Invalid JSON data',
+                'response': 'Error: Los datos enviados no son JSON válido'
+            }), 400
 
         user_message = data.get('message', '')
         agent_id = data.get('agent_id', 'default')
@@ -2287,7 +2283,7 @@ Responde en formato JSON con las siguientes claves:
                 # Normalizar nombres de campos si es necesario
                 if 'correctedCode' in result and 'corrected_code' not in result:
                     result['corrected_code'] = result.pop('correctedCode')
-                
+
                 result['success'] = True
                 result['model_used'] = 'openai'
 
@@ -2297,7 +2293,7 @@ Responde en formato JSON con las siguientes claves:
                     'success': False,
                     'error': f'Error al conectar con OpenAI: {str(e)}'
                 }), 500
-                
+
         elif model == 'anthropic' and os.environ.get('ANTHROPIC_API_KEY'):
             try:
                 # Importar anthropic si es necesario
@@ -2311,8 +2307,7 @@ Responde en formato JSON con las siguientes claves:
 
 CÓDIGO:
 ```{language}
-{code}
-```
+{code}```
 
 INSTRUCCIONES:
 {detailed_instructions}
@@ -2446,12 +2441,6 @@ Responde EXACTAMENTE en este formato JSON y nada más:
                             "explanation": "No se pudo procesar correctamente la respuesta del modelo."
                         }
 
-                # Normalizar nombres de campos si es necesario
-                if 'correctedCode' in result and 'corrected_code' not in result:
-                    result['corrected_code'] = result.pop('correctedCode')
-                
-                result['success'] = True
-                result['model_used'] = 'gemini'
                 logging.info("Código corregido con Gemini")
 
             except Exception as e:
@@ -2997,130 +2986,4 @@ No incluyas ningún texto adicional fuera del objeto JSON.
                 content = response.text
 
                 # Buscar JSON en formato de bloque de código primero
-                json_match = re.search(r'```(?:json)?\s*(.*?)\s*```', content, re.DOTALL)
-                if json_match:
-                    try:
-                        result = json.loads(json_match.group(1).strip())
-                    except json.JSONDecodeError:
-                        # Intentar limpiar el JSON antes de fallar
-                        cleaned_json = clean_json_string(json_match.group(1).strip())
-                        result = json.loads(cleaned_json)
-                else:
-                    # Intentar extraer cualquier objeto JSON de la respuesta completa
-                    json_match = re.search(r'(\{.*\})', content, re.DOTALL)
-                    if json_match:
-                        cleaned_json = clean_json_string(json_match.group(1))
-                        result = json.loads(cleaned_json)
-                    else:
-                        # Último intento: tratar toda la respuesta como JSON
-                        try:
-                            cleaned_json = clean_json_string(content)
-                            result = json.loads(cleaned_json)
-                        except:
-                            raise ValueError("No se pudo extraer JSON de la respuesta")
-
-                # Normalizar nombres de campos si es necesario
-                if 'correctedCode' in result and 'corrected_code' not in result:
-                    result['corrected_code'] = result.pop('correctedCode')
-
-                logging.info(f"Código procesado exitosamente con {api_model}")
-
-                # Agregar metadatos
-                result['model_used'] = api_model
-                result['success'] = True
-
-                return result
-
-            except Exception as e:
-                if attempt < max_retries - 1:
-                    logging.warning(f"Error temporal con Gemini (intento {attempt+1}/{max_retries}): {str(e)}")
-                    time.sleep(retry_delay * (2 ** attempt))
-                else:
-                    logging.error(f"Error persistente con Gemini después de {max_retries} intentos: {str(e)}")
-                    return {
-                        'success': False,
-                        'error': f'Error al conectar con Gemini después de {max_retries} intentos: {str(e)}'
-                    }
-
-    except Exception as e:
-        logging.exception(f"Error general al procesar con Gemini: {str(e)}")
-        return {
-            'success': False,
-            'error': f'Error al configurar Gemini: {str(e)}'
-        }
-
-def clean_json_string(json_str):
-    """
-    Limpia una cadena JSON para intentar hacerla válida.
-    Útil para corregir problemas comunes en las respuestas de los modelos.
-    """
-    # Eliminar comentarios de una línea
-    json_str = re.sub(r'//.*$', '', json_str, flags=re.MULTILINE)
-
-    # Eliminar comentarios multilínea
-    json_str = re.sub(r'/\*.*?\*/', '', json_str, flags=re.DOTALL)
-
-    # Reemplazar comillas simples por comillas dobles
-    json_str = re.sub(r"'([^']*)'", r'"\1"', json_str)
-
-    # Eliminar comas finales en objetos y arrays
-    json_str = re.sub(r',\s*}', '}', json_str)
-    json_str = re.sub(r',\s*]', ']', json_str)
-
-    # Asegurar que los nombres de propiedades tengan comillas dobles
-    json_str = re.sub(r'([{,]\s*)([a-zA-Z0-9_]+)(\s*:)', r'\1"\2"\3', json_str)
-
-    return json_str
-
-def enhance_results(result, original_code, language, static_analysis):
-    """
-    Mejora los resultados con información adicional y validaciones.
-    """
-    enhanced = result.copy()
-    enhanced['success'] = True
-
-    # Asegurarse de que el código corregido sea válido
-    if not enhanced.get('corrected_code'):
-        enhanced['corrected_code'] = original_code
-        enhanced['changes'] = enhanced.get('changes', [])
-        enhanced['changes'].append({
-            'description': 'No se pudieron aplicar correcciones',
-            'lineNumbers': [1],
-            'category': 'error',
-            'importance': 'alta'
-        })
-
-    # Asegurarse de que todos los cambios tengan los campos requeridos
-    if 'changes' in enhanced:
-        normalized_changes = []
-        for change in enhanced['changes']:
-            normalized_change = {
-                'description': change.get('description', 'Sin descripción'),
-                'lineNumbers': change.get('lineNumbers', change.get('line_numbers', [1])),
-                'category': change.get('category', 'general'),
-                'importance': change.get('importance', 'media')
-            }
-            normalized_changes.append(normalized_change)
-        enhanced['changes'] = normalized_changes
-    else:
-        enhanced['changes'] = []
-
-    # Agregar métricas de código si no existen
-    if 'metrics' not in enhanced:
-        enhanced['metrics'] = calculate_code_metrics(original_code, enhanced['corrected_code'], language)
-
-    # Agregar recomendaciones si no existen
-    if 'recommendations' not in enhanced:
-        enhanced['recommendations'] = []
-
-    # Agregar diferencias para visualización
-    enhanced['diff'] = generate_diff(original_code, enhanced['corrected_code'])
-
-    # Agregar información de análisis estático si está disponible
-    if static_analysis and static_analysis.get('issues'):
-        enhanced['static_analysis'] = {
-            'issues_count': len(static_analysis['issues']),
-            'issues_summary': summarize_issues(static_analysis['issues'])
-        }
-
-    return enhanced
+                json_match = re.search(r'```(?:json)?\s*(.*?)\s*

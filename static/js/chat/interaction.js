@@ -16,11 +16,11 @@ class DevAssistant {
         this.config = Object.assign({
             apiEndpoints: window.app && window.app.apiEndpoints && window.app.apiEndpoints.assistant ? 
                 window.app.apiEndpoints.assistant : {
-                    chat: '/api/assistant/chat',
-                    execute: '/api/assistant/execute-action',
-                    files: '/api/assistant/files',
-                    interventionMode: '/api/assistant/intervention-mode',
-                    applyChanges: '/api/assistant/apply-changes'
+                    chat: '/api/chat',  // Cambiado para usar el endpoint principal
+                    execute: '/api/execute_command',
+                    files: '/api/files',
+                    interventionMode: '/api/intervention_mode',
+                    applyChanges: '/api/apply_changes'
                 },
             selectors: {
                 panel: '#assistant-chat-panel',
@@ -293,6 +293,7 @@ class DevAssistant {
         })
         .then(response => {
             if (!response.ok) {
+                console.error(`Error en la solicitud: ${response.status} - Endpoint: ${this.config.apiEndpoints.chat}`);
                 throw new Error(`Error: ${response.status}`);
             }
             return response.json();

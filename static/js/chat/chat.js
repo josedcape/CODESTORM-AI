@@ -11,7 +11,7 @@ window.app.chat = window.app.chat || {};
 // Asegurarse de que los endpoints API estén definidos
 if (!window.app.apiEndpoints && !window.app.chat.apiEndpoints) {
     window.app.apiEndpoints = {
-        chat: '/api/chat',
+        chat: '/api/assistant/chat', // Corrected endpoint
         fallback: '/api/generate',
         health: '/api/health',
         processCode: '/api/process_code',
@@ -200,6 +200,7 @@ async function sendMessage() {
 
     if (!messageInput) {
         console.error("Elemento de entrada de mensaje no encontrado");
+        addSystemMessage("Error: El elemento de entrada de mensaje no se encuentra. Por favor, recarga la página.");
         return;
     }
 
@@ -238,7 +239,7 @@ async function sendMessage() {
         // Verificar que el endpoint existe
         const apiEndpoint = window.app.chat && window.app.chat.apiEndpoints && window.app.chat.apiEndpoints.chat 
             ? window.app.chat.apiEndpoints.chat 
-            : '/api/chat';
+            : '/api/assistant/chat'; // Default to corrected endpoint
 
         console.log('Enviando mensaje al endpoint:', apiEndpoint);
 
@@ -250,6 +251,11 @@ async function sendMessage() {
             },
             body: JSON.stringify(requestData)
         });
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(`Error de servidor (${response.status}): ${errorData.message || response.statusText}`);
+        }
 
         const data = await response.json();
         silentLog('Respuesta recibida:', data);
@@ -553,6 +559,16 @@ function setupUIElements() {
                                          document.getElementById('assistant-chat-input');
     window.app.chat.elements.sendButton = document.getElementById('send-button') || 
                                        document.getElementById('send-assistant-message');
+
+    // Verificar si los elementos necesarios están presentes
+    const missingElements = [];
+    if (!window.app.chat.elements.panel) missingElements.push('panel');
+    if (!window.app.chat.elements.button) missingElements.push('botón de chat');
+    if (!window.app.chat.elements.input) missingElements.push('campo de entrada');
+    if (!window.app.chat.elements.send) missingElements.push('botón de enviar');
+    if (!window.app.chat.elements.messages) missingElements.push('contenedor de mensajes');
+
+    console.log('Elementos encontrados:', window.app.chat.elements);
 
     // Agregar manejadores de eventos solo si los elementos existen
     if (window.app.chat.elements.sendButton) {
