@@ -10,7 +10,7 @@ deploymentTarget = "autoscale"
 run = ["sh", "-c", "python main_completo.py"]
 
 [workflows]
-runButton = "Run Terminal App"
+runButton = "Run App Fixed"
 
 [[workflows.workflow]]
 name = "Project"

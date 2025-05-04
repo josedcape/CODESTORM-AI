@@ -795,7 +795,22 @@ def process_code_endpoint():
             return jsonify({'success': False, 'error': 'No se recibieron datos JSON válidos'}), 400
 
         code = data.get('code', '')
-        instructions = data.get('instructions', 'Corrige errores y mejora la calidad del código'){language}\n{code}\n```\n\nINSTRUCCIONES:\n{instructions}\n\nResponde en formato JSON con las siguientes claves{language}\n{code}\n```\n\nINSTRUCCIONES:\n{instructions}\n\nResponde en formato JSON con las siguientes claves:\n- correctedCode: el código corregido completo\n- changes: una lista de objetos, cada uno con 'description' y 'lineNumbers'\n- explanation: una explicación detallada de los cambios"}
+        instructions = data.get('instructions', 'Corrige errores y mejora la calidad del código')
+        
+        prompt = f"""Eres un experto programador. Tu tarea es corregir el siguiente código en {language} según las instrucciones proporcionadas.
+
+        CÓDIGO:
+        ```{language}
+        {code}
+        ```
+
+        INSTRUCCIONES:
+        {instructions}
+
+        Responde en formato JSON con las siguientes claves:
+        - correctedCode: el código corregido completo
+        - changes: una lista de objetos, cada uno con 'description' y 'lineNumbers'
+        - explanation: una explicación detallada de los cambios"""
                     ],
                     temperature=0.1
                 )
