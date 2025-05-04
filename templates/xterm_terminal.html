@@ -47,6 +47,8 @@
             --shadow-md: 0 4px 8px rgba(0, 0, 0, 0.4);
             --shadow-lg: 0 8px 16px rgba(0, 0, 0, 0.5);
             --border-radius: 8px;
+            --bg-tertiary: #212121;
+            --accent-primary: #6200EE;
         }
 
         body {
@@ -646,6 +648,165 @@
         .show {
             display: block;
         }
+
+        /* Ajustes para pantallas muy pequeñas */
+        @media (max-width: 480px) {
+            .dropdown-menu {
+                min-width: 280px;
+            }
+        }
+
+        /* Estilos para panel de ajustes de visualización */
+        .view-settings-panel {
+            position: fixed;
+            bottom: 80px;
+            right: 20px;
+            width: 280px;
+            background: var(--bg-panel);
+            border-radius: 8px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+            z-index: 1050;
+            display: none;
+            border: 1px solid var(--border-color);
+            overflow: hidden;
+        }
+
+        .view-settings-panel.show {
+            display: block;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .panel-header {
+            padding: 10px 15px;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background-color: var(--bg-tertiary);
+        }
+
+        .panel-header h5 {
+            margin: 0;
+            font-size: 1rem;
+            color: var(--text-primary);
+        }
+
+        .close-btn {
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            font-size: 1.2rem;
+            cursor: pointer;
+            padding: 0;
+        }
+
+        .close-btn:hover {
+            color: var(--text-primary);
+        }
+
+        .panel-body {
+            padding: 15px;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        .size-controls {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .size-controls button {
+            background: none;
+            border: none;
+            color: var(--accent-primary);
+            font-size: 1.2rem;
+            cursor: pointer;
+        }
+
+        .size-controls span {
+            font-size: 0.9rem;
+            color: var(--text-primary);
+            min-width: 50px;
+            text-align: center;
+        }
+
+        .slider {
+            width: 100%;
+            height: 5px;
+            background: var(--bg-tertiary);
+            outline: none;
+            opacity: 0.7;
+            transition: opacity 0.2s;
+            border-radius: 5px;
+        }
+
+        .slider:hover {
+            opacity: 1;
+        }
+
+        .slider::-webkit-slider-thumb {
+            appearance: none;
+            width: 15px;
+            height: 15px;
+            border-radius: 50%;
+            background: var(--accent-primary);
+            cursor: pointer;
+        }
+
+        .slider::-moz-range-thumb {
+            width: 15px;
+            height: 15px;
+            border-radius: 50%;
+            background: var(--accent-primary);
+            cursor: pointer;
+        }
+
+        #height-value {
+            display: block;
+            text-align: center;
+            margin-top: 5px;
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+        }
+
+        /* Estilos para modo adaptable en móvil */
+        @media (max-width: 768px) {
+            .terminal-container {
+                height: auto !important; /* Sobreescribe cualquier altura fija */
+                min-height: 300px;
+            }
+
+            .terminal-wrapper {
+                height: auto;
+                min-height: 300px;
+            }
+
+            /* Mejora visualización del contenido */
+            .xterm {
+                font-size: 16px; /* Fuente más grande por defecto para móvil */
+            }
+
+            .mobile-content-adjustable {
+                width: 100%;
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+            }
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
     </style>
 </head>
 <body>
@@ -782,6 +943,74 @@
         </div>
     </div>
 
+    <!-- Botones flotantes para móvil -->
+    <div class="mobile-floating-controls">
+        <button class="float-btn" id="mobile-menu-toggle">
+            <i class="bi bi-list"></i>
+        </button>
+        <div class="float-menu" id="mobile-float-menu">
+            <div class="float-menu-item" id="mobile-explorer-toggle">
+                <i class="bi bi-folder2-open"></i>
+                <span>Explorador</span>
+            </div>
+            <div class="float-menu-item" id="mobile-assistant-toggle">
+                <i class="bi bi-robot"></i>
+                <span>Asistente</span>
+            </div>
+            <div class="float-menu-item" id="mobile-packages-toggle">
+                <i class="bi bi-box"></i>
+                <span>Dependencias</span>
+            </div>
+            <div class="float-menu-item" id="mobile-chat-toggle">
+                <i class="bi bi-chat-dots"></i>
+                <span>Chat</span>
+            </div>
+            <div class="float-menu-item" id="mobile-clear-terminal">
+                <i class="bi bi-trash"></i>
+                <span>Limpiar Terminal</span>
+            </div>
+            <div class="float-menu-item" id="mobile-adjust-view">
+                <i class="bi bi-arrows-fullscreen"></i>
+                <span>Ajustar Vista</span>
+            </div>
+            <div class="float-menu-item" id="toggle-fullscreen">
+                <i class="bi bi-fullscreen"></i>
+                <span>Pantalla Completa</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Overlay para móvil -->
+    <div class="overlay" id="mobile-overlay"></div>
+
+    <!-- Panel de ajustes de visualización -->
+    <div class="view-settings-panel" id="view-settings-panel">
+        <div class="panel-header">
+            <h5>Ajustes de Visualización</h5>
+            <button class="close-btn" id="close-view-settings">
+                <i class="bi bi-x-lg"></i>
+            </button>
+        </div>
+        <div class="panel-body">
+            <div class="form-group">
+                <label>Tamaño de Fuente</label>
+                <div class="size-controls">
+                    <button id="decrease-font"><i class="bi bi-dash-circle"></i></button>
+                    <span id="current-font-size">14px</span>
+                    <button id="increase-font"><i class="bi bi-plus-circle"></i></button>
+                </div>
+            </div>
+            <div class="form-group">
+                <label>Altura del Terminal</label>
+                <input type="range" id="terminal-height" min="30" max="90" value="60" class="slider">
+                <span id="height-value">60%</span>
+            </div>
+            <div class="form-group">
+                <button class="btn btn-primary w-100" id="reset-view">Restablecer Vista</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Div para notificaciones -->
     <div id="notifications" class="notifications"></div>
 
@@ -864,7 +1093,6 @@
         document.addEventListener('DOMContentLoaded', function() {
             const assistantInput = document.getElementById('assistant-input');
             const assistantBtn = document.getElementById('assistant-btn');
-            <replit_final_file>
             const clearAssistantBtn = document.getElementById('clear-assistant-btn');
             const assistantResult = document.getElementById('assistant-result');
             const assistantModel = document.getElementById('assistant-model');
@@ -1052,6 +1280,13 @@
             // Limpiar terminal
             const mobileClearTerminal = document.getElementById('mobile-clear-terminal');
 
+            // Ajustar vista
+            const mobileAdjustView = document.getElementById('mobile-adjust-view');
+            const viewSettingsPanel = document.getElementById('view-settings-panel');
+
+            // Pantalla completa
+            const toggleFullscreen = document.getElementById('toggle-fullscreen');
+
             // Abrir/cerrar menú flotante
             if (mobileMenuToggle) {
                 mobileMenuToggle.addEventListener('click', function() {
@@ -1127,6 +1362,37 @@
                     mobileFloatMenu.classList.remove('show');
                 });
             }
+
+            // Ajustar vista
+            if (mobileAdjustView && viewSettingsPanel) {
+                mobileAdjustView.addEventListener('click', function() {
+                    viewSettingsPanel.classList.toggle('show');
+                    mobileOverlay.classList.toggle('show');
+                    mobileFloatMenu.classList.remove('show');
+                });
+            }
+
+            // Cerrar ajustes de visualización
+            const closeViewSettings = document.getElementById('close-view-settings');
+            if (closeViewSettings) {
+                closeViewSettings.addEventListener('click', function() {
+                    viewSettingsPanel.classList.remove('show');
+                    mobileOverlay.classList.remove('show');
+                });
+            }
+
+            // Pantalla completa
+            if (toggleFullscreen) {
+                toggleFullscreen.addEventListener('click', function() {
+                    if (document.fullscreenElement) {
+                        document.exitFullscreen();
+                    } else {
+                        document.documentElement.requestFullscreen();
+                    }
+                });
+            }
+
+
         });
 
         document.addEventListener('DOMContentLoaded', function() {
