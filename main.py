@@ -712,39 +712,39 @@ def process_code_endpoint():
 - explanation: una explicación detallada de los cambios
 """
 
-response = openai_client.chat.completions.create(
-    model="gpt-4o",
-    messages=[
-        {"role": "system", "content": "Eres un experto programador que corrige y optimiza código."},
-        {"role": "user", "content": prompt}
-    ],
-    response_format={"type": "json_object"},
-    temperature=0.1
-)
+                response = openai_client.chat.completions.create(
+                    model="gpt-4o",
+                    messages=[
+                        {"role": "system", "content": "Eres un experto programador que corrige y optimiza código."},
+                        {"role": "user", "content": prompt}
+                    ],
+                    response_format={"type": "json_object"},
+                    temperature=0.1
+                )
 
-result = json.loads(response.choices[0].message.content)
-logging.info("Código corregido con OpenAI")
+                result = json.loads(response.choices[0].message.content)
+                logging.info("Código corregido con OpenAI")
 
-except Exception as e:
-logging.error(f"Error con API de OpenAI: {str(e)}")
-return jsonify({
-    'success': False,
-    'error': f'Error al conectar con OpenAI: {str(e)}'
-}), 500
+            except Exception as e:
+                logging.error(f"Error con API de OpenAI: {str(e)}")
+                return jsonify({
+                    'success': False,
+                    'error': f'Error al conectar con OpenAI: {str(e)}'
+                }), 500
 
-elif model == 'anthropic' and app.config['API_KEYS']['anthropic']:
-try:
-import anthropic
-from anthropic import Anthropic
+        elif model == 'anthropic' and app.config['API_KEYS']['anthropic']:
+            try:
+                import anthropic
+                from anthropic import Anthropic
 
-client = Anthropic(api_key=app.config['API_KEYS']['anthropic'])
+                client = Anthropic(api_key=app.config['API_KEYS']['anthropic'])
 
-response = client.messages.create(
-    model="claude-3-5-sonnet-latest",
-    max_tokens=4000,
-    temperature=0.1,
-    messages=[
-        {"role": "user", "content": f"""Eres un experto programador. Tu tarea es corregir el siguiente código en {language} según las instrucciones proporcionadas.
+                response = client.messages.create(
+                    model="claude-3-5-sonnet-latest",
+                    max_tokens=4000,
+                    temperature=0.1,
+                    messages=[
+                        {"role": "user", "content": f"""Eres un experto programador. Tu tarea es corregir el siguiente código en {language} según las instrucciones proporcionadas.
 
 CÓDIGO:
 ```{language}
@@ -758,437 +758,337 @@ Responde en formato JSON con las siguientes claves:
 - correctedCode: el código corregido completo
 - changes: una lista de objetos, cada uno con 'description' y 'lineNumbers'
 - explanation: una explicación detallada de los cambios"""}
-    ]
-)
+                    ]
+                )
 
-response_text = response.content[0].text.strip()
-try:
-    result = json.loads(response_text)
-except json.JSONDecodeError:
-    # Intenta extraer JSON de la respuesta si está envuelto en bloques de código
-    json_match = re.search(r'```(?:json)?\s*(.*?)\s*```', response_text, re.DOTALL)
-    if json_match:
-        try:
-            result = json.loads(json_match.group(1).strip())
-        except json.JSONDecodeError:
-            logging.error(f"Error al decodificar JSON extraído de Anthropic: {json_match.group(1)[:500]}")
-            result = {
-                "correctedCode": code,
-                "changes": [{"description": "No se pudieron procesar los cambios correctamente", "lineNumbers": [1]}],
-                "explanation": "Error al procesar la respuesta de Claude."
-            }
-    else:
-        logging.error(f"No se encontró formato JSON en la respuesta de Anthropic: {response_text[:500]}")
-        result = {
-            "correctedCode": code,
-            "changes": [{"description": "No se encontró formato JSON en la respuesta", "lineNumbers": [1]}],
-            "explanation": "Claude no respondió en el formato esperado. Intente de nuevo o use otro modelo."
-        }
+                response_text = response.content[0].text.strip()
+                try:
+                    result = json.loads(response_text)
+                except json.JSONDecodeError:
+                    # Intenta extraer JSON de la respuesta si está envuelto en bloques de código
+                    json_match = re.search(r'```(?:json)?\s*(.*?)\s*```', response_text, re.DOTALL)
+                    if json_match:
+                        try:
+                            result = json.loads(json_match.group(1).strip())
+                        except json.JSONDecodeError:
+                            logging.error(f"Error al decodificar JSON extraído de Anthropic: {json_match.group(1)[:500]}")
+                            result = {
+                                "correctedCode": code,
+                                "changes": [{"description": "No se pudieron procesar los cambios correctamente", "lineNumbers": [1]}],
+                                "explanation": "Error al procesar la respuesta de Claude."
+                            }
+                    else:
+                        logging.error(f"No se encontró formato JSON en la respuesta de Anthropic: {response_text[:500]}")
+                        result = {
+                            "correctedCode": code,
+                            "changes": [{"description": "No se encontró formato JSON en la respuesta", "lineNumbers": [1]}],
+                            "explanation": "Claude no respondió en el formato esperado. Intente de nuevo o use otro modelo."
+                        }
 
-logging.info("Código corregido con Anthropic")
+                logging.info("Código corregido con Anthropic")
 
-except Exception as e:
-logging.error(f"Error con API de Anthropic: {str(e)}")
-return jsonify({
-    'success': False,
-    'error': f'Error al conectar con Anthropic: {str(e)}'
-}), 500
+            except Exception as e:
+                logging.error(f"Error con API de Anthropic: {str(e)}")
+                return jsonify({
+                    'success': False,
+                    'error': f'Error al conectar con Anthropic: {str(e)}'
+                }), 500
 
-elif model == 'gemini' and app.config['API_KEYS']['gemini']:
-try:
-# Asegúrate de que Gemini está configurado correctamente
-if not hasattr(genai, '_configured') or not genai._configured:
-    genai.configure(api_key=app.config['API_KEYS']['gemini'])
+        elif model == 'gemini' and app.config['API_KEYS']['gemini']:
+            try:
+                # Asegúrate de que Gemini está configurado correctamente
+                if not hasattr(genai, '_configured') or not genai._configured:
+                    genai.configure(api_key=app.config['API_KEYS']['gemini'])
 
-gemini_model = genai.GenerativeModel(
-    model_name='gemini-1.5-pro',
-    generation_config={
-        'temperature': 0.2,
-        'top_p': 0.9,
-        'top_k': 40,
-        'max_output_tokens': 4096,
-    }
-)
+                gemini_model = genai.GenerativeModel(
+                    model_name='gemini-1.5-pro',
+                    generation_config={
+                        'temperature': 0.2,
+                        'top_p': 0.9,
+                        'top_k': 40,
+                        'max_output_tokens': 4096,
+                    }
+                )
 
-prompt = f"""Eres un experto programador. Tu tarea es corregir el siguiente código en {language} según las instrucciones proporcionadas.
+                prompt = f"""Eres un experto programador. Tu tarea es corregir el siguiente código en {language} según las instrucciones proporcionadas{language}
+                {code}
+                ```
 
-CÓDIGO:
-```{language}
-{code}
-```
+                INSTRUCCIONES:
+                {instructions}
 
-INSTRUCCIONES:
-{instructions}
-
-Responde en formato JSON con las siguientes claves:
-- correctedCode: el código corregido completo
-- changes: una lista de objetos, cada uno con 'description' y 'lineNumbers'
-- explanation: una explicación detallada de los cambios
+                Responde en formato JSON con las siguientes claves:
+                - correctedCode: el código corregido completo
+                - changes: una lista de objetos, cada uno con 'description' y 'lineNumbers'
+                - explanation: una explicación detallada de los cambios
 """
 
-response = gemini_model.generate_content(prompt)
-response_text = response.text
+                response = gemini_model.generate_content(prompt)
+                response_text = response.text
 
-# Intentar extraer JSON de la respuesta
-try:
-    # Primero intenta encontrar un bloque JSON
-    json_match = re.search(r'```json\s*(.*?)\s*```', response_text, re.DOTALL)
-    if json_match:
-        result = json.loads(json_match.group(1).strip())
-    else:
-        # Si no hay bloque JSON, busca cualquier objeto JSON en la respuesta
-        json_match = re.search(r'({.*})', response_text, re.DOTALL)
-        if json_match:
-            result = json.loads(json_match.group(0))
+                # Intentar extraer JSON de la respuesta
+                try:
+                    # Primero intenta encontrar un bloque JSON
+                    json_match = re.search(r'```json\s*(.*?)\s*```', response_text, re.DOTALL)
+                    if json_match:
+                        result = json.loads(json_match.group(1).strip())
+                    else:
+                        # Si no hay bloque JSON, busca cualquier objeto JSON en la respuesta
+                        json_match = re.search(r'({.*})', response_text, re.DOTALL)
+                        if json_match:
+                            result = json.loads(json_match.group(0))
+                        else:
+                            logging.error(f"No se encontró formato JSON en la respuesta de Gemini: {response_text[:500]}")
+                            result = {
+                                "correctedCode": code,
+                                "changes": [],
+                                "explanation": "No se pudo procesar correctamente la respuesta del modelo."
+                            }
+                except json.JSONDecodeError as json_err:
+                    logging.error(f"Error al decodificar JSON de Gemini: {str(json_err)}")
+                    result = {
+                        "correctedCode": code,
+                        "changes": [],
+                        "explanation": f"Error al procesar la respuesta JSON: {str(json_err)}"
+                    }
+
+                logging.info("Código corregido con Gemini")
+
+            except Exception as e:
+                logging.error(f"Error con API de Gemini: {str(e)}")
+                return jsonify({
+                    'success': False,
+                    'error': f'Error al conectar con Gemini: {str(e)}'
+                }), 500
         else:
-            logging.error(f"No se encontró formato JSON en la respuesta de Gemini: {response_text[:500]}")
-            result = {
-                "correctedCode": code,
-                "changes": [],
-                "explanation": "No se pudo procesar correctamente la respuesta del modelo."
-            }
-except json.JSONDecodeError as json_err:
-    logging.error(f"Error al decodificar JSON de Gemini: {str(json_err)}")
-    result = {
-        "correctedCode": code,
-        "changes": [],
-        "explanation": f"Error al procesar la respuesta JSON: {str(json_err)}"
-    }
+            return jsonify({
+                'success': False,
+                'error': f'Modelo {model} no soportado o API no configurada'
+            }), 400
 
-logging.info("Código corregido con Gemini")
+        # Verificar que el resultado tenga la estructura esperada
+        if not result:
+            return jsonify({
+                'success': False,
+                'error': 'No se pudo obtener una respuesta válida del modelo'
+            }), 500
 
-except Exception as e:
-logging.error(f"Error con API de Gemini: {str(e)}")
-return jsonify({
-    'success': False,
-    'error': f'Error al conectar con Gemini: {str(e)}'
-}), 500
-else:
-return jsonify({
-'success': False,
-'error': f'Modelo {model} no soportado o API no configurada'
-}), 400
+        if 'correctedCode' not in result:
+            result['correctedCode'] = code
+            result['changes'] = [{"description": "No se pudo procesar la corrección", "lineNumbers": [1]}]
+            result['explanation'] = "El modelo no devolvió código corregido en el formato esperado."
+            logging.warning(f"Respuesta sin código corregido: {str(result)[:200]}")
 
-# Verificar que el resultado tenga la estructura esperada
-if not result:
-return jsonify({
-'success': False,
-'error': 'No se pudo obtener una respuesta válida del modelo'
-}), 500
+        return jsonify({
+            'success': True,
+            'corrected_code': result.get('correctedCode', ''),
+            'changes': result.get('changes', []),
+            'explanation': result.get('explanation', 'No se proporcionó explicación.')
+        })
 
-if 'correctedCode' not in result:
-result['correctedCode'] = code
-result['changes'] = [{"description": "No se pudo procesar la corrección", "lineNumbers": [1]}]
-result['explanation'] = "El modelo no devolvió código corregido en el formato esperado."
-logging.warning(f"Respuesta sin código corregido: {str(result)[:200]}")
-
-return jsonify({
-'success': True,
-'corrected_code': result.get('correctedCode', ''),
-'changes': result.get('changes', []),
-'explanation': result.get('explanation', 'No se proporcionó explicación.')
-})
-
-except Exception as e:
-logging.error(f"Error al procesar la solicitud de código: {str(e)}")
-logging.error(traceback.format_exc())
-return jsonify({
-'success': False,
-'error': f'Error al procesar la solicitud: {str(e)}'
-}), 500
+    except Exception as e:
+        logging.error(f"Error al procesar la solicitud de código: {str(e)}")
+        logging.error(traceback.format_exc())
+        return jsonify({
+            'success': False,
+            'error': f'Error al procesar la solicitud: {str(e)}'
+        }), 500
 
 @app.route('/api/process_natural', methods=['POST'])
 def process_natural_command():
-"""Process natural language input and return corresponding command."""
-try:
-data = request.json
-# Support both 'text' and 'instruction' for backward compatibility
-text = data.get('text', '') or data.get('instruction', '')
-model_choice = data.get('model', 'openai')
-user_id = data.get('user_id', 'default')
+    """Process natural language input and return corresponding command."""
+    try:
+        data = request.json
+        # Support both 'text' and 'instruction' for backward compatibility
+        text = data.get('text', '') or data.get('instruction', '')
+        model_choice = data.get('model', 'openai')
+        user_id = data.get('user_id', 'default')
 
-if not text:
-return jsonify({
-'success': False,
-'error': 'No se proporcionó texto'
-}), 400
+        if not text:
+            return jsonify({
+                'success': False,
+                'error': 'No se proporcionó texto'
+            }), 400
 
-command = process_natural_language_to_command(text)
+        command = process_natural_language_to_command(text)
 
-if not command:
-return jsonify({
-'success': False,
-'error': 'No se pudo generar un comando para esa instrucción'
-}), 400
+        if not command:
+            return jsonify({
+                'success': False,
+                'error': 'No se pudo generar un comando para esa instrucción'
+            }), 400
 
-# Execute command
-file_modifying_commands = ['mkdir', 'touch', 'rm', 'cp', 'mv', 'ls']
-is_file_command = any(cmd in command.split() for cmd in file_modifying_commands)
+        # Execute command
+        file_modifying_commands = ['mkdir', 'touch', 'rm', 'cp', 'mv', 'ls']
+        is_file_command = any(cmd in command.split() for cmd in file_modifying_commands)
 
-try:
-workspace_dir = get_user_workspace(user_id)
-current_dir = os.getcwd()
-os.chdir(workspace_dir)
+        try:
+            workspace_dir = get_user_workspace(user_id)
+            current_dir = os.getcwd()
+            os.chdir(workspace_dir)
 
-result = subprocess.run(
-command,
-shell=True,
-capture_output=True,
-text=True,
-timeout=5
-)
+            result = subprocess.run(
+                command,
+                shell=True,
+                capture_output=True,
+                text=True,
+                timeout=5
+            )
 
-os.chdir(current_dir)
+            os.chdir(current_dir)
 
-command_output = result.stdout if result.returncode == 0 else result.stderr
-command_success = result.returncode == 0
+            command_output = result.stdout if result.returncode == 0 else result.stderr
+            command_success = result.returncode == 0
 
-except Exception as cmd_error:
-logging.error(f"Error al ejecutar comando: {str(cmd_error)}")
-command_output = f"Error: {str(cmd_error)}"
-command_success = False
+        except Exception as cmd_error:
+            logging.error(f"Error al ejecutar comando: {str(cmd_error)}")
+            command_output = f"Error: {str(cmd_error)}"
+            command_success = False
 
-# Notify websocket clients if file command
-if is_file_command:
-change_type = 'unknown'
-file_path = ''
+        # Notify websocket clients if file command
+        if is_file_command:
+            change_type = 'unknown'
+            file_path = ''
 
-if 'mkdir' in command:
-change_type = 'create'
-file_path = command.split('mkdir ')[1].strip().replace('-p', '').strip()
-elif 'touch' in command:
-change_type = 'create'
-file_path = command.split('touch ')[1].strip()
-elif 'rm' in command:
-change_type = 'delete'
-parts = command.split('rm ')
-if len(parts) > 1:
-    file_path = parts[1].replace('-rf', '').strip()
+            if 'mkdir' in command:
+                change_type = 'create'
+                file_path = command.split('mkdir ')[1].strip().replace('-p', '').strip()
+            elif 'touch' in command:
+                change_type = 'create'
+                file_path = command.split('touch ')[1].strip()
+            elif 'rm' in command:
+                change_type = 'delete'
+                parts = command.split('rm ')
+                if len(parts) > 1:
+                    file_path = parts[1].replace('-rf', '').strip()
 
-try:
-socketio.emit('file_change', {
-    'type': change_type,
-    'file': {'path': file_path},
-    'timestamp': time.time()
-}, broadcast=True)
+            try:
+                socketio.emit('file_change', {
+                    'type': change_type,
+                    'file': {'path': file_path},
+                    'timestamp': time.time()
+                }, broadcast=True)
 
-socketio.emit('file_sync', {
-    'refresh': True,
-    'timestamp': time.time()
-}, broadcast=True)
+                socketio.emit('file_sync', {
+                    'refresh': True,
+                    'timestamp': time.time()
+                }, broadcast=True)
 
-socketio.emit('file_command', {
-    'command': command,
-    'type': change_type,
-    'file': file_path,
-    'timestamp': time.time()
-}, broadcast=True)
+                socketio.emit('file_command', {
+                    'command': command,
+                    'type': change_type,
+                    'file': file_path,
+                    'timestamp': time.time()
+                }, broadcast=True)
 
-socketio.emit('command_executed', {
-    'command': command,
-    'output': command_output,
-    'success': command_success,
-    'timestamp': time.time()
-}, broadcast=True)
+                socketio.emit('command_executed', {
+                    'command': command,
+                    'output': command_output,
+                    'success': command_success,
+                    'timestamp': time.time()
+                }, broadcast=True)
 
-logging.info(f"Notificaciones de cambio enviadas: {change_type} - {file_path}")
-except Exception as ws_error:
-logging.error(f"Error al enviar notificación WebSocket: {str(ws_error)}")
+                logging.info(f"Notificaciones de cambio enviadas: {change_type} - {file_path}")
+            except Exception as ws_error:
+                logging.error(f"Error al enviar notificación WebSocket: {str(ws_error)}")
 
-# Return the response in a consistent format
-return jsonify({
-'success': True,
-'command': command,
-'refresh_explorer': is_file_command,
-'output': command_output,
-'success': command_success
-})
+        # Return the response in a consistent format
+        return jsonify({
+            'success': True,
+            'command': command,
+            'refresh_explorer': is_file_command,
+            'output': command_output,
+            'success': command_success
+        })
 
-except Exception as e:
-logging.error(f"Error processing natural language: {str(e)}")
-logging.error(traceback.format_exc())
-return jsonify({
-'success': False,
-'error': f"Error al procesar instrucción: {str(e)}"
-}), 500
+    except Exception as e:
+        logging.error(f"Error processing natural language: {str(e)}")
+        logging.error(traceback.format_exc())
+        return jsonify({
+            'success': False,
+            'error': f"Error al procesar instrucción: {str(e)}"
+        }), 500
 
 @app.route('/api/process_instructions', methods=['POST'])
 def process_instructions():
-"""Procesa instrucciones en lenguaje natural utilizando el modelo especificado"""
-data = request.json
-if not data:
-return jsonify({"error": "Datos no proporcionados"}), 400
+    """Procesa instrucciones en lenguaje natural utilizando el modelo especificado"""
+    data = request.json
+    if not data:
+        return jsonify({"error": "Datos no proporcionados"}), 400
 
-instruction = data.get('instruction') or data.get('message', '')
-model = data.get('model', 'openai')
-agent_id = data.get('agent_id', 'developer')
-format_type = data.get('format', 'default')
+    instruction = data.get('instruction') or data.get('message', '')
+    model = data.get('model', 'openai')
+    agent_id = data.get('agent_id', 'developer')
+    format_type = data.get('format', 'default')
 
-if not instruction:
-return jsonify({"error": "Instrucción no proporcionada"}), 400
+    if not instruction:
+        return jsonify({"error": "Instrucción no proporcionada"}), 400
 
-try:
-# Enviar a la IA para procesamiento
-result = handle_chat_internal({
-'message': instruction,
-'model': model,
-'agent_id': agent_id
-})
+    try:
+        # Enviar a la IA para procesamiento
+        result = handle_chat_internal({
+            'message': instruction,
+            'model': model,
+            'agent_id': agent_id
+        })
 
-response = result.get('response', '')
+        response = result.get('response', '')
 
-# Formatear respuesta según el tipo solicitado
-if format_type == 'markdown':
-# Asegurar que la respuesta tenga formato markdown correcto
-response = ensure_markdown_format(response)
+        # Formatear respuesta según el tipo solicitado
+        if format_type == 'markdown':
+            # Asegurar que la respuesta tenga formato markdown correcto
+            response = ensure_markdown_format(response)
 
-# Procesar para extraer comandos si así se solicita
-if data.get('command_only', False):
-command = extract_command_from_response(response)
-return jsonify({"response": response, "command": command})
+        # Procesar para extraer comandos si así se solicita
+        if data.get('command_only', False):
+            command = extract_command_from_response(response)
+            return jsonify({"response": response, "command": command})
 
-return jsonify({"response": response})
+        return jsonify({"response": response})
 
-except Exception as e:
-app.logger.error(f"Error al procesar la instrucción: {str(e)}")
-return jsonify({"error": str(e)}), 500
+    except Exception as e:
+        app.logger.error(f"Error al procesar la instrucción: {str(e)}")
+        return jsonify({"error": str(e)}), 500
 
 def ensure_markdown_format(response):
-"""Asegura que la respuesta tenga un formato markdown correcto y bien estructurado"""
-# Verificar si hay bloques de código y asegurarse de que estén bien formateados
-lines = response.split('\n')
-in_code_block = False
-language_specified = False
-formatted_lines = []
+    """Asegura que la respuesta tenga un formato markdown correcto y bien estructurado"""
+    # Verificar si hay bloques de código y asegurarse de que estén bien formateados
+    lines = response.split('\n')
+    in_code_block = False
+    language_specified = False
+    formatted_lines = []
 
-for i, line in enumerate(lines):
-# Detectar inicio de bloque de código
-if line.strip().startswith('```'):
-in_code_block = not in_code_block
+    for i, line in enumerate(lines):
+        # Detectar inicio de bloque de código
+        if line.strip().startswith('```'):
+            in_code_block = not in_code_block
 
-# Si es el inicio de un bloque y no tiene lenguaje especificado
-if in_code_block and line.strip() == '```':
-language_specified = False
-# Intentar detectar el lenguaje por contexto
-if i > 0 and 'javascript' in lines[i-1].lower():
-    formatted_lines.append('```javascript')
-elif i > 0 and 'python' in lines[i-1].lower():
-    formatted_lines.append('```python')
-elif i > 0 and ('bash' in lines[i-1].lower() or 'shell' in lines[i-1].lower() or 'comando' in lines[i-1].lower()):
-    formatted_lines.append('```bash')
-elif i > 0 and 'html' in lines[i-1].lower():
-    formatted_lines.append('```html')
-elif i > 0 and 'css' in lines[i-1].lower():
-    formatted_lines.append('```css')
-else:
-    formatted_lines.append('```plaintext')
-else:
-formatted_lines.append(line)
-else:
-formatted_lines.append(line)
+        # Si es el inicio de un bloque y no tiene lenguaje especificado
+        if in_code_block and line.strip() == '```':
+            language_specified = False
+            # Intentar detectar el lenguaje por contexto
+            if i > 0 and 'javascript' in lines[i - 1].lower():
+                formatted_lines.append('```javascript')
+            elif i > 0 and 'python' in lines[i - 1].lower():
+                formatted_lines.append('```python')
+            elif i > 0 and ('bash' in lines[i - 1].lower() or 'shell' in lines[i - 1].lower() or 'comando' in lines[i - 1].lower()):
+                formatted_lines.append('```bash')
+            elif i > 0 and 'html' in lines[i - 1].lower():
+                formatted_lines.append('```html')
+            elif i > 0 and 'css' in lines[i - 1].lower():
+                formatted_lines.append('```css')
+            else:
+                formatted_lines.append('```plaintext')
+        else:
+            formatted_lines.append(line)
 
-# Asegurarse de que todos los bloques de código estén cerrados
-if in_code_block:
-formatted_lines.append('```')
+    # Asegurarse de que todos los bloques de código estén cerrados
+    if in_code_block:
+        formatted_lines.append('```')
 
-return '\n'.join(formatted_lines)
+    return '\n'.join(formatted_lines)
 
 def extract_command_from_response(response):
-"""Extrae comandos de terminal de la respuesta de la IA"""
-# Buscar comandos en bloques de código bash/shell
-bash_block = re.search(r'```(?:bash|shell)\s*(.*?)\s*```', response, re.DOTALL)
-if bash_block:
-commands = bash_block.group(1).strip().split('\n')
-# Devolver el primer comando no vacío
-for cmd in commands:
-if cmd.strip():
-return cmd.strip()
-
-# Buscar líneas que parecen comandos (comienzan con $, > o #)
-command_line = re.search(r'(?:^|\n)(?:\$|\>|\#)\s*(.*?)(?:\n|$)', response)
-if command_line:
-return command_line.group(1).strip()
-
-return None
-
-@socketio.on('connect')
-def handle_connect():
-"""Handle WebSocket connection."""
-logging.info(f"Cliente conectado: {request.sid}")
-
-@socketio.on('join')
-def on_join(data):
-"""Handle client joining a room."""
-user_id = data.get('user_id', 'default')
-room = user_id
-logging.info(f"Cliente {request.sid} unido a sala: {room}")
-
-# Join the room
-from flask_socketio import join_room
-join_room(room)
-
-# Emit welcome message to the client
-emit('system_message', {
-'message': f'Conectado a la sala: {room}',
-'timestamp': time.time()
-}, room=request.sid)
-
-@socketio.on('execute_command')
-def handle_execute_command(data):
-"""Handle command execution requests."""
-command = data.get('command', '')
-user_id = data.get('user_id', 'default')
-terminal_id = data.get('terminal_id', None)
-
-logging.info(f"Ejecutando comando: '{command}' para usuario {user_id}")
-
-if not command:
-emit('command_result', {
-'output': 'Error: No se proporcionó un comando',
-'success': False,
-'command': '',
-'terminal_id': terminal_id
-}, room=user_id)
-return
-
-# Procesar lenguaje natural si el comando comienza con "!"
-if command.startswith('!'):
-natural_text = command[1:].strip()
-command = process_natural_language_to_command(natural_text)
-
-if not command:
-emit('command_result', {
-'output': f'No se pudo interpretar: {natural_text}',
-'success': False,
-'command': natural_text,
-'terminal_id': terminal_id
-}, room=user_id)
-return
-
-# Ejecutar el comando
-fs_manager = FileSystemManager(socketio)
-result = fs_manager.execute_command(command, user_id, True, terminal_id)
-
-# Enviar el resultado al cliente
-emit('command_result', {
-'output': result['output'],
-'success': result['success'],
-'command': result['command'],
-'terminal_id': terminal_id
-}, room=user_id)
-
-@socketio.on('disconnect')
-def handle_disconnect():
-"""Handle WebSocket disconnection."""
-logging.info(f"Cliente desconectado: {request.sid}")
-
-if __name__ == '__main__':
-# Iniciar observador de archivos en un hilo separado
-file_watcher_thread = threading.Thread(target=watch_workspace_files, daemon=True)
-file_watcher_thread.start()
-
-# Obtener puerto del entorno o usar 5000 por defecto
-port = int(os.getenv('PORT', 5000))
-
-# Iniciar servidor con SocketIO
-socketio.run(app, host='0.0.0.0', port=port, debug=True, allow_unsafe_werkzeug=True)
+    """Extrae comandos de terminal de la respuesta de la IA"""
+    # Buscar comandos en bloques de código bash/shell
+    bash_block = re.search(r'```(?:bash|shell)\s*(.*?)\s*
