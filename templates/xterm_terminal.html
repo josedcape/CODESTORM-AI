@@ -603,6 +603,49 @@
             gap: 8px;
             margin-top: 12px;
         }
+
+        /* Estilos para el menú flotante */
+        #mobile-float-menu {
+            display: none;
+            position: fixed;
+            bottom: 80px;
+            right: 20px;
+            background-color: var(--bg-panel);
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow-lg);
+            z-index: 1002;
+            padding: 12px;
+            transition: transform 0.3s ease;
+        }
+
+        #mobile-float-menu.show {
+            display: block;
+            transform: scale(1);
+        }
+
+        #mobile-float-menu button {
+            margin-bottom: 8px;
+            width: 100%;
+        }
+
+        #mobile-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 1001;
+        }
+
+        #mobile-overlay.show {
+            display: block;
+        }
+
+        .show {
+            display: block;
+        }
     </style>
 </head>
 <body>
@@ -764,6 +807,34 @@
         </div>
     </div>
 
+    <!-- Menú flotante para móvil -->
+    <div id="mobile-float-menu">
+        <button id="mobile-explorer-toggle" class="btn btn-sm btn-outline-light">
+            <i class="bi bi-folder2-open"></i> Explorador
+        </button>
+        <button id="mobile-assistant-toggle" class="btn btn-sm btn-outline-light">
+            <i class="bi bi-robot"></i> Asistente
+        </button>
+        <button id="mobile-packages-toggle" class="btn btn-sm btn-outline-light">
+            <i class="bi bi-box"></i> Paquetes
+        </button>
+        <button id="mobile-chat-toggle" class="btn btn-sm btn-outline-light">
+            <i class="bi bi-chat-dots"></i> Chat
+        </button>
+        <button id="mobile-developer-toggle" class="btn btn-sm btn-outline-light">
+            <i class="bi bi-code-slash"></i> Desarrollo
+        </button>
+        <button id="mobile-clear-terminal" class="btn btn-sm btn-outline-light">
+            <i class="bi bi-trash"></i> Limpiar Terminal
+        </button>
+    </div>
+
+    <div id="mobile-overlay"></div>
+    <button id="mobile-menu-toggle" class="btn-float btn-outline-light d-md-none">
+        <i class="bi bi-list"></i>
+    </button>
+
+
     <!-- Cargar scripts en orden correcto -->
     <script src="{{ url_for('static', filename='js/natural-command-processor.js') }}"></script>
 
@@ -793,6 +864,7 @@
         document.addEventListener('DOMContentLoaded', function() {
             const assistantInput = document.getElementById('assistant-input');
             const assistantBtn = document.getElementById('assistant-btn');
+            <replit_final_file>
             const clearAssistantBtn = document.getElementById('clear-assistant-btn');
             const assistantResult = document.getElementById('assistant-result');
             const assistantModel = document.getElementById('assistant-model');
@@ -951,6 +1023,110 @@
                     setTimeout(() => notification.remove(), 500);
                 }, 5000);
             };
+
+            // Configuración para controles móviles
+            const mobileMenuToggle = document.getElementById('mobile-menu-toggle');
+            const mobileFloatMenu = document.getElementById('mobile-float-menu');
+            const mobileOverlay = document.getElementById('mobile-overlay');
+
+            // Explorador
+            const mobileExplorerToggle = document.getElementById('mobile-explorer-toggle');
+            const explorerPanel = document.querySelector('.explorer-panel');
+
+            // Asistente
+            const mobileAssistantToggle = document.getElementById('mobile-assistant-toggle');
+            const assistantContainer = document.querySelector('.assistant-container');
+
+            // Paquetes
+            const mobilePackagesToggle = document.getElementById('mobile-packages-toggle');
+            const packagesPanel = document.querySelector('.package-install-panel');
+
+            // Chat
+            const mobileChatToggle = document.getElementById('mobile-chat-toggle');
+            const chatPanel = document.getElementById('assistant-chat-panel');
+
+            // Desarrollo
+            const mobileDeveloperToggle = document.getElementById('mobile-developer-toggle');
+            const developerPanel = document.getElementById('assistant-response-container');
+
+            // Limpiar terminal
+            const mobileClearTerminal = document.getElementById('mobile-clear-terminal');
+
+            // Abrir/cerrar menú flotante
+            if (mobileMenuToggle) {
+                mobileMenuToggle.addEventListener('click', function() {
+                    mobileFloatMenu.classList.toggle('show');
+                });
+            }
+
+            // Cerrar menú flotante al hacer clic fuera
+            document.addEventListener('click', function(e) {
+                if (mobileFloatMenu && mobileFloatMenu.classList.contains('show')) {
+                    if (!mobileMenuToggle.contains(e.target) && !mobileFloatMenu.contains(e.target)) {
+                        mobileFloatMenu.classList.remove('show');
+                    }
+                }
+            });
+
+            // Explorador
+            if (mobileExplorerToggle && explorerPanel) {
+                mobileExplorerToggle.addEventListener('click', function() {
+                    explorerPanel.classList.toggle('show');
+                    mobileOverlay.classList.toggle('show');
+                    mobileFloatMenu.classList.remove('show');
+                });
+            }
+
+            // Overlay para cerrar paneles
+            if (mobileOverlay) {
+                mobileOverlay.addEventListener('click', function() {
+                    explorerPanel.classList.remove('show');
+                    mobileOverlay.classList.remove('show');
+                });
+            }
+
+            // Asistente
+            if (mobileAssistantToggle && assistantContainer) {
+                mobileAssistantToggle.addEventListener('click', function() {
+                    assistantContainer.classList.toggle('show');
+                    mobileFloatMenu.classList.remove('show');
+                });
+            }
+
+            // Paquetes
+            if (mobilePackagesToggle && packagesPanel) {
+                mobilePackagesToggle.addEventListener('click', function() {
+                    packagesPanel.classList.toggle('show');
+                    mobileFloatMenu.classList.remove('show');
+                });
+            }
+
+            // Chat
+            if (mobileChatToggle && chatPanel) {
+                mobileChatToggle.addEventListener('click', function() {
+                    chatPanel.classList.toggle('show');
+                    mobileFloatMenu.classList.remove('show');
+                });
+            }
+
+            // Desarrollo
+            if (mobileDeveloperToggle && developerPanel) {
+                mobileDeveloperToggle.addEventListener('click', function() {
+                    developerPanel.classList.toggle('show');
+                    mobileFloatMenu.classList.remove('show');
+                });
+            }
+
+            // Limpiar Terminal
+            if (mobileClearTerminal) {
+                mobileClearTerminal.addEventListener('click', function() {
+                    if (term && typeof term.clear === 'function') {
+                        term.clear();
+                        term.write('\r\n$ ');
+                    }
+                    mobileFloatMenu.classList.remove('show');
+                });
+            }
         });
 
         document.addEventListener('DOMContentLoaded', function() {
