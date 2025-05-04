@@ -78,12 +78,12 @@ def get_and_validate_api_key(env_var_name, service_name, validation_func=None):
     if not api_key:
         logging.warning(f"{service_name} API key no configurada - funcionalidades de {service_name} estarán deshabilitadas")
         return None
-    
+
     # Si no hay función de validación, simplemente retornar la clave
     if not validation_func:
         logging.info(f"{service_name} API key configurada: {api_key[:5]}...{api_key[-5:] if len(api_key) > 10 else '***'}")
         return api_key
-    
+
     try:
         # Validar la clave API usando la función proporcionada
         is_valid = validation_func(api_key)
@@ -556,7 +556,7 @@ def api_chat():
             return jsonify({'error': 'No message provided', 'response': 'Error: No se proporcionó un mensaje.'}), 400
 
         logging.info(f"Mensaje procesado: {user_message} por agente {agent_id} usando {model_choice}")
-        
+
         # Registro adicional para verificar que la solicitud está llegando correctamente
         print(f"Solicitud de chat recibida: Mensaje='{user_message}', Agente={agent_id}, Modelo={model_choice}")
 
@@ -1080,594 +1080,300 @@ def process_natural_command():
 
 @app.route('/api/process_instructions', methods=['POST'])
 def process_instructions():
-    """Process natural language instructions and convert to terminal commands."""
+    """Procesa instrucciones en lenguaje natural utilizando el modelo especificado"""
+    data = request.json
+    if not data:
+        return jsonify({"error": "Datos no proporcionados"}), 400
+
+    instruction = data.get('instruction') or data.get('message', '')
+    model = data.get('model', 'openai')
+    agent_id = data.get('agent_id', 'developer')
+    format_type = data.get('format', 'default')
+
+    if not instruction:
+        return jsonify({"error": "Instrucción no proporcionada"}), 400
+
     try:
-        data = request.json
-        instruction = data.get('message', '') or data.get('instruction', '')
-        model_choice = data.get('model', 'openai')
+        # Enviar a la IA para procesamiento
+        response = process_with_ai(instruction, model, agent_id)
 
-        if not instruction:
-            return jsonify({'error': 'No instruction provided'}), 400
+        # Formatear respuesta según el tipo solicitado
+        if format_type == 'markdown':
+            # Asegurar que la respuesta tenga formato markdown correcto
+            response = ensure_markdown_format(response)
 
-        command_only = data.get('command_only', False)
+        # Procesar para extraer comandos si así se solicita
+        if data.get('command_only', False):
+            command = extract_command_from_response(response)
+            return jsonify({"response": response, "command": command})
 
-        command_map = {
-            "listar": "ls -la",
-            "mostrar archivos": "ls -la",
-            "mostrar directorio": "ls -la",
-            "ver archivos": "ls -la",
-            "archivos": "ls -la",
-            "dir": "ls -la",
-            "fecha": "date",
-            "hora": "date +%H:%M:%S",
-            "calendario": "cal",
-            "quien soy": "whoami",
-            "donde estoy": "pwd",
-            "limpiar": "clear",
-            "sistema": "uname -a",
-            "memoria": "free -h",
-            "espacio": "df -h",
-            "procesos": "ps aux"
-        }
+        return jsonify({"response": response})
 
-        instruction_lower = instruction.lower()
-        terminal_command = None
-        missing_info = None
+    except Exception as e:
+        app.logger.error(f"Error al procesar la instrucción: {str(e)}")
+        return jsonify({"error": str(e)}), 500
 
-        for key, cmd in command_map.items():
-            if key in instruction_lower:
-                terminal_command = cmd
-                break
+def ensure_markdown_format(response):
+    """Asegura que la respuesta tenga un formato markdown correcto y bien estructurado"""
+    # Verificar si hay bloques de código y asegurarse de que estén bien formateados
+    lines = response.split('\n')
+    in_code_block = False
+    language_specified = False
+    formatted_lines = []
 
-        if not terminal_command:
-            if "crear" in instruction_lower and "carpeta" in instruction_lower:
-                folder_name = instruction_lower.split("carpeta")[-1].strip()
-                if not folder_name:
-                    missing_info = "Falta especificar el nombre de la carpeta"
+    for i, line in enumerate(lines):
+        # Detectar inicio de bloque de código
+        if line.strip().startswith('```'):
+            in_code_block = not in_code_block
+
+            # Si es el inicio de un bloque y no tiene lenguaje especificado
+            if in_code_block and line.strip() == '```':
+                language_specified = False
+                # Intentar detectar el lenguaje por contexto
+                if i > 0 and 'javascript' in lines[i-1].lower():
+                    formatted_lines.append('```javascript')
+                elif i > 0 and 'python' in lines[i-1].lower():
+                    formatted_lines.append('```python')
+                elif i > 0 and ('bash' in lines[i-1].lower() or 'shell' in lines[i-1].lower() or 'comando' in lines[i-1].lower()):
+                    formatted_lines.append('```bash')
+                elif i > 0 and 'html' in lines[i-1].lower():
+                    formatted_lines.append('```html')
+                elif i > 0 and 'css' in lines[i-1].lower():
+                    formatted_lines.append('```css')
                 else:
-                    terminal_command = f"mkdir -p {folder_name}"
-
-            elif "crear" in instruction_lower and "archivo" in instruction_lower:
-                file_name = instruction_lower.split("archivo")[-1].strip()
-                if not file_name:
-                    missing_info = "Falta especificar el nombre del archivo"
-                else:
-                    terminal_command = f"touch {file_name}"
-
-            elif "eliminar" in instruction_lower or "borrar" in instruction_lower:
-                target = instruction_lower.replace("eliminar", "").replace("borrar", "").strip()
-                if not target:
-                    missing_info = "Falta especificar qué elemento eliminar"
-                else:
-                    terminal_command = f"rm -rf {target}"
-
+                    formatted_lines.append('```plaintext')
             else:
-                terminal_command = "echo 'Comando no reconocido'"
-
-        if terminal_command:
-            logging.info(f"Instrucción: '{instruction}' → Comando: '{terminal_command}'")
-
-        if missing_info:
-            return jsonify({
-                'error': missing_info,
-                'needs_more_info': True
-            })
-        elif command_only:
-            return jsonify({'command': terminal_command})
+                formatted_lines.append(line)
         else:
-            return jsonify({
-                'command': terminal_command,
-                'original_instruction': instruction,
-                'model_used': model_choice
-            })
-
-    except Exception as e:
-        logging.error(f"Error generating command: {str(e)}")
-        return jsonify({'error': f"Error generating command: {str(e)}"}), 500
-
-@app.route('/api/health', methods=['GET'])
-def health_check():
-    """Health check endpoint for the application."""
-    try:
-        # Obtener el estado actual de las APIs desde la configuración
-        api_keys = app.config.get('API_KEYS', {}) if hasattr(app, 'config') else {}
-        
-        apis = {
-            "openai": "ok" if api_keys.get('openai') else "not configured",
-            "anthropic": "ok" if api_keys.get('anthropic') else "not configured",
-            "gemini": "ok" if api_keys.get('gemini') else "not configured"
-        }
-
-        # Verificar si hay al menos una API configurada
-        any_api_available = any([key for key, value in api_keys.items() if value])
-        
-        # Registrar cada solicitud de verificación de salud
-        logging.info(f"Verificación de salud solicitada en: {time.time()}")
-        
-        # Comprobar si sys está importado
-        import sys
-        
-        response = {
-            "status": "ok",
-            "timestamp": time.time(),
-            "version": "1.0.0",
-            "apis": apis,
-            "chat_api_available": any_api_available,
-            "available_models": [key for key, value in api_keys.items() if value],
-            "debug_info": {
-                "python_version": sys.version,
-                "endpoints_active": [
-                    "/api/chat",
-                    "/api/health",
-                    "/api/files",
-                    "/api/process_code"
-                ]
-            }
-        }
-        
-        return jsonify(response)
-    except Exception as e:
-        logging.error(f"Error in health check: {str(e)}")
-        return jsonify({
-            "status": "error",
-            "error": str(e),
-            "timestamp": time.time()
-        }), 500
-
-@app.route('/api/files', methods=['GET'])
-def list_files_api():
-    """API para listar archivos del workspace del usuario."""
-    try:
-        directory = request.args.get('directory', '.')
-        user_id = request.args.get('user_id', 'default')
-
-        user_workspace = get_user_workspace(user_id)
-
-        if directory == '.':
-            full_directory = user_workspace
-            relative_dir = '.'
-        else:
-            directory = directory.replace('..', '').strip('/')
-            full_directory = os.path.join(user_workspace, directory)
-            relative_dir = directory
-
-        if not os.path.exists(full_directory):
-            if directory == '.':
-                os.makedirs(full_directory, exist_ok=True)
-            else:
-                return jsonify({
-                    'success': False,
-                    'error': 'Directorio no encontrado'
-                }), 404
-
-        files = []
-        try:
-            for item in os.listdir(full_directory):
-                item_path = os.path.join(full_directory, item)
-                relative_path = os.path.join(relative_dir, item) if relative_dir != '.' else item
-
-                extension = os.path.splitext(item)[1].lower()[1:] if os.path.isfile(item_path) and '.' in item else ''
-
-                if os.path.isdir(item_path):
-                    files.append({
-                        'name': item,
-                        'path': relative_path,
-                        'type': 'directory',
-                        'size': 0,
-                        'modified': os.path.getmtime(item_path),
-                        'extension': ''
-                    })
-                else:
-                    file_size = os.path.getsize(item_path)
-                    files.append({
-                        'name': item,
-                        'path': relative_path,
-                        'type': 'file',
-                        'size': file_size,
-                        'modified': os.path.getmtime(item_path),
-                        'extension': extension
-                    })
-        except Exception as e:
-            logging.error(f"Error al listar archivos: {str(e)}")
-            return jsonify({
-                'success': False,
-                'error': f'Error al listar archivos: {str(e)}'
-            }), 500
-
-        return jsonify({
-            'success': True,
-            'files': files,
-            'directory': relative_dir
-        })
-    except Exception as e:
-        logging.error(f"Error en endpoint de archivos: {str(e)}")
-        return jsonify({
-            'success': False,
-            'error': str(e)
-        }), 500
-@app.route('/api/files/read', methods=['GET'])
-def read_file():
-    """API para leer el contenido de un archivo en el workspace del usuario."""
-    try:
-        file_path = request.args.get('file_path')
-        user_id = request.args.get('user_id', 'default')
-
-        if not file_path:
-            return jsonify({
-                'success': False,
-                'error': 'No se proporcionó ruta de archivo'
-            }), 400
-
-        user_workspace = get_user_workspace(user_id)
-
-        file_path = file_path.replace('..', '').strip('/')
-        full_path = os.path.join(user_workspace, file_path)
-
-        if not os.path.exists(full_path):
-            return jsonify({
-                'success': False,
-                'error': 'Archivo no encontrado'
-            }), 404
-
-        if os.path.isdir(full_path):
-            return jsonify({
-                'success': False,
-                'error': 'La ruta especificada es un directorio'
-            }), 400
-
-        try:
-            binary_extensions = ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'zip', 'pdf', 'doc', 'docx', 'xls', 'xlsx']
-            file_ext = os.path.splitext(file_path)[1].lower()[1:] if '.' in file_path else ''
-
-            if file_ext in binary_extensions:
-                return jsonify({
-                    'success': True,
-                    'is_binary': True,
-                    'file_path': file_path,
-                    'file_url': f'/api/files/download?file_path={file_path}&user_id={user_id}'
-                })
-
-            with open(full_path, 'r', encoding='utf-8', errors='replace') as f:
-                content = f.read()
-
-            return jsonify({
-                'success': True,
-                'content': content,
-                'file_path': file_path,
-                'is_binary': False
-            })
-        except Exception as e:
-            logging.error(f"Error al leer archivo: {str(e)}")
-            return jsonify({
-                'success': False,
-                'error': f'Error al leer archivo: {str(e)}'
-            }), 500
-
-    except Exception as e:
-        logging.error(f"Error en endpoint de lectura de archivo: {str(e)}")
-        return jsonify({
-            'success': False,
-            'error': str(e)
-        }), 500
-
-@app.route('/api/files/create', methods=['POST'])
-def create_file():
-    """API para crear un archivo o directorio en el workspace del usuario."""
-    try:
-        data = request.json
-        if not data:
-            return jsonify({
-                'success': False,
-                'error': 'No se proporcionaron datos'
-            }), 400
-
-        file_path = data.get('file_path')
-        content = data.get('content', '')
-        is_directory = data.get('is_directory', False)
-        user_id = data.get('user_id', 'default')
-
-        if not file_path:
-            return jsonify({
-                'success': False,
-                'error': 'No se proporcionó ruta de archivo'
-            }), 400
-
-        user_workspace = get_user_workspace(user_id)
-
-        file_path = file_path.replace('..', '').strip('/')
-        full_path = os.path.join(user_workspace, file_path)
-
-        if os.path.exists(full_path):
-            return jsonify({
-                'success': False,
-                'error': f'Ya existe un{"a carpeta" if is_directory else " archivo"} con ese nombre'
-            }), 400
-
-        try:
-            if is_directory:
-                os.makedirs(full_path, exist_ok=True)
-                message = f'Directorio {file_path} creado exitosamente'
-            else:
-                parent_dir = os.path.dirname(full_path)
-                if parent_dir and not os.path.exists(parent_dir):
-                    os.makedirs(parent_dir, exist_ok=True)
-
-                with open(full_path, 'w', encoding='utf-8') as f:
-                    f.write(content)
-
-                message = f'Archivo {file_path} creado exitosamente'
-
-            return jsonify({
-                'success': True,
-                'message': message,
-                'file_path': file_path,
-                'is_directory': is_directory
-            })
-        except Exception as e:
-            logging.error(f"Error al crear archivo/directorio: {str(e)}")
-            return jsonify({
-                'success': False,
-                'error': f'Error al crear: {str(e)}'
-            }), 500
-
-    except Exception as e:
-        logging.error(f"Error en endpoint de creación: {str(e)}")
-        return jsonify({
-            'success': False,
-            'error': str(e)
-        }), 500
-
-@app.route('/api/files/delete', methods=['DELETE'])
-def delete_file():
-    """API para eliminar un archivo o directorio del workspace del usuario."""
-    try:
-        data = request.json
-        if not data:
-            return jsonify({
-                'success': False,
-                'error': 'No se proporcionaron datos'
-            }), 400
-
-        file_path = data.get('file_path')
-        user_id = data.get('user_id', 'default')
-
-        if not file_path:
-            return jsonify({
-                'success': False,
-                'error': 'No se proporcionó ruta de archivo'
-            }), 400
-
-        user_workspace = get_user_workspace(user_id)
-
-        file_path = file_path.replace('..', '').strip('/')
-        full_path = os.path.join(user_workspace, file_path)
-
-        if not os.path.exists(full_path):
-            return jsonify({
-                'success': False,
-                'error': 'Archivo o directorio no encontrado'
-            }), 404
-
-        try:
-            if os.path.isdir(full_path):
-                shutil.rmtree(full_path)
-                message = f'Directorio {file_path} eliminado exitosamente'
-            else:
-                os.remove(full_path)
-                message = f'Archivo {file_path} eliminado exitosamente'
-
-            return jsonify({
-                'success': True,
-                'message': message,
-                'file_path': file_path,
-                'is_directory': os.path.isdir(full_path)
-            })
-        except Exception as e:
-            logging.error(f"Error al eliminar: {str(e)}")
-            return jsonify({
-                'success': False,
-                'error': f'Error al eliminar: {str(e)}'
-            }), 500
-
-    except Exception as e:
-        logging.error(f"Error en endpoint de eliminación: {str(e)}")
-        return jsonify({
-            'success': False,
-            'error': str(e)
-        }), 500
-
-@app.route('/api/files/download', methods=['GET'])
-def download_file():
-    """API para descargar un archivo desde el workspace del usuario."""
-    try:
-        file_path = request.args.get('file_path')
-        user_id = request.args.get('user_id', 'default')
-
-        if not file_path:
-            return jsonify({
-                'success': False,
-                'error': 'No se proporcionó ruta de archivo'
-            }), 400
-
-        user_workspace = get_user_workspace(user_id)
-
-        file_path = file_path.replace('..', '').strip('/')
-        full_path = os.path.join(user_workspace, file_path)
-
-        if not os.path.exists(full_path):
-            return jsonify({
-                'success': False,
-                'error': 'Archivo no encontrado'
-            }), 404
-
-        return send_file(full_path, as_attachment=True, download_name=os.path.basename(file_path))
-
-    except Exception as e:
-        logging.error(f"Error al descargar archivo: {str(e)}")
-        return jsonify({
-            'success': False,
-            'error': f'Error al descargar archivo: {str(e)}'
-        }), 500
-
-@app.route('/api/constructor/generate', methods=['POST'])
-def generate_project():
-    """API endpoint para iniciar la generación de un proyecto."""
-    try:
-        data = request.json
-        description = data.get('description', '')
-
-        if not description:
-            return jsonify({
-                'success': False,
-                'error': 'Se requiere una descripción del proyecto'
-            }), 400
-
-        return jsonify({
-            'success': True,
-            'message': 'Generación de proyecto iniciada',
-            'project_id': f"proj_{int(time.time())}",
-            'estimated_time': '5-10 minutos'
-        })
-
-    except Exception as e:
-        logging.error(f"Error al generar proyecto: {str(e)}")
-        return jsonify({
-            'success': False,
-            'error': str(e)
-        }), 500
-
-@app.route('/api_status')
-def api_status():
-    """Muestra el estado de las claves API configuradas."""
-    openai_key = os.environ.get('OPENAI_API_KEY', 'No configurada')
-    anthropic_key = os.environ.get('ANTHROPIC_API_KEY', 'No configurada')
-    gemini_key = os.environ.get('GEMINI_API_KEY', 'No configurada')
-
-    if openai_key != 'No configurada':
-        openai_key = openai_key[:5] + "..." + openai_key[-5:] if len(openai_key) > 10 else "***configurada***"
-
-    if anthropic_key != 'No configurada':
-        anthropic_key = anthropic_key[:5] + "..." + anthropic_key[-5:] if len(anthropic_key) > 10 else "***configurada***"
-
-    if gemini_key != 'No configurada':
-        gemini_key = gemini_key[:5] + "..." + gemini_key[-5:] if len(gemini_key) > 10 else "***configurada***"
-
-    return jsonify({
-        'openai': openai_key,
-        'anthropic': anthropic_key,
-        'gemini': gemini_key,
-        'message': 'Visita esta URL para verificar el estado de las APIs'
-    })
-
-@socketio.on('connect')
-def handle_connect():
-    """Manejar conexión de cliente Socket.IO."""
-    logging.info(f"Cliente Socket.IO conectado: {request.sid}")
-    emit('server_info', {'status': 'connected', 'sid': request.sid})
-
-@socketio.on('execute_command')
-def handle_execute_command(data):
-    """Ejecuta un comando en la terminal y devuelve el resultado."""
-    command = data.get('command', '')
-    user_id = data.get('user_id', 'default')
-    terminal_id = data.get('terminal_id', request.sid)
-
-    if not command:
-        emit('command_error', {
-            'error': 'No se proporcionó un comando',
-            'terminal_id': terminal_id
-        }, room=terminal_id)
-        return
-
-    file_system_manager = FileSystemManager(socketio)
-    result = file_system_manager.execute_command(
-        command=command,
-        user_id=user_id,
-        notify=True,
-        terminal_id=terminal_id
-    )
-
-    emit('command_result', {
-        'output': result.get('output', ''),
-        'success': result.get('success', False),
-        'command': command,
-        'terminal_id': terminal_id
-    }, room=terminal_id)
-
-    socketio.emit('file_sync', {
-        'refresh': True,
-        'user_id': user_id,
-        'command': command
-    }, room=user_id)
-
-@socketio.on('user_message')
-def handle_user_message(data):
-    """Manejar mensajes del usuario a través de Socket.IO."""
-    try:
-        logging.info(f"Mensaje recibido vía Socket.IO: {data}")
-        user_message = data.get('message', '')
-        agent_id = data.get('agent', 'developer')
-        model = data.get('model', 'openai')
-        document = data.get('document', '')
-        terminal_id = data.get('terminal_id', '')
-
-        if not user_message:
-            emit('error', {'message': 'Mensaje vacío'})
-            return
-
-        logging.info(f"Procesando mensaje Socket.IO: '{user_message[:30]}...' usando agente {agent_id} y modelo {model}")
-
-        request_data = {
-            'message': user_message,
-            'agent_id': agent_id,
-            'model': model,
-            'context': data.get('context', [])
-        }
-
-        try:
-            if model == 'openai' and openai_api_key:
-                messages = [
-                    {"role": "system", "content": f"Eres un asistente de {agent_id} experto y útil."},
-                    {"role": "user", "content": user_message}
-                ]
-
+            formatted_lines.append(line)
+
+    # Asegurarse de que todos los bloques de código estén cerrados
+    if in_code_block:
+        formatted_lines.append('```')
+
+    # Asegurarse de que haya espacios adecuados alrededor de los encabezados
+    result = '\n'.join(formatted_lines)
+    result = re.sub(r'(#{1,6}[^#\n]+)\n([^#\n])', r'\1\n\n\2', result)
+
+    return result
+
+def extract_command_from_response(response):
+    """Extrae comandos de una respuesta de la IA."""
+    # Implementación simple, se puede mejorar para manejar diferentes formatos
+    # Busca líneas que comiencen con comandos comunes
+    command_pattern = r"^(?:mkdir|touch|rm|cp|mv|ls|cd|git)\s+"
+    commands = []
+    for line in response.splitlines():
+        if re.match(command_pattern, line):
+            commands.append(line.strip())
+    return commands
+
+def process_with_ai(instruction, model, agent_id):
+    """Procesa la instrucción con la IA especificada."""
+    # Reemplaza con la lógica de tu API de IA
+    # Aquí deberías llamar a tu modelo de IA con la instrucción
+    # y devolver la respuesta
+
+    # Ejemplo de respuesta simulado
+    if model == 'openai':
+        if openai_api_key:
+            try:
+                messages = [{"role": "system", "content": f"Eres un asistente de {agent_id} experto y útil."},
+                            {"role": "user", "content": instruction}]
                 client = openai.OpenAI()
                 completion = client.chat.completions.create(
-                    model="gpt-4o",
+                    model="gpt-4",
                     messages=messages,
                     temperature=0.7,
                     max_tokens=2000
                 )
+                return completion.choices[0].message.content
+            except Exception as e:
+                return f"Error al procesar la instrucción con OpenAI: {str(e)}"
+        else:
+            return "Error: OpenAI API Key no configurada."
+    elif model == 'anthropic':
+        if anthropic_api_key:
+            try:
+                import anthropic
+                from anthropic import Anthropic
+                client = Anthropic(api_key=anthropic_api_key)
+                completion = client.complete(
+                    prompt=instruction,
+                    model="claude-v2",
+                    max_tokens=2000,
+                    temperature=0.7
+                )
+                return completion.completion
+            except Exception as e:
+                return f"Error al procesar la instrucción con Anthropic: {str(e)}"
+        else:
+            return "Error: Anthropic API Key no configurada."
+    elif model == 'gemini':
+        if gemini_api_key:
+            try:
+                # Make sure Gemini is configured properly
+                if not hasattr(genai, '_configured') or not genai._configured:
+                    genai.configure(api_key=gemini_api_key)
 
-                response = completion.choices[0].message.content
-                logging.info(f"Respuesta generada directamente con OpenAI: {response[:100]}...")
+                model = genai.GenerativeModel('gemini-pro')
+                response = model.generate_text(instruction)
+                return response.text
+            except Exception as e:
+                return f"Error al procesar la instrucción con Gemini: {str(e)}"
+        else:
+            return "Error: Gemini API Key no configurada."
+    else:
+        return f"Modelo {model} no reconocido."
 
-                emit('agent_response', {
-                    'response': response,
-                    'agent': agent_id,
-                    'model': model,
-                    'error': None
-                })
-                return
-        except Exception as api_error:
-            logging.warning(f"Error en API directa: {str(api_error)}, usando handle_chat_internal")
 
-        # Si falla la API directa o no está configurada, usar handle_chat_internal
-        result = handle_chat_internal(request_data)
+@app.route('/api/files/update', methods=['PUT'])
+def update_file():
+    """API para actualizar el contenido de un archivo."""
+    try:
+        data = request.json
+        if not data:
+            return jsonify({'success': False, 'error': 'No data provided'}), 400
 
-        logging.info(f"Enviando respuesta Socket.IO: '{result.get('response', '')[:30]}...'")
-        emit('agent_response', {
-            'response': result.get('response', ''),
-            'agent': agent_id,
-            'model': model,
-            'error': result.get('error', None),
-            'terminal_id': terminal_id
+        file_path = data.get('file_path')
+        content = data.get('content', '')
+        user_id = data.get('user_id', 'default')
+
+        if not file_path or not content:
+            return jsonify({'success': False, 'error': 'File path and content are required'}), 400
+
+        user_workspace = get_user_workspace(user_id)
+        file_path = file_path.replace('..', '').strip('/')
+        full_path = os.path.join(user_workspace, file_path)
+
+        if not os.path.exists(full_path):
+            return jsonify({'success': False, 'error': 'File not found'}), 404
+
+        try:
+            with open(full_path, 'w', encoding='utf-8') as f:
+                f.write(content)
+            return jsonify({'success': True, 'message': f'File {file_path} updated successfully'})
+        except Exception as e:
+            logging.error(f"Error updating file: {str(e)}")
+            return jsonify({'success': False, 'error': f'Error updating file: {str(e)}'}), 500
+
+    except Exception as e:
+        logging.error(f"Error in update_file endpoint: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/files/rename', methods=['PUT'])
+def rename_file():
+    """API para renombrar un archivo o directorio."""
+    try:
+        data = request.json
+        if not data:
+            return jsonify({'success': False, 'error': 'No data provided'}), 400
+
+        old_path = data.get('old_path')
+        new_path = data.get('new_path')
+        user_id = data.get('user_id', 'default')
+
+        if not old_path or not new_path:
+            return jsonify({'success': False, 'error': 'Old and new paths are required'}), 400
+
+        user_workspace = get_user_workspace(user_id)
+        old_path = old_path.replace('..', '').strip('/')
+        new_path = new_path.replace('..', '').strip('/')
+        old_full_path = os.path.join(user_workspace, old_path)
+        new_full_path = os.path.join(user_workspace, new_path)
+
+        if not os.path.exists(old_full_path):
+            return jsonify({'success': False, 'error': 'File or directory not found'}), 404
+
+        try:
+            os.rename(old_full_path, new_full_path)
+            return jsonify({'success': True, 'message': f'File or directory renamed successfully'})
+        except Exception as e:
+            logging.error(f"Error renaming file/directory: {str(e)}")
+            return jsonify({'success': False, 'error': f'Error renaming file/directory: {str(e)}'}), 500
+
+    except Exception as e:
+        logging.error(f"Error in rename_file endpoint: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/files/move', methods=['PUT'])
+def move_file():
+    """API para mover un archivo o directorio."""
+    try:
+        data = request.json
+        if not data:
+            return jsonify({'success': False, 'error': 'No data provided'}), 400
+
+        old_path = data.get('old_path')
+        new_path = data.get('new_path')
+        user_id = data.get('user_id', 'default')
+
+        if not old_path or not new_path:
+            return jsonify({'success': False, 'error': 'Old and new paths are required'}), 400
+
+        user_workspace = get_user_workspace(user_id)
+        old_path = old_path.replace('..', '').strip('/')
+        new_path = new_path.replace('..', '').strip('/')
+        old_full_path = os.path.join(user_workspace, old_path)
+        new_full_path = os.path.join(user_workspace, new_path)
+
+        if not os.path.exists(old_full_path):
+            return jsonify({'success': False, 'error': 'File or directory not found'}), 404
+
+        try:
+            shutil.move(old_full_path, new_full_path)
+            return jsonify({'success': True, 'message': f'File or directory moved successfully'})
+        except Exception as e:
+            logging.error(f"Error moving file/directory: {str(e)}")
+            return jsonify({'success': False, 'error': f'Error moving file/directory: {str(e)}'}), 500
+
+    except Exception as e:
+        logging.error(f"Error in move_file endpoint: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/constructor/status/<project_id>', methods=['GET'])
+def get_project_status(project_id):
+    """API endpoint para obtener el estado de un proyecto."""
+    try:
+        if project_id not in project_status:
+            return jsonify({
+                'success': False,
+                'error': 'Project not found'
+            }), 404
+
+        return jsonify({
+            'success': True,
+            'status': project_status[project_id]
         })
 
     except Exception as e:
-        logging.error(f"Error en Socket.IO user_message: {str(e)}")
-        logging.error(traceback.format_exc())
-        emit('error', {'message': str(e)})
+        logging.error(f"Error getting project status: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@socketio.on('disconnect')
+def handle_disconnect():
+    """Manejar desconexión de cliente Socket.IO."""
+    logging.info(f"Cliente Socket.IO desconectado: {request.sid}")
+
+@socketio.on('get_project_info')
+def handle_get_project_info(data):
+    """Handle request for project information."""
+    project_id = data.get('project_id')
+    if project_id:
+        try:
+            project_data = project_status.get(project_id)
+            if project_data:
+                emit('project_info', project_data)
+            else:
+                emit('project_info', {'error': 'Project not found'})
+        except Exception as e:
+            logging.error(f"Error getting project info: {e}")
+            emit('project_info', {'error': 'Error getting project info'})
+    else:
+        emit('project_info', {'error': 'Project ID not provided'})
 
 if __name__ == '__main__':
     try:
