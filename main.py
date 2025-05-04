@@ -137,15 +137,15 @@ def validate_gemini_key(key):
         logging.error(f"Error al validar Gemini API: {str(e)}")
         return False
 
-# Configurar claves API de forma segura (usando variables de entorno en producción)
-openai_api_key = os.getenv("OPENAI_API_KEY")
-anthropic_api_key = os.getenv("ANTHROPIC_API_KEY")
-gemini_api_key = os.getenv("GEMINI_API_KEY")
+# Configurar claves API directamente en el código
+openai_api_key = "tu_clave_openai_aqui"  # Reemplaza con tu clave real de OpenAI
+anthropic_api_key = "tu_clave_anthropic_aqui"  # Reemplaza con tu clave real de Anthropic
+gemini_api_key = "tu_clave_gemini_aqui"  # Reemplaza con tu clave real de Gemini
 
 # Validar las claves API
-openai_valid = validate_openai_key(openai_api_key) if openai_api_key else False
-anthropic_valid = validate_anthropic_key(anthropic_api_key) if anthropic_api_key else False
-gemini_valid = validate_gemini_key(gemini_api_key) if gemini_api_key else False
+openai_valid = validate_openai_key(openai_api_key) if openai_api_key != "tu_clave_openai_aqui" else False
+anthropic_valid = validate_anthropic_key(anthropic_api_key) if anthropic_api_key != "tu_clave_anthropic_aqui" else False
+gemini_valid = validate_gemini_key(gemini_api_key) if gemini_api_key != "tu_clave_gemini_aqui" else False
 
 # Almacenar las claves API en la configuración de la aplicación para acceso global
 app.config['API_KEYS'] = {
@@ -155,7 +155,7 @@ app.config['API_KEYS'] = {
 }
 
 # Mensaje informativo sobre el estado de las APIs
-if not any([openai_valid, anthropic_valid, gemini_valid]):
+if not any([openai_api_key, anthropic_api_key, gemini_api_key]):
     logging.error("¡ADVERTENCIA! Ninguna API está configurada. El sistema funcionará en modo degradado.")
     print("=" * 80)
     print("⚠️  NINGUNA API DE IA ESTÁ CONFIGURADA")
@@ -167,11 +167,11 @@ if not any([openai_valid, anthropic_valid, gemini_valid]):
     print("=" * 80)
 else:
     apis_configuradas = []
-    if openai_valid:
+    if openai_api_key:
         apis_configuradas.append("OpenAI")
-    if anthropic_valid:
+    if anthropic_api_key:
         apis_configuradas.append("Anthropic")
-    if gemini_valid:
+    if gemini_api_key:
         apis_configuradas.append("Gemini")
 
     print("=" * 80)
@@ -410,7 +410,7 @@ def handle_chat_internal(request_data):
             })
 
         if model_choice == 'openai':
-            if app.config['API_KEYS']['openai']:
+            if openai_api_key:
                 try:
                     messages = [{"role": "system", "content": system_prompt}]
                     for msg in formatted_context:
@@ -419,7 +419,7 @@ def handle_chat_internal(request_data):
 
                     openai_model = "gpt-4o"
 
-                    openai_client = openai.OpenAI(api_key=app.config['API_KEYS']['openai'])
+                    openai_client = openai.OpenAI()
                     completion = openai_client.chat.completions.create(
                         model=openai_model,
                         messages=messages,
@@ -437,12 +437,12 @@ def handle_chat_internal(request_data):
                 return {'response': f"El modelo 'openai' no está disponible en este momento. Por favor configura una clave API en el panel de Secrets o selecciona otro modelo.", 'error': None}
 
         elif model_choice == 'anthropic':
-            if app.config['API_KEYS']['anthropic']:
+            if anthropic_api_key:
                 try:
                     import anthropic
                     from anthropic import Anthropic
 
-                    client = Anthropic(api_key=app.config['API_KEYS']['anthropic'])
+                    client = Anthropic(api_key=anthropic_api_key)
 
                     messages = []
                     for msg in formatted_context:
@@ -468,11 +468,11 @@ def handle_chat_internal(request_data):
                 return {'response': f"El modelo 'anthropic' no está disponible en este momento. Por favor configura una clave API en el panel de Secrets o selecciona otro modelo.", 'error': None}
 
         elif model_choice == 'gemini':
-            if app.config['API_KEYS']['gemini']:
+            if gemini_api_key:
                 try:
                     # Make sure Gemini is configured properly
                     if not hasattr(genai, '_configured') or not genai._configured:
-                        genai.configure(api_key=app.config['API_KEYS']['gemini'])
+                        genai.configure(api_key=gemini_api_key)
 
                     model = genai.GenerativeModel('gemini-1.5-pro')
 
@@ -494,11 +494,11 @@ def handle_chat_internal(request_data):
                 return {'response': f"El modelo 'gemini' no está disponible en este momento. Por favor configura una clave API en el panel de Secrets o selecciona otro modelo.", 'error': None}
         else:
             available_models = []
-            if app.config['API_KEYS']['openai']:
+            if openai_api_key:
                 available_models.append("'openai'")
-            if app.config['API_KEYS']['anthropic']:
+            if anthropic_api_key:
                 available_models.append("'anthropic'")
-            if app.config['API_KEYS']['gemini']:
+            if gemini_api_key:
                 available_models.append("'gemini'")
 
             if available_models:
@@ -562,11 +562,11 @@ def api_chat():
 
         # Verificar qué APIs están disponibles
         available_apis = []
-        if app.config['API_KEYS']['openai']:
+        if openai_api_key:
             available_apis.append('openai')
-        if app.config['API_KEYS']['anthropic']:
+        if anthropic_api_key:
             available_apis.append('anthropic')
-        if app.config['API_KEYS']['gemini']:
+        if gemini_api_key:
             available_apis.append('gemini')
 
         # Si no hay APIs configuradas, mostrar mensaje informativo
@@ -594,20 +594,133 @@ def api_chat():
                     'available_models': available_apis
                 })
 
-        result = handle_chat_internal(data)
+        # Configurar prompts según el agente
+        agent_prompts = {
+            'developer': "Eres un Agente de Desarrollo experto en optimización y edición de código en tiempo real. Tu objetivo es ayudar a los usuarios con tareas de programación, desde la corrección de errores hasta la implementación de funcionalidades completas.",
+            'architect': "Eres un Agente de Arquitectura especializado en diseñar arquitecturas escalables y optimizadas. Ayudas a los usuarios a tomar decisiones sobre la estructura del código, patrones de diseño y selección de tecnologías.",
+            'advanced': "Eres un Agente Avanzado de Software con experiencia en integraciones complejas y funcionalidades avanzadas. Puedes asesorar sobre tecnologías emergentes, optimización de rendimiento y soluciones a problemas técnicos sofisticados.",
+            'general': "Eres un asistente de desarrollo de software experto y útil. Respondes preguntas y ayudas con tareas de programación de manera clara y concisa."
+        }
 
-        if 'error' in result and result['error']:
+        system_prompt = agent_prompts.get(agent_id, agent_prompts['general'])
+
+        # Preparar el contexto de conversación
+        formatted_context = []
+        for msg in data.get('context', []):
+            role = msg.get('role', 'user')
+            if role not in ['user', 'assistant', 'system']:
+                role = 'user'
+            formatted_context.append({
+                "role": role,
+                "content": msg.get('content', '')
+            })
+
+        # Procesar la solicitud con el modelo adecuado
+        respuesta = None
+        if model_choice == 'openai' and openai_api_key:
+            try:
+                messages = [{"role": "system", "content": system_prompt}]
+                for msg in formatted_context:
+                    messages.append({"role": msg['role'], "content": msg['content']})
+                messages.append({"role": "user", "content": user_message})
+
+                # Usar el modelo más avanzado disponible: GPT-4o
+                openai_model = "gpt-4o"
+
+                try:
+                    # Crear cliente OpenAI
+                    openai_client = openai.OpenAI()
+                    completion = openai_client.chat.completions.create(
+                        model=openai_model,
+                        messages=messages,
+                        temperature=0.7,
+                        max_tokens=2000
+                    )
+                    respuesta = completion.choices[0].message.content
+                except Exception as e:
+                    logging.error(f"Error con OpenAI API: {str(e)}")
+                    respuesta = f"Error al procesar con OpenAI: {str(e)}"
+
+            except Exception as e:
+                logging.error(f"Error con API de OpenAI: {str(e)}")
+                return jsonify({
+                    'success': False,
+                    'error': f"Error con OpenAI API: {str(e)}",
+                    'agent_id': agent_id,
+                    'model': model_choice
+                })
+
+        elif model_choice == 'anthropic' and anthropic_api_key:
+            try:
+                import anthropic
+                from anthropic import Anthropic
+
+                client = Anthropic(api_key=anthropic_api_key)
+
+                messages = []
+                for msg in formatted_context:
+                    messages.append({"role": msg['role'], "content": msg['content']})
+                messages.append({"role": "user", "content": user_message})
+
+                completion = client.messages.create(
+                    model="claude-3-5-sonnet-latest",
+                    messages=messages,
+                    max_tokens=2000,
+                    temperature=0.7,
+                    system=system_prompt
+                )
+
+                respuesta = completion.content[0].text
+
+            except Exception as e:
+                logging.error(f"Error con API de Anthropic: {str(e)}")
+                return jsonify({
+                    'success': False,
+                    'error': f"Error con Anthropic API: {str(e)}",
+                    'agent_id': agent_id,
+                    'model': model_choice
+                })
+
+        elif model_choice == 'gemini' and gemini_api_key:
+            try:
+                # Make sure Gemini is configured properly
+                if not hasattr(genai, '_configured') or not genai._configured:
+                    genai.configure(api_key=gemini_api_key)
+
+                model = genai.GenerativeModel('gemini-1.5-pro')
+
+                full_prompt = system_prompt + "\n\n"
+                for msg in formatted_context:
+                    role_prefix = "Usuario: " if msg['role'] == 'user' else "Asistente: "
+                    full_prompt += role_prefix + msg['content'] + "\n\n"
+                full_prompt += "Usuario: " + user_message + "\n\nAsistente: "
+
+                gemini_response = model.generate_content(full_prompt)
+                respuesta = gemini_response.text
+
+            except Exception as e:
+                logging.error(f"Error con API de Gemini: {str(e)}")
+                return jsonify({
+                    'success': False,
+                    'error': f"Error con Gemini API: {str(e)}",
+                    'agent_id': agent_id,
+                    'model': model_choice
+                })
+
+        # Si no se pudo generar una respuesta, mostrar un mensaje de error
+        if not respuesta:
             return jsonify({
                 'success': False,
-                'error': result['error'],
+                'error': f"No se pudo generar una respuesta con el modelo {model_choice}. Verifica que la API esté configurada correctamente.",
                 'agent_id': agent_id,
                 'model': model_choice,
                 'available_models': available_apis
             })
 
+        # Devolver respuesta real de la API
         return jsonify({
             'success': True,
-            'response': result['response'],
+            'response': respuesta,
             'agent_id': agent_id,
             'model': model_choice,
             'available_models': available_apis,
@@ -685,80 +798,33 @@ def process_code_endpoint():
         instructions = data.get('instructions', 'Corrige errores y mejora la calidad del código')
         language = data.get('language', 'python')
         model = data.get('model', 'openai')
+        auto_fix = data.get('auto_fix', False)
 
         if not code:
-            return jsonify({'success': False, 'error': 'No se proporcionó código para procesar'}), 400
+            return jsonify({
+                'success': False,
+                'error': 'No se proporcionó código para procesar'
+            }), 400
+
+        if auto_fix:
+            auto_instructions = "MODO CORRECCIÓN AUTOMÁTICA: "
+            if instructions == 'Corrige errores y mejora la calidad del código':
+                instructions = auto_instructions + "Corrige automáticamente errores de sintaxis, optimiza el código y mejora la calidad siguiendo las mejores prácticas. Enfócate en corregir errores sin cambiar la lógica principal."
+            else:
+                instructions = auto_instructions + instructions
 
         result = None
 
-        if model == 'openai' and app.config['API_KEYS']['openai']:
+        if model == 'openai' and openai_api_key:
             try:
-                openai_client = openai.OpenAI(api_key=app.config['API_KEYS']['openai'])
-
-                prompt = f"""Eres un experto programador. Tu tarea es corregir el siguiente código en {language} según las instrucciones proporcionadas.
-
-                CÓDIGO:
-                ```{language}
-                {code}
-                ```
-
-                INSTRUCCIONES:
-                {instructions}
-
-                Responde en formato JSON con las siguientes claves:
-                -
-- correctedCode: el código corregido completo
-- changes: una lista de objetos, cada uno con 'description' y 'lineNumbers'
-- explanation: una explicación detallada de los cambios
-"""
-
-                response = openai_client.chat.completions.create(
+                client = openai.OpenAI()
+                response = client.chat.completions.create(
                     model="gpt-4o",
                     messages=[
-                        {"role": "system", "content": "Eres un experto programador que corrige y optimiza código."},
-                        {"role": "user", "content": prompt}
+                        {"role": "system", "content": f"Eres un experto programador. Tu tarea es corregir el siguiente código en {language} según las instrucciones proporcionadas. El código resultante debe ser limpio, optimizado y SIN COMENTARIOS explicativos dentro del código. Devuelve el código corregido, una lista de cambios realizados y una explicación clara separada del código."},
+                        {"role": "user", "content": f"CÓDIGO:\n```{language}\n{code}\n```\n\nINSTRUCCIONES:\n{instructions}\n\nResponde en formato JSON con las siguientes claves{language}\n{code}\n```\n\nINSTRUCCIONES:\n{instructions}\n\nResponde en formato JSON con las siguientes claves:\n- correctedCode: el código corregido completo\n- changes: una lista de objetos, cada uno con 'description' y 'lineNumbers'\n- explanation: una explicación detallada de los cambios"}
                     ],
-                    response_format={"type": "json_object"},
                     temperature=0.1
-                )
-
-                result = json.loads(response.choices[0].message.content)
-                logging.info("Código corregido con OpenAI")
-
-            except Exception as e:
-                logging.error(f"Error con API de OpenAI: {str(e)}")
-                return jsonify({
-                    'success': False,
-                    'error': f'Error al conectar con OpenAI: {str(e)}'
-                }), 500
-
-        elif model == 'anthropic' and app.config['API_KEYS']['anthropic']:
-            try:
-                import anthropic
-                from anthropic import Anthropic
-
-                client = Anthropic(api_key=app.config['API_KEYS']['anthropic'])
-
-                response = client.messages.create(
-                    model="claude-3-5-sonnet-latest",
-                    max_tokens=4000,
-                    temperature=0.1,
-                    messages=[
-                        {"role": "user", "content": f"""Eres un experto programador. Tu tarea es corregir el siguiente código en {language} según las instrucciones proporcionadas.
-
-CÓDIGO:
-```{language}
-{code}
-```
-
-INSTRUCCIONES:
-{instructions}
-
-Responde en formato JSON con las siguientes claves:
-- correctedCode: el código corregido completo
-- changes: una lista de objetos, cada uno con 'description' y 'lineNumbers'
-- explanation: una explicación detallada de los cambios"""}
-                    ]
                 )
 
                 response_text = response.content[0].text.strip()
@@ -794,11 +860,11 @@ Responde en formato JSON con las siguientes claves:
                     'error': f'Error al conectar con Anthropic: {str(e)}'
                 }), 500
 
-        elif model == 'gemini' and app.config['API_KEYS']['gemini']:
+        elif model == 'gemini' and gemini_api_key:
             try:
                 # Asegúrate de que Gemini está configurado correctamente
                 if not hasattr(genai, '_configured') or not genai._configured:
-                    genai.configure(api_key=app.config['API_KEYS']['gemini'])
+                    genai.configure(api_key=gemini_api_key)
 
                 gemini_model = genai.GenerativeModel(
                     model_name='gemini-1.5-pro',
@@ -810,14 +876,21 @@ Responde en formato JSON con las siguientes claves:
                     }
                 )
 
-                prompt = f"""Eres un experto programador. Tu tarea es corregir el siguienteINSTRUCCIONES:
+                prompt = f"""Eres un experto programador. Tu tarea es corregir el siguiente código en {language} según las instrucciones proporcionadas.
+
+                CÓDIGO:
+                ```{language}
+                {code}
+                ```
+
+                INSTRUCCIONES:
                 {instructions}
 
                 Responde en formato JSON con las siguientes claves:
                 - correctedCode: el código corregido completo
                 - changes: una lista de objetos, cada uno con 'description' y 'lineNumbers'
                 - explanation: una explicación detallada de los cambios
-"""
+                """
 
                 response = gemini_model.generate_content(prompt)
                 response_text = response.text
@@ -1007,86 +1080,626 @@ def process_natural_command():
 
 @app.route('/api/process_instructions', methods=['POST'])
 def process_instructions():
-    """Procesa instrucciones en lenguaje natural utilizando el modelo especificado"""
-    data = request.json
-    if not data:
-        return jsonify({"error": "Datos no proporcionados"}), 400
-
-    instruction = data.get('instruction') or data.get('message', '')
-    model = data.get('model', 'openai')
-    agent_id = data.get('agent_id', 'developer')
-    format_type = data.get('format', 'default')
-
-    if not instruction:
-        return jsonify({"error": "Instrucción no proporcionada"}), 400
-
+    """Process natural language instructions and convert to terminal commands."""
     try:
-        # Enviar a la IA para procesamiento
-        result = handle_chat_internal({
-            'message': instruction,
-            'model': model,
-            'agent_id': agent_id
-        })
+        data = request.json
+        instruction = data.get('message', '') or data.get('instruction', '')
+        model_choice = data.get('model', 'openai')
 
-        response = result.get('response', '')
+        if not instruction:
+            return jsonify({'error': 'No instruction provided'}), 400
 
-        # Formatear respuesta según el tipo solicitado
-        if format_type == 'markdown':
-            # Asegurar que la respuesta tenga formato markdown correcto
-            response = ensure_markdown_format(response)
+        command_only = data.get('command_only', False)
 
-        # Procesar para extraer comandos si así se solicita
-        if data.get('command_only', False):
-            command = extract_command_from_response(response)
-            return jsonify({"response": response, "command": command})
+        command_map = {
+            "listar": "ls -la",
+            "mostrar archivos": "ls -la",
+            "mostrar directorio": "ls -la",
+            "ver archivos": "ls -la",
+            "archivos": "ls -la",
+            "dir": "ls -la",
+            "fecha": "date",
+            "hora": "date +%H:%M:%S",
+            "calendario": "cal",
+            "quien soy": "whoami",
+            "donde estoy": "pwd",
+            "limpiar": "clear",
+            "sistema": "uname -a",
+            "memoria": "free -h",
+            "espacio": "df -h",
+            "procesos": "ps aux"
+        }
 
-        return jsonify({"response": response})
+        instruction_lower = instruction.lower()
+        terminal_command = None
+        missing_info = None
+
+        for key, cmd in command_map.items():
+            if key in instruction_lower:
+                terminal_command = cmd
+                break
+
+        if not terminal_command:
+            if "crear" in instruction_lower and "carpeta" in instruction_lower:
+                folder_name = instruction_lower.split("carpeta")[-1].strip()
+                if not folder_name:
+                    missing_info = "Falta especificar el nombre de la carpeta"
+                else:
+                    terminal_command = f"mkdir -p {folder_name}"
+
+            elif "crear" in instruction_lower and "archivo" in instruction_lower:
+                file_name = instruction_lower.split("archivo")[-1].strip()
+                if not file_name:
+                    missing_info = "Falta especificar el nombre del archivo"
+                else:
+                    terminal_command = f"touch {file_name}"
+
+            elif "eliminar" in instruction_lower or "borrar" in instruction_lower:
+                target = instruction_lower.replace("eliminar", "").replace("borrar", "").strip()
+                if not target:
+                    missing_info = "Falta especificar qué elemento eliminar"
+                else:
+                    terminal_command = f"rm -rf {target}"
+
+            else:
+                terminal_command = "echo 'Comando no reconocido'"
+
+        if terminal_command:
+            logging.info(f"Instrucción: '{instruction}' → Comando: '{terminal_command}'")
+
+        if missing_info:
+            return jsonify({
+                'error': missing_info,
+                'needs_more_info': True
+            })
+        elif command_only:
+            return jsonify({'command': terminal_command})
+        else:
+            return jsonify({
+                'command': terminal_command,
+                'original_instruction': instruction,
+                'model_used': model_choice
+            })
 
     except Exception as e:
-        app.logger.error(f"Error al procesar la instrucción: {str(e)}")
-        return jsonify({"error": str(e)}), 500
+        logging.error(f"Error generating command: {str(e)}")
+        return jsonify({'error': f"Error generating command: {str(e)}"}), 500
 
-def ensure_markdown_format(response):
-    """Asegura que la respuesta tenga un formato markdown correcto y bien estructurado"""
-    # Verificar si hay bloques de código y asegurarse de que estén bien formateados
-    lines = response.split('\n')
-    in_code_block = False
-    language_specified = False
-    formatted_lines = []
+@app.route('/api/health', methods=['GET'])
+def health_check():
+    """Health check endpoint for the application."""
+    try:
+        # Obtener el estado actual de las APIs desde la configuración
+        api_keys = app.config.get('API_KEYS', {}) if hasattr(app, 'config') else {}
 
-    for i, line in enumerate(lines):
-        # Detectar inicio de bloque de código
-        if line.strip().startswith('```'):
-            in_code_block = not in_code_block
+        apis = {
+            "openai": "ok" if api_keys.get('openai') else "not configured",
+            "anthropic": "ok" if api_keys.get('anthropic') else "not configured",
+            "gemini": "ok" if api_keys.get('gemini') else "not configured"
+        }
 
-            # Si es el inicio de un bloque y no tiene lenguaje especificado
-            if in_code_block and line.strip() == '```':
-                language_specified = False
-                # Intentar detectar el lenguaje por contexto
-                if i > 0 and 'javascript' in lines[i - 1].lower():
-                    formatted_lines.append('```javascript')
-                elif i > 0 and 'python' in lines[i - 1].lower():
-                    formatted_lines.append('```python')
-                elif i > 0 and ('bash' in lines[i - 1].lower() or 'shell' in lines[i - 1].lower() or 'comando' in lines[i - 1].lower()):
-                    formatted_lines.append('```bash')
-                elif i > 0 and 'html' in lines[i - 1].lower():
-                    formatted_lines.append('```html')
-                elif i > 0 and 'css' in lines[i - 1].lower():
-                    formatted_lines.append('```css')
-                else:
-                    formatted_lines.append('```plaintext')
-            else:
-                formatted_lines.append(line)
+        # Verificar si hay al menos una API configurada
+        any_api_available = any([key for key, value in api_keys.items() if value])
+
+        # Registrar cada solicitud de verificación de salud
+        logging.info(f"Verificación de salud solicitada en: {time.time()}")
+
+        # Comprobar si sys está importado
+        import sys
+
+        response = {
+            "status": "ok",
+            "timestamp": time.time(),
+            "version": "1.0.0",
+            "apis": apis,
+            "chat_api_available": any_api_available,
+            "available_models": [key for key, value in api_keys.items() if value],
+            "debug_info": {
+                "python_version": sys.version,
+                "endpoints_active": [
+                    "/api/chat",
+                    "/api/health",
+                    "/api/files",
+                    "/api/process_code"
+                ]
+            }
+        }
+
+        return jsonify(response)
+    except Exception as e:
+        logging.error(f"Error in health check: {str(e)}")
+        return jsonify({
+            "status": "error",
+            "error": str(e),
+            "timestamp": time.time()
+        }), 500
+
+@app.route('/api/files', methods=['GET'])
+def list_files_api():
+    """API para listar archivos del workspace del usuario."""
+    try:
+        directory = request.args.get('directory', '.')
+        user_id = request.args.get('user_id', 'default')
+
+        user_workspace = get_user_workspace(user_id)
+
+        if directory == '.':
+            full_directory = user_workspace
+            relative_dir = '.'
         else:
-            formatted_lines.append(line)
+            directory = directory.replace('..', '').strip('/')
+            full_directory = os.path.join(user_workspace, directory)
+            relative_dir = directory
 
-    # Asegurarse de que todos los bloques de código estén cerrados
-    if in_code_block:
-        formatted_lines.append('```')
+        if not os.path.exists(full_directory):
+            if directory == '.':
+                os.makedirs(full_directory, exist_ok=True)
+            else:
+                return jsonify({
+                    'success': False,
+                    'error': 'Directorio no encontrado'
+                }), 404
 
-    return '\n'.join(formatted_lines)
+        files = []
+        try:
+            for item in os.listdir(full_directory):
+                item_path = os.path.join(full_directory, item)
+                relative_path = os.path.join(relative_dir, item) if relative_dir != '.' else item
 
-def extract_command_from_response(response):
-    """Extrae comandos de terminal de la respuesta de la IA"""
-    # Buscar comandos en bloques de código bash/shell
-    bash_block = re.search(r'```(?:bash|shell)\s*(.*?)\s*
+                extension = os.path.splitext(item)[1].lower()[1:] if os.path.isfile(item_path) and '.' in item else ''
+
+                if os.path.isdir(item_path):
+                    files.append({
+                        'name': item,
+                        'path': relative_path,
+                        'type': 'directory',
+                        'size': 0,
+                        'modified': os.path.getmtime(item_path),
+                        'extension': ''
+                    })
+                else:
+                    file_size = os.path.getsize(item_path)
+                    files.append({
+                        'name': item,
+                        'path': relative_path,
+                        'type': 'file',
+                        'size': file_size,
+                        'modified': os.path.getmtime(item_path),
+                        'extension': extension
+                    })
+        except Exception as e:
+            logging.error(f"Error al listar archivos: {str(e)}")
+            return jsonify({
+                'success': False,
+                'error': f'Error al listar archivos: {str(e)}'
+            }), 500
+
+        return jsonify({
+            'success': True,
+            'files': files,
+            'directory': relative_dir
+        })
+    except Exception as e:
+        logging.error(f"Error en endpoint de archivos: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+@app.route('/api/files/read', methods=['GET'])
+def read_file():
+    """API para leer el contenido de un archivo en el workspace del usuario."""
+    try:
+        file_path = request.args.get('file_path')
+        user_id = request.args.get('user_id', 'default')
+
+        if not file_path:
+            return jsonify({
+                'success': False,
+                'error': 'No se proporcionó ruta de archivo'
+            }), 400
+
+        user_workspace = get_user_workspace(user_id)
+
+        file_path = file_path.replace('..', '').strip('/')
+        full_path = os.path.join(user_workspace, file_path)
+
+        if not os.path.exists(full_path):
+            return jsonify({
+                'success': False,
+                'error': 'Archivo no encontrado'
+            }), 404
+
+        if os.path.isdir(full_path):
+            return jsonify({
+                'success': False,
+                'error': 'La ruta especificada es un directorio'
+            }), 400
+
+        try:
+            binary_extensions = ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'zip', 'pdf', 'doc', 'docx', 'xls', 'xlsx']
+            file_ext = os.path.splitext(file_path)[1].lower()[1:] if '.' in file_path else ''
+
+            if file_ext in binary_extensions:
+                return jsonify({
+                    'success': True,
+                    'is_binary': True,
+                    'file_path': file_path,
+                    'file_url': f'/api/files/download?file_path={file_path}&user_id={user_id}'
+                })
+
+            with open(full_path, 'r', encoding='utf-8', errors='replace') as f:
+                content = f.read()
+
+            return jsonify({
+                'success': True,
+                'content': content,
+                'file_path': file_path,
+                'is_binary': False
+            })
+        except Exception as e:
+            logging.error(f"Error al leer archivo: {str(e)}")
+            return jsonify({
+                'success': False,
+                'error': f'Error al leer archivo: {str(e)}'
+            }), 500
+
+    except Exception as e:
+        logging.error(f"Error en endpoint de lectura de archivo: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@app.route('/api/files/create', methods=['POST'])
+def create_file():
+    """API para crear un archivo o directorio en el workspace del usuario."""
+    try:
+        data = request.json
+        if not data:
+            return jsonify({
+                'success': False,
+                'error': 'No se proporcionaron datos'
+            }), 400
+
+        file_path = data.get('file_path')
+        content = data.get('content', '')
+        is_directory = data.get('is_directory', False)
+        user_id = data.get('user_id', 'default')
+
+        if not file_path:
+            return jsonify({
+                'success': False,
+                'error': 'No se proporcionó ruta de archivo'
+            }), 400
+
+        user_workspace = get_user_workspace(user_id)
+
+        file_path = file_path.replace('..', '').strip('/')
+        full_path = os.path.join(user_workspace, file_path)
+
+        if os.path.exists(full_path):
+            return jsonify({
+                'success': False,
+                'error': f'Ya existe un{"a carpeta" if is_directory else " archivo"} con ese nombre'
+            }), 400
+
+        try:
+            if is_directory:
+                os.makedirs(full_path, exist_ok=True)
+                message = f'Directorio {file_path} creado exitosamente'
+            else:
+                parent_dir = os.path.dirname(full_path)
+                if parent_dir and not os.path.exists(parent_dir):
+                    os.makedirs(parent_dir, exist_ok=True)
+
+                with open(full_path, 'w', encoding='utf-8') as f:
+                    f.write(content)
+
+                message = f'Archivo {file_path} creado exitosamente'
+
+            return jsonify({
+                'success': True,
+                'message': message,
+                'file_path': file_path,
+                'is_directory': is_directory
+            })
+        except Exception as e:
+            logging.error(f"Error al crear archivo/directorio: {str(e)}")
+            return jsonify({
+                'success': False,
+                'error': f'Error al crear: {str(e)}'
+            }), 500
+
+    except Exception as e:
+        logging.error(f"Error en endpoint de creación: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@app.route('/api/files/delete', methods=['DELETE'])
+def delete_file():
+    """API para eliminar un archivo o directorio del workspace del usuario."""
+    try:
+        data = request.json
+        if not data:
+            return jsonify({
+                'success': False,
+                'error': 'No se proporcionaron datos'
+            }), 400
+
+        file_path = data.get('file_path')
+        user_id = data.get('user_id', 'default')
+
+        if not file_path:
+            return jsonify({
+                'success': False,
+                'error': 'No se proporcionó ruta de archivo'
+            }), 400
+
+        user_workspace = get_user_workspace(user_id)
+
+        file_path = file_path.replace('..', '').strip('/')
+        full_path = os.path.join(user_workspace, file_path)
+
+        if not os.path.exists(full_path):
+            return jsonify({
+                'success': False,
+                'error': 'Archivo o directorio no encontrado'
+            }), 404
+
+        try:
+            if os.path.isdir(full_path):
+                shutil.rmtree(full_path)
+                message = f'Directorio {file_path} eliminado exitosamente'
+            else:
+                os.remove(full_path)
+                message = f'Archivo {file_path} eliminado exitosamente'
+
+            return jsonify({
+                'success': True,
+                'message': message,
+                'file_path': file_path,
+                'is_directory': os.path.isdir(full_path)
+            })
+        except Exception as e:
+            logging.error(f"Error al eliminar: {str(e)}")
+            return jsonify({
+                'success': False,
+                'error': f'Error al eliminar: {str(e)}'
+            }), 500
+
+    except Exception as e:
+        logging.error(f"Error en endpoint de eliminación: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@app.route('/api/files/download', methods=['GET'])
+def download_file():
+    """API para descargar un archivo desde el workspace del usuario."""
+    try:
+        file_path = request.args.get('file_path')
+        user_id = request.args.get('user_id', 'default')
+
+        if not file_path:
+            return jsonify({
+                'success': False,
+                'error': 'No se proporcionó ruta de archivo'
+            }), 400
+
+        user_workspace = get_user_workspace(user_id)
+
+        file_path = file_path.replace('..', '').strip('/')
+        full_path = os.path.join(user_workspace, file_path)
+
+        if not os.path.exists(full_path):
+            return jsonify({
+                'success': False,
+                'error': 'Archivo no encontrado'
+            }), 404
+
+        return send_file(full_path, as_attachment=True, download_name=os.path.basename(file_path))
+
+    except Exception as e:
+        logging.error(f"Error al descargar archivo: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': f'Error al descargar archivo: {str(e)}'
+        }), 500
+
+@app.route('/api/constructor/generate', methods=['POST'])
+def generate_project():
+    """API endpoint para iniciar la generación de un proyecto."""
+    try:
+        data = request.json
+        description = data.get('description', '')
+
+        if not description:
+            return jsonify({
+                'success': False,
+                'error': 'Se requiere una descripción del proyecto'
+            }), 400
+
+        return jsonify({
+            'success': True,
+            'message': 'Generación de proyecto iniciada',
+            'project_id': f"proj_{int(time.time())}",
+            'estimated_time': '5-10 minutos'
+        })
+
+    except Exception as e:
+        logging.error(f"Error al generar proyecto: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@app.route('/api_status')
+def api_status():
+    """Muestra el estado de las claves API configuradas."""
+    openai_key = os.environ.get('OPENAI_API_KEY', 'No configurada')
+    anthropic_key = os.environ.get('ANTHROPIC_API_KEY', 'No configurada')
+    gemini_key = os.environ.get('GEMINI_API_KEY', 'No configurada')
+
+    if openai_key != 'No configurada':
+        openai_key = openai_key[:5] + "..." + openai_key[-5:] if len(openai_key) > 10 else "***configurada***"
+
+    if anthropic_key != 'No configurada':
+        anthropic_key = anthropic_key[:5] + "..." + anthropic_key[-5:] if len(anthropic_key) > 10 else "***configurada***"
+
+    if gemini_key != 'No configurada':
+        gemini_key = gemini_key[:5] + "..." + gemini_key[-5:] if len(gemini_key) > 10 else "***configurada***"
+
+    return jsonify({
+        'openai': openai_key,
+        'anthropic': anthropic_key,
+        'gemini': gemini_key,
+        'message': 'Visita esta URL para verificar el estado de las APIs'
+    })
+
+@socketio.on('connect')
+def handle_connect():
+    """Manejar conexión de cliente Socket.IO."""
+    logging.info(f"Cliente Socket.IO conectado: {request.sid}")
+    emit('server_info', {'status': 'connected', 'sid': request.sid})
+
+@socketio.on('execute_command')
+def handle_execute_command(data):
+    """Ejecuta un comando en la terminal y devuelve el resultado."""
+    command = data.get('command', '')
+    user_id = data.get('user_id', 'default')
+    terminal_id = data.get('terminal_id', request.sid)
+
+    if not command:
+        emit('command_error', {
+            'error': 'No se proporcionó un comando',
+            'terminal_id': terminal_id
+        }, room=terminal_id)
+        return
+
+    file_system_manager = FileSystemManager(socketio)
+    result = file_system_manager.execute_command(
+        command=command,
+        user_id=user_id,
+        notify=True,
+        terminal_id=terminal_id
+    )
+
+    emit('command_result', {
+        'output': result.get('output', ''),
+        'success': result.get('success', False),
+        'command': command,
+        'terminal_id': terminal_id
+    }, room=terminal_id)
+
+    socketio.emit('file_sync', {
+        'refresh': True,
+        'user_id': user_id,
+        'command': command
+    }, room=user_id)
+
+@socketio.on('user_message')
+def handle_user_message(data):
+    """Manejar mensajes del usuario a través de Socket.IO."""
+    try:
+        logging.info(f"Mensaje recibido vía Socket.IO: {data}")
+        user_message = data.get('message', '')
+        agent_id = data.get('agent', 'developer')
+        model = data.get('model', 'openai')
+        document = data.get('document', '')
+        terminal_id = data.get('terminal_id', '')
+
+        if not user_message:
+            emit('error', {'message': 'Mensaje vacío'})
+            return
+
+        logging.info(f"Procesando mensaje Socket.IO: '{user_message[:30]}...' usando agente {agent_id} y modelo {model}")
+
+        request_data = {
+            'message': user_message,
+            'agent_id': agent_id,
+            'model': model,
+            'context': data.get('context', [])
+        }
+
+        try:
+            if model == 'openai' and openai_api_key:
+                messages = [
+                    {"role": "system", "content": f"Eres un asistente de {agent_id} experto y útil."},
+                    {"role": "user", "content": user_message}
+                ]
+
+                client = openai.OpenAI()
+                completion = client.chat.completions.create(
+                    model="gpt-4o",
+                    messages=messages,
+                    temperature=0.7,
+                    max_tokens=2000
+                )
+
+                response = completion.choices[0].message.content
+                logging.info(f"Respuesta generada directamente con OpenAI: {response[:100]}...")
+
+                emit('agent_response', {
+                    'response': response,
+                    'agent': agent_id,
+                    'model': model,
+                    'error': None
+                })
+                return
+        except Exception as api_error:
+            logging.warning(f"Error en API directa: {str(api_error)}, usando handle_chat_internal")
+
+        # Si falla la API directa o no está configurada, usar handle_chat_internal
+        result = handle_chat_internal(request_data)
+
+        logging.info(f"Enviando respuesta Socket.IO: '{result.get('response', '')[:30]}...'")
+        emit('agent_response', {
+            'response': result.get('response', ''),
+            'agent': agent_id,
+            'model': model,
+            'error': result.get('error', None),
+            'terminal_id': terminal_id
+        })
+
+    except Exception as e:
+        logging.error(f"Error en Socket.IO user_message: {str(e)}")
+        logging.error(traceback.format_exc())
+        emit('error', {'message': str(e)})
+
+if __name__ == '__main__':
+    try:
+        logging.info("Iniciando servidor CODESTORM Assistant...")
+
+        if not openai_api_key:
+            logging.warning("OPENAI_API_KEY no configurada - funcionalidades de OpenAI estarán deshabilitadas")
+        if not anthropic_api_key:
+            logging.warning("ANTHROPIC_API_KEY no configurada - funcionalidades de Anthropic estarán deshabilitadas")
+        if not gemini_api_key:
+            logging.warning("GEMINI_API_KEY no configurada - funcionalidades de Gemini estarán deshabilitadas")
+
+        if not any([openai_api_key, anthropic_api_key, gemini_api_key]):
+            logging.error("¡ADVERTENCIA! Ninguna API está configurada. El sistema funcionará en modo degradado.")
+
+        try:
+            if 'watch_workspace_files' in globals():
+                file_watcher_thread = threading.Thread(target=watch_workspace_files, daemon=True)
+                file_watcher_thread.start()
+                logging.info("Observador de archivos iniciado correctamente")
+        except Exception as watcher_error:
+            logging.warning(f"No se pudo iniciar el observador de archivos: {str(watcher_error)}")
+
+        logging.info("Servidor listo para recibir conexiones en puerto 5000")
+
+        socketio.run(
+            app,
+            host='0.0.0.0',
+            port=5000,
+            debug=True,
+            allow_unsafe_werkzeug=True
+        )
+    except Exception as e:
+        logging.critical(f"Error fatal al iniciar el servidor: {str(e)}")
+        logging.critical(traceback.format_exc())
