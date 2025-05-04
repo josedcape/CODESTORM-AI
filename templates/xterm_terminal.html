@@ -832,6 +832,9 @@
                     <button id="toggle-explorer" class="btn btn-sm btn-outline-light ms-2 d-md-none">
                         <i class="bi bi-list"></i>
                     </button>
+                    <button id="view-files-button" class="btn btn-sm btn-outline-light ms-2">
+                        <i class="bi bi-files"></i> Ver Archivos
+                    </button>
                     <button id="toggle-assistant-chat" class="btn btn-sm btn-outline-light ms-2">
                         <i class="bi bi-chat-dots"></i> Asistente
                     </button>
@@ -1040,6 +1043,9 @@
     <div id="mobile-float-menu">
         <button id="mobile-explorer-toggle" class="btn btn-sm btn-outline-light">
             <i class="bi bi-folder2-open"></i> Explorador
+        </button>
+        <button id="view-files-btn" class="btn btn-sm btn-outline-light">
+            <i class="bi bi-files"></i> Ver Archivos
         </button>
         <button id="mobile-assistant-toggle" class="btn btn-sm btn-outline-light">
             <i class="bi bi-robot"></i> Asistente
@@ -1631,6 +1637,12 @@
                 .then(data => {
                     if (data.success) {
                         updateFileExplorer(data);
+                        // Guardar datos en sessionStorage para acceso rápido
+                        try {
+                            sessionStorage.setItem('explorer_data_' + directory, JSON.stringify(data));
+                        } catch (e) {
+                            console.warn('No se pudo guardar en sessionStorage:', e);
+                        }
                     } else {
                         showNotification(data.error || 'Error al cargar archivos', 'error');
                     }
@@ -1653,6 +1665,196 @@
                         `;
                     }
                 });
+            }
+            
+            // Función para visualizar archivos del explorador en una ventana modal
+            function viewExplorerFiles() {
+                // Obtener datos actuales del explorador
+                const currentData = sessionStorage.getItem('explorer_data_' + currentDirectory);
+                
+                // Crear modal si no existe
+                let modal = document.getElementById('file-explorer-modal');
+                
+                if (!modal) {
+                    modal = document.createElement('div');
+                    modal.id = 'file-explorer-modal';
+                    modal.className = 'modal fade';
+                    modal.setAttribute('tabindex', '-1');
+                    modal.setAttribute('aria-labelledby', 'fileExplorerModalLabel');
+                    modal.setAttribute('aria-hidden', 'true');
+                    
+                    modal.innerHTML = `
+                        <div class="modal-dialog modal-lg">
+                            <div class="modal-content bg-dark">
+                                <div class="modal-header">
+                                    <h5 class="modal-title" id="fileExplorerModalLabel">
+                                        <i class="bi bi-folder2-open me-2"></i>Explorador de Archivos
+                                    </h5>
+                                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                                </div>
+                                <div class="modal-body">
+                                    <div class="d-flex justify-content-between mb-3">
+                                        <span id="modal-current-path" class="badge bg-primary">/</span>
+                                        <button id="modal-refresh-files" class="btn btn-sm btn-outline-light">
+                                            <i class="bi bi-arrow-repeat"></i> Actualizar
+                                        </button>
+                                    </div>
+                                    <div id="modal-file-list" class="list-group"></div>
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    
+                    document.body.appendChild(modal);
+                    
+                    // Evento para refrescar archivos
+                    document.getElementById('modal-refresh-files').addEventListener('click', function() {
+                        loadFiles(currentDirectory);
+                        setTimeout(updateModalFiles, 500);
+                    });
+                }
+                
+                // Función para actualizar la vista de archivos en el modal
+                function updateModalFiles() {
+                    const modalPath = document.getElementById('modal-current-path');
+                    const modalFileList = document.getElementById('modal-file-list');
+                    
+                    modalPath.textContent = currentDirectory === '.' ? '/' : currentDirectory;
+                    
+                    // Obtener datos actualizados
+                    const explorerData = sessionStorage.getItem('explorer_data_' + currentDirectory);
+                    let data;
+                    
+                    try {
+                        data = explorerData ? JSON.parse(explorerData) : null;
+                    } catch (e) {
+                        console.error('Error al parsear datos:', e);
+                    }
+                    
+                    if (!data || !data.files) {
+                        modalFileList.innerHTML = `
+                            <div class="text-center text-warning p-3">
+                                <i class="bi bi-exclamation-circle mb-2 fs-3"></i>
+                                <p>No hay datos disponibles. Intente actualizar.</p>
+                            </div>
+                        `;
+                        return;
+                    }
+                    
+                    // Limpiar lista
+                    modalFileList.innerHTML = '';
+                    
+                    // Agregar opción para subir un nivel
+                    if (currentDirectory !== '.') {
+                        const parentDir = currentDirectory.split('/').slice(0, -1).join('/') || '.';
+                        const upItem = document.createElement('a');
+                        upItem.className = 'list-group-item list-group-item-action d-flex align-items-center bg-dark text-light border-secondary';
+                        upItem.innerHTML = '<i class="bi bi-arrow-up-circle-fill me-3 text-info"></i> ..';
+                        upItem.style.cursor = 'pointer';
+                        upItem.addEventListener('click', function() {
+                            loadFiles(parentDir);
+                            setTimeout(updateModalFiles, 300);
+                        });
+                        modalFileList.appendChild(upItem);
+                    }
+                    
+                    // Separar directorios y archivos
+                    const directories = data.files.filter(f => f.type === 'directory');
+                    const files = data.files.filter(f => f.type === 'file');
+                    
+                    // Ordenar alfabéticamente
+                    directories.sort((a, b) => a.name.localeCompare(b.name));
+                    files.sort((a, b) => a.name.localeCompare(b.name));
+                    
+                    // Agregar directorios
+                    directories.forEach(dir => {
+                        const item = document.createElement('a');
+                        item.className = 'list-group-item list-group-item-action d-flex align-items-center bg-dark text-light border-secondary';
+                        item.innerHTML = `<i class="bi bi-folder-fill me-3 text-warning"></i> ${dir.name}`;
+                        item.style.cursor = 'pointer';
+                        item.addEventListener('click', function() {
+                            loadFiles(dir.path);
+                            setTimeout(updateModalFiles, 300);
+                        });
+                        modalFileList.appendChild(item);
+                    });
+                    
+                    // Agregar archivos
+                    files.forEach(file => {
+                        // Determinar icono según extensión
+                        let icon = 'bi-file-earmark';
+                        const ext = file.name.split('.').pop().toLowerCase();
+                        
+                        if (['html', 'htm'].includes(ext)) icon = 'bi-file-earmark-code';
+                        else if (['js', 'ts'].includes(ext)) icon = 'bi-filetype-js';
+                        else if (['css', 'scss'].includes(ext)) icon = 'bi-filetype-css';
+                        else if (['py'].includes(ext)) icon = 'bi-filetype-py';
+                        else if (['jpg', 'jpeg', 'png', 'gif'].includes(ext)) icon = 'bi-file-earmark-image';
+                        else if (['md'].includes(ext)) icon = 'bi-file-earmark-text';
+                        
+                        const item = document.createElement('a');
+                        item.className = 'list-group-item list-group-item-action d-flex align-items-center justify-content-between bg-dark text-light border-secondary';
+                        item.innerHTML = `
+                            <div><i class="bi ${icon} me-3 text-info"></i> ${file.name}</div>
+                            <div class="badge bg-secondary">${formatFileSize(file.size || 0)}</div>
+                        `;
+                        
+                        // Acción para mostrar contenido del archivo 
+                        item.addEventListener('click', function() {
+                            // Usar executeCommand para ver el archivo con cat
+                            if (window.terminalInterface && window.terminalInterface.executeCommand) {
+                                window.terminalInterface.executeCommand(`cat "${file.path}"`);
+                            } else {
+                                const terminalInput = document.getElementById('terminal-input');
+                                const sendButton = document.getElementById('send-button');
+                                if (terminalInput && sendButton) {
+                                    terminalInput.value = `cat "${file.path}"`;
+                                    sendButton.click();
+                                }
+                            }
+                            
+                            // Cerrar modal después de enviar comando
+                            const modalInstance = bootstrap.Modal.getInstance(modal);
+                            if (modalInstance) modalInstance.hide();
+                        });
+                        
+                        modalFileList.appendChild(item);
+                    });
+                    
+                    // Mostrar mensaje si no hay archivos
+                    if (data.files.length === 0) {
+                        modalFileList.innerHTML = `
+                            <div class="text-center text-muted p-3">
+                                <i class="bi bi-inbox fs-3 mb-2"></i>
+                                <p>No hay archivos en este directorio</p>
+                            </div>
+                        `;
+                    }
+                }
+                
+                // Actualizar vista de archivos
+                updateModalFiles();
+                
+                // Mostrar modal
+                if (typeof bootstrap !== 'undefined') {
+                    const modalInstance = new bootstrap.Modal(modal);
+                    modalInstance.show();
+                } else {
+                    modal.style.display = 'block';
+                    modal.classList.add('show');
+                }
+            }
+            
+            // Función para formatear tamaño de archivo
+            function formatFileSize(bytes) {
+                if (bytes === 0) return '0 Bytes';
+                const k = 1024;
+                const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
+                const i = Math.floor(Math.log(bytes) / Math.log(k));
+                return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
             }
 
             // Actualizar explorador de archivos
@@ -2054,6 +2256,29 @@
             }
         });
 
+        // Configuración para el botón de visualización de archivos
+        document.addEventListener('DOMContentLoaded', function() {
+            // Botones para ver archivos (tanto en navbar como en menú móvil)
+            const viewFilesButton = document.getElementById('view-files-button');
+            const viewFilesMobileBtn = document.getElementById('view-files-btn');
+            
+            // Configurar eventos para ambos botones
+            if (viewFilesButton) {
+                viewFilesButton.addEventListener('click', viewExplorerFiles);
+            }
+            
+            if (viewFilesMobileBtn) {
+                viewFilesMobileBtn.addEventListener('click', function() {
+                    viewExplorerFiles();
+                    // Cerrar menú flotante después de presionar
+                    const floatMenu = document.getElementById('mobile-float-menu');
+                    if (floatMenu) {
+                        floatMenu.classList.remove('show');
+                    }
+                });
+            }
+        });
+            
         // Configuración para el asistente de desarrollo
         document.addEventListener('DOMContentLoaded', function() {
             const toggleButton = document.getElementById('toggle-developer-assistant');
