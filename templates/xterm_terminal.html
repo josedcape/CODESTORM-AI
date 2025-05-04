@@ -8,6 +8,7 @@
     <!-- Bootstrap y CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css">
 
     <!-- xterm.js y dependencias -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm@5.1.0/css/xterm.min.css" />
@@ -23,111 +24,192 @@
 
     <!-- Estilos CSS -->
     <style>
+        :root {
+            --primary-color: #0d6efd;
+            --secondary-color: #6c757d;
+            --success-color: #198754;
+            --danger-color: #dc3545;
+            --warning-color: #ffc107;
+            --info-color: #0dcaf0;
+            --bg-dark: #121212;
+            --bg-darker: #0a0a0a;
+            --bg-panel: #1e1e1e;
+            --bg-input: #2a2a2a;
+            --border-color: #333;
+            --text-primary: #f0f0f0;
+            --text-secondary: #adb5bd;
+            --terminal-bg: #000;
+            --terminal-text: #f0f0f0;
+            --gradient-primary: linear-gradient(135deg, #0143a3 0%, #0d6efd 100%);
+            --gradient-secondary: linear-gradient(135deg, #495057 0%, #6c757d 100%);
+            --gradient-header: linear-gradient(90deg, #001020 0%, #001f3f 100%);
+            --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.3);
+            --shadow-md: 0 4px 8px rgba(0, 0, 0, 0.4);
+            --shadow-lg: 0 8px 16px rgba(0, 0, 0, 0.5);
+            --border-radius: 8px;
+        }
+
         body {
             margin: 0;
             padding: 0;
-            font-family: 'Arial', sans-serif;
-            background-color: #121212;
-            color: #f0f0f0;
+            font-family: 'Roboto', 'Segoe UI', 'Arial', sans-serif;
+            background-color: var(--bg-dark);
+            color: var(--text-primary);
+            min-height: 100vh;
         }
 
         .terminal-page {
             display: flex;
             height: 100vh;
+            overflow: hidden;
         }
 
         .explorer-panel {
-            width: 250px;
-            background-color: #1e1e1e;
-            border-right: 1px solid #333;
+            width: 280px;
+            background-color: var(--bg-panel);
+            border-right: 1px solid var(--border-color);
             overflow-y: auto;
+            transition: width 0.3s ease;
+            box-shadow: var(--shadow-sm);
         }
 
         .terminal-panel {
             flex: 1;
             display: flex;
             flex-direction: column;
+            background-color: var(--bg-darker);
         }
 
         .terminal-header {
-            background: linear-gradient(90deg, #001020 0%, #001f3f 100%);
-            padding: 10px;
-            border-bottom: 1px solid #333;
+            background: var(--gradient-header);
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--border-color);
             display: flex;
             justify-content: space-between;
             align-items: center;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .terminal-header h5 {
+            margin: 0;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .terminal-header small {
+            color: var(--text-secondary);
         }
 
         #terminal-container {
             flex: 1;
-            padding: 5px;
-            background-color: #000;
+            padding: 8px;
+            background-color: var(--terminal-bg);
+            border-radius: 0;
+            overflow: hidden;
         }
 
         .terminal-controls {
-            background-color: #1e1e1e;
-            padding: 10px;
+            background-color: var(--bg-panel);
+            padding: 12px 16px;
             display: flex;
-            border-top: 1px solid #333;
+            gap: 8px;
+            border-top: 1px solid var(--border-color);
         }
 
         .terminal-input {
             flex: 1;
-            background-color: #2a2a2a;
-            border: 1px solid #444;
-            color: #fff;
-            padding: 8px;
-            border-radius: 4px;
-            margin-right: 5px;
+            background-color: var(--bg-input);
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+            padding: 10px 12px;
+            border-radius: var(--border-radius);
+            font-family: 'Consolas', 'Monaco', monospace;
+            transition: border-color 0.2s ease;
+        }
+
+        .terminal-input:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 2px rgba(13, 110, 253, 0.25);
         }
 
         .btn {
-            background: linear-gradient(45deg, #003366 0%, #004080 100%);
+            background: var(--gradient-primary);
             color: white;
             border: none;
-            padding: 8px 12px;
-            border-radius: 4px;
+            padding: 10px 16px;
+            border-radius: var(--border-radius);
             cursor: pointer;
+            font-weight: 500;
+            transition: all 0.2s ease;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .btn:hover {
+            transform: translateY(-1px);
+            box-shadow: var(--shadow-md);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .btn-secondary {
+            background: var(--gradient-secondary);
         }
 
         .file-item {
-            padding: 8px 10px;
+            padding: 10px 16px;
             cursor: pointer;
-            border-bottom: 1px solid #333;
+            border-bottom: 1px solid var(--border-color);
             display: flex;
             align-items: center;
+            transition: background-color 0.2s ease;
         }
 
         .file-item:hover {
-            background-color: #2a2a2a;
+            background-color: rgba(255, 255, 255, 0.05);
         }
 
         .file-item .icon {
-            margin-right: 8px;
-            color: #0087d7;
+            margin-right: 10px;
+            color: var(--info-color);
+            font-size: 1.1rem;
         }
 
         .directory .icon {
-            color: #ffcc00;
+            color: var(--warning-color);
         }
 
         .status-indicator {
-            width: 10px;
-            height: 10px;
+            width: 12px;
+            height: 12px;
             border-radius: 50%;
             margin-left: 10px;
+            box-shadow: 0 0 5px currentColor;
         }
 
         .status-connected {
-            background-color: #00cc66;
+            background-color: var(--success-color);
+            box-shadow: 0 0 5px var(--success-color);
         }
 
         .status-disconnected {
-            background-color: #ff3333;
+            background-color: var(--danger-color);
+            box-shadow: 0 0 5px var(--danger-color);
         }
 
         .status-connecting {
-            background-color: #ffcc00;
+            background-color: var(--warning-color);
+            box-shadow: 0 0 5px var(--warning-color);
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 0.6; }
+            50% { opacity: 1; }
+            100% { opacity: 0.6; }
         }
 
         .notifications {
@@ -135,83 +217,116 @@
             top: 20px;
             right: 20px;
             z-index: 1000;
+            max-width: 350px;
         }
 
         .notification {
-            padding: 10px 15px;
+            padding: 12px 16px;
             margin-bottom: 10px;
-            border-radius: 4px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.3);
-            animation: fadeIn 0.3s;
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow-md);
+            animation: slideIn 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .notification::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            height: 3px;
+            background-color: rgba(255, 255, 255, 0.3);
+            width: 100%;
+            animation: notificationTimer 5s linear forwards;
+        }
+
+        @keyframes notificationTimer {
+            from { width: 100%; }
+            to { width: 0%; }
         }
 
         .notification-hide {
-            animation: fadeOut 0.3s forwards;
+            animation: slideOut 0.3s forwards;
         }
 
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(-10px); }
-            to { opacity: 1; transform: translateY(0); }
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateX(50px); }
+            to { opacity: 1; transform: translateX(0); }
         }
 
-        @keyframes fadeOut {
-            from { opacity: 1; transform: translateY(0); }
-            to { opacity: 0; transform: translateY(-10px); }
+        @keyframes slideOut {
+            from { opacity: 1; transform: translateX(0); }
+            to { opacity: 0; transform: translateX(50px); }
         }
 
         .notification-info {
-            background-color: #003366;
+            background-color: #0d47a1;
             color: white;
+            border-left: 4px solid var(--info-color);
         }
 
         .notification-error {
-            background-color: #cc0000;
+            background-color: #b71c1c;
             color: white;
+            border-left: 4px solid var(--danger-color);
         }
 
         .notification-success {
-            background-color: #006600;
+            background-color: #1b5e20;
             color: white;
+            border-left: 4px solid var(--success-color);
         }
 
         .assistant-container {
-            background-color: #282828;
-            padding: 15px;
-            margin-bottom: 10px;
-            border-radius: 4px;
+            background-color: var(--bg-panel);
+            padding: 16px;
+            margin: 16px;
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow-md);
         }
 
         .assistant-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 10px;
+            margin-bottom: 16px;
         }
 
         .assistant-input {
             width: 100%;
             height: 100px;
-            background-color: #383838;
-            border: 1px solid #555;
-            color: #fff;
-            padding: 8px;
-            border-radius: 4px;
-            margin-bottom: 10px;
+            background-color: var(--bg-input);
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+            padding: 12px;
+            border-radius: var(--border-radius);
+            margin-bottom: 12px;
             resize: vertical;
+            font-family: 'Roboto', sans-serif;
+            transition: border-color 0.2s ease;
+        }
+
+        .assistant-input:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 2px rgba(13, 110, 253, 0.25);
         }
 
         .assistant-buttons {
             display: flex;
             justify-content: flex-end;
-            margin-bottom: 10px;
+            gap: 8px;
+            margin-bottom: 16px;
         }
 
         .assistant-result {
-            background-color: #383838;
-            border: 1px solid #555;
-            padding: 10px;
-            border-radius: 4px;
-            min-height: 50px;
+            background-color: var(--bg-input);
+            border: 1px solid var(--border-color);
+            padding: 16px;
+            border-radius: var(--border-radius);
+            min-height: 60px;
+            max-height: 200px;
             overflow-y: auto;
         }
 
@@ -219,83 +334,113 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 5px;
+            padding: 8px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
         }
 
         .command-text {
             flex: 1;
-            word-break: break-all; /* Permite saltos de línea en comandos largos */
+            word-break: break-all;
+            font-family: 'Consolas', 'Monaco', monospace;
+            background-color: rgba(0, 0, 0, 0.2);
+            padding: 8px;
+            border-radius: 4px;
+            margin-right: 10px;
         }
 
         .command-actions {
             display: flex;
-            gap: 5px;
+            gap: 8px;
         }
 
-        /* Estilos para el asistente de chat */
         #assistant-chat-panel {
-            display: none; /* Inicialmente oculto */
+            display: none;
             position: fixed;
-            bottom: 0;
-            right: 0;
-            width: 300px;
-            background-color: #282828;
-            border-top-left-radius: 8px;
+            bottom: 20px;
+            right: 20px;
+            width: 350px;
+            background-color: var(--bg-panel);
+            border-radius: var(--border-radius);
             overflow: hidden;
-            box-shadow: -2px -2px 5px rgba(0, 0, 0, 0.3);
-            z-index: 1001; /* Sobre las notificaciones */
+            box-shadow: var(--shadow-lg);
+            z-index: 1001;
+            flex-direction: column;
+            max-height: 500px;
+            transition: all 0.3s ease;
         }
 
         #assistant-chat-panel.show {
             display: flex;
+            animation: slideUp 0.3s ease;
+        }
+
+        @keyframes slideUp {
+            from { transform: translateY(20px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
         }
 
         #assistant-chat-header {
-            background-color: #383838;
-            padding: 10px;
+            background: var(--gradient-header);
+            padding: 12px 16px;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            border-bottom: 1px solid #555;
+            border-bottom: 1px solid var(--border-color);
         }
 
         #assistant-chat-messages {
-            padding: 10px;
-            height: 300px;
+            padding: 16px;
+            height: 350px;
             overflow-y: auto;
             flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
         }
 
         .message {
-            padding: 5px 10px;
-            margin-bottom: 5px;
-            border-radius: 4px;
+            padding: 10px 14px;
+            border-radius: var(--border-radius);
+            max-width: 80%;
+            word-break: break-word;
+            box-shadow: var(--shadow-sm);
         }
 
         .user-message {
-            background-color: #4CAF50;
+            background-color: var(--primary-color);
             color: white;
             align-self: flex-end;
+            border-bottom-right-radius: 0;
         }
 
         .assistant-message {
-            background-color: #2196F3;
-            color: white;
+            background-color: var(--bg-input);
+            color: var(--text-primary);
+            align-self: flex-start;
+            border-bottom-left-radius: 0;
         }
 
         .typing-indicator {
             display: flex;
             justify-content: center;
-            margin-bottom: 5px;
+            margin: 8px 0;
         }
 
         .typing-bubble {
-            width: 10px;
-            height: 10px;
-            background-color: white;
+            width: 8px;
+            height: 8px;
+            background-color: var(--text-secondary);
             border-radius: 50%;
-            margin: 2px;
+            margin: 0 2px;
             animation: bounce 1s infinite;
+        }
+
+        .typing-bubble:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+
+        .typing-bubble:nth-child(3) {
+            animation-delay: 0.4s;
         }
 
         @keyframes bounce {
@@ -304,26 +449,159 @@
         }
 
         #message-input {
-            background-color: #383838;
-            border: 1px solid #555;
-            color: #fff;
-            padding: 8px;
-            border-radius: 4px;
-            margin-bottom: 10px;
+            background-color: var(--bg-input);
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+            padding: 12px;
+            border-radius: var(--border-radius);
+            margin-right: 8px;
+            flex: 1;
+            transition: border-color 0.2s ease;
+        }
+
+        #message-input:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 2px rgba(13, 110, 253, 0.25);
         }
 
         #assistant-chat-footer {
-            background-color: #383838;
-            padding: 10px;
-            border-top: 1px solid #555;
+            background-color: var(--bg-panel);
+            padding: 12px 16px;
+            border-top: 1px solid var(--border-color);
             display: flex;
             align-items: center;
+            gap: 8px;
         }
 
         .system-message {
-            background-color: #607d8b;
+            background-color: var(--secondary-color);
             color: white;
             text-align: center;
+            padding: 8px;
+            border-radius: var(--border-radius);
+            margin: 8px 0;
+            font-size: 0.9rem;
+        }
+
+        .package-install-panel {
+            background-color: var(--bg-panel);
+            margin: 16px;
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow-md);
+        }
+
+        /* Estilos para pantallas pequeñas */
+        @media (max-width: 768px) {
+            .explorer-panel {
+                position: absolute;
+                left: 0;
+                top: 0;
+                height: 100%;
+                z-index: 100;
+                transform: translateX(-100%);
+                transition: transform 0.3s ease;
+                width: 75%;
+            }
+
+            .explorer-panel.show {
+                transform: translateX(0);
+            }
+
+            #assistant-chat-panel {
+                width: 90%;
+                left: 5%;
+                right: 5%;
+            }
+
+            .assistant-container {
+                margin: 10px;
+                padding: 12px;
+            }
+        }
+
+        /* Animaciones para elementos */
+        .animate-pulse {
+            animation: pulse 2s infinite;
+        }
+
+        .btn-icon {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 36px;
+            height: 36px;
+            padding: 0;
+            border-radius: 50%;
+        }
+
+        .btn-float {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            box-shadow: var(--shadow-lg);
+            z-index: 1000;
+        }
+
+        /* Mejoras para la terminal */
+        .xterm-viewport::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .xterm-viewport::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .xterm-viewport::-webkit-scrollbar-thumb {
+            background-color: rgba(255, 255, 255, 0.3);
+            border-radius: 4px;
+        }
+
+        /* Estilos para el panel de instalación de dependencias */
+        .package-install-panel {
+            padding: 16px;
+            background: linear-gradient(to right, #1e1e1e, #252525);
+        }
+
+        .package-install-panel h5 {
+            color: var(--info-color);
+            margin-bottom: 16px;
+            font-weight: 600;
+        }
+
+        /* Estilos para el contenedor de respuesta del asistente */
+        #assistant-response-container {
+            background-color: var(--bg-panel);
+            padding: 16px;
+            margin: 16px;
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow-md);
+        }
+
+        #assistant-response {
+            background-color: var(--bg-input);
+            border: 1px solid var(--border-color);
+            padding: 12px;
+            border-radius: var(--border-radius);
+            color: var(--text-primary);
+            max-height: 300px;
+            overflow-y: auto;
+            font-family: 'Consolas', 'Monaco', monospace;
+            white-space: pre-wrap;
+        }
+
+        /* Estilos para los botones de acción */
+        .action-buttons {
+            display: flex;
+            gap: 8px;
+            margin-top: 12px;
         }
     </style>
 </head>
@@ -332,8 +610,8 @@
         <!-- Panel explorador de archivos -->
         <div class="explorer-panel">
             <div class="terminal-header">
-                <h5 class="mb-0">Explorador</h5>
-                <span id="current-path">/</span>
+                <h5 class="mb-0"><i class="bi bi-folder2-open me-2"></i>Explorador</h5>
+                <span id="current-path" class="badge bg-dark">/</span>
             </div>
             <div class="explorer-content"></div>
         </div>
@@ -342,13 +620,22 @@
         <div class="terminal-panel">
             <div class="terminal-header">
                 <div>
-                    <h5 class="mb-0">Terminal XTerm</h5>
+                    <h5 class="mb-0"><i class="bi bi-terminal me-2"></i>Terminal XTerm</h5>
                     <small>Comandos y lenguaje natural</small>
                 </div>
-                <div>
+                <div class="d-flex align-items-center">
                     <span id="status-indicator" class="status-indicator"></span>
+                    <button id="toggle-explorer" class="btn btn-sm btn-outline-light ms-2 d-md-none">
+                        <i class="bi bi-list"></i>
+                    </button>
                     <button id="toggle-assistant-chat" class="btn btn-sm btn-outline-light ms-2">
                         <i class="bi bi-chat-dots"></i> Asistente
+                    </button>
+                    <button id="toggle-assistant-bar" class="btn btn-sm btn-outline-light ms-2">
+                        <i class="bi bi-eye"></i> Ocultar/Mostrar
+                    </button>
+                    <button id="toggle-developer-assistant" class="btn btn-sm btn-outline-light ms-2">
+                        <i class="bi bi-code-slash"></i> Desarrollo
                     </button>
                 </div>
             </div>
@@ -356,11 +643,43 @@
             <!-- Contenedor de la terminal XTerm -->
             <div id="terminal-container"></div>
 
+            <!-- Panel de instalación de dependencias -->
+            <div class="package-install-panel mt-3 mb-3">
+                <h5><i class="bi bi-box me-2"></i>Instalar Dependencias</h5>
+                <div class="row g-2">
+                    <div class="col-md-8">
+                        <div class="input-group">
+                            <span class="input-group-text bg-dark text-light border-secondary">
+                                <i class="bi bi-code-square"></i>
+                            </span>
+                            <input type="text" id="package-name" class="form-control bg-dark text-light border-secondary" placeholder="Nombre del paquete">
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <select id="package-manager" class="form-select bg-dark text-light border-secondary">
+                            <option value="pip">pip (Python)</option>
+                            <option value="npm">npm (Node.js)</option>
+                            <option value="yarn">yarn</option>
+                            <option value="poetry">poetry</option>
+                            <option value="apt">apt (sistema)</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="mt-3 d-flex gap-2">
+                    <button id="install-package-btn" class="btn">
+                        <i class="bi bi-cloud-download me-2"></i>Instalar
+                    </button>
+                    <button id="update-packages-btn" class="btn btn-secondary">
+                        <i class="bi bi-arrow-repeat me-2"></i>Actualizar Todo
+                    </button>
+                </div>
+            </div>
+
             <!-- Asistente de comandos -->
             <div class="assistant-container">
                 <div class="assistant-header">
-                    <h5>Asistente de Comandos</h5>
-                    <select id="assistant-model" class="form-select form-select-sm">
+                    <h5><i class="bi bi-robot me-2"></i>Asistente de Comandos</h5>
+                    <select id="assistant-model" class="form-select form-select-sm bg-dark text-light border-secondary">
                         <option value="openai">OpenAI (GPT-4o)</option>
                         <option value="anthropic">Anthropic (Claude)</option>
                         <option value="gemini">Google (Gemini)</option>
@@ -369,23 +688,53 @@
                 <div class="assistant-content">
                     <textarea id="assistant-input" class="assistant-input" placeholder="Describe en lenguaje natural lo que quieres hacer..."></textarea>
                     <div class="assistant-buttons">
-                        <button id="clear-assistant-btn" class="btn btn-secondary">Limpiar</button>
-                        <button id="assistant-btn" class="btn btn-primary">Consultar</button>
+                        <button id="clear-assistant-btn" class="btn btn-secondary">
+                            <i class="bi bi-trash me-2"></i>Limpiar
+                        </button>
+                        <button id="assistant-btn" class="btn">
+                            <i class="bi bi-send me-2"></i>Consultar
+                        </button>
                     </div>
                     <div id="assistant-result" class="assistant-result">
                         <div class="text-center text-muted p-3">
-                            <small>El asistente convertirá tus instrucciones a comandos de terminal</small>
+                            <i class="bi bi-terminal-plus fs-3 mb-2"></i>
+                            <p>El asistente convertirá tus instrucciones a comandos de terminal</p>
                         </div>
                     </div>
                 </div>
             </div>
 
+            <!-- Respuesta del asistente de desarrollo -->
+            <div id="assistant-response-container" style="display: none;">
+                <h5><i class="bi bi-code-slash me-2"></i>Respuesta del Asistente de Desarrollo</h5>
+                <pre id="assistant-response" class="mb-3">Esperando consulta...</pre>
+                <div class="action-buttons">
+                    <button id="copy-response-btn" class="btn btn-sm btn-secondary">
+                        <i class="bi bi-clipboard me-1"></i> Copiar
+                    </button>
+                    <button id="execute-code-btn" class="btn btn-sm btn-primary">
+                        <i class="bi bi-play-fill me-1"></i> Ejecutar
+                    </button>
+                    <button id="close-response-btn" class="btn btn-sm btn-outline-light">
+                        <i class="bi bi-x me-1"></i> Cerrar
+                    </button>
+                </div>
+            </div>
+
             <!-- Controles de la terminal -->
             <div class="terminal-controls">
-                <input type="text" id="terminal-input" class="terminal-input" placeholder="Ingrese un comando o texto en lenguaje natural...">
-                <button id="send-button" class="btn">Enviar</button>
-                <button id="clear-button" class="btn">Limpiar</button>
-                <button id="toggle-explorer" class="btn d-md-none">Explorador</button>
+                <div class="input-group">
+                    <span class="input-group-text bg-dark text-light border-secondary">
+                        <i class="bi bi-terminal"></i>
+                    </span>
+                    <input type="text" id="terminal-input" class="terminal-input" placeholder="Ingrese un comando o texto en lenguaje natural...">
+                </div>
+                <button id="send-button" class="btn">
+                    <i class="bi bi-send"></i>
+                </button>
+                <button id="clear-button" class="btn btn-secondary">
+                    <i class="bi bi-trash"></i>
+                </button>
             </div>
         </div>
     </div>
@@ -396,18 +745,24 @@
     <!-- Panel del asistente de chat -->
     <div id="assistant-chat-panel">
         <div id="assistant-chat-header">
-            <h5>Asistente de Chat</h5>
-            <button id="close-assistant-chat" class="btn btn-sm btn-danger">
+            <h5><i class="bi bi-robot me-2"></i>Asistente de Chat</h5>
+            <button id="close-assistant-chat" class="btn btn-sm btn-danger btn-icon">
                 <i class="bi bi-x"></i>
             </button>
         </div>
-        <div id="assistant-chat-messages"></div>
+        <div id="assistant-chat-messages">
+            <div class="system-message animate__animated animate__fadeIn">
+                <i class="bi bi-info-circle me-1"></i>
+                Bienvenido al asistente. ¿En qué puedo ayudarte hoy?
+            </div>
+        </div>
         <div id="assistant-chat-footer">
             <input type="text" id="message-input" placeholder="Escribe un mensaje...">
-            <button id="send-message-button" class="btn btn-primary">Enviar</button>
+            <button id="send-message-button" class="btn">
+                <i class="bi bi-send"></i>
+            </button>
         </div>
     </div>
-
 
     <!-- Cargar scripts en orden correcto -->
     <script src="{{ url_for('static', filename='js/natural-command-processor.js') }}"></script>
@@ -449,9 +804,9 @@
 
                     // Mostrar estado de carga
                     assistantResult.innerHTML = `
-                        <div class="text-center py-2">
-                            <div class="spinner-border spinner-border-sm text-light" role="status"></div>
-                            <p class="mt-2 text-muted">Procesando instrucción...</p>
+                        <div class="text-center py-3">
+                            <div class="spinner-border text-light" role="status"></div>
+                            <p class="mt-3 text-muted">Procesando instrucción...</p>
                         </div>
                     `;
 
@@ -479,16 +834,20 @@
                         if (data.command) {
                             // Mostrar comando generado
                             assistantResult.innerHTML = `
-                                <div class="command-item">
+                                <div class="command-item animate__animated animate__fadeIn">
                                     <div class="command-text">${data.command}</div>
                                     <div class="command-actions">
                                         <button title="Copiar al portapapeles" class="copy-btn btn btn-sm btn-secondary">
                                             <i class="bi bi-clipboard"></i>
                                         </button>
-                                        <button title="Ejecutar comando" class="execute-btn btn btn-sm btn-primary">
+                                        <button title="Ejecutar comando" class="execute-btn btn btn-sm">
                                             <i class="bi bi-play"></i>
                                         </button>
                                     </div>
+                                </div>
+                                <div class="mt-3 text-muted small">
+                                    <i class="bi bi-info-circle me-1"></i>
+                                    Puedes copiar o ejecutar directamente este comando
                                 </div>
                             `;
 
@@ -530,7 +889,8 @@
                         } else {
                             // Mostrar error
                             assistantResult.innerHTML = `
-                                <div class="alert alert-danger">
+                                <div class="alert alert-danger animate__animated animate__fadeIn">
+                                    <i class="bi bi-exclamation-triangle-fill me-2"></i>
                                     ${data.error || 'No se pudo generar un comando'}
                                 </div>
                             `;
@@ -539,9 +899,10 @@
                     .catch(error => {
                         console.error('Error al procesar instrucción:', error);
                         assistantResult.innerHTML = `
-                            <div class="alert alert-danger">
-                                Error al comunicarse con el servidor: ${error.message}
-                            </div>
+                        <div class="alert alert-danger animate__animated animate__fadeIn">
+                            <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                            Error al comunicarse con el servidor: ${error.message}
+                        </div>
                         `;
                     });
                 });
@@ -551,9 +912,10 @@
                     clearAssistantBtn.addEventListener('click', function() {
                         assistantInput.value = '';
                         assistantResult.innerHTML = `
-                            <div class="text-center text-muted p-3">
-                                <small>El asistente convertirá tus instrucciones a comandos de terminal</small>
-                            </div>
+                        <div class="text-center text-muted p-3 animate__animated animate__fadeIn">
+                            <i class="bi bi-terminal-plus fs-3 mb-2"></i>
+                            <p>El asistente convertirá tus instrucciones a comandos de terminal</p>
+                        </div>
                         `;
                         assistantInput.focus();
                     });
@@ -574,9 +936,14 @@
                 if (!notifications) return;
 
                 const notification = document.createElement('div');
-                notification.className = `notification notification-${type}`;
-                notification.innerHTML = message;
+                notification.className = `notification notification-${type} animate__animated animate__fadeInRight`;
 
+                // Agregar icono según el tipo de notificación
+                let icon = 'info-circle';
+                if (type === 'success') icon = 'check-circle';
+                if (type === 'error') icon = 'exclamation-triangle';
+
+                notification.innerHTML = `<i class="bi bi-${icon} me-2"></i>${message}`;
                 notifications.appendChild(notification);
 
                 setTimeout(() => {
@@ -596,7 +963,24 @@
                 theme: {
                     background: '#121212',
                     foreground: '#f0f0f0',
-                    cursor: '#ffffff'
+                    cursor: '#ffffff',
+                    selection: 'rgba(255, 255, 255, 0.3)',
+                    black: '#000000',
+                    red: '#e06c75',
+                    green: '#98c379',
+                    yellow: '#d19a66',
+                    blue: '#61afef',
+                    magenta: '#c678dd',
+                    cyan: '#56b6c2',
+                    white: '#abb2bf',
+                    brightBlack: '#5c6370',
+                    brightRed: '#e06c75',
+                    brightGreen: '#98c379',
+                    brightYellow: '#d19a66',
+                    brightBlue: '#61afef',
+                    brightMagenta: '#c678dd',
+                    brightCyan: '#56b6c2',
+                    brightWhite: '#ffffff'
                 },
                 fontSize: 14,
                 fontFamily: 'Menlo, Monaco, "Courier New", monospace',
@@ -655,20 +1039,6 @@
                 }
             }
 
-            // Mostrar notificación
-            function showNotification(message, type = 'info') {
-                const notificationsContainer = document.getElementById('notifications');
-                const notification = document.createElement('div');
-                notification.className = `notification notification-${type}`;
-                notification.textContent = message;
-                notificationsContainer.appendChild(notification);
-
-                // Eliminar notificación después de 5 segundos
-                setTimeout(() => {
-                    notification.remove();
-                }, 5000);
-            }
-
             // Escribir en la terminal
             function writeToTerminal(text, color = null) {
                 if (color) {
@@ -716,22 +1086,14 @@
                     return;
                 }
 
-                // Intentar procesar como lenguaje natural
-                //Comentado para enviar al asistente directamente
-                /*const result = naturalCommandProcessor.processInstruction(input, currentDirectory);
-
-                if (result.success && result.command) {
-                    // Es un comando válido, ejecutarlo
-                    writeToTerminal(`\x1b[36mInterpretando: ${result.command}\x1b[0m\r\n`);
-                    executeCommand(result.command);
-                } else {*/
-                    // No se pudo interpretar, intentar enviar al servidor para procesamiento
-                    //Modificado para enviar al asistente
-                    sendToAssistant(input);
-                /*}*/
+                // Enviar al asistente directamente
+                sendToAssistant(input);
             }
 
-            function sendToAssistant(input){
+            function sendToAssistant(input) {
+                // Mostrar indicador de carga en la terminal
+                writeToTerminal('\r\n\x1b[36mProcesando instrucción...\x1b[0m\r\n');
+
                 fetch('/api/process_natural', {
                     method: 'POST',
                     headers: {
@@ -756,12 +1118,6 @@
                         });
                     } else {
                         writeToTerminal('\r\n\x1b[33mNo se pudo interpretar como comando. Tratando como consulta al asistente...\x1b[0m\r\n');
-
-                            // Redirigir al usuario al asistente con la consulta
-                            //const assistantUrl = `/assistant?query=${encodeURIComponent(input)}`;
-                            //writeToTerminal(`\x1b[33mPuedes abrir el asistente para responder esta consulta: \x1b[34m${assistantUrl}\x1b[0m\r\n`);
-
-                            // Mostrar el prompt de nuevo
                         writeToTerminal('\r\n$ ');
                     }
                 })
@@ -771,14 +1127,13 @@
                 });
             }
 
-
             // Configurar eventos de Socket.IO
             socket.on('connect', () => {
                 updateStatusIndicator('connected');
                 writeToTerminal('\r\n\x1b[32mConectado al servidor\x1b[0m\r\n');
-                writeToTerminal('\r\nBienvenido a la Terminal Avanzada de Codestorm.\r\n');
-                writeToTerminal('Puedes escribir comandos directamente o usar lenguaje natural.\r\n');
-                writeToTerminal('Ejemplo: "crea una carpeta llamada proyectos" o "!mkdir proyectos"\r\n\r\n');
+                writeToTerminal('\r\n\x1b[1;34mBienvenido a la Terminal Avanzada de Codestorm.\x1b[0m\r\n');
+                writeToTerminal('\x1b[36mPuedes escribir comandos directamente o usar lenguaje natural.\x1b[0m\r\n');
+                writeToTerminal('\x1b[33mEjemplo: "crea una carpeta llamada proyectos" o "!mkdir proyectos"\x1b[0m\r\n\r\n');
                 writeToTerminal('$ ');
 
                 // Cargar archivos iniciales
@@ -820,46 +1175,42 @@
                 loadFiles();
             });
 
-            socket.on('server_info', (data) => {
-                console.log('Información del servidor:', data);
-            });
-
             // Cargar archivos en el explorador
             function loadFiles(directory = '.') {
                 currentDirectory = directory;
 
                 fetch(`/api/files?directory=${encodeURIComponent(directory)}&user_id=${userId}`)
-                    .then(response => {
-                        if (!response.ok) {
-                            throw new Error(`Error al cargar archivos: ${response.status} ${response.statusText}`);
-                        }
-                        return response.json();
-                    })
-                    .then(data => {
-                        if (data.success) {
-                            updateFileExplorer(data);
-                        } else {
-                            showNotification(data.error || 'Error al cargar archivos', 'error');
-                        }
-                    })
-                    .catch(error => {
-                        console.error('Error al cargar archivos:', error);
-                        showNotification('Error al cargar archivos: ' + error.message, 'error');
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`Error al cargar archivos: ${response.status} ${response.statusText}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    if (data.success) {
+                        updateFileExplorer(data);
+                    } else {
+                        showNotification(data.error || 'Error al cargar archivos', 'error');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error al cargar archivos:', error);
+                    showNotification('Error al cargar archivos: ' + error.message, 'error');
 
-                        // Mostrar mensaje en el explorador
-                        const explorerContent = document.querySelector('.explorer-content');
-                        if (explorerContent) {
-                            explorerContent.innerHTML = `
-                                <div class="p-3 text-center text-danger">
-                                    <i class="bi bi-exclamation-triangle"></i>
-                                    <p class="mt-2">Error: ${error.message}</p>
-                                    <button class="btn btn-sm btn-outline-light mt-2" onclick="loadFiles('.')">
-                                        Intentar de nuevo
-                                    </button>
-                                </div>
-                            `;
-                        }
-                    });
+                    // Mostrar mensaje en el explorador
+                    const explorerContent = document.querySelector('.explorer-content');
+                    if (explorerContent) {
+                        explorerContent.innerHTML = `
+                            <div class="p-3 text-center text-danger">
+                                <i class="bi bi-exclamation-triangle fs-2 mb-2"></i>
+                                <p>Error: ${error.message}</p>
+                                <button class="btn btn-sm mt-2" onclick="loadFiles('.')">
+                                    <i class="bi bi-arrow-repeat me-1"></i>Intentar de nuevo
+                                </button>
+                            </div>
+                        `;
+                    }
+                });
             }
 
             // Actualizar explorador de archivos
@@ -879,7 +1230,7 @@
                 // Agregar opción para subir un nivel si no estamos en la raíz
                 if (data.directory !== '.') {
                     const upDir = document.createElement('div');
-                    upDir.className = 'file-item';
+                    upDir.className = 'file-item animate__animated animate__fadeIn';
                     upDir.innerHTML = '<i class="bi bi-arrow-up-circle icon"></i> ..';
                     upDir.addEventListener('click', () => {
                         const parentDir = data.directory.split('/').slice(0, -1).join('/') || '.';
@@ -897,9 +1248,10 @@
                 files.sort((a, b) => a.name.localeCompare(b.name));
 
                 // Agregar directorios
-                directories.forEach(dir => {
+                directories.forEach((dir, index) => {
                     const dirElement = document.createElement('div');
-                    dirElement.className = 'file-item directory';
+                    dirElement.className = 'file-item directory animate__animated animate__fadeIn';
+                    dirElement.style.animationDelay = `${index * 0.05}s`;
                     dirElement.innerHTML = `<i class="bi bi-folder-fill icon"></i> ${dir.name}`;
                     dirElement.addEventListener('click', () => {
                         loadFiles(dir.path);
@@ -908,9 +1260,10 @@
                 });
 
                 // Agregar archivos
-                files.forEach(file => {
+                files.forEach((file, index) => {
                     const fileElement = document.createElement('div');
-                    fileElement.className = 'file-item';
+                    fileElement.className = 'file-item animate__animated animate__fadeIn';
+                    fileElement.style.animationDelay = `${(directories.length + index) * 0.05}s`;
 
                     // Determinar icono según extensión
                     let icon = 'bi-file-earmark';
@@ -934,8 +1287,11 @@
                 // Mostrar mensaje si no hay archivos
                 if (data.files.length === 0) {
                     const emptyMessage = document.createElement('div');
-                    emptyMessage.className = 'text-muted text-center p-3';
-                    emptyMessage.textContent = 'No hay archivos en este directorio';
+                    emptyMessage.className = 'text-muted text-center p-3 animate__animated animate__fadeIn';
+                    emptyMessage.innerHTML = `
+                    <i class="bi bi-folder2-open fs-3 mb-2"></i>
+                    <p>No hay archivos en este directorio</p>
+                    `;
                     explorerContent.appendChild(emptyMessage);
                 }
             }
@@ -965,7 +1321,7 @@
                 toggleExplorerButton.addEventListener('click', function() {
                     const explorerPanel = document.querySelector('.explorer-panel');
                     if (explorerPanel) {
-                        explorerPanel.classList.toggle('d-none');
+                        explorerPanel.classList.toggle('show');
                     }
                 });
             }
@@ -975,33 +1331,16 @@
 
             // Enfoque inicial en la entrada
             document.getElementById('terminal-input').focus();
-        });
 
-        // Escuchar eventos de actualización del explorador desde cualquier fuente
-        document.addEventListener('files_updated', function(e) {
-            console.log("Detectado cambio en explorador", e.detail);
-            const currentDir = document.getElementById('directory-path')?.textContent || '/';
-            if (window.loadFiles && typeof window.loadFiles === 'function') {
-                window.loadFiles(currentDir);
-            }
-        });
+            // Exponer la función executeCommand para que otros componentes puedan usarla
+            window.terminalInterface = {
+                executeCommand: executeCommand,
+                writeToTerminal: writeToTerminal
+            };
 
-        // Escuchar mensajes desde iframes (como terminal)
-        window.addEventListener('message', function(event) {
-            if (event.data && event.data.type === 'explorer_refresh') {
-                console.log("Solicitud de actualización desde iframe:", event.data);
-                const currentDir = document.getElementById('directory-path')?.textContent || '/';
-                if (window.loadFiles && typeof window.loadFiles === 'function') {
-                    window.loadFiles(currentDir);
-                }
-            }
+            // Hacer global la función loadFiles
+            window.loadFiles = loadFiles;
         });
-
-        // Placeholder for the assumed function
-        function formatForTerminal(response) {
-          // Implement your formatting logic here
-          return response;
-        }
 
         // Configuración del asistente de chat
         document.addEventListener('DOMContentLoaded', function() {
@@ -1016,18 +1355,16 @@
             // Configurar eventos para abrir/cerrar el panel del asistente
             if (chatButton) {
                 chatButton.addEventListener('click', function() {
-                    if (assistantPanel.style.display === 'none') {
-                        assistantPanel.style.display = 'flex';
-                        if (messageInput) messageInput.focus();
-                    } else {
-                        assistantPanel.style.display = 'none';
+                    assistantPanel.classList.toggle('show');
+                    if (assistantPanel.classList.contains('show')) {
+                        messageInput.focus();
                     }
                 });
             }
 
             if (closeButton) {
                 closeButton.addEventListener('click', function() {
-                    assistantPanel.style.display = 'none';
+                    assistantPanel.classList.remove('show');
                 });
             }
 
@@ -1038,7 +1375,7 @@
 
                 // Agregar mensaje del usuario
                 const userMsg = document.createElement('div');
-                userMsg.className = 'message user-message';
+                userMsg.className = 'message user-message animate__animated animate__fadeInRight';
                 userMsg.textContent = message;
                 messagesContainer.appendChild(userMsg);
                 messagesContainer.scrollTop = messagesContainer.scrollHeight;
@@ -1079,21 +1416,21 @@
 
                     // Agregar respuesta del asistente
                     const assistantMsg = document.createElement('div');
-                    assistantMsg.className = 'message assistant-message';
+                    assistantMsg.className = 'message assistant-message animate__animated animate__fadeInLeft';
 
                     if (data.command) {
                         // Si se generó un comando, mostrarlo y ofrecer ejecutarlo
                         assistantMsg.innerHTML = `
-                            <p>Comando generado:</p>
-                            <pre><code>${data.command}</code></pre>
-                            <div class="mt-2">
-                                <button class="btn btn-sm btn-outline-light copy-btn">
-                                    <i class="bi bi-clipboard"></i> Copiar
-                                </button>
-                                <button class="btn btn-sm btn-primary execute-btn ms-2">
-                                    <i class="bi bi-play-fill"></i> Ejecutar
-                                </button>
-                            </div>
+                        <p>Comando generado:</p>
+                        <pre class="bg-dark p-2 rounded"><code>${data.command}</code></pre>
+                        <div class="mt-2 d-flex gap-2">
+                            <button class="btn btn-sm btn-outline-light copy-btn">
+                                <i class="bi bi-clipboard me-1"></i> Copiar
+                            </button>
+                            <button class="btn btn-sm btn-primary execute-btn">
+                                <i class="bi bi-play-fill me-1"></i> Ejecutar
+                            </button>
+                        </div>
                         `;
 
                         messagesContainer.appendChild(assistantMsg);
@@ -1106,7 +1443,7 @@
                         if (copyBtn) {
                             copyBtn.addEventListener('click', function() {
                                 navigator.clipboard.writeText(data.command)
-                                    .then(() => showNotification('Comando copiado al portapapeles'))
+                                    .then(() => showNotification('Comando copiado al portapapeles', 'success'))
                                     .catch(err => console.error('Error al copiar:', err));
                             });
                         }
@@ -1116,7 +1453,7 @@
                                 // Usar la función executeCommand del terminal
                                 if (window.terminalInterface && typeof window.terminalInterface.executeCommand === 'function') {
                                     window.terminalInterface.executeCommand(data.command);
-                                    showNotification('Comando ejecutado en terminal');
+                                    showNotification('Comando ejecutado en terminal', 'success');
                                 } else {
                                     // Alternativa si no está disponible la interfaz
                                     const terminalInput = document.getElementById('terminal-input');
@@ -1125,14 +1462,14 @@
                                     if (terminalInput && sendButton) {
                                         terminalInput.value = data.command;
                                         sendButton.click();
-                                        showNotification('Comando enviado a la terminal');
+                                        showNotification('Comando enviado a la terminal', 'success');
                                     }
                                 }
                             });
                         }
                     } else if (data.error) {
                         // Mostrar error
-                        assistantMsg.innerHTML = `<p class="text-warning"><i class="bi bi-exclamation-triangle"></i> ${data.error}</p>`;
+                        assistantMsg.innerHTML = `<p class="text-warning"><i class="bi bi-exclamation-triangle me-1"></i> ${data.error}</p>`;
                         messagesContainer.appendChild(assistantMsg);
                         messagesContainer.scrollTop = messagesContainer.scrollHeight;
                     } else {
@@ -1148,8 +1485,8 @@
 
                     // Mostrar error
                     const errorMsg = document.createElement('div');
-                    errorMsg.className = 'system-message';
-                    errorMsg.innerHTML = `<p><i class="bi bi-exclamation-triangle-fill text-warning"></i> <strong>Error:</strong> ${error.message}</p>`;
+                    errorMsg.className = 'system-message animate__animated animate__fadeIn';
+                    errorMsg.innerHTML = `<i class="bi bi-exclamation-triangle-fill text-warning me-1"></i> <strong>Error:</strong> ${error.message}`;
                     messagesContainer.appendChild(errorMsg);
                     messagesContainer.scrollTop = messagesContainer.scrollHeight;
                 });
@@ -1168,28 +1505,177 @@
                 });
             }
         });
+
+        // Configurar eventos para el panel de instalación de dependencias
+        document.addEventListener('DOMContentLoaded', function() {
+            const packageNameInput = document.getElementById('package-name');
+            const packageManagerSelect = document.getElementById('package-manager');
+            const installButton = document.getElementById('install-package-btn');
+            const updateButton = document.getElementById('update-packages-btn');
+
+            if (installButton && packageNameInput && packageManagerSelect) {
+                installButton.addEventListener('click', function() {
+                    const packageName = packageNameInput.value.trim();
+                    if (!packageName) {
+                        showNotification('Por favor ingrese un nombre de paquete', 'error');
+                        return;
+                    }
+
+                    const packageManager = packageManagerSelect.value;
+                    let command = '';
+
+                    switch(packageManager) {
+                        case 'pip':
+                            command = `pip install ${packageName}`;
+                            break;
+                        case 'npm':
+                            command = `npm install ${packageName}`;
+                            break;
+                        case 'yarn':
+                            command = `yarn add ${packageName}`;
+                            break;
+                        case 'poetry':
+                            command = `poetry add ${packageName}`;
+                            break;
+                        case 'apt':
+                            command = `apt-get install ${packageName}`;
+                            break;
+                        default:
+                            command = `pip install ${packageName}`;
+                    }
+
+                    // Ejecutar el comando
+                    if (window.terminalInterface && typeof window.terminalInterface.executeCommand === 'function') {
+                        window.terminalInterface.executeCommand(command);
+                        showNotification(`Instalando ${packageName} con ${packageManager}...`, 'info');
+                        packageNameInput.value = '';
+                    }
+                });
+            }
+
+            if (updateButton && packageManagerSelect) {
+                updateButton.addEventListener('click', function() {
+                    const packageManager = packageManagerSelect.value;
+                    let command = '';
+
+                    switch(packageManager) {
+                        case 'pip':
+                            command = 'pip list --outdated';
+                            break;
+                        case 'npm':
+                            command = 'npm outdated';
+                            break;
+                        case 'yarn':
+                            command = 'yarn outdated';
+                            break;
+                        case 'poetry':
+                            command = 'poetry update';
+                            break;
+                        case 'apt':
+                            command = 'apt-get update && apt-get upgrade -y';
+                            break;
+                        default:
+                            command = 'pip list --outdated';
+                    }
+
+                    // Ejecutar el comando
+                    if (window.terminalInterface && typeof window.terminalInterface.executeCommand === 'function') {
+                        window.terminalInterface.executeCommand(command);
+                        showNotification(`Verificando actualizaciones con ${packageManager}...`, 'info');
+                    }
+                });
+            }
+        });
+
+        // Configuración para el botón de alternar la barra de asistentes
+        document.addEventListener('DOMContentLoaded', function() {
+            const toggleButton = document.getElementById('toggle-assistant-bar');
+            const assistantContainer = document.querySelector('.assistant-container');
+            const packageInstallPanel = document.querySelector('.package-install-panel');
+
+            // Función para alternar la visibilidad de los paneles de asistentes
+            function toggleAssistantBar() {
+                if (assistantContainer.style.display === 'none') {
+                    assistantContainer.style.display = '';
+                    packageInstallPanel.style.display = '';
+                    toggleButton.innerHTML = '<i class="bi bi-eye-slash"></i> Ocultar';
+                } else {
+                    assistantContainer.style.display = 'none';
+                    packageInstallPanel.style.display = 'none';
+                    toggleButton.innerHTML = '<i class="bi bi-eye"></i> Mostrar';
+                }
+            }
+
+            // Añadir evento al botón
+            if (toggleButton) {
+                toggleButton.addEventListener('click', toggleAssistantBar);
+            }
+        });
+
+        // Configuración para el asistente de desarrollo
+        document.addEventListener('DOMContentLoaded', function() {
+            const toggleButton = document.getElementById('toggle-developer-assistant');
+            const responseContainer = document.getElementById('assistant-response-container');
+            const responseDisplay = document.getElementById('assistant-response');
+            const copyButton = document.getElementById('copy-response-btn');
+            const executeButton = document.getElementById('execute-code-btn');
+            const closeButton = document.getElementById('close-response-btn');
+
+            // Función para mostrar/ocultar el panel de respuesta del asistente
+            function toggleDeveloperAssistant() {
+                if (responseContainer.style.display === 'none') {
+                    responseContainer.style.display = 'block';
+                    // Aquí podrías hacer una solicitud al servidor para obtener ayuda de desarrollo
+                    responseDisplay.textContent = 'Esperando consulta sobre desarrollo...';
+                } else {
+                    responseContainer.style.display = 'none';
+                }
+            }
+
+            // Configurar eventos para los botones
+            if (toggleButton) {
+                toggleButton.addEventListener('click', toggleDeveloperAssistant);
+            }
+
+            if (copyButton) {
+                copyButton.addEventListener('click', function() {
+                    const text = responseDisplay.textContent;
+                    navigator.clipboard.writeText(text)
+                        .then(() => showNotification('Contenido copiado al portapapeles', 'success'))
+                        .catch(err => {
+                            console.error('Error al copiar:', err);
+                            showNotification('Error al copiar el contenido', 'error');
+                        });
+                });
+            }
+
+            if (executeButton) {
+                executeButton.addEventListener('click', function() {
+                    const code = responseDisplay.textContent;
+                    if (!code || code === 'Esperando consulta...') return;
+
+                    // Aquí podrías implementar la ejecución del código
+                    if (window.terminalInterface && typeof window.terminalInterface.executeCommand === 'function') {
+                        window.terminalInterface.executeCommand(code);
+                        showNotification('Ejecutando código en terminal', 'info');
+                    } else {
+                        showNotification('No se puede ejecutar el código', 'error');
+                    }
+                });
+            }
+
+            if (closeButton) {
+                closeButton.addEventListener('click', function() {
+                    responseContainer.style.display = 'none';
+                });
+            }
+        });
+
+        // Función para formatear respuestas para la terminal
+        function formatForTerminal(response) {
+            // Implementar lógica de formato aquí
+            return response;
+        }
     </script>
-    <!-- Panel de instalación de dependencias -->
-<div class="package-install-panel mt-3 mb-3 p-3 border border-secondary rounded">
-    <h5 class="mb-3">Instalar Dependencias</h5>
-    <div class="row g-2">
-        <div class="col-md-8">
-            <input type="text" id="package-name" class="form-control bg-dark text-light" placeholder="Nombre del paquete">
-        </div>
-        <div class="col-md-4">
-            <select id="package-manager" class="form-select bg-dark text-light">
-                <option value="pip">pip (Python)</option>
-                <option value="npm">npm (Node.js)</option>
-                <option value="yarn">yarn</option>
-                <option value="poetry">poetry</option>
-                <option value="apt">apt (sistema)</option>
-            </select>
-        </div>
-    </div>
-    <div class="mt-2">
-        <button id="install-package-btn" class="btn btn-primary">Instalar</button>
-        <button id="update-packages-btn" class="btn btn-secondary">Actualizar Todo</button>
-    </div>
-</div>
 </body>
 </html>

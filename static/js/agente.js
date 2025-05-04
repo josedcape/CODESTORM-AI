@@ -996,4 +996,3 @@ const agenteApp = (function() {
 // Inicializar cuando el DOM esté cargado
 document.addEventListener('DOMContentLoaded', function() {
     agenteApp.initialize();
-});
