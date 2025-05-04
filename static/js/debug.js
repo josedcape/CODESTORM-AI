@@ -5,6 +5,23 @@
 
 console.log('Script de diagnóstico cargado');
 
+// Función para detectar errores de sintaxis comunes
+window.detectSyntaxErrors = function(script) {
+  try {
+    // Intentar compilar el script para detectar errores de sintaxis
+    new Function(script);
+    return { success: true };
+  } catch (e) {
+    console.error('Error de sintaxis detectado:', e);
+    return { 
+      success: false, 
+      error: e.message,
+      line: e.lineNumber,
+      column: e.columnNumber
+    };
+  }
+};
+
 // Verificar estructura de window.app
 document.addEventListener('DOMContentLoaded', function() {
   console.log('DOM cargado, iniciando diagnóstico');

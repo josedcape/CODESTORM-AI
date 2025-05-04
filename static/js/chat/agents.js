@@ -96,7 +96,7 @@ function ejemplo() {
   - Resalta las secciones clave con emojis relevantes
 
   Responde siempre en español y utiliza un tono profesional pero accesible. RECUERDA: TODA respuesta debe incluir al menos un bloque de código, nunca respondas solamente con texto.`
-  }
+  },
   // Agente de Arquitectura
   architect: {
     id: 'architect',

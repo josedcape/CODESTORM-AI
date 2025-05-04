@@ -750,27 +750,27 @@ function initializeChat() {
     checkAPIStatus();
 
     // Actualizar la UI con el agente inicial
-    const initialAgent = document.getElementById('agent-select').value;
+    const initialAgent = document.getElementById('agent-select')?.value || 'general';
     setActiveAgent(initialAgent);
 
     // Reemplazar la función de mostrar carga en los mensajes
     window.showLoadingIndicator = showLoadingIndicator;
 }
 
-// Placeholder functions -  These would need to be implemented based on your actual application logic.
+// Placeholder functions - These would need to be implemented based on your actual application logic.
 function setupEventListeners() {
     // Add your event listeners here
-    console.log('Event listeners setup')
+    console.log('Event listeners setup');
 }
 
 function checkAPIStatus() {
-    //Check API status here
-    console.log('API status checked')
+    // Check API status here
+    console.log('API status checked');
 }
 
 function setActiveAgent(agentId) {
     // Set the active agent
-    console.log(`Active agent set to: ${agentId}`)
+    console.log(`Active agent set to: ${agentId}`);
 }
 
 
