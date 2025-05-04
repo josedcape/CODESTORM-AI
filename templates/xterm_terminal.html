@@ -807,6 +807,11 @@
             from { opacity: 0; }
             to { opacity: 1; }
         }
+        .file-actions {
+            margin-left: auto;
+            display: flex;
+            gap: 4px;
+        }
     </style>
 </head>
 <body>
@@ -1666,15 +1671,15 @@
                     }
                 });
             }
-            
+
             // Función para visualizar archivos del explorador en una ventana modal
             function viewExplorerFiles() {
                 // Obtener datos actuales del explorador
                 const currentData = sessionStorage.getItem('explorer_data_' + currentDirectory);
-                
+
                 // Crear modal si no existe
                 let modal = document.getElementById('file-explorer-modal');
-                
+
                 if (!modal) {
                     modal = document.createElement('div');
                     modal.id = 'file-explorer-modal';
@@ -1682,7 +1687,7 @@
                     modal.setAttribute('tabindex', '-1');
                     modal.setAttribute('aria-labelledby', 'fileExplorerModalLabel');
                     modal.setAttribute('aria-hidden', 'true');
-                    
+
                     modal.innerHTML = `
                         <div class="modal-dialog modal-lg">
                             <div class="modal-content bg-dark">
@@ -1707,33 +1712,33 @@
                             </div>
                         </div>
                     `;
-                    
+
                     document.body.appendChild(modal);
-                    
+
                     // Evento para refrescar archivos
                     document.getElementById('modal-refresh-files').addEventListener('click', function() {
                         loadFiles(currentDirectory);
                         setTimeout(updateModalFiles, 500);
                     });
                 }
-                
+
                 // Función para actualizar la vista de archivos en el modal
                 function updateModalFiles() {
                     const modalPath = document.getElementById('modal-current-path');
                     const modalFileList = document.getElementById('modal-file-list');
-                    
+
                     modalPath.textContent = currentDirectory === '.' ? '/' : currentDirectory;
-                    
+
                     // Obtener datos actualizados
                     const explorerData = sessionStorage.getItem('explorer_data_' + currentDirectory);
                     let data;
-                    
+
                     try {
                         data = explorerData ? JSON.parse(explorerData) : null;
                     } catch (e) {
                         console.error('Error al parsear datos:', e);
                     }
-                    
+
                     if (!data || !data.files) {
                         modalFileList.innerHTML = `
                             <div class="text-center text-warning p-3">
@@ -1743,10 +1748,10 @@
                         `;
                         return;
                     }
-                    
+
                     // Limpiar lista
                     modalFileList.innerHTML = '';
-                    
+
                     // Agregar opción para subir un nivel
                     if (currentDirectory !== '.') {
                         const parentDir = currentDirectory.split('/').slice(0, -1).join('/') || '.';
@@ -1760,15 +1765,15 @@
                         });
                         modalFileList.appendChild(upItem);
                     }
-                    
+
                     // Separar directorios y archivos
                     const directories = data.files.filter(f => f.type === 'directory');
                     const files = data.files.filter(f => f.type === 'file');
-                    
+
                     // Ordenar alfabéticamente
                     directories.sort((a, b) => a.name.localeCompare(b.name));
                     files.sort((a, b) => a.name.localeCompare(b.name));
-                    
+
                     // Agregar directorios
                     directories.forEach(dir => {
                         const item = document.createElement('a');
@@ -1781,27 +1786,27 @@
                         });
                         modalFileList.appendChild(item);
                     });
-                    
+
                     // Agregar archivos
                     files.forEach(file => {
                         // Determinar icono según extensión
                         let icon = 'bi-file-earmark';
                         const ext = file.name.split('.').pop().toLowerCase();
-                        
+
                         if (['html', 'htm'].includes(ext)) icon = 'bi-file-earmark-code';
                         else if (['js', 'ts'].includes(ext)) icon = 'bi-filetype-js';
                         else if (['css', 'scss'].includes(ext)) icon = 'bi-filetype-css';
                         else if (['py'].includes(ext)) icon = 'bi-filetype-py';
                         else if (['jpg', 'jpeg', 'png', 'gif'].includes(ext)) icon = 'bi-file-earmark-image';
                         else if (['md'].includes(ext)) icon = 'bi-file-earmark-text';
-                        
+
                         const item = document.createElement('a');
                         item.className = 'list-group-item list-group-item-action d-flex align-items-center justify-content-between bg-dark text-light border-secondary';
                         item.innerHTML = `
                             <div><i class="bi ${icon} me-3 text-info"></i> ${file.name}</div>
                             <div class="badge bg-secondary">${formatFileSize(file.size || 0)}</div>
                         `;
-                        
+
                         // Acción para mostrar contenido del archivo 
                         item.addEventListener('click', function() {
                             // Usar executeCommand para ver el archivo con cat
@@ -1815,15 +1820,15 @@
                                     sendButton.click();
                                 }
                             }
-                            
+
                             // Cerrar modal después de enviar comando
                             const modalInstance = bootstrap.Modal.getInstance(modal);
                             if (modalInstance) modalInstance.hide();
                         });
-                        
+
                         modalFileList.appendChild(item);
                     });
-                    
+
                     // Mostrar mensaje si no hay archivos
                     if (data.files.length === 0) {
                         modalFileList.innerHTML = `
@@ -1834,10 +1839,10 @@
                         `;
                     }
                 }
-                
+
                 // Actualizar vista de archivos
                 updateModalFiles();
-                
+
                 // Mostrar modal
                 if (typeof bootstrap !== 'undefined') {
                     const modalInstance = new bootstrap.Modal(modal);
@@ -1847,7 +1852,7 @@
                     modal.classList.add('show');
                 }
             }
-            
+
             // Función para formatear tamaño de archivo
             function formatFileSize(bytes) {
                 if (bytes === 0) return '0 Bytes';
@@ -1900,6 +1905,34 @@
                     dirElement.addEventListener('click', () => {
                         loadFiles(dir.path);
                     });
+                    // Agregar evento de clic derecho para menú contextual
+                    dirElement.addEventListener('contextmenu', (e) => {
+                        e.preventDefault();
+                        if (window.fileActions && typeof window.fileActions.showContextMenu === 'function') {
+                            window.fileActions.showContextMenu(e, dir.path, true);
+                        }
+                        return false;
+                    });
+
+                    // Agregar botón de explorar directorio
+                    const openDirButton = document.createElement('button');
+                    openDirButton.className = 'btn btn-sm btn-info me-1';
+                    openDirButton.innerHTML = '<i class="bi bi-folder-symlink"></i> Explorar';
+                    openDirButton.title = 'Explorar directorio';
+                    openDirButton.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        loadFiles(dir.path);
+                    });
+
+                    // Insertar el botón en las acciones del directorio
+                    const actionsDiv = document.createElement('div');
+                    actionsDiv.className = 'file-actions';
+                    dirElement.appendChild(actionsDiv);
+                    actionsDiv.insertBefore(openDirButton, actionsDiv.firstChild);
+
+
+                    // Configurar botones de acción
+                    setupActionButtons(dirElement, dir);
                     explorerContent.appendChild(dirElement);
                 });
 
@@ -1924,6 +1957,45 @@
                     fileElement.addEventListener('click', () => {
                         // Abrir archivo en editor
                         window.location.href = `/edit_file?path=${encodeURIComponent(file.path)}&user_id=${userId}`;
+                    });
+
+                    // Agregar contenedor para acciones
+                    const actionsDiv = document.createElement('div');
+                    actionsDiv.className = 'file-actions';
+                    fileElement.appendChild(actionsDiv);
+
+                    // Configurar botones de acción
+                    setupActionButtons(fileElement, file);
+
+                    // Agregar botón de abrir
+                    const openButton = document.createElement('button');
+                    openButton.className = 'btn btn-sm btn-primary me-1';
+                    openButton.innerHTML = '<i class="bi bi-folder-symlink"></i> Abrir';
+                    openButton.title = 'Abrir archivo';
+                    openButton.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        // Verificar el tipo de archivo y abrir según corresponda
+                        const ext = file.name.split('.').pop().toLowerCase();
+                        if (['jpg', 'jpeg', 'png', 'gif'].includes(ext)) {
+                            // Para imágenes, abrir en nueva pestaña
+                            window.open(`/view_file?path=${encodeURIComponent(file.path)}`, '_blank');
+                        } else {
+                            // Para otros archivos, abrir en el editor
+                            window.location.href = `/edit_file?path=${encodeURIComponent(file.path)}`;
+                        }
+                    });
+
+                    // Insertar el botón en las acciones del archivo
+                    actionsDiv.insertBefore(openButton, actionsDiv.firstChild);
+
+
+                    // Clic derecho para menú contextual
+                    fileElement.addEventListener('contextmenu', (e) => {
+                        e.preventDefault();
+                        if (window.fileActions && typeof window.fileActions.showContextMenu === 'function') {
+                            window.fileActions.showContextMenu(e, file.path, false);
+                        }
+                        return false;
                     });
                     explorerContent.appendChild(fileElement);
                 });
@@ -2261,12 +2333,12 @@
             // Botones para ver archivos (tanto en navbar como en menú móvil)
             const viewFilesButton = document.getElementById('view-files-button');
             const viewFilesMobileBtn = document.getElementById('view-files-btn');
-            
+
             // Configurar eventos para ambos botones
             if (viewFilesButton) {
                 viewFilesButton.addEventListener('click', viewExplorerFiles);
             }
-            
+
             if (viewFilesMobileBtn) {
                 viewFilesMobileBtn.addEventListener('click', function() {
                     viewExplorerFiles();
@@ -2278,7 +2350,7 @@
                 });
             }
         });
-            
+
         // Configuración para el asistente de desarrollo
         document.addEventListener('DOMContentLoaded', function() {
             const toggleButton = document.getElementById('toggle-developer-assistant');
@@ -2342,6 +2414,36 @@
         function formatForTerminal(response) {
             // Implementar lógica de formato aquí
             return response;
+        }
+
+        function setupActionButtons(element, fileOrDir) {
+            const actionsDiv = element.querySelector('.file-actions');
+            if (!actionsDiv) return;
+
+            // Agregar botón de eliminar (solo para archivos)
+            if (fileOrDir.type === 'file') {
+                const deleteButton = document.createElement('button');
+                deleteButton.className = 'btn btn-sm btn-danger';
+                deleteButton.innerHTML = '<i class="bi bi-trash"></i> Eliminar';
+                deleteButton.title = 'Eliminar archivo';
+                deleteButton.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    if (confirm(`¿Está seguro de eliminar "${fileOrDir.name}"?`)) {
+                        fetch(`/api/delete_file?path=${encodeURIComponent(fileOrDir.path)}`, { method: 'DELETE' })
+                            .then(response => response.json())
+                            .then(data => {
+                                if (data.success) {
+                                    showNotification('Archivo eliminado correctamente', 'success');
+                                    loadFiles(currentDirectory);
+                                } else {
+                                    showNotification(`Error al eliminar archivo: ${data.error}`, 'error');
+                                }
+                            })
+                            .catch(error => showNotification(`Error al eliminar archivo: ${error.message}`, 'error'));
+                    }
+                });
+                actionsDiv.appendChild(deleteButton);
+            }
         }
     </script>
 </body>
