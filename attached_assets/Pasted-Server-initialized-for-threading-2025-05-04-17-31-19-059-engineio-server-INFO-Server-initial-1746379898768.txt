@@ -1,0 +1,49 @@
+Server initialized for threading.
+2025-05-04 17:31:19,059 - engineio.server - INFO - Server initialized for threading.
+2025-05-04 17:31:19,067 - root - INFO - Constructor blueprint registered successfully
+2025-05-04 17:31:19,088 - openai._base_client - DEBUG - Request options: {'method': 'get', 'url': '/models', 'post_parser': <function SyncAPIClient._request_api_list.<locals>._parser at 0x7f19f9bcc360>, 'json_data': None}
+2025-05-04 17:31:19,092 - openai._base_client - DEBUG - Sending HTTP Request: GET https://api.openai.com/v1/models
+2025-05-04 17:31:19,092 - httpcore.connection - DEBUG - connect_tcp.started host='api.openai.com' port=443 local_address=None timeout=5.0 socket_options=None
+2025-05-04 17:31:19,106 - httpcore.connection - DEBUG - connect_tcp.complete return_value=<httpcore._backends.sync.SyncStream object at 0x7f19f71426d0>
+2025-05-04 17:31:19,106 - httpcore.connection - DEBUG - start_tls.started ssl_context=<ssl.SSLContext object at 0x7f19f6ec0440> server_hostname='api.openai.com' timeout=5.0
+2025-05-04 17:31:19,122 - httpcore.connection - DEBUG - start_tls.complete return_value=<httpcore._backends.sync.SyncStream object at 0x7f19f6ecad50>
+2025-05-04 17:31:19,122 - httpcore.http11 - DEBUG - send_request_headers.started request=<Request [b'GET']>
+2025-05-04 17:31:19,122 - httpcore.http11 - DEBUG - send_request_headers.complete
+2025-05-04 17:31:19,123 - httpcore.http11 - DEBUG - send_request_body.started request=<Request [b'GET']>
+2025-05-04 17:31:19,123 - httpcore.http11 - DEBUG - send_request_body.complete
+2025-05-04 17:31:19,123 - httpcore.http11 - DEBUG - receive_response_headers.started request=<Request [b'GET']>
+2025-05-04 17:31:19,457 - httpcore.http11 - DEBUG - receive_response_headers.complete return_value=(b'HTTP/1.1', 200, b'OK', [(b'Date', b'Sun, 04 May 2025 17:31:19 GMT'), (b'Content-Type', b'application/json'), (b'Transfer-Encoding', b'chunked'), (b'Connection', b'keep-alive'), (b'openai-version', b'2020-10-01'), (b'x-request-id', b'3f544dc82aecad75617c3a1a80ff9257'), (b'openai-processing-ms', b'259'), (b'strict-transport-security', b'max-age=31536000; includeSubDomains; preload'), (b'cf-cache-status', b'DYNAMIC'), (b'Set-Cookie', b'__cf_bm=35KPH85V7bAl53WdS3A9iKoKH8QQ9W.f55bO4tWTxjg-1746379879-1.0.1.1-lgGKworOfHu55EF8OJyD0SFIv4ctyawrR37xYlMHfCD1W1Y_hb5ncpGwu..9qXX82mmN8mJlmW2fXhT3O4ELtmWhE_HhPuhC8opVGY4SZFQ; path=/; expires=Sun, 04-May-25 18:01:19 GMT; domain=.api.openai.com; HttpOnly; Secure; SameSite=None'), (b'X-Content-Type-Options', b'nosniff'), (b'Set-Cookie', b'_cfuvid=eVkKTDRJoZO6TV6LaUilOZ_JG2NmbFd6XKjPEFNljlU-1746379879450-0.0.1.1-604800000; path=/; domain=.api.openai.com; HttpOnly; Secure; SameSite=None'), (b'Server', b'cloudflare'), (b'CF-RAY', b'93a9bb248c3fdadc-ORD'), (b'Content-Encoding', b'gzip'), (b'alt-svc', b'h3=":443"; ma=86400')])
+2025-05-04 17:31:19,458 - httpx - INFO - HTTP Request: GET https://api.openai.com/v1/models "HTTP/1.1 200 OK"
+2025-05-04 17:31:19,458 - httpcore.http11 - DEBUG - receive_response_body.started request=<Request [b'GET']>
+2025-05-04 17:31:19,459 - httpcore.http11 - DEBUG - receive_response_body.complete
+2025-05-04 17:31:19,459 - httpcore.http11 - DEBUG - response_closed.started
+2025-05-04 17:31:19,459 - httpcore.http11 - DEBUG - response_closed.complete
+2025-05-04 17:31:19,459 - openai._base_client - DEBUG - HTTP Response: GET https://api.openai.com/v1/models "200 OK" Headers([('date', 'Sun, 04 May 2025 17:31:19 GMT'), ('content-type', 'application/json'), ('transfer-encoding', 'chunked'), ('connection', 'keep-alive'), ('openai-version', '2020-10-01'), ('x-request-id', '3f544dc82aecad75617c3a1a80ff9257'), ('openai-processing-ms', '259'), ('strict-transport-security', 'max-age=31536000; includeSubDomains; preload'), ('cf-cache-status', 'DYNAMIC'), ('set-cookie', '__cf_bm=35KPH85V7bAl53WdS3A9iKoKH8QQ9W.f55bO4tWTxjg-1746379879-1.0.1.1-lgGKworOfHu55EF8OJyD0SFIv4ctyawrR37xYlMHfCD1W1Y_hb5ncpGwu..9qXX82mmN8mJlmW2fXhT3O4ELtmWhE_HhPuhC8opVGY4SZFQ; path=/; expires=Sun, 04-May-25 18:01:19 GMT; domain=.api.openai.com; HttpOnly; Secure; SameSite=None'), ('x-content-type-options', 'nosniff'), ('set-cookie', '_cfuvid=eVkKTDRJoZO6TV6LaUilOZ_JG2NmbFd6XKjPEFNljlU-1746379879450-0.0.1.1-604800000; path=/; domain=.api.openai.com; HttpOnly; Secure; SameSite=None'), ('server', 'cloudflare'), ('cf-ray', '93a9bb248c3fdadc-ORD'), ('content-encoding', 'gzip'), ('alt-svc', 'h3=":443"; ma=86400')])
+2025-05-04 17:31:19,459 - openai._base_client - DEBUG - request_id: 3f544dc82aecad75617c3a1a80ff9257
+2025-05-04 17:31:19,507 - httpcore.connection - DEBUG - close.started
+2025-05-04 17:31:19,507 - httpcore.connection - DEBUG - close.complete
+2025-05-04 17:31:19,583 - anthropic._base_client - DEBUG - Request options: {'method': 'get', 'url': '/v1/models', 'params': {}, 'post_parser': <function SyncAPIClient._request_api_list.<locals>._parser at 0x7f19f6c1b420>, 'json_data': None}
+2025-05-04 17:31:19,584 - anthropic._base_client - DEBUG - Sending HTTP Request: GET https://api.anthropic.com/v1/models
+2025-05-04 17:31:19,584 - httpcore.connection - DEBUG - connect_tcp.started host='api.anthropic.com' port=443 local_address=None timeout=5.0 socket_options=[(1, 9, True), (6, 5, 60), (6, 6, 5), (6, 4, 60)]
+2025-05-04 17:31:19,608 - httpcore.connection - DEBUG - connect_tcp.complete return_value=<httpcore._backends.sync.SyncStream object at 0x7f19f6b46690>
+2025-05-04 17:31:19,608 - httpcore.connection - DEBUG - start_tls.started ssl_context=<ssl.SSLContext object at 0x7f19f6ec05f0> server_hostname='api.anthropic.com' timeout=5.0
+2025-05-04 17:31:19,626 - httpcore.connection - DEBUG - start_tls.complete return_value=<httpcore._backends.sync.SyncStream object at 0x7f19f6b26f90>
+2025-05-04 17:31:19,626 - httpcore.http11 - DEBUG - send_request_headers.started request=<Request [b'GET']>
+2025-05-04 17:31:19,627 - httpcore.http11 - DEBUG - send_request_headers.complete
+2025-05-04 17:31:19,627 - httpcore.http11 - DEBUG - send_request_body.started request=<Request [b'GET']>
+2025-05-04 17:31:19,627 - httpcore.http11 - DEBUG - send_request_body.complete
+2025-05-04 17:31:19,627 - httpcore.http11 - DEBUG - receive_response_headers.started request=<Request [b'GET']>
+2025-05-04 17:31:19,683 - httpcore.http11 - DEBUG - receive_response_headers.complete return_value=(b'HTTP/1.1', 200, b'OK', [(b'Date', b'Sun, 04 May 2025 17:31:19 GMT'), (b'Content-Type', b'application/json'), (b'Transfer-Encoding', b'chunked'), (b'Connection', b'keep-alive'), (b'request-id', b'req_011CNntURgJX9RsuTaTLgtwd'), (b'strict-transport-security', b'max-age=31536000; includeSubDomains; preload'), (b'anthropic-organization-id', b'60f7efed-aec7-4c80-ae5b-a741afc057c3'), (b'via', b'1.1 google'), (b'cf-cache-status', b'DYNAMIC'), (b'X-Robots-Tag', b'none'), (b'Server', b'cloudflare'), (b'CF-RAY', b'93a9bb27b9b70249-ORD'), (b'Content-Encoding', b'gzip')])
+2025-05-04 17:31:19,683 - httpx - INFO - HTTP Request: GET https://api.anthropic.com/v1/models "HTTP/1.1 200 OK"
+2025-05-04 17:31:19,683 - httpcore.http11 - DEBUG - receive_response_body.started request=<Request [b'GET']>
+2025-05-04 17:31:19,683 - httpcore.http11 - DEBUG - receive_response_body.complete
+2025-05-04 17:31:19,684 - httpcore.http11 - DEBUG - response_closed.started
+2025-05-04 17:31:19,684 - httpcore.http11 - DEBUG - response_closed.complete
+2025-05-04 17:31:19,684 - anthropic._base_client - DEBUG - HTTP Response: GET https://api.anthropic.com/v1/models "200 OK" Headers({'date': 'Sun, 04 May 2025 17:31:19 GMT', 'content-type': 'application/json', 'transfer-encoding': 'chunked', 'connection': 'keep-alive', 'request-id': 'req_011CNntURgJX9RsuTaTLgtwd', 'strict-transport-security': 'max-age=31536000; includeSubDomains; preload', 'anthropic-organization-id': '60f7efed-aec7-4c80-ae5b-a741afc057c3', 'via': '1.1 google', 'cf-cache-status': 'DYNAMIC', 'x-robots-tag': 'none', 'server': 'cloudflare', 'cf-ray': '93a9bb27b9b70249-ORD', 'content-encoding': 'gzip'})
+2025-05-04 17:31:19,684 - anthropic._base_client - DEBUG - request_id: req_011CNntURgJX9RsuTaTLgtwd
+================================================================================
+✅ APIs configuradas: OpenAI, Anthropic, Gemini
+El sistema generará código real utilizando los modelos de IA disponibles.
+================================================================================
+2025-05-04 17:31:19,830 - httpcore.connection - DEBUG - close.started
+2025-05-04 17:31:19,830 - httpcore.connection - DEBUG - close.complete
