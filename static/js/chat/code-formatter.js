@@ -72,15 +72,15 @@ function copyCode(button) {
     console.error('No se pudo encontrar el contenedor de código');
     return;
   }
-  
+
   const preElement = codeContainer.querySelector('pre');
   const codeElement = preElement.querySelector('code');
-  
+
   if (!codeElement) {
     console.error('No se pudo encontrar el elemento de código');
     return;
   }
-  
+
   // Obtener el texto real sin formato HTML
   const textToCopy = codeElement.textContent || codeElement.innerText;
 
@@ -100,104 +100,7 @@ function copyCode(button) {
         const originalText = button.innerHTML;
         button.innerHTML = '<i class="bi bi-check"></i>';
         button.style.backgroundColor = '#28a745';
-        
-        // Mostrar una notificación de éxito temporal
-        if (window.showNotification) {
-          window.showNotification('Código copiado al portapapeles', 'success');
-        }
 
-        setTimeout(() => {
-          button.innerHTML = originalText;
-          button.style.backgroundColor = '';
-        }, 2000);
-      }).catch(err => {
-        console.error('Error al copiar texto: ', err);
-        fallbackCopy();
-      });
-    } else {
-      // Fallback para navegadores que no soportan clipboard API
-      fallbackCopy();
-    }
-  } catch (err) {
-    console.error('Error al copiar el código: ', err);
-    fallbackCopy();
-  }
-
-  // Método alternativo de copia
-  function fallbackCopy() {
-    try {
-      const successful = document.execCommand('copy');
-      if (successful) {
-        button.innerHTML = '<i class="bi bi-check"></i>';
-        button.style.backgroundColor = '#28a745';
-        if (window.showNotification) {
-          window.showNotification('Código copiado al portapapeles', 'success');
-        }
-      } else {
-        button.innerHTML = '<i class="bi bi-exclamation-triangle"></i>';
-        button.style.backgroundColor = '#dc3545';
-        if (window.showNotification) {
-          window.showNotification('No se pudo copiar el código', 'error');
-        }
-      }
-    } catch (err) {
-      console.error('Error en el fallback de copia: ', err);
-      button.innerHTML = '<i class="bi bi-exclamation-triangle"></i>';
-      button.style.backgroundColor = '#dc3545';
-    }
-    
-    setTimeout(() => {
-      button.innerHTML = '<i class="bi bi-clipboard"></i>';
-      button.style.backgroundColor = '';
-    }, 2000);
-  }
-  
-  // Limpiar
-  document.body.removeChild(textArea);
-}
-
-// Función para mostrar notificaciones si no existe globalmente
-if (!window.showNotification) {
-  window.showNotification = function(message, type) {
-    console.log(`Notificación (${type}): ${message}`);
-  };
-}go al portapapeles
-function copyCode(button) {
-  // Encontrar el contenedor y el elemento de código
-  const codeContainer = button.closest('.code-block-container');
-  if (!codeContainer) {
-    console.error('No se pudo encontrar el contenedor de código');
-    return;
-  }
-  
-  const preElement = codeContainer.querySelector('pre');
-  const codeElement = preElement.querySelector('code');
-  
-  if (!codeElement) {
-    console.error('No se pudo encontrar el elemento de código');
-    return;
-  }
-  
-  // Obtener el texto real sin formato HTML
-  const textToCopy = codeElement.textContent || codeElement.innerText;
-
-  // Crear un elemento de texto temporal para copiar
-  const textArea = document.createElement('textarea');
-  textArea.value = textToCopy;
-  textArea.style.position = 'fixed';  // Evita desplazamiento
-  textArea.style.opacity = '0';
-  document.body.appendChild(textArea);
-  textArea.select();
-
-  try {
-    // Intentar usar el nuevo API de clipboard si está disponible
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(textToCopy).then(() => {
-        // Éxito - cambia el botón para dar feedback
-        const originalText = button.innerHTML;
-        button.innerHTML = '<i class="bi bi-check"></i>';
-        button.style.backgroundColor = '#28a745';
-        
         // Mostrar una notificación de éxito temporal
         showNotification('Código copiado al portapapeles');
 
@@ -236,13 +139,13 @@ function copyCode(button) {
       button.innerHTML = '<i class="bi bi-exclamation-triangle"></i>';
       button.style.backgroundColor = '#dc3545';
     }
-    
+
     setTimeout(() => {
       button.innerHTML = '<i class="bi bi-clipboard"></i>';
       button.style.backgroundColor = '';
     }, 2000);
   }
-  
+
   // Limpiar
   document.body.removeChild(textArea);
 }
@@ -251,7 +154,7 @@ function copyCode(button) {
 function showNotification(message, type = 'success') {
   // Verificar si ya existe un contenedor de notificaciones
   let notificationContainer = document.getElementById('notification-container');
-  
+
   if (!notificationContainer) {
     notificationContainer = document.createElement('div');
     notificationContainer.id = 'notification-container';
@@ -261,7 +164,7 @@ function showNotification(message, type = 'success') {
     notificationContainer.style.zIndex = '9999';
     document.body.appendChild(notificationContainer);
   }
-  
+
   // Crear la notificación
   const notification = document.createElement('div');
   notification.className = `notification notification-${type}`;
@@ -273,7 +176,7 @@ function showNotification(message, type = 'success') {
   notification.style.transition = 'all 0.3s ease';
   notification.style.opacity = '0';
   notification.style.transform = 'translateY(-20px)';
-  
+
   // Estilos según el tipo
   if (type === 'success') {
     notification.style.backgroundColor = '#28a745';
@@ -282,23 +185,23 @@ function showNotification(message, type = 'success') {
   } else {
     notification.style.backgroundColor = '#17a2b8';
   }
-  
+
   notification.textContent = message;
-  
+
   // Añadir al contenedor
   notificationContainer.appendChild(notification);
-  
+
   // Animar entrada
   setTimeout(() => {
     notification.style.opacity = '1';
     notification.style.transform = 'translateY(0)';
   }, 10);
-  
+
   // Eliminar después de un tiempo
   setTimeout(() => {
     notification.style.opacity = '0';
     notification.style.transform = 'translateY(-20px)';
-    
+
     setTimeout(() => {
       if (notification.parentNode) {
         notification.parentNode.removeChild(notification);
@@ -307,10 +210,100 @@ function showNotification(message, type = 'success') {
   }, 3000);
 }
 
+// Función para mostrar notificaciones si no existe globalmente
+if (!window.showNotification) {
+  window.showNotification = function(message, type) {
+    console.log(`Notificación (${type}): ${message}`);
+  };
+}
+
+// Función para copiar código desde un elemento
+function copyCode(button) {
+    const codeBlock = button.parentElement.nextElementSibling;
+    const code = codeBlock.textContent;
+
+    // Usar el API de portapapeles
+    navigator.clipboard.writeText(code)
+        .then(() => {
+            // Cambiar el texto del botón temporalmente
+            const originalText = button.textContent;
+            button.textContent = '✓ Copiado!';
+
+            // Restaurar el texto original después de 2 segundos
+            setTimeout(() => {
+                button.textContent = originalText;
+            }, 2000);
+        })
+        .catch(err => {
+            console.error('Error al copiar el código:', err);
+            alert('No se pudo copiar el código. Por favor, inténtalo de nuevo.');
+        });
+}
+
+// Función para actualizar la UI cuando se cambia de agente
+function updateAgentUI(agentId) {
+    if (!window.app || !window.app.chat || !window.app.chat.availableAgents) {
+        console.error('No se encuentran los datos de agentes');
+        return;
+    }
+
+    const agent = window.app.chat.availableAgents[agentId];
+    if (!agent) {
+        console.error(`Agente no encontrado: ${agentId}`);
+        return;
+    }
+
+    // Actualizar nombre y descripción del agente
+    const agentNameElement = document.getElementById('agent-badge');
+    const agentDescElement = document.querySelector('.agent-description');
+    const agentIcon = document.querySelector('.agent-icon i');
+
+    if (agentNameElement) {
+        agentNameElement.textContent = agent.name;
+    }
+
+    if (agentDescElement) {
+        agentDescElement.textContent = agent.description;
+    }
+
+    if (agentIcon) {
+        agentIcon.className = '';
+        agentIcon.classList.add('bi', `bi-${agent.icon}`);
+    }
+
+    // Actualizar lista de capacidades
+    const capabilitiesList = document.getElementById('agent-capabilities');
+    if (capabilitiesList && agent.capabilities) {
+        capabilitiesList.innerHTML = '';
+        agent.capabilities.forEach(capability => {
+            const li = document.createElement('li');
+            li.textContent = capability;
+            capabilitiesList.appendChild(li);
+        });
+    }
+
+    // Añadir mensaje de sistema
+    const systemMessage = document.createElement('div');
+    systemMessage.className = 'message-container system-message';
+    systemMessage.innerHTML = `<div class="message-content">Has cambiado al <strong>${agent.name}</strong>. ${agent.description}</div>`;
+
+    const messagesContainer = document.getElementById('messages-container');
+    if (messagesContainer) {
+        messagesContainer.appendChild(systemMessage);
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    }
+
+    // Guardar el agente activo en la configuración
+    window.app.chat.activeAgent = agentId;
+
+    console.log(`Agente cambiado a: ${agent.name} (${agentId})`);
+}
+
 // Exponer funciones globalmente
 window.highlightCode = highlightCode;
 window.formatCodeResponse = formatCodeResponse;
 window.copyCode = copyCode;
+window.updateAgentUI = updateAgentUI;
 
 
 /**
@@ -444,20 +437,20 @@ const CodeFormatter = {
     formatCode: function(message) {
         // Detectar bloques de código con triple backtick
         const codeBlockRegex = /```([a-zA-Z]*)\n([\s\S]*?)```/g;
-        
+
         // Reemplazar bloques de código con elementos <pre><code>
         let formattedMessage = message.replace(codeBlockRegex, (match, language, code) => {
             const langClass = language ? `language-${language}` : '';
             return `<pre><code class="${langClass}">${this.escapeHtml(code)}</code></pre>`;
         });
-        
+
         // Detectar código en línea con backtick simple
         const inlineCodeRegex = /`([^`]+)`/g;
         formattedMessage = formattedMessage.replace(inlineCodeRegex, '<code>$1</code>');
-        
+
         return formattedMessage;
     },
-    
+
     /**
      * Escapa caracteres HTML para mostrar código correctamente
      * @param {string} html - Texto a escapar
@@ -471,12 +464,12 @@ const CodeFormatter = {
             '"': '&quot;',
             "'": '&#039;'
         };
-        
+
         return html.replace(/[&<>"']/g, function(m) {
             return escapeMap[m];
         });
     },
-    
+
     /**
      * Aplica resaltado de sintaxis a los bloques de código
      */
@@ -521,11 +514,11 @@ class CodeFormatter {
       // Crear contenedor para el bloque de código con encabezado
       const codeBlock = document.createElement('div');
       codeBlock.className = 'code-block';
-      
+
       // Crear encabezado para el bloque de código
       const header = document.createElement('div');
       header.className = 'code-block-header';
-      
+
       // Detectar lenguaje de programación
       let language = 'código';
       const classList = block.classList;
@@ -537,37 +530,37 @@ class CodeFormatter {
           }
         }
       }
-      
+
       // Añadir lenguaje al encabezado
       const langLabel = document.createElement('span');
       langLabel.className = 'code-language';
       langLabel.textContent = language;
-      
+
       // Añadir botones de acción
       const actions = document.createElement('div');
       actions.className = 'code-actions';
-      
+
       // Botón de copiar
       const copyButton = document.createElement('button');
       copyButton.className = 'btn-copy';
       copyButton.innerHTML = '<i class="bi bi-clipboard"></i>';
       copyButton.title = 'Copiar al portapapeles';
       copyButton.onclick = () => this.copyToClipboard(block.textContent);
-      
+
       // Estructurar componentes
       actions.appendChild(copyButton);
       header.appendChild(langLabel);
       header.appendChild(actions);
-      
+
       // Crear contenedor para el código
       const codeContent = document.createElement('div');
       codeContent.className = 'code-content';
       codeContent.appendChild(block.cloneNode(true));
-      
+
       // Armar el bloque completo
       codeBlock.appendChild(header);
       codeBlock.appendChild(codeContent);
-      
+
       // Reemplazar el bloque original
       container.innerHTML = '';
       container.appendChild(codeBlock);
@@ -599,14 +592,14 @@ class CodeFormatter {
     const notification = document.createElement('div');
     notification.className = `copy-notification ${isError ? 'error' : 'success'}`;
     notification.textContent = message;
-    
+
     document.body.appendChild(notification);
-    
+
     // Animar entrada
     setTimeout(() => {
       notification.classList.add('show');
     }, 10);
-    
+
     // Animar salida y eliminar
     setTimeout(() => {
       notification.classList.remove('show');

@@ -472,6 +472,66 @@ function getAgentName(agentId) {
 }
 
 /**
+ * Cambia el agente activo y actualiza la UI
+ * @param {string} agentId - ID del agente a activar
+ */
+function setActiveAgent(agentId) {
+    // Verificar que el agente existe
+    const agents = window.app.chat.availableAgents || {};
+    const agent = agents[agentId];
+    
+    if (!agent) {
+        console.error(`Agente no encontrado: ${agentId}`);
+        return;
+    }
+    
+    // Actualizar el agente activo en la configuración
+    window.app.chat.activeAgent = agentId;
+    
+    // Si existe la función de actualizar UI, usarla
+    if (typeof updateAgentUI === 'function') {
+        updateAgentUI(agentId);
+    } else {
+        // Actualización manual de la UI
+        const agentNameElement = document.getElementById('agent-badge');
+        const agentDescElement = document.querySelector('.agent-description');
+        const agentIcon = document.querySelector('.agent-icon i');
+        
+        if (agentNameElement) {
+            agentNameElement.textContent = agent.name;
+        }
+        
+        if (agentDescElement) {
+            agentDescElement.textContent = agent.description;
+        }
+        
+        if (agentIcon) {
+            agentIcon.className = '';
+            agentIcon.classList.add('bi', `bi-${agent.icon}`);
+        }
+        
+        // Actualizar lista de capacidades
+        const capabilitiesList = document.getElementById('agent-capabilities');
+        if (capabilitiesList && agent.capabilities) {
+            capabilitiesList.innerHTML = '';
+            agent.capabilities.forEach(capability => {
+                const li = document.createElement('li');
+                li.textContent = capability;
+                capabilitiesList.appendChild(li);
+            });
+        }
+        
+        // Añadir mensaje de sistema sobre el cambio
+        addSystemMessage(`Cambiado a: ${agent.name}`);
+    }
+    
+    console.log(`Agente cambiado a: ${agent.name} (${agentId})`);
+}
+
+// Asignar la función al namespace de la app
+window.app.chat.setActiveAgent = setActiveAgent;
+
+/**
  * Escapa caracteres HTML para evitar inyección de código
  * @param {string} text - Texto a escapar
  * @returns {string} - Texto escapado
