@@ -1564,4 +1564,45 @@ code {
       }
     });
   </script>
-{% endblock %}
+<!-- Script para inicializar los botones de copiar código -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Inicializar los botones de copia existentes
+            initCopyButtons();
+
+            // Observar cambios en el DOM para nuevos bloques de código
+            const observer = new MutationObserver(function(mutations) {
+                mutations.forEach(function(mutation) {
+                    if (mutation.type === 'childList') {
+                        initCopyButtons();
+                    }
+                });
+            });
+
+            // Observar el contenedor de mensajes
+            const chatMessages = document.querySelector('.chat-messages') || document.getElementById('chat-messages');
+            if (chatMessages) {
+                observer.observe(chatMessages, { childList: true, subtree: true });
+            }
+
+            // Función para inicializar todos los botones de copia
+            function initCopyButtons() {
+                const copyButtons = document.querySelectorAll('.code-copy-btn');
+                copyButtons.forEach(function(button) {
+                    // Evitar duplicar event listeners
+                    if (!button.hasAttribute('data-initialized')) {
+                        button.setAttribute('data-initialized', 'true');
+                        button.addEventListener('click', function() {
+                            if (typeof copyCode === 'function') {
+                                copyCode(this);
+                            } else {
+                                console.error('La función copyCode no está disponible');
+                            }
+                        });
+                    }
+                });
+            }
+        });
+    </script>
+</body>
+</html>

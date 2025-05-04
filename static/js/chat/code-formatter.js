@@ -102,6 +102,103 @@ function copyCode(button) {
         button.style.backgroundColor = '#28a745';
         
         // Mostrar una notificación de éxito temporal
+        if (window.showNotification) {
+          window.showNotification('Código copiado al portapapeles', 'success');
+        }
+
+        setTimeout(() => {
+          button.innerHTML = originalText;
+          button.style.backgroundColor = '';
+        }, 2000);
+      }).catch(err => {
+        console.error('Error al copiar texto: ', err);
+        fallbackCopy();
+      });
+    } else {
+      // Fallback para navegadores que no soportan clipboard API
+      fallbackCopy();
+    }
+  } catch (err) {
+    console.error('Error al copiar el código: ', err);
+    fallbackCopy();
+  }
+
+  // Método alternativo de copia
+  function fallbackCopy() {
+    try {
+      const successful = document.execCommand('copy');
+      if (successful) {
+        button.innerHTML = '<i class="bi bi-check"></i>';
+        button.style.backgroundColor = '#28a745';
+        if (window.showNotification) {
+          window.showNotification('Código copiado al portapapeles', 'success');
+        }
+      } else {
+        button.innerHTML = '<i class="bi bi-exclamation-triangle"></i>';
+        button.style.backgroundColor = '#dc3545';
+        if (window.showNotification) {
+          window.showNotification('No se pudo copiar el código', 'error');
+        }
+      }
+    } catch (err) {
+      console.error('Error en el fallback de copia: ', err);
+      button.innerHTML = '<i class="bi bi-exclamation-triangle"></i>';
+      button.style.backgroundColor = '#dc3545';
+    }
+    
+    setTimeout(() => {
+      button.innerHTML = '<i class="bi bi-clipboard"></i>';
+      button.style.backgroundColor = '';
+    }, 2000);
+  }
+  
+  // Limpiar
+  document.body.removeChild(textArea);
+}
+
+// Función para mostrar notificaciones si no existe globalmente
+if (!window.showNotification) {
+  window.showNotification = function(message, type) {
+    console.log(`Notificación (${type}): ${message}`);
+  };
+}go al portapapeles
+function copyCode(button) {
+  // Encontrar el contenedor y el elemento de código
+  const codeContainer = button.closest('.code-block-container');
+  if (!codeContainer) {
+    console.error('No se pudo encontrar el contenedor de código');
+    return;
+  }
+  
+  const preElement = codeContainer.querySelector('pre');
+  const codeElement = preElement.querySelector('code');
+  
+  if (!codeElement) {
+    console.error('No se pudo encontrar el elemento de código');
+    return;
+  }
+  
+  // Obtener el texto real sin formato HTML
+  const textToCopy = codeElement.textContent || codeElement.innerText;
+
+  // Crear un elemento de texto temporal para copiar
+  const textArea = document.createElement('textarea');
+  textArea.value = textToCopy;
+  textArea.style.position = 'fixed';  // Evita desplazamiento
+  textArea.style.opacity = '0';
+  document.body.appendChild(textArea);
+  textArea.select();
+
+  try {
+    // Intentar usar el nuevo API de clipboard si está disponible
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(textToCopy).then(() => {
+        // Éxito - cambia el botón para dar feedback
+        const originalText = button.innerHTML;
+        button.innerHTML = '<i class="bi bi-check"></i>';
+        button.style.backgroundColor = '#28a745';
+        
+        // Mostrar una notificación de éxito temporal
         showNotification('Código copiado al portapapeles');
 
         setTimeout(() => {
