@@ -810,11 +810,7 @@ Responde en formato JSON con las siguientes claves:
                     }
                 )
 
-                prompt = f"""Eres un experto programador. Tu tarea es corregir el siguiente código en {language} según las instrucciones proporcionadas{language}
-                {code}
-                ```
-
-                INSTRUCCIONES:
+                prompt = f"""Eres un experto programador. Tu tarea es corregir el siguienteINSTRUCCIONES:
                 {instructions}
 
                 Responde en formato JSON con las siguientes claves:
@@ -1093,17 +1089,4 @@ def ensure_markdown_format(response):
 def extract_command_from_response(response):
     """Extrae comandos de terminal de la respuesta de la IA"""
     # Buscar comandos en bloques de código bash/shell
-    bash_block = re.search(r'```(?:bash|shell)\s*(.*?)\s*```', response, re.DOTALL)
-    if bash_block:
-        commands = bash_block.group(1).strip().split('\n')
-        # Devolver el primer comando no vacío
-        for cmd in commands:
-            if cmd.strip():
-                return cmd.strip()
-
-    # Buscar líneas que parecen comandos (comienzan con $, > o #)
-    command_line = re.search(r'(?:^|\n)(?:\$|\>|\#)\s*(.*?)(?:\n|$)', response)
-    if command_line:
-        return command_line.group(1).strip()
-
-    return None
+    bash_block = re.search(r'```(?:bash|shell)\s*(.*?)\s*
