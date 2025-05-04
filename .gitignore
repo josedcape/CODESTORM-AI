@@ -60,5 +60,10 @@ wheels/
 *.egg-info/
 .installed.cfg
 *.egg
-MANIFEST.env
+MANIFEST
+
+# Environment variables
 .env
+.env.local
+.env.development
+.env.production
