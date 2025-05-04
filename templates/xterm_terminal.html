@@ -232,6 +232,99 @@
             gap: 5px;
         }
 
+        /* Estilos para el asistente de chat */
+        #assistant-chat-panel {
+            display: none; /* Inicialmente oculto */
+            position: fixed;
+            bottom: 0;
+            right: 0;
+            width: 300px;
+            background-color: #282828;
+            border-top-left-radius: 8px;
+            overflow: hidden;
+            box-shadow: -2px -2px 5px rgba(0, 0, 0, 0.3);
+            z-index: 1001; /* Sobre las notificaciones */
+        }
+
+        #assistant-chat-panel.show {
+            display: flex;
+        }
+
+        #assistant-chat-header {
+            background-color: #383838;
+            padding: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #555;
+        }
+
+        #assistant-chat-messages {
+            padding: 10px;
+            height: 300px;
+            overflow-y: auto;
+            flex: 1;
+        }
+
+        .message {
+            padding: 5px 10px;
+            margin-bottom: 5px;
+            border-radius: 4px;
+        }
+
+        .user-message {
+            background-color: #4CAF50;
+            color: white;
+            align-self: flex-end;
+        }
+
+        .assistant-message {
+            background-color: #2196F3;
+            color: white;
+        }
+
+        .typing-indicator {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 5px;
+        }
+
+        .typing-bubble {
+            width: 10px;
+            height: 10px;
+            background-color: white;
+            border-radius: 50%;
+            margin: 2px;
+            animation: bounce 1s infinite;
+        }
+
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-5px); }
+        }
+
+        #message-input {
+            background-color: #383838;
+            border: 1px solid #555;
+            color: #fff;
+            padding: 8px;
+            border-radius: 4px;
+            margin-bottom: 10px;
+        }
+
+        #assistant-chat-footer {
+            background-color: #383838;
+            padding: 10px;
+            border-top: 1px solid #555;
+            display: flex;
+            align-items: center;
+        }
+
+        .system-message {
+            background-color: #607d8b;
+            color: white;
+            text-align: center;
+        }
     </style>
 </head>
 <body>
@@ -254,6 +347,9 @@
                 </div>
                 <div>
                     <span id="status-indicator" class="status-indicator"></span>
+                    <button id="toggle-assistant-chat" class="btn btn-sm btn-outline-light ms-2">
+                        <i class="bi bi-chat-dots"></i> Asistente
+                    </button>
                 </div>
             </div>
 
@@ -296,6 +392,22 @@
 
     <!-- Div para notificaciones -->
     <div id="notifications" class="notifications"></div>
+
+    <!-- Panel del asistente de chat -->
+    <div id="assistant-chat-panel">
+        <div id="assistant-chat-header">
+            <h5>Asistente de Chat</h5>
+            <button id="close-assistant-chat" class="btn btn-sm btn-danger">
+                <i class="bi bi-x"></i>
+            </button>
+        </div>
+        <div id="assistant-chat-messages"></div>
+        <div id="assistant-chat-footer">
+            <input type="text" id="message-input" placeholder="Escribe un mensaje...">
+            <button id="send-message-button" class="btn btn-primary">Enviar</button>
+        </div>
+    </div>
+
 
     <!-- Cargar scripts en orden correcto -->
     <script src="{{ url_for('static', filename='js/natural-command-processor.js') }}"></script>
@@ -890,6 +1002,172 @@
           // Implement your formatting logic here
           return response;
         }
+
+        // Configuración del asistente de chat
+        document.addEventListener('DOMContentLoaded', function() {
+            // Referencias a elementos DOM del asistente
+            const assistantPanel = document.getElementById('assistant-chat-panel');
+            const chatButton = document.getElementById('toggle-assistant-chat');
+            const closeButton = document.getElementById('close-assistant-chat');
+            const messageInput = document.getElementById('message-input');
+            const sendButton = document.getElementById('send-message-button');
+            const messagesContainer = document.getElementById('assistant-chat-messages');
+
+            // Configurar eventos para abrir/cerrar el panel del asistente
+            if (chatButton) {
+                chatButton.addEventListener('click', function() {
+                    if (assistantPanel.style.display === 'none') {
+                        assistantPanel.style.display = 'flex';
+                        if (messageInput) messageInput.focus();
+                    } else {
+                        assistantPanel.style.display = 'none';
+                    }
+                });
+            }
+
+            if (closeButton) {
+                closeButton.addEventListener('click', function() {
+                    assistantPanel.style.display = 'none';
+                });
+            }
+
+            // Función para enviar mensaje al asistente
+            function sendAssistantMessage() {
+                const message = messageInput.value.trim();
+                if (!message) return;
+
+                // Agregar mensaje del usuario
+                const userMsg = document.createElement('div');
+                userMsg.className = 'message user-message';
+                userMsg.textContent = message;
+                messagesContainer.appendChild(userMsg);
+                messagesContainer.scrollTop = messagesContainer.scrollHeight;
+
+                // Limpiar input
+                messageInput.value = '';
+
+                // Mostrar indicador de escritura
+                const typingIndicator = document.createElement('div');
+                typingIndicator.className = 'typing-indicator';
+                typingIndicator.id = 'typing-indicator';
+
+                for (let i = 0; i < 3; i++) {
+                    const bubble = document.createElement('div');
+                    bubble.className = 'typing-bubble';
+                    typingIndicator.appendChild(bubble);
+                }
+
+                messagesContainer.appendChild(typingIndicator);
+                messagesContainer.scrollTop = messagesContainer.scrollHeight;
+
+                // Enviar solicitud al servidor para procesar la instrucción
+                fetch('/api/process_instructions', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        instruction: message,
+                        model: 'openai', // Modelo predeterminado
+                        command_only: true
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    // Eliminar indicador de escritura
+                    document.getElementById('typing-indicator')?.remove();
+
+                    // Agregar respuesta del asistente
+                    const assistantMsg = document.createElement('div');
+                    assistantMsg.className = 'message assistant-message';
+
+                    if (data.command) {
+                        // Si se generó un comando, mostrarlo y ofrecer ejecutarlo
+                        assistantMsg.innerHTML = `
+                            <p>Comando generado:</p>
+                            <pre><code>${data.command}</code></pre>
+                            <div class="mt-2">
+                                <button class="btn btn-sm btn-outline-light copy-btn">
+                                    <i class="bi bi-clipboard"></i> Copiar
+                                </button>
+                                <button class="btn btn-sm btn-primary execute-btn ms-2">
+                                    <i class="bi bi-play-fill"></i> Ejecutar
+                                </button>
+                            </div>
+                        `;
+
+                        messagesContainer.appendChild(assistantMsg);
+                        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+
+                        // Configurar botones de acción
+                        const copyBtn = assistantMsg.querySelector('.copy-btn');
+                        const executeBtn = assistantMsg.querySelector('.execute-btn');
+
+                        if (copyBtn) {
+                            copyBtn.addEventListener('click', function() {
+                                navigator.clipboard.writeText(data.command)
+                                    .then(() => showNotification('Comando copiado al portapapeles'))
+                                    .catch(err => console.error('Error al copiar:', err));
+                            });
+                        }
+
+                        if (executeBtn) {
+                            executeBtn.addEventListener('click', function() {
+                                // Usar la función executeCommand del terminal
+                                if (window.terminalInterface && typeof window.terminalInterface.executeCommand === 'function') {
+                                    window.terminalInterface.executeCommand(data.command);
+                                    showNotification('Comando ejecutado en terminal');
+                                } else {
+                                    // Alternativa si no está disponible la interfaz
+                                    const terminalInput = document.getElementById('terminal-input');
+                                    const sendButton = document.getElementById('send-button');
+
+                                    if (terminalInput && sendButton) {
+                                        terminalInput.value = data.command;
+                                        sendButton.click();
+                                        showNotification('Comando enviado a la terminal');
+                                    }
+                                }
+                            });
+                        }
+                    } else if (data.error) {
+                        // Mostrar error
+                        assistantMsg.innerHTML = `<p class="text-warning"><i class="bi bi-exclamation-triangle"></i> ${data.error}</p>`;
+                        messagesContainer.appendChild(assistantMsg);
+                        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+                    } else {
+                        // Mostrar respuesta general
+                        assistantMsg.innerHTML = data.response || 'No se pudo generar una respuesta.';
+                        messagesContainer.appendChild(assistantMsg);
+                        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    document.getElementById('typing-indicator')?.remove();
+
+                    // Mostrar error
+                    const errorMsg = document.createElement('div');
+                    errorMsg.className = 'system-message';
+                    errorMsg.innerHTML = `<p><i class="bi bi-exclamation-triangle-fill text-warning"></i> <strong>Error:</strong> ${error.message}</p>`;
+                    messagesContainer.appendChild(errorMsg);
+                    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+                });
+            }
+
+            // Configurar eventos para enviar mensajes
+            if (sendButton && messageInput) {
+                sendButton.addEventListener('click', sendAssistantMessage);
+
+                // Enviar con Enter
+                messageInput.addEventListener('keydown', function(e) {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        sendAssistantMessage();
+                    }
+                });
+            }
+        });
     </script>
     <!-- Panel de instalación de dependencias -->
 <div class="package-install-panel mt-3 mb-3 p-3 border border-secondary rounded">
@@ -910,4 +1188,8 @@
     </div>
     <div class="mt-2">
         <button id="install-package-btn" class="btn btn-primary">Instalar</button>
-        <button id="update-packages-btn" class="btn btn-secondary">Actualizar Todo</([a-z]*)\n([\s\S]*?)
+        <button id="update-packages-btn" class="btn btn-secondary">Actualizar Todo</button>
+    </div>
+</div>
+</body>
+</html>
