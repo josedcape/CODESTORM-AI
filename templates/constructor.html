@@ -534,23 +534,43 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Función para analizar y extraer características de la descripción
     function analyzeFeatures(description) {
-        fetch('/api/constructor/analyze-features', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ description: description }),
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success && data.features && data.features.length > 0) {
-                displayFeatures(data.features);
-                featuresContainer.style.display = 'block';
-            }
-        })
-        .catch(error => {
-            console.error('Error al analizar características:', error);
-        });
+        if (usingController) {
+            // Usar el controlador
+            window.constructorController.analyzeFeatures(description)
+                .then(data => {
+                    if (data.success && data.features && data.features.length > 0) {
+                        displayFeatures(data.features);
+                        featuresContainer.style.display = 'block';
+                        
+                        // Si hay frameworks recomendados, actualizar selección
+                        if (data.frameworks && data.frameworks.recommended && typeof window.techSelector !== 'undefined') {
+                            window.techSelector.selectPresetByName(data.frameworks.recommended.name);
+                        }
+                    }
+                })
+                .catch(error => {
+                    console.error('Error al analizar características:', error);
+                });
+        } else {
+            // Método alternativo
+            fetch('/api/constructor/analyze-features', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ description: description }),
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success && data.features && data.features.length > 0) {
+                    displayFeatures(data.features);
+                    featuresContainer.style.display = 'block';
+                }
+            })
+            .catch(error => {
+                console.error('Error al analizar características:', error);
+            });
+        }
     }
 
     // Función para mostrar características detectadas
@@ -646,7 +666,39 @@ document.addEventListener('DOMContentLoaded', function() {
     // Configurar interval para verificar el estado del proyecto
     let statusCheckInterval;
     function startStatusCheck(projectId) {
+        // Verificar estado actual inmediatamente
+        checkCurrentStatus(projectId);
+        
+        // Configurar verificación periódica
         statusCheckInterval = setInterval(() => {
+            checkCurrentStatus(projectId);
+        }, 2000);
+    }
+    
+    // Función para verificar el estado actual
+    function checkCurrentStatus(projectId) {
+        if (usingController) {
+            // Usar el controlador
+            window.constructorController.checkProjectStatus(projectId)
+                .then(data => {
+                    if (data.success) {
+                        updateProjectStatus(data); 
+
+                        if (data.status === 'completed') {
+                            clearInterval(statusCheckInterval);
+                            showCompletedState(projectId);
+                        } else if (data.status === 'failed') {
+                            clearInterval(statusCheckInterval);
+                            showFailedState(data.error);
+                        }
+                    }
+                })
+                .catch(error => {
+                    console.error('Error al verificar estado:', error);
+                    addConsoleMessage('Error al verificar estado del proyecto: ' + error.message, 'error');
+                });
+        } else {
+            // Método alternativo
             fetch(`/api/constructor/status/${projectId}`)
                 .then(response => response.json())
                 .then(data => {
@@ -666,7 +718,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     console.error('Error al verificar estado:', error);
                     addConsoleMessage('Error al verificar estado del proyecto', 'error');
                 });
-        }, 2000);
+        }
     }
 
     // Mostrar estado de generación completada
@@ -690,6 +742,59 @@ document.addEventListener('DOMContentLoaded', function() {
         generateBtn.disabled = false;
     }
 
+
+    // Verificar si el controlador está funcionando
+    let usingController = typeof window.constructorController !== 'undefined';
+    
+    if (usingController) {
+        console.log('Constructor Controller disponible, utilizando métodos del controlador');
+        
+        // Registrar callbacks para eventos del controlador
+        window.constructorController.on('progress', function(state) {
+            // Actualizar UI con el estado
+            updateUIFromState(state);
+        });
+        
+        window.constructorController.on('apiStatus', function(connected, data) {
+            if (connected) {
+                console.log('APIs disponibles:', data);
+                // Habilitar interfaz
+                checkAPIAvailability();
+            } else {
+                console.error('APIs no conectadas:', data);
+                // Mostrar mensaje en interfaz
+                document.getElementById('api-status').textContent = 'Error: Las APIs del constructor no están disponibles';
+                document.getElementById('api-status').className = 'mt-2 small text-danger';
+            }
+        });
+    } else {
+        console.warn('Constructor Controller no disponible, utilizando métodos alternativos');
+    }
+    
+    // Función para actualizar UI desde el estado
+    function updateUIFromState(state) {
+        if (!state) return;
+        
+        // Actualizar barra de progreso
+        if (progressBar && typeof state.progress === 'number') {
+            progressBar.style.width = `${state.progress}%`;
+            progressBar.setAttribute('aria-valuenow', state.progress);
+            progressText.textContent = `${state.progress}% completado`;
+        }
+        
+        // Actualizar etapa actual
+        if (currentStage && state.currentStep) {
+            currentStage.textContent = state.currentStep;
+        }
+        
+        // Actualizar mensajes de consola
+        if (state.steps && state.steps.length > 0) {
+            const lastStep = state.steps[state.steps.length - 1];
+            if (lastStep.message) {
+                addConsoleMessage(lastStep.message);
+            }
+        }
+    }
 
     // Evento de envío del formulario
     constructorForm.addEventListener('submit', function(e) {
@@ -721,27 +826,21 @@ document.addEventListener('DOMContentLoaded', function() {
         generationConsole.innerHTML = '';
 
         // Iniciar generación del proyecto
-        fetch('/api/constructor/generate', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                description: description,
-                agent: agent,
-                model: model,
-                options: {
+        if (usingController) {
+            // Usar el controlador para generar la aplicación
+            window.constructorController.generateApplication(
+                description, 
+                agent, 
+                model, 
+                {
                     includeTests,
                     includeDocs,
                     includeDeployment,
                     includeCICD
                 },
-                features: features
-            }),
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
+                features
+            )
+            .then(data => {
                 projectId = data.project_id;
                 addConsoleMessage(`Proyecto iniciado con ID: ${projectId}`);
                 addConsoleMessage(`Tiempo estimado: ${data.estimated_time}`);
@@ -751,14 +850,52 @@ document.addEventListener('DOMContentLoaded', function() {
                 progressBar.style.width = '5%';
                 progressBar.setAttribute('aria-valuenow', 5);
                 progressBar.textContent = '5%';
-            } else {
-                showFailedState(data.error);
-            }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            showFailedState(error.message);
-        });
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showFailedState(error.message);
+            });
+        } else {
+            // Método alternativo usando fetch directamente
+            fetch('/api/constructor/generate', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    description: description,
+                    agent: agent,
+                    model: model,
+                    options: {
+                        includeTests,
+                        includeDocs,
+                        includeDeployment,
+                        includeCICD
+                    },
+                    features: features
+                }),
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    projectId = data.project_id;
+                    addConsoleMessage(`Proyecto iniciado con ID: ${projectId}`);
+                    addConsoleMessage(`Tiempo estimado: ${data.estimated_time}`);
+                    startStatusCheck(projectId);
+
+                    // Actualizar progreso inicial
+                    progressBar.style.width = '5%';
+                    progressBar.setAttribute('aria-valuenow', 5);
+                    progressBar.textContent = '5%';
+                } else {
+                    showFailedState(data.error);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showFailedState(error.message);
+            });
+        }
     });
 
     // Evento de descarga del proyecto
@@ -793,29 +930,47 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
 
-        fetch(`/api/constructor/pause/${projectId}`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            }
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                addConsoleMessage('Desarrollo pausado por el usuario', 'info');
-                pauseDevelopmentBtn.style.display = 'none';
-                resumeDevelopmentBtn.style.display = 'inline-block';
+        // Usar el controlador si está disponible
+        if (usingController) {
+            window.constructorController.pauseProject(projectId)
+                .then(data => {
+                    addConsoleMessage('Desarrollo pausado por el usuario', 'info');
+                    pauseDevelopmentBtn.style.display = 'none';
+                    resumeDevelopmentBtn.style.display = 'inline-block';
 
-                // Cambiar el estilo de la barra de progreso
-                progressBar.classList.remove('progress-bar-animated');
-            } else {
-                addConsoleMessage('Error al pausar el desarrollo: ' + data.error, 'error');
-            }
-        })
-        .catch(error => {
-            console.error('Error al pausar desarrollo:', error);
-            addConsoleMessage('Error al pausar el desarrollo', 'error');
-        });
+                    // Cambiar el estilo de la barra de progreso
+                    progressBar.classList.remove('progress-bar-animated');
+                })
+                .catch(error => {
+                    console.error('Error al pausar desarrollo:', error);
+                    addConsoleMessage('Error al pausar el desarrollo: ' + error.message, 'error');
+                });
+        } else {
+            // Método alternativo
+            fetch(`/api/constructor/pause/${projectId}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    addConsoleMessage('Desarrollo pausado por el usuario', 'info');
+                    pauseDevelopmentBtn.style.display = 'none';
+                    resumeDevelopmentBtn.style.display = 'inline-block';
+
+                    // Cambiar el estilo de la barra de progreso
+                    progressBar.classList.remove('progress-bar-animated');
+                } else {
+                    addConsoleMessage('Error al pausar el desarrollo: ' + data.error, 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Error al pausar desarrollo:', error);
+                addConsoleMessage('Error al pausar el desarrollo', 'error');
+            });
+        }
     });
 
     // Manejar reanudación del desarrollo
@@ -825,29 +980,47 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
 
-        fetch(`/api/constructor/resume/${projectId}`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            }
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                addConsoleMessage('Desarrollo reanudado por el usuario', 'success');
-                resumeDevelopmentBtn.style.display = 'none';
-                pauseDevelopmentBtn.style.display = 'inline-block';
+        // Usar el controlador si está disponible
+        if (usingController) {
+            window.constructorController.resumeProject(projectId)
+                .then(data => {
+                    addConsoleMessage('Desarrollo reanudado por el usuario', 'success');
+                    resumeDevelopmentBtn.style.display = 'none';
+                    pauseDevelopmentBtn.style.display = 'inline-block';
 
-                // Restaurar el estilo de la barra de progreso
-                progressBar.classList.add('progress-bar-animated');
-            } else {
-                addConsoleMessage('Error al reanudar el desarrollo: ' + data.error, 'error');
-            }
-        })
-        .catch(error => {
-            console.error('Error al reanudar desarrollo:', error);
-            addConsoleMessage('Error al reanudar el desarrollo', 'error');
-        });
+                    // Restaurar el estilo de la barra de progreso
+                    progressBar.classList.add('progress-bar-animated');
+                })
+                .catch(error => {
+                    console.error('Error al reanudar desarrollo:', error);
+                    addConsoleMessage('Error al reanudar el desarrollo: ' + error.message, 'error');
+                });
+        } else {
+            // Método alternativo
+            fetch(`/api/constructor/resume/${projectId}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    addConsoleMessage('Desarrollo reanudado por el usuario', 'success');
+                    resumeDevelopmentBtn.style.display = 'none';
+                    pauseDevelopmentBtn.style.display = 'inline-block';
+
+                    // Restaurar el estilo de la barra de progreso
+                    progressBar.classList.add('progress-bar-animated');
+                } else {
+                    addConsoleMessage('Error al reanudar el desarrollo: ' + data.error, 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Error al reanudar desarrollo:', error);
+                addConsoleMessage('Error al reanudar el desarrollo', 'error');
+            });
+        }
     });
 
     // Función para actualizar el estado del proyecto, incluyendo la información del framework

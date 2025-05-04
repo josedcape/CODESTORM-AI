@@ -1301,3 +1301,45 @@ def construction_status():
         'time_elapsed': '00:02:45',
         'estimated_time_remaining': '00:01:30'
     })
+
+@constructor_bp.route('/api/constructor/generate', methods=['POST'])
+def generate_app():
+    """Generate a new application based on the provided description"""
+    try:
+        data = request.json
+        description = data.get('description', '')
+        agent = data.get('agent', 'developer')
+        model = data.get('model', 'openai')
+        options = data.get('options', {})
+        features = data.get('features', [])
+
+        if not description:
+            return jsonify({
+                'success': False,
+                'error': 'Se requiere una descripción de la aplicación'
+            }), 400
+
+        # Generate unique project ID
+        project_id = str(uuid.uuid4())
+        
+        # Create project workspace
+        create_project_workspace(project_id)
+        
+        # Start generation in background thread
+        thread = Thread(target=generate_application, 
+                         args=(project_id, description, agent, model, options, features))
+        thread.daemon = True
+        thread.start()
+        
+        return jsonify({
+            'success': True,
+            'project_id': project_id,
+            'message': 'Generación de aplicación iniciada',
+            'estimated_time': '2-3 minutos aproximadamente'
+        })
+    except Exception as e:
+        logging.error(f"Error al iniciar generación: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500

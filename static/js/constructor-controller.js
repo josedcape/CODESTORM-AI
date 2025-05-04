@@ -12,13 +12,24 @@
                 steps: [],
                 errors: [],
                 startTime: null,
-                endTime: null
+                endTime: null,
+                projectId: null,
+                apiConnected: false
             };
             
             this.options = {
                 autoResume: true,
                 maxRetries: 3,
-                timeout: 60000 // 60 segundos
+                timeout: 60000, // 60 segundos
+                apiEndpoints: {
+                    generate: '/api/constructor/generate',
+                    status: '/api/constructor/status/',
+                    download: '/api/constructor/download/',
+                    preview: '/api/constructor/preview/',
+                    pause: '/api/constructor/pause/',
+                    resume: '/api/constructor/resume/',
+                    analyze: '/api/constructor/analyze-features'
+                }
             };
             
             this.callbacks = {
@@ -26,7 +37,8 @@
                 onPause: null,
                 onResume: null,
                 onComplete: null,
-                onError: null
+                onError: null,
+                onApiStatus: null
             };
             
             // Inicializar
@@ -39,8 +51,67 @@
             // Registrar eventos globales
             window.addEventListener('constructor-progress', this.handleProgress.bind(this));
             
+            // Verificar estado de la API
+            this.checkApiStatus();
+            
             // Publicar métodos en el objeto global
             window.constructorController = this;
+        }
+        
+        // Verificar si las APIs están disponibles
+        checkApiStatus() {
+            fetch('/api/health')
+                .then(response => response.json())
+                .then(data => {
+                    this.state.apiConnected = true;
+                    console.log('APIs conectadas:', data);
+                    
+                    // Ejecutar callback si existe
+                    if (typeof this.callbacks.onApiStatus === 'function') {
+                        this.callbacks.onApiStatus(true, data);
+                    }
+                })
+                .catch(error => {
+                    this.state.apiConnected = false;
+                    console.error('Error conectando a las APIs:', error);
+                    
+                    // Ejecutar callback si existe
+                    if (typeof this.callbacks.onApiStatus === 'function') {
+                        this.callbacks.onApiStatus(false, error);
+                    }
+                });
+        }
+        
+        // Generar una nueva aplicación
+        generateApplication(description, agent, model, options, features) {
+            if (!this.state.apiConnected) {
+                console.error('APIs no conectadas');
+                return Promise.reject(new Error('APIs no conectadas'));
+            }
+            
+            return fetch(this.options.apiEndpoints.generate, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    description: description,
+                    agent: agent,
+                    model: model,
+                    options: options,
+                    features: features
+                }),
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    this.state.projectId = data.project_id;
+                    this.state.startTime = new Date();
+                    return data;
+                } else {
+                    throw new Error(data.error || 'Error desconocido');
+                }
+            });
         }
         
         // Pausar la construcción
@@ -170,6 +241,136 @@
             return errorObj;
         }
         
+        // Verificar estado del proyecto
+        checkProjectStatus(projectId) {
+            if (!projectId && this.state.projectId) {
+                projectId = this.state.projectId;
+            }
+            
+            if (!projectId) {
+                return Promise.reject(new Error('ID de proyecto no especificado'));
+            }
+            
+            return fetch(`${this.options.apiEndpoints.status}${projectId}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        // Actualizar estado con los datos del servidor
+                        this.state.progress = data.progress || 0;
+                        this.state.currentStep = data.current_stage || '';
+                        
+                        // Si hay un mensaje de consola nuevo, añadirlo
+                        if (data.console_message) {
+                            this.state.steps.push({
+                                name: data.current_stage,
+                                progress: data.progress,
+                                message: data.console_message.message,
+                                timestamp: new Date(data.console_message.time * 1000)
+                            });
+                        }
+                        
+                        // Actualizar UI
+                        this.updateUI();
+                        
+                        // Ejecutar callback si existe
+                        if (typeof this.callbacks.onProgress === 'function') {
+                            this.callbacks.onProgress(this.state);
+                        }
+                        
+                        return data;
+                    } else {
+                        throw new Error(data.error || 'Error desconocido');
+                    }
+                });
+        }
+        
+        // Pausar el desarrollo del proyecto
+        pauseProject(projectId) {
+            if (!projectId && this.state.projectId) {
+                projectId = this.state.projectId;
+            }
+            
+            if (!projectId) {
+                return Promise.reject(new Error('ID de proyecto no especificado'));
+            }
+            
+            return fetch(`${this.options.apiEndpoints.pause}${projectId}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    this.state.isPaused = true;
+                    
+                    // Ejecutar callback si existe
+                    if (typeof this.callbacks.onPause === 'function') {
+                        this.callbacks.onPause(this.state);
+                    }
+                    
+                    return data;
+                } else {
+                    throw new Error(data.error || 'Error desconocido');
+                }
+            });
+        }
+        
+        // Reanudar el desarrollo del proyecto
+        resumeProject(projectId) {
+            if (!projectId && this.state.projectId) {
+                projectId = this.state.projectId;
+            }
+            
+            if (!projectId) {
+                return Promise.reject(new Error('ID de proyecto no especificado'));
+            }
+            
+            return fetch(`${this.options.apiEndpoints.resume}${projectId}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    this.state.isPaused = false;
+                    
+                    // Ejecutar callback si existe
+                    if (typeof this.callbacks.onResume === 'function') {
+                        this.callbacks.onResume(this.state);
+                    }
+                    
+                    return data;
+                } else {
+                    throw new Error(data.error || 'Error desconocido');
+                }
+            });
+        }
+        
+        // Analizar características de una descripción
+        analyzeFeatures(description) {
+            return fetch(this.options.apiEndpoints.analyze, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    description: description
+                }),
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    return data;
+                } else {
+                    throw new Error(data.error || 'Error desconocido');
+                }
+            });
+        }
+        
         // Registrar una función callback
         on(event, callback) {
             if (typeof callback !== 'function') {
@@ -192,6 +393,9 @@
                     break;
                 case 'error':
                     this.callbacks.onError = callback;
+                    break;
+                case 'apiStatus':
+                    this.callbacks.onApiStatus = callback;
                     break;
                 default:
                     console.warn(`Evento no reconocido: ${event}`);
