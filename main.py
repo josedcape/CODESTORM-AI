@@ -1063,22 +1063,24 @@ def ensure_markdown_format(response):
         if line.strip().startswith('```'):
             in_code_block = not in_code_block
 
-        # Si es el inicio de un bloque y no tiene lenguaje especificado
-        if in_code_block and line.strip() == '```':
-            language_specified = False
-            # Intentar detectar el lenguaje por contexto
-            if i > 0 and 'javascript' in lines[i - 1].lower():
-                formatted_lines.append('```javascript')
-            elif i > 0 and 'python' in lines[i - 1].lower():
-                formatted_lines.append('```python')
-            elif i > 0 and ('bash' in lines[i - 1].lower() or 'shell' in lines[i - 1].lower() or 'comando' in lines[i - 1].lower()):
-                formatted_lines.append('```bash')
-            elif i > 0 and 'html' in lines[i - 1].lower():
-                formatted_lines.append('```html')
-            elif i > 0 and 'css' in lines[i - 1].lower():
-                formatted_lines.append('```css')
+            # Si es el inicio de un bloque y no tiene lenguaje especificado
+            if in_code_block and line.strip() == '```':
+                language_specified = False
+                # Intentar detectar el lenguaje por contexto
+                if i > 0 and 'javascript' in lines[i - 1].lower():
+                    formatted_lines.append('```javascript')
+                elif i > 0 and 'python' in lines[i - 1].lower():
+                    formatted_lines.append('```python')
+                elif i > 0 and ('bash' in lines[i - 1].lower() or 'shell' in lines[i - 1].lower() or 'comando' in lines[i - 1].lower()):
+                    formatted_lines.append('```bash')
+                elif i > 0 and 'html' in lines[i - 1].lower():
+                    formatted_lines.append('```html')
+                elif i > 0 and 'css' in lines[i - 1].lower():
+                    formatted_lines.append('```css')
+                else:
+                    formatted_lines.append('```plaintext')
             else:
-                formatted_lines.append('```plaintext')
+                formatted_lines.append(line)
         else:
             formatted_lines.append(line)
 
@@ -1091,4 +1093,17 @@ def ensure_markdown_format(response):
 def extract_command_from_response(response):
     """Extrae comandos de terminal de la respuesta de la IA"""
     # Buscar comandos en bloques de código bash/shell
-    bash_block = re.search(r'```(?:bash|shell)\s*(.*?)\s*```', response, re.DOTALL)```', response, re.DOTALL)
+    bash_block = re.search(r'```(?:bash|shell)\s*(.*?)\s*```', response, re.DOTALL)
+    if bash_block:
+        commands = bash_block.group(1).strip().split('\n')
+        # Devolver el primer comando no vacío
+        for cmd in commands:
+            if cmd.strip():
+                return cmd.strip()
+
+    # Buscar líneas que parecen comandos (comienzan con $, > o #)
+    command_line = re.search(r'(?:^|\n)(?:\$|\>|\#)\s*(.*?)(?:\n|$)', response)
+    if command_line:
+        return command_line.group(1).strip()
+
+    return None
