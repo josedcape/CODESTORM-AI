@@ -1091,4 +1091,4 @@ def ensure_markdown_format(response):
 def extract_command_from_response(response):
     """Extrae comandos de terminal de la respuesta de la IA"""
     # Buscar comandos en bloques de código bash/shell
-    bash_block = re.search(r'```(?:bash|shell)\s*(.*?)\s*```', response, re.DOTALL)
+    bash_block = re.search(r'```(?:bash|shell)\s*(.*?)\s*```', response, re.DOTALL)```', response, re.DOTALL)
