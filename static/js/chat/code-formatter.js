@@ -47,8 +47,8 @@ function formatCodeResponse(response) {
     return `<div class="code-block-container">
       <div class="code-toolbar">
         <span class="code-language">${language}</span>
-        <button class="btn btn-sm btn-dark code-copy-btn" onclick="copyCode(this)">
-          <i class="bi bi-clipboard"></i>
+        <button class="btn btn-sm btn-dark code-copy-btn" onclick="copyCode(this)" title="Copiar código">
+          <i class="bi bi-clipboard"></i> Copiar
         </button>
       </div>
       <pre><code class="language-${language}">${highlightedCode}</code></pre>
@@ -66,29 +66,148 @@ function formatCodeResponse(response) {
 
 // Función para copiar código al portapapeles
 function copyCode(button) {
-  const preElement = button.closest('.code-block-container').querySelector('pre');
+  // Encontrar el contenedor y el elemento de código
+  const codeContainer = button.closest('.code-block-container');
+  if (!codeContainer) {
+    console.error('No se pudo encontrar el contenedor de código');
+    return;
+  }
+  
+  const preElement = codeContainer.querySelector('pre');
   const codeElement = preElement.querySelector('code');
-  const textToCopy = codeElement.textContent;
+  
+  if (!codeElement) {
+    console.error('No se pudo encontrar el elemento de código');
+    return;
+  }
+  
+  // Obtener el texto real sin formato HTML
+  const textToCopy = codeElement.textContent || codeElement.innerText;
 
-  navigator.clipboard.writeText(textToCopy).then(() => {
-    const originalText = button.innerHTML;
-    button.innerHTML = '<i class="bi bi-check"></i>';
-    button.style.backgroundColor = '#28a745';
+  // Crear un elemento de texto temporal para copiar
+  const textArea = document.createElement('textarea');
+  textArea.value = textToCopy;
+  textArea.style.position = 'fixed';  // Evita desplazamiento
+  textArea.style.opacity = '0';
+  document.body.appendChild(textArea);
+  textArea.select();
 
-    setTimeout(() => {
-      button.innerHTML = originalText;
-      button.style.backgroundColor = '';
-    }, 2000);
-  }).catch(err => {
-    console.error('Error al copiar texto: ', err);
-    button.innerHTML = '<i class="bi bi-exclamation-triangle"></i>';
-    button.style.backgroundColor = '#dc3545';
+  try {
+    // Intentar usar el nuevo API de clipboard si está disponible
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(textToCopy).then(() => {
+        // Éxito - cambia el botón para dar feedback
+        const originalText = button.innerHTML;
+        button.innerHTML = '<i class="bi bi-check"></i>';
+        button.style.backgroundColor = '#28a745';
+        
+        // Mostrar una notificación de éxito temporal
+        showNotification('Código copiado al portapapeles');
 
+        setTimeout(() => {
+          button.innerHTML = originalText;
+          button.style.backgroundColor = '';
+        }, 2000);
+      }).catch(err => {
+        console.error('Error al copiar texto: ', err);
+        fallbackCopy();
+      });
+    } else {
+      // Fallback para navegadores que no soportan clipboard API
+      fallbackCopy();
+    }
+  } catch (err) {
+    console.error('Error al copiar el código: ', err);
+    fallbackCopy();
+  }
+
+  // Método alternativo de copia
+  function fallbackCopy() {
+    try {
+      const successful = document.execCommand('copy');
+      if (successful) {
+        button.innerHTML = '<i class="bi bi-check"></i>';
+        button.style.backgroundColor = '#28a745';
+        showNotification('Código copiado al portapapeles');
+      } else {
+        button.innerHTML = '<i class="bi bi-exclamation-triangle"></i>';
+        button.style.backgroundColor = '#dc3545';
+        showNotification('No se pudo copiar el código', 'error');
+      }
+    } catch (err) {
+      console.error('Error en el fallback de copia: ', err);
+      button.innerHTML = '<i class="bi bi-exclamation-triangle"></i>';
+      button.style.backgroundColor = '#dc3545';
+    }
+    
     setTimeout(() => {
       button.innerHTML = '<i class="bi bi-clipboard"></i>';
       button.style.backgroundColor = '';
     }, 2000);
-  });
+  }
+  
+  // Limpiar
+  document.body.removeChild(textArea);
+}
+
+// Función para mostrar notificaciones de copia
+function showNotification(message, type = 'success') {
+  // Verificar si ya existe un contenedor de notificaciones
+  let notificationContainer = document.getElementById('notification-container');
+  
+  if (!notificationContainer) {
+    notificationContainer = document.createElement('div');
+    notificationContainer.id = 'notification-container';
+    notificationContainer.style.position = 'fixed';
+    notificationContainer.style.top = '20px';
+    notificationContainer.style.right = '20px';
+    notificationContainer.style.zIndex = '9999';
+    document.body.appendChild(notificationContainer);
+  }
+  
+  // Crear la notificación
+  const notification = document.createElement('div');
+  notification.className = `notification notification-${type}`;
+  notification.style.padding = '10px 15px';
+  notification.style.margin = '5px 0';
+  notification.style.borderRadius = '4px';
+  notification.style.color = 'white';
+  notification.style.boxShadow = '0 2px 10px rgba(0,0,0,0.2)';
+  notification.style.transition = 'all 0.3s ease';
+  notification.style.opacity = '0';
+  notification.style.transform = 'translateY(-20px)';
+  
+  // Estilos según el tipo
+  if (type === 'success') {
+    notification.style.backgroundColor = '#28a745';
+  } else if (type === 'error') {
+    notification.style.backgroundColor = '#dc3545';
+  } else {
+    notification.style.backgroundColor = '#17a2b8';
+  }
+  
+  notification.textContent = message;
+  
+  // Añadir al contenedor
+  notificationContainer.appendChild(notification);
+  
+  // Animar entrada
+  setTimeout(() => {
+    notification.style.opacity = '1';
+    notification.style.transform = 'translateY(0)';
+  }, 10);
+  
+  // Eliminar después de un tiempo
+  setTimeout(() => {
+    notification.style.opacity = '0';
+    notification.style.transform = 'translateY(-20px)';
+    
+    setTimeout(() => {
+      if (notification.parentNode) {
+        notification.parentNode.removeChild(notification);
+      }
+    }, 300);
+  }, 3000);
 }
 
 // Exponer funciones globalmente

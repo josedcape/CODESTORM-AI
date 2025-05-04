@@ -1058,6 +1058,1078 @@ code {
                     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/css.min.js"></script>
                     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/xml.min.js"></script>
 
+                    <!-- Cargar el formateador de código -->
+                    <script src="{{ url_for('static', filename='js/chat/code-formatter.js') }}"></script>
+                    </new_str>
+</changes>
+
+
+The change adds a script to include the code formatter in the extra JavaScript section.
+
+<replit_final_file>
+{% extends "base.html" %}
+
+{% block title %}CODESTORM - Chat con Agente Especializado{% endblock %}
+
+{% block extra_css %}
+<!-- Google Fonts -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+
+<!-- Highlight.js para resaltado de código -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
+
+<style>
+:root {
+    --primary-dark: #091428;
+    --primary-medium: #0A2149;
+    --primary-light: #153567;
+    --accent-gold: #FFC107;
+    --accent-blue: #4682F3;
+    --accent-cyan: #00e5ff;
+    --text-light: #FFFFFF;
+    --text-medium: rgba(255, 255, 255, 0.8);
+    --text-dark: rgba(255, 255, 255, 0.6);
+    --border-light: rgba(255, 215, 0, 0.3);
+    --border-medium: rgba(255, 255, 255, 0.2);
+    --border-dark: rgba(255, 255, 255, 0.1);
+    --success-color: #28a745;
+    --error-color: #dc3545;
+    --warning-color: #ffc107;
+    --info-color: #17a2b8;
+    --glow-gold: 0 0 10px rgba(255, 193, 7, 0.5);
+    --glow-blue: 0 0 15px rgba(70, 130, 243, 0.4);
+}
+
+body {
+    background: radial-gradient(circle at center, #0c1e36 0%, #040c18 100%);
+    color: var(--text-light);
+    font-family: 'Inter', sans-serif;
+    margin: 0;
+    padding: 0;
+    min-height: 100vh;
+}
+
+.container-fluid {
+    padding: 0;
+}
+
+/* Navbar */
+.navbar-codestorm {
+    background: linear-gradient(90deg, var(--primary-dark) 0%, var(--primary-medium) 100%);
+    border-bottom: 1px solid var(--border-light);
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3), var(--glow-gold);
+    padding: 0.5rem 1rem;
+    position: relative;
+    z-index: 100;
+}
+
+.navbar-brand {
+    color: var(--accent-gold);
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    font-size: 1.2rem;
+    text-shadow: 0 0 5px rgba(255, 193, 7, 0.5);
+}
+
+.navbar-brand i {
+    margin-right: 0.5rem;
+    font-size: 1.4rem;
+}
+
+.nav-link {
+    color: var(--text-medium);
+    margin: 0 0.5rem;
+    transition: all 0.3s ease;
+    border-radius: 6px;
+    padding: 0.5rem 1rem;
+    display: flex;
+    align-items: center;
+    position: relative;
+    overflow: hidden;
+}
+
+.nav-link::before {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 0;
+    height: 2px;
+    background-color: var(--accent-gold);
+    transition: width 0.3s ease;
+}
+
+.nav-link.active, .nav-link:hover {
+    background-color: var(--primary-light);
+    color: var(--text-light);
+}
+
+.nav-link.active::before, .nav-link:hover::before {
+    width: 100%;
+}
+
+.nav-link i {
+    margin-right: 0.5rem;
+}
+
+/* Main Content */
+.main-content {
+    display: flex;
+    height: calc(100vh - 60px);
+    position: relative;
+}
+
+/* Sidebar */
+.sidebar {
+    width: 310px;
+    background: linear-gradient(180deg, var(--primary-dark) 0%, rgba(9, 20, 40, 0.9) 100%);
+    border-right: 1px solid var(--border-light);
+    padding: 1rem;
+    overflow-y: auto;
+    height: 100%;
+    flex-shrink: 0;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    position: relative;
+    z-index: 10;
+    box-shadow: 3px 0 15px rgba(0, 0, 0, 0.2);
+}
+
+.sidebar-section {
+    margin-bottom: 1.5rem;
+}
+
+.sidebar-title {
+    color: var(--accent-gold);
+    font-size: 1rem;
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    font-weight: 600;
+    text-shadow: 0 0 5px rgba(255, 193, 7, 0.3);
+}
+
+.sidebar-title i {
+    margin-right: 0.5rem;
+    color: var(--accent-gold);
+}
+
+.form-select-dark {
+    background-color: rgba(9, 20, 40, 0.9);
+    border: 1px solid var(--border-medium);
+    color: var(--text-light);
+    padding: 0.6rem 1rem;
+    border-radius: 6px;
+    width: 100%;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath fill='none' stroke='%23FFC107' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M2 5l6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.7rem center;
+    background-size: 16px 12px;
+    transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.form-select-dark:focus {
+    outline: none;
+    border-color: var(--accent-gold);
+    box-shadow: 0 0 0 0.2rem rgba(255, 193, 7, 0.25), var(--glow-gold);
+}
+
+.agent-card {
+    background: linear-gradient(135deg, var(--primary-dark) 0%, var(--primary-medium) 100%);
+    border: 1px solid var(--border-light);
+    border-radius: 10px;
+    padding: 1rem;
+    margin-top: 1rem;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2), var(--glow-gold);
+    position: relative;
+    overflow: hidden;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.agent-card::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: linear-gradient(45deg, transparent, rgba(255, 193, 7, 0.1), transparent);
+    transform: rotate(45deg);
+    animation: shimmer 6s infinite linear;
+    pointer-events: none;
+}
+
+@keyframes shimmer {
+    0% { transform: translateX(-100%) rotate(45deg); }
+    100% { transform: translateX(100%) rotate(45deg); }
+}
+
+.agent-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3), var(--glow-gold);
+}
+
+.agent-header {
+    display: flex;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+.agent-icon {
+    background-color: var(--primary-light);
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 1rem;
+    border: 1px solid var(--border-light);
+    flex-shrink: 0;
+    position: relative;
+    overflow: hidden;
+    box-shadow: var(--glow-gold);
+}
+
+.agent-icon::after {
+    content: '';
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    background: radial-gradient(circle, transparent 60%, rgba(255, 193, 7, 0.2));
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0% { transform: scale(0.95); opacity: 0.7; }
+    50% { transform: scale(1.05); opacity: 0.9; }
+    100% { transform: scale(0.95); opacity: 0.7; }
+}
+
+.agent-icon i {
+    color: var(--accent-gold);
+    font-size: 1.2rem;
+    position: relative;
+    z-index: 1;
+}
+
+.agent-info {
+    flex: 1;
+}
+
+.agent-name {
+    color: var(--accent-gold);
+    font-weight: 600;
+    font-size: 1rem;
+    margin: 0;
+    text-shadow: 0 0 5px rgba(255, 193, 7, 0.3);
+}
+
+.agent-description {
+    color: var(--text-medium);
+    font-size: 0.8rem;
+    margin: 0;
+}
+
+.capabilities-list {
+    list-style-type: none;
+    padding-left: 0;
+    margin-bottom: 0;
+}
+
+.capabilities-list li {
+    padding: 0.4rem 0;
+    font-size: 0.8rem;
+    color: var(--text-medium);
+    display: flex;
+    align-items: center;
+    transition: transform 0.2s ease;
+}
+
+.capabilities-list li:hover {
+    transform: translateX(3px);
+    color: var(--text-light);
+}
+
+.capabilities-list li::before {
+    content: "•";
+    color: var(--accent-gold);
+    font-weight: bold;
+    display: inline-block;
+    width: 1em;
+    margin-left: 0.5em;
+}
+
+/* Chat Area */
+.chat-area {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    max-height: 100%;
+    position: relative;
+    background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23153567' fill-opacity='0.1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E"),
+    radial-gradient(circle at center, rgba(10, 33, 73, 0.5) 0%, rgba(4, 12, 24, 0.8) 100%);
+    background-blend-mode: overlay;
+}
+
+.chat-header {
+    padding: 1rem;
+    border-bottom: 1px solid var(--border-medium);
+    background-color: rgba(10, 33, 73, 0.7);
+    backdrop-filter: blur(5px);
+    position: relative;
+    z-index: 5;
+}
+
+.chat-header::after {
+    content: '';
+    position: absolute;
+    bottom: -1px;
+    left: 0;
+    width: 100%;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--accent-gold), transparent);
+}
+
+.chat-title {
+    color: var(--accent-gold);
+    font-size: 1.1rem;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    text-shadow: 0 0 5px rgba(255, 193, 7, 0.3);
+}
+
+.chat-title i {
+    margin-right: 0.5rem;
+}
+
+.chat-messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 1rem;
+    background-color: rgba(4, 12, 24, 0.5);
+    scroll-behavior: smooth;
+}
+
+/* Mensajes de chat optimizados */
+.message-container {
+    margin-bottom: 1.5rem;
+    animation: fadeIn 0.3s ease-out;
+    max-width: 90%;
+    position: relative;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.user-message {
+    margin-left: auto;
+    background: linear-gradient(135deg, var(--primary-medium) 0%, var(--primary-dark) 100%);
+    border-radius: 10px 10px 0 10px;
+    padding: 1rem;
+    border: 1px solid var(--border-light);
+    color: var(--text-light);
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2);
+    position: relative;
+    overflow: hidden;
+}
+
+.user-message::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 5px;
+    height: 100%;
+    background: linear-gradient(to bottom, var(--accent-gold), transparent);
+}
+
+.agent-message {
+    margin-right: auto;
+    background: linear-gradient(135deg, var(--primary-dark) 0%, var(--primary-medium) 100%);
+    border-radius: 10px 10px 10px 0;
+    padding: 1rem;
+    border: 1px solid var(--accent-blue);
+    border-top-width: 2px;
+    color: var(--text-light);
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2), var(--glow-blue);
+    position: relative;
+    overflow: hidden;
+}
+
+.agent-message::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 5px;
+    height: 100%;
+    background: linear-gradient(to bottom, var(--accent-blue), transparent);
+}
+
+.system-message {
+    margin: 1rem auto;
+    background-color: rgba(10, 33, 73, 0.5);
+    border-radius: 8px;
+    padding: 0.5rem 1rem;
+    width: fit-content;
+    max-width: 85%;
+    text-align: center;
+    border: 1px solid var(--border-medium);
+    color: var(--text-medium);
+    font-size: 0.85rem;
+    backdrop-filter: blur(3px);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.message-header {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 0.5rem;
+}
+
+.message-sender {
+    font-weight: 600;
+    color: var(--accent-gold);
+    font-size: 0.9rem;
+    text-shadow: 0 0 3px rgba(255, 193, 7, 0.3);
+}
+
+.message-time {
+    font-size: 0.75rem;
+    color: var(--text-dark);
+}
+
+.message-content {
+    line-height: 1.5;
+    font-size: 0.95rem;
+}
+
+.message-actions {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 0.5rem;
+    gap: 0.5rem;
+}
+
+.btn-icon {
+    background: transparent;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: rgba(255, 255, 255, 0.7);
+    border-radius: 4px;
+    padding: 0.25rem 0.5rem;
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-icon:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: white;
+    transform: translateY(-2px);
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+}
+
+/* Debug message estilizado pero discreto */
+.debug-message {
+    margin: 0.5rem auto;
+    background-color: rgba(0, 123, 255, 0.1);
+    border-radius: 4px;
+    padding: 0.25rem 0.5rem;
+    max-width: 90%;
+    font-size: 0.75rem;
+    font-family: monospace;
+    color: rgba(255, 255, 255, 0.5);
+    border: 1px solid rgba(0, 123, 255, 0.2);
+}
+
+/* Indicador de carga */
+.loading-message {
+    margin: 1rem auto;
+    padding: 0.7rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.typing-indicator {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    margin-left: 0.5rem;
+}
+
+.typing-indicator span {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background-color: var(--accent-gold);
+    animation: typing 1.4s infinite ease-in-out both;
+    box-shadow: 0 0 5px rgba(255, 193, 7, 0.5);
+}
+
+.typing-indicator span:nth-child(1) {
+    animation-delay: -0.32s;
+}
+
+.typing-indicator span:nth-child(2) {
+    animation-delay: -0.16s;
+}
+
+@keyframes typing {
+    0%, 80%, 100% {
+        transform: scale(0);
+    }
+    40% {
+        transform: scale(1);
+    }
+}
+
+/* Toast de notificación */
+.toast-notification {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background: linear-gradient(135deg, var(--primary-light) 0%, var(--primary-medium) 100%);
+    border: 1px solid var(--accent-gold);
+    color: var(--text-light);
+    padding: 12px 20px;
+    border-radius: 8px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3), var(--glow-gold);
+    z-index: 1000;
+    animation: fadeInOut 3s forwards;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.toast-notification i {
+    color: var(--accent-gold);
+}
+
+@keyframes fadeInOut {
+    0% { opacity: 0; transform: translateY(-20px); }
+    10% { opacity: 1; transform: translateY(0); }
+    90% { opacity: 1; transform: translateY(0); }
+    100% { opacity: 0; transform: translateY(-20px); }
+}
+
+/* Input Area */
+.chat-input-area {
+    border-top: 1px solid var(--border-medium);
+    padding: 1rem;
+    background-color: rgba(10, 33, 73, 0.7);
+    backdrop-filter: blur(5px);
+    display: flex;
+    align-items: flex-end;
+    position: relative;
+    z-index: 5;
+}
+
+.chat-input-area::before {
+    content: '';
+    position: absolute;
+    top: -1px;
+    left: 0;
+    width100%;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--accent-gold), transparent);
+}
+
+.chat-input-wrapper {
+    flex: 1;
+    position: relative;
+}
+
+.chat-input {
+    width: 100%;
+    border: 1px solid var(--border-medium);
+    background-color: rgba(9, 20, 40, 0.8);
+    color: var(--text-light);
+    padding: 0.8rem 1rem;
+    border-radius: 8px;
+    resize: none;
+    min-height: 42px;
+    max-height: 150px;
+    overflow-y: auto;
+    font-family: 'Inter', sans-serif;
+    transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.chat-input:focus {
+    outline: none;
+    border-color: var(--accent-gold);
+    box-shadow: 0 0 0 0.2rem rgba(255, 193, 7, 0.25), var(--glow-gold);
+}
+
+.send-button {
+    width: 42px;
+    height: 42px;
+    margin-left: 0.5rem;
+    background: linear-gradient(135deg, var(--primary-light) 0%, var(--primary-medium) 100%);
+    border: none;
+    border-radius: 8px;
+    color: var(--accent-gold);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.send-button::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+    transition: left 0.5s ease;
+}
+
+.send-button:hover {
+    background: linear-gradient(135deg, var(--primary-medium) 0%, var(--primary-light) 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3), var(--glow-gold);
+}
+
+.send-button:hover::before {
+    left: 100%;
+}
+
+.send-button:active {
+    transform: translateY(0);
+}
+
+.send-button i {
+    font-size: 1.2rem;
+}
+
+/* Code Blocks */
+pre {
+    background-color: #282c34;
+    border-radius: 6px;
+    padding: 1rem;
+    overflow-x: auto;
+    margin: 1rem 0;
+    border: 1px solid rgba(70, 130, 243, 0.3);
+    box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.3);
+}
+
+code {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.85rem;
+    line-height: 1.5;
+}
+
+.code-block-container {
+    margin: 1rem 0;
+    border-radius: 6px;
+    overflow: hidden;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(70, 130, 243, 0.3);
+}
+
+.code-toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background-color: #21252b;
+    padding: 0.5rem 1rem;
+    border-radius: 6px 6px 0 0;
+    border-bottom: 1px solid #181a1f;
+    position: relative;
+}
+
+.code-toolbar::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 2px;
+    background: linear-gradient(90deg, var(--accent-blue), var(--accent-cyan));
+}
+
+.code-language {
+    font-size: 0.75rem;
+    color: #abb2bf;
+    font-weight: 600;
+}
+
+.code-copy-btn {
+    padding: 0.2rem 0.5rem;
+    font-size: 0.75rem;
+    background-color: rgba(70, 130, 243, 0.2);
+    border: 1px solid rgba(70, 130, 243, 0.3);
+    color: var(--text-medium);
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.code-copy-btn:hover {
+    background-color: rgba(70, 130, 243, 0.4);
+    color: var(--text-light);
+}
+
+/* Footer */
+/* Selector de agentes con scroll horizontal */
+.agent-selector-container {
+    position: relative;
+    margin-bottom: 10px;
+    width: 100%;
+    overflow: hidden;
+}
+
+.agent-selector-scroll {
+    display: flex;
+    overflow-x: auto;
+    scrollbar-width: thin;
+    scrollbar-color: var(--accent-gold) var(--primary-dark);
+    padding: 5px 0;
+    scroll-behavior: smooth;
+    gap: 10px;
+}
+
+.agent-selector-scroll::-webkit-scrollbar {
+    height: 5px;
+}
+
+.agent-selector-scroll::-webkit-scrollbar-track {
+    background: var(--primary-dark);
+    border-radius: 10px;
+}
+
+.agent-selector-scroll::-webkit-scrollbar-thumb {
+    background: var(--accent-gold);
+    border-radius: 10px;
+}
+
+.agent-option {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    background: linear-gradient(135deg, var(--primary-dark) 0%, var(--primary-medium) 100%);
+    border: 1px solid var(--border-medium);
+    border-radius: 8px;
+    padding: 10px 15px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    min-width: 180px;
+}
+
+.agent-option:hover {
+    background: linear-gradient(135deg, var(--primary-medium) 0%, var(--primary-light) 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.agent-option.selected {
+    border: 1px solid var(--accent-gold);
+    box-shadow: 0 0 10px rgba(255, 193, 7, 0.3);
+}
+
+.agent-option-icon {
+    width: 30px;
+    height: 30px;
+    background-color: var(--primary-light);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 10px;
+    color: var(--accent-gold);
+}
+
+.agent-option-text {
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: var(--text-light);
+}
+
+.footer {
+    background: linear-gradient(90deg, var(--primary-dark) 0%, var(--primary-medium) 100%);
+    border-top: 1px solid var(--border-light);
+    padding: 0.75rem;
+    text-align: center;
+    font-size: 0.8rem;
+    color: var(--text-medium);
+    position: relative;
+    z-index: 10;
+}
+
+/* Botones flotantes para móvil */
+.mobile-controls {
+    display: none;
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    z-index: 100;
+}
+
+.mobile-btn {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--primary-light) 0%, var(--primary-medium) 100%);
+    color: var(--accent-gold);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4), var(--glow-gold);
+    border: 1px solid var(--border-light);
+    margin-top: 10px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.mobile-btn:hover, .mobile-btn:active {
+    transform: scale(1.1);
+}
+
+.mobile-btn i {
+    font-size: 1.3rem;
+}
+
+/* Responsive Styles */
+@media (max-width: 992px) {
+    .main-content {
+        flex-direction: column;
+        height: auto;
+    }
+
+    .sidebar {
+        width: 100%;
+        border-right: none;
+        border-bottom: 1px solid var(--border-medium);
+        height: auto;
+        max-height: 300px;
+    }
+
+    .chat-area {
+        height: calc(100vh - 300px);
+    }
+}
+
+@media (max-width: 768px) {
+    .message-container {
+        max-width: 95%;
+    }
+
+    .mobile-controls {
+        display: block;
+    }
+
+    .sidebar {
+        position: fixed;
+        top: 60px;
+        left: 0;
+        width: 280px;
+        height: calc(100vh - 60px);
+        transform: translateX(-100%);
+        z-index: 1000;
+        box-shadow: 5px 0 20px rgba(0, 0, 0, 0.5);
+        transition: transform 0.3s ease;
+    }
+
+    .sidebar.active {
+        transform: translateX(0);
+    }
+
+    .chat-area {
+        height: calc(100vh - 60px);
+    }
+
+    .main-content {
+        height: calc(100vh - 60px);
+    }
+}
+
+/* Animación de fondo futurista */
+.bg-grid {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-image: 
+        linear-gradient(rgba(21, 53, 103, 0.1) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(21, 53, 103, 0.1) 1px, transparent 1px);
+    background-size: 20px 20px;
+    pointer-events: none;
+    z-index: -1;
+}
+
+.bg-glow {
+    position: fixed;
+    top: 30%;
+    left: 50%;
+    width: 60%;
+    height: 60%;
+    background: radial-gradient(circle, rgba(70, 130, 243, 0.1) 0%, transparent 70%);
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+    z-index: -1;
+    animation: glow 10s infinite alternate;
+}
+
+@keyframes glow {
+    0% { opacity: 0.5; transform: translate(-50%, -50%) scale(0.8); }
+    100% { opacity: 0.8; transform: translate(-50%, -50%) scale(1.2); }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Elementos de fondo futuristas -->
+<div class="bg-grid"></div>
+<div class="bg-glow"></div>
+
+<div class="main-content">
+    <!-- Sidebar para configuración de agentes -->
+    <div class="sidebar" id="sidebar">
+        <div class="sidebar-section">
+            <div class="sidebar-title">
+                <i class="bi bi-gear-fill"></i> Configuración
+            </div>
+
+            <div class="mb-3">
+                <label for="model-select" class="form-label">Modelo de IA:</label>
+                <select id="model-select" class="form-select-dark">
+                    <option value="openai" selected>OpenAI (GPT-4o) - Modelo avanzado con excelente seguimiento de instrucciones</option>
+                    <option value="anthropic">Anthropic (Claude) - Especializado en desarrollo y automatización</option>
+                    <option value="gemini">Google (Gemini) - Análisis de grandes bases de código</option>
+                </select>
+                <div id="model-status" class="mt-2 small text-info">
+                    Verificando disponibilidad de modelos...
+                </div>
+            </div>
+
+            <div class="mb-3">
+                <label for="agent-select" class="form-label">Agente:</label>
+                <div class="agent-selector-container">
+                    <div class="agent-selector-scroll">
+                        <div class="agent-option" data-value="developer">
+                            <div class="agent-option-icon"><i class="bi bi-code-slash"></i></div>
+                            <div class="agent-option-text">Agente de Desarrollo</div>
+                        </div>
+                        <div class="agent-option selected" data-value="architect">
+                            <div class="agent-option-icon"><i class="bi bi-diagram-3"></i></div>
+                            <div class="agent-option-text">Agente de Arquitectura</div>
+                        </div>
+                        <div class="agent-option" data-value="advanced">
+                            <div class="agent-option-icon"><i class="bi bi-braces-asterisk"></i></div>
+                            <div class="agent-option-text">Especialista Avanzado</div>
+                        </div>
+                        <div class="agent-option" data-value="general">
+                            <div class="agent-option-icon"><i class="bi bi-person-check"></i></div>
+                            <div class="agent-option-text">Asistente General</div>
+                        </div>
+                    </div>
+                </div>
+                <select id="agent-select" class="form-select-dark d-none">
+                    <option value="developer">Agente de Desarrollo</option>
+                    <option value="architect" selected>Agente de Arquitectura</option>
+                    <option value="advanced">Especialista Avanzado</option>
+                    <option value="general">Asistente General</option>
+                </select>
+            </div>
+
+            <div class="agent-card">
+                <div class="agent-header">
+                    <div class="agent-icon">
+                        <i class="bi bi-diagram-3"></i>
+                    </div>
+                    <div class="agent-info">
+                        <h5 class="agent-name" id="agent-badge">Agente de Arquitectura</h5>
+                        <p class="agent-description">Diseñador de arquitecturas escalables y optimizadas</p>
+                    </div>
+                </div>
+
+                <div class="capabilities-section">
+                    <div class="sidebar-title" style="font-size: 0.9rem; margin-bottom: 0.5rem;">Capacidades:</div>
+                    <ul class="capabilities-list" id="agent-capabilities">
+                        <li>Definición de estructura del proyecto</li>
+                        <li>Selección de tecnologías y frameworks</li>
+                        <li>Asesoría en elección de bases de datos</li>
+                        <li>Implementación de microservicios</li>
+                        <li>Planificación de UI/UX y patrones de diseño</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Área principal de chat -->
+    <div class="chat-area">
+        <div class="chat-header">
+            <h4 class="chat-title">
+                <i class="bi bi-chat-dots"></i> Chat con Agente Especializado
+                <span id="status-indicator" class="ms-2" style="display: inline-block; width: 10px; height: 10px; border-radius: 50%; background-color: #ccc;"></span>
+            </h4>
+        </div>
+
+        <div class="chat-messages" id="messages-container">
+            <!-- Mensaje inicial de bienvenida -->
+            <div class="message-container system-message">
+                <div class="message-content">
+                    ¡Bienvenido a Codestorm Assistant! Selecciona un modelo y agente para comenzar.
+                </div>
+            </div>
+        </div>
+
+        <div class="chat-input-area">
+            <div class="chat-input-wrapper">
+                <textarea id="message-input" class="chat-input" placeholder="Escribe tu mensaje aquí..." rows="1"></textarea>
+            </div>
+            <button id="send-button" class="send-button">
+                <i class="bi bi-send"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- Controles flotantes para móvil -->
+    <div class="mobile-controls">
+        <button id="toggle-sidebar" class="mobile-btn">
+            <i class="bi bi-gear-fill"></i>
+        </button>
+        <button id="scroll-to-bottom" class="mobile-btn">
+            <i class="bi bi-arrow-down-circle"></i>
+        </button>
+        <button id="new-chat" class="mobile-btn">
+            <i class="bi bi-plus-circle"></i>
+        </button>
+    </div>
+</div>
+
+<footer class="footer">
+    CODESTORM-Assistant © 2025 | Herramienta de Desarrollo Impulsada por IA
+</footer>
+{% endblock %}
+
+{% block extra_js %}
+<!-- Cargar highlight.js con todos los lenguajes comunes -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<!-- Incluir soporte para HTML y otros lenguajes -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/javascript.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/python.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/css.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/xml.min.js"></script>
+
+<!-- Cargar el formateador de código -->
+<script src="{{ url_for('static', filename='js/chat/code-formatter.js') }}"></script>
+                    
                     <!-- Asegurarse de que los scripts principales se cargan en orden -->
                     <script>
                     // Verificar si window.app existe y crear si no
