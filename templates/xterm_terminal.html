@@ -919,6 +919,12 @@
             <!-- Respuesta del asistente de desarrollo -->
             <div id="assistant-response-container" style="display: none;">
                 <h5><i class="bi bi-code-slash me-2"></i>Respuesta del Asistente de Desarrollo</h5>
+                <div class="mb-3">
+                    <textarea id="developer-query" class="form-control bg-dark text-light mb-2" rows="2" placeholder="Escribe tu consulta de desarrollo aquí..."></textarea>
+                    <button id="submit-dev-query" class="btn btn-sm btn-primary mb-3">
+                        <i class="bi bi-send me-1"></i> Enviar consulta
+                    </button>
+                </div>
                 <pre id="assistant-response" class="mb-3">Esperando consulta...</pre>
                 <div class="action-buttons">
                     <button id="copy-response-btn" class="btn btn-sm btn-secondary">
@@ -2359,21 +2365,76 @@
             const copyButton = document.getElementById('copy-response-btn');
             const executeButton = document.getElementById('execute-code-btn');
             const closeButton = document.getElementById('close-response-btn');
+            const developerQuery = document.getElementById('developer-query');
+            const submitDevQuery = document.getElementById('submit-dev-query');
 
             // Función para mostrar/ocultar el panel de respuesta del asistente
             function toggleDeveloperAssistant() {
                 if (responseContainer.style.display === 'none') {
                     responseContainer.style.display = 'block';
-                    // Aquí podrías hacer una solicitud al servidor para obtener ayuda de desarrollo
                     responseDisplay.textContent = 'Esperando consulta sobre desarrollo...';
+                    // Dar foco al campo de texto para consulta
+                    if (developerQuery) {
+                        developerQuery.focus();
+                    }
                 } else {
                     responseContainer.style.display = 'none';
                 }
+            }
+            
+            // Función para enviar consulta al asistente de desarrollo
+            function sendDeveloperQuery() {
+                if (!developerQuery || !developerQuery.value.trim()) return;
+                
+                // Mostrar indicador de carga
+                responseDisplay.textContent = 'Procesando consulta...';
+                
+                // Enviar consulta al servidor
+                fetch('/api/developer_assistant', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        query: developerQuery.value.trim(),
+                        model: 'openai' // O puedes usar un selector para elegir el modelo
+                    })
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`Error: ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    if (data.response) {
+                        responseDisplay.textContent = data.response;
+                    } else {
+                        responseDisplay.textContent = 'No se pudo obtener una respuesta.';
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    responseDisplay.textContent = `Error al obtener respuesta: ${error.message}`;
+                });
             }
 
             // Configurar eventos para los botones
             if (toggleButton) {
                 toggleButton.addEventListener('click', toggleDeveloperAssistant);
+            }
+            
+            if (submitDevQuery) {
+                submitDevQuery.addEventListener('click', sendDeveloperQuery);
+            }
+            
+            if (developerQuery) {
+                developerQuery.addEventListener('keydown', function(e) {
+                    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+                        e.preventDefault();
+                        sendDeveloperQuery();
+                    }
+                });
             }
 
             if (copyButton) {
