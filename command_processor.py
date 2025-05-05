@@ -304,6 +304,122 @@ def handle_list_directory(data):
             'error': str(e)
         })
 
+@socketio.on('delete_file')
+def handle_delete_file(data):
+    """Delete a file"""
+    try:
+        file_path = data.get('path', '')
+        
+        # Validación básica
+        if not file_path:
+            emit('delete_result', {
+                'success': False,
+                'error': 'Ruta de archivo no especificada'
+            })
+            return
+            
+        # Prevenir navegación hacia arriba
+        if '..' in file_path:
+            emit('delete_result', {
+                'success': False,
+                'error': 'No se permite la navegación hacia arriba (..)'
+            })
+            return
+            
+        # Verificar si el archivo existe
+        if not os.path.exists(file_path):
+            emit('delete_result', {
+                'success': False,
+                'error': f'El archivo no existe: {file_path}'
+            })
+            return
+            
+        # Eliminar archivo
+        if os.path.isfile(file_path):
+            os.remove(file_path)
+            emit('delete_result', {
+                'success': True,
+                'message': f'Archivo eliminado: {file_path}'
+            })
+            
+            # Notificar cambio en sistema de archivos
+            emit('file_system_changed', {
+                'type': 'file_deleted',
+                'path': file_path,
+                'timestamp': time.time()
+            })
+        else:
+            emit('delete_result', {
+                'success': False,
+                'error': f'La ruta no es un archivo: {file_path}'
+            })
+    except Exception as e:
+        logging.error(f"Error eliminando archivo: {str(e)}")
+        emit('delete_result', {
+            'success': False,
+            'error': str(e)
+        })
+
+@socketio.on('delete_directory')
+def handle_delete_directory(data):
+    """Delete a directory and its contents"""
+    try:
+        dir_path = data.get('path', '')
+        
+        # Validación básica
+        if not dir_path:
+            emit('delete_result', {
+                'success': False,
+                'error': 'Ruta de directorio no especificada'
+            })
+            return
+            
+        # Prevenir navegación hacia arriba
+        if '..' in dir_path:
+            emit('delete_result', {
+                'success': False,
+                'error': 'No se permite la navegación hacia arriba (..)'
+            })
+            return
+            
+        # Verificar si el directorio existe
+        if not os.path.exists(dir_path):
+            emit('delete_result', {
+                'success': False,
+                'error': f'El directorio no existe: {dir_path}'
+            })
+            return
+            
+        # Verificar que es un directorio
+        if not os.path.isdir(dir_path):
+            emit('delete_result', {
+                'success': False,
+                'error': f'La ruta no es un directorio: {dir_path}'
+            })
+            return
+            
+        # Eliminar directorio y su contenido
+        import shutil
+        shutil.rmtree(dir_path)
+        
+        emit('delete_result', {
+            'success': True,
+            'message': f'Directorio eliminado: {dir_path}'
+        })
+        
+        # Notificar cambio en sistema de archivos
+        emit('file_system_changed', {
+            'type': 'directory_deleted',
+            'path': dir_path,
+            'timestamp': time.time()
+        })
+    except Exception as e:
+        logging.error(f"Error eliminando directorio: {str(e)}")
+        emit('delete_result', {
+            'success': False,
+            'error': str(e)
+        })
+
 @app.route('/')
 def index():
     return render_template('command_terminal.html')
