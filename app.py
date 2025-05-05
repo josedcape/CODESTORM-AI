@@ -97,6 +97,46 @@ def pause_constructor(project_id):
         return jsonify({'success': False, 'error': str(e)}), 500
 
 @app.route('/api/constructor/resume/<project_id>', methods=['POST'])
+
+@app.route('/api/developer_assistant', methods=['POST'])
+def developer_assistant():
+    """API para procesar consultas específicas de desarrollo."""
+    try:
+        data = request.json
+        if not data:
+            return jsonify({
+                'success': False,
+                'error': 'No se proporcionaron datos'
+            }), 400
+
+        query = data.get('query', '')
+        context = data.get('context', [])
+        model = data.get('model', 'openai')  # Modelo predeterminado
+
+        if not query:
+            return jsonify({
+                'success': False,
+                'error': 'No se proporcionó una consulta'
+            }), 400
+
+        # Aquí procesaríamos la consulta con el modelo de IA seleccionado
+        # Por ahora, devolveremos una respuesta simple simulada
+        response = {
+            'success': True,
+            'response': f"Respuesta a: {query}\n\nConsulta procesada correctamente. Esta es una respuesta de prueba.",
+            'model_used': model
+        }
+
+        return jsonify(response)
+
+    except Exception as e:
+        logging.error(f"Error en el asistente de desarrollo: {str(e)}")
+        logging.error(traceback.format_exc())
+        return jsonify({
+            'success': False,
+            'error': f'Error al procesar la solicitud: {str(e)}'
+        }), 500
+
 def resume_constructor(project_id):
     try:
         # Obtener datos del proyecto desde la sesión
