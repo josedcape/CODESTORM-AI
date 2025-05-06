@@ -310,12 +310,12 @@ function deleteFile(filePath) {
         showNotification('Eliminando archivo...', 'info');
 
         // Enviar petición al servidor para eliminar
-        fetch('/api/delete_file', {
+        fetch('/api/file/delete', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify({ path: filePath })
+            body: JSON.stringify({ file_path: filePath })
         })
         .then(response => {
             if (!response.ok) {
