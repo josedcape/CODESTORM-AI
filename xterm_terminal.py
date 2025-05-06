@@ -80,7 +80,7 @@ def delete_file():
             file_path = data.get('file_path')
         else:
             file_path = request.args.get('path')
-            
+
         if not file_path:
             return jsonify({
                 'success': False,
@@ -105,7 +105,7 @@ def delete_file():
                 shutil.rmtree(full_path)
             else:
                 os.remove(full_path)
-            
+
             return jsonify({
                 'success': True,
                 'message': f'Se eliminó {file_path} correctamente'
@@ -166,14 +166,18 @@ def init_xterm_blueprint(app, socketio):
         """Ejecuta un comando bash y devuelve el resultado."""
         command = data.get('command', '')
         user_id = data.get('user_id', 'default')
+        terminal_id = data.get('terminal_id', 'default') # Added terminal_id
         directory = data.get('directory', '.')
+
+        logging.info(f"Comando recibido: '{command}' de usuario: {user_id}, terminal: {terminal_id}")
 
         if not command:
             emit('command_result', {
                 'success': False,
                 'command': '',
                 'stderr': 'No se proporcionó ningún comando',
-                'output': 'No se proporcionó ningún comando'
+                'output': 'No se proporcionó ningún comando',
+                'terminal_id': terminal_id # Added terminal_id
             }, room=request.sid)
             return
 
@@ -188,7 +192,7 @@ def init_xterm_blueprint(app, socketio):
                 current_dir = workspace_path / directory
 
             # Ejecutar comando en esa ruta
-            logging.debug(f"Ejecutando comando: '{command}'")
+            logging.debug(f"Ejecutando comando: '{command}' en directorio: {current_dir}")
             process = subprocess.Popen(
                 command,
                 shell=True,
@@ -201,16 +205,19 @@ def init_xterm_blueprint(app, socketio):
             stdout, stderr = process.communicate()
 
             # Emitir resultado
-            emit('command_result', {
+            result = {
                 'success': process.returncode == 0,
                 'command': command,
                 'stdout': stdout,
                 'stderr': stderr,
-                'output': stdout if process.returncode == 0 else stderr
-            }, room=request.sid)
+                'output': stdout if process.returncode == 0 else stderr,
+                'terminal_id': terminal_id # Added terminal_id
+            }
+            logging.debug(f"Resultado del comando: {result['success']}")
+            emit('command_result', result, room=request.sid)
 
             # Detectar cambios en archivos para notificar a todos los clientes
-            if process.returncode == 0 and any(cmd in command for cmd in ['mkdir', 'touch', 'rm', 'cp', 'mv', 'echo']):
+            if process.returncode == 0 and any(cmd in command for cmd in ['mkdir', 'touch', 'rm', 'cp', 'mv', 'echo', 'cat', 'nano', 'vim']):
                 emit('file_change', {
                     'type': 'command',
                     'message': f'Comando ejecutado: {command}',
@@ -223,7 +230,8 @@ def init_xterm_blueprint(app, socketio):
                 'success': False,
                 'command': command,
                 'stderr': str(e),
-                'output': f"Error: {str(e)}"
+                'output': f"Error: {str(e)}",
+                'terminal_id': terminal_id # Added terminal_id
             }, room=request.sid)
 
 

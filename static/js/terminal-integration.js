@@ -940,3 +940,43 @@ window.webSocketClient = {
         return false;
     }
 }
+
+function processInput() {
+    const inputElement = document.getElementById('terminal-input');
+    const input = inputElement.value.trim();
+
+    if (!input) return;
+
+    // Escribir el comando en la terminal
+    writeToTerminal('\r\n$ ' + input + '\r\n');
+
+    // Si comienza con !, es un comando directo
+    if (input.startsWith('!')) {
+        const directCommand = input.substring(1).trim();
+        executeCommand(directCommand);
+        return;
+    }
+
+    // Enviar al asistente directamente
+    sendToAssistant(input);
+}
+
+function executeCommand(command) {
+    if (!command) return;
+
+    if (!connected) {
+        writeToTerminal('\r\n\x1b[31mError: No hay conexión con el servidor\x1b[0m\r\n');
+        writeToTerminal('\r\n$ ');
+        return;
+    }
+
+    // Enviar comando al servidor
+    socket.emit('execute_command', {
+        command: command,
+        user_id: userId,
+        terminal_id: terminalId
+    });
+
+    // Limpiar la entrada después de enviar
+    document.getElementById('terminal-input').value = '';
+}
