@@ -626,6 +626,10 @@ def handle_chat_internal(request_data):
 def index():
     return render_template('index.html')
 
+@app.route('/constructor')
+def constructor():
+    return render_template('constructor.html')
+
 @app.route('/health')
 def simple_health_check():
     """Simple health check endpoint."""
