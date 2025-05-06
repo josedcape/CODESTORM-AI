@@ -940,6 +940,9 @@
             margin-bottom: 10px;
             white-space: pre-wrap;
         }
+        .hidden {
+            display: none;
+        }
     </style>
 </head>
 <body>
@@ -1768,7 +1771,7 @@
 
                 // Montar terminal en el contenedor
                 const terminalContainer = document.getElementById('terminal-container');
-                terminal.open(terminalContainer);
+                terminal.open((terminalContainer);
                 fitAddon.fit();
 
                 // Ajustar tamaño cuando cambia la ventana
@@ -2662,10 +2665,10 @@
                     const explorerPanel = document.querySelector('.explorer-panel');
                     if (explorerPanel) {
                         explorerPanel.classList.toggle('show');
-                        const mobileOverlay = document.getElementById('mobile-overlay');
-                        if (mobileOverlay) {
-                            mobileOverlay.classList.toggle('show');
-                        }
+                    }
+                    const mobileOverlay = document.getElementById('mobile-overlay');
+                    if (mobileOverlay) {
+                        mobileOverlay.classList.toggle('show');
                     }
                 });
             }
@@ -2682,8 +2685,7 @@
             if (viewFilesMobileBtn) {
                 viewFilesMobileBtn.addEventListener('click', function() {
                     if (typeof window.viewExplorerFiles === 'function') {
-                        window.viewExplorerFiles();
-                    }
+                        window.viewExplorerFiles();                    }
                     // Cerrar menú flotante después de presionar
                     const floatMenu = document.getElementById('mobile-float-menu');
                     if (floatMenu) {
@@ -2864,5 +2866,3 @@
     </script>
 </body>
 </html>
-
-
