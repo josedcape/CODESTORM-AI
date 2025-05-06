@@ -20,6 +20,7 @@ import traceback
 import re
 import threading
 from constructor_routes import constructor_bp
+from xterm_terminal import xterm_bp, init_xterm_blueprint
 
 # Configurar logging
 logging.basicConfig(level=logging.DEBUG,
@@ -795,129 +796,7 @@ def api_chat():
                 if not hasattr(genai, '_configured') or not genai._configured:
                     genai.configure(api_key=gemini_api_key)
 
-                model = genai.GenerativeModel('gemini-1.5-pro')
-
-                full_prompt = system_prompt + "\n\n"
-                for msg in formatted_context:
-                    role_prefix = "Usuario: " if msg['role'] == 'user' else "Asistente: "
-                    full_prompt += role_prefix + msg['content'] + "\n\n"
-                full_prompt += "Usuario: " + user_message + "\n\nAsistente: "
-
-                gemini_response = model.generate_content(full_prompt)
-                response = gemini_response.text
-                logging.info(f"Respuesta generada con Gemini: {response[:100]}...")
-
-                return {'response': response, 'error': None}
-
-                # Generar la respuesta con Gemini
-                gemini_response = model.generate_content(full_prompt)
-                response = gemini_response.text
-                logging.info(f"Respuesta generada con Gemini: {response[:100]}...")
-
-                respuesta = response
-
-            except Exception as e:
-                logging.error(f"Error con API de Gemini: {str(e)}")
-                return jsonify({
-                    'success': False,
-                    'error': f"Error con Gemini API: {str(e)}",
-                    'agent_id': agent_id,
-                    'model': model_choice
-                })
-
-        else:
-            available_models = []
-            if openai_api_key:
-                available_models.append('openai')
-            if anthropic_api_key:
-                available_models.append('anthropic')
-            if gemini_api_key:
-                available_models.append('gemini')
-
-            if available_models:
-                available_models_text = ", ".join(available_models)
-                message = f"El modelo '{model_choice}' no está soportado. Por favor, selecciona uno de los siguientes modelos disponibles: {available_models_text}."
-            else:
-                message = "No hay modelos disponibles en este momento. Por favor configura al menos una API key en el panel de Secrets (OpenAI, Anthropic o Gemini)."
-
-            logging.warning(f"Modelo no disponible: {model_choice}")
-            return jsonify({
-                'success': False,
-                'response': message,
-                'agent_id': agent_id,
-                'model': model_choice,
-                'available_models': available_models
-            })
-
-        # Verificar que el resultado tenga la estructura esperada
-        if not respuesta:
-            return jsonify({
-                'success': False,
-                'error': 'No se pudo obtener una respuesta válida del modelo'
-            }), 500
-
-        return jsonify({
-            'success': True,
-            'response': respuesta,
-            'agent_id': agent_id,
-            'model': model_choice
-        })
-
-    except Exception as e:
-        logging.error(f"Error al procesar la solicitud de chat: {str(e)}")
-        logging.error(traceback.format_exc())
-        return jsonify({
-            'success': False,
-            'error': f'Error al procesar la solicitud: {str(e)}'
-        }), 500
-
-def get_user_workspace(user_id='default'):
-    """Obtener o crear un directorio de trabajo para el usuario."""
-    workspace_path = Path("./user_workspaces") / user_id
-    workspace_path.mkdir(parents=True, exist_ok=True)
-    return workspace_path
-
-@app.route('/api/process_code', methods=['POST'])
-def process_code():
-    """Procesa una solicitud de corrección de código."""
-    try:
-        data = request.json
-        if not data:
-            return jsonify({
-                'success': False,
-                'error': 'No se proporcionaron datos'
-            }), 400
-
-        code = data.get('code', '')
-        instructions = data.get('instructions', '')
-        language = data.get('language', 'python')
-        model = data.get('model', 'openai')
-
-        if not code:
-            return jsonify({
-                'success': False,
-                'error': 'No se proporcionó código'
-            }), 400
-
-        if not instructions:
-            return jsonify({
-                'success': False,
-                'error': 'No se proporcionaron instrucciones'
-            }), 400
-
-        result = None
-        if model == 'openai' and openai_api_key:
-            try:
-                client = openai.OpenAI()
-
-                response = client.chat.completions.create(
-                    model="gpt-4o",
-                    messages=[
-                        {"role": "system", "content": "Eres un experto programador especializado en corregir código."},
-                        {"role": "user", "content": f"""Corrige el siguiente código en {language} según las instrucciones proporcionadas.
-
-                CÓDIGO:
-                ```{language}
+                model{language}
                 {code}
                 ```
 
@@ -1999,6 +1878,13 @@ if __name__ == '__main__':
             logging.warning(f"No se pudo iniciar el observador de archivos: {str(watcher_error)}")
 
         logging.info("Servidor listo para recibir conexiones en puerto 5000")
+
+        try:
+            init_xterm_blueprint(app, socketio)
+            app.register_blueprint(xterm_bp)
+            logging.info("xterm blueprint registered successfully")
+        except Exception as e:
+            logging.error(f"Error registering xterm blueprint: {str(e)}")
 
         socketio.run(
             app,
