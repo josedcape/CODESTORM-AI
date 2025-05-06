@@ -9,16 +9,16 @@
         isConnected: false,
         connectionAttempts: 0,
         maxConnectionAttempts: 5,
-        
+
         init: function() {
             console.log('Inicializando asistente de comandos...');
-            
+
             // Asegurar que el asistente se inicialice en la página de xterm_terminal
             if (window.location.pathname.includes('xterm_terminal')) {
                 this.initializeForXTerm();
                 return;
             }
-            
+
             // Verificar si el asistente flotante ya existe
             if (window.floatingAssistant) {
                 console.log('Usando asistente flotante existente para comandos');
@@ -28,27 +28,27 @@
 
             // Si no existe el asistente flotante, cargar el script
             this.loadFloatingAssistant();
-            
+
             // Verificar conexión con el servidor
             this.checkServerConnection();
         },
-        
+
         // Inicialización específica para la página xterm_terminal
         initializeForXTerm: function() {
             console.log('Configurando asistente para XTerm terminal');
             // Intento de conexión inmediato
             this.checkServerConnection();
-            
+
             // Mostrar indicador visual de inicialización
             const assistantArea = document.querySelector('.assistant-container');
             if (assistantArea) {
                 assistantArea.classList.add('initializing');
             }
-            
+
             // Registrar manejadores de eventos para la terminal XTerm
             this.setupXTermEvents();
         },
-        
+
         // Configurar eventos específicos para XTerm
         setupXTermEvents: function() {
             // Detectar el botón de consulta del asistente
@@ -63,11 +63,11 @@
                 });
             }
         },
-        
+
         // Verificar la conexión con el servidor
         checkServerConnection: function() {
             console.log('Verificando conexión con el servidor...');
-            
+
             // Primero intentar con /api/status
             fetch('/api/status', {
                 method: 'GET',
@@ -90,7 +90,7 @@
                 this.tryAlternativeConnection();
             });
         },
-        
+
         // Intentar ruta alternativa para verificar la conexión
         tryAlternativeConnection: function() {
             fetch('/api/ping', {
@@ -123,35 +123,35 @@
                 });
             });
         },
-        
+
         // Manejar conexión exitosa
         connectionSuccessful: function(response) {
             this.isConnected = true;
             this.connectionAttempts = 0;
             console.log('Asistente de comandos conectado al servidor');
-            
+
             // Actualizar estado en la UI
             this.updateConnectionStatus(true);
-            
+
             // Mostrar notificación en XTerm si es aplicable
             if (window.showNotification) {
                 window.showNotification('Asistente de comandos conectado', 'success');
             }
-            
+
             return response.json().catch(() => ({}));
         },
-        
+
         // Manejar fallo de conexión
         handleConnectionFailure: function(errorMsg) {
             console.warn('Error de conexión con el servidor:', errorMsg);
             this.isConnected = false;
             this.updateConnectionStatus(false);
-            
+
             // Mostrar mensaje al usuario si existe la función de notificación
             if (window.showNotification) {
                 window.showNotification('Error de conexión con el asistente', 'error');
             }
-            
+
             // Intentar reconectar si no hemos excedido el número máximo de intentos
             if (this.connectionAttempts < this.maxConnectionAttempts) {
                 this.connectionAttempts++;
@@ -165,14 +165,14 @@
                 }
             }
         },
-        
+
         // Actualizar el estado de conexión en la UI si está disponible
         updateConnectionStatus: function(isConnected) {
             // Actualizar en el asistente flotante si existe
             if (window.floatingAssistant && window.floatingAssistant.updateConnectionStatus) {
                 window.floatingAssistant.updateConnectionStatus(isConnected);
             }
-            
+
             // Actualizar en la UI de XTerm si existe
             const assistantResult = document.getElementById('assistant-result');
             if (assistantResult) {
@@ -194,7 +194,7 @@
                         </div>
                     `;
                 }
-                
+
                 // Agregar evento al botón de reintento
                 const retryButton = document.getElementById('retry-connection');
                 if (retryButton) {
@@ -204,7 +204,7 @@
                     });
                 }
             }
-            
+
             // Disparar evento para que otros componentes puedan escucharlo
             document.dispatchEvent(new CustomEvent('assistant-connection-status', {
                 detail: { connected: isConnected }
@@ -239,7 +239,7 @@
                 }
                 return Promise.reject(new Error('Asistente desconectado'));
             }
-            
+
             if (window.floatingAssistant) {
                 return window.floatingAssistant.processQuery(command);
             } else {
@@ -262,7 +262,7 @@
                 });
             }
         },
-        
+
         // Utilidad para mostrar notificaciones
         showNotification: function(message, type) {
             if (window.showNotification) {
@@ -300,3 +300,112 @@
         initAssistant();
     }
 })();
+
+// Función para eliminar un archivo o directorio
+function deleteFile(filePath) {
+    if (!filePath) return;
+
+    if (confirm(`¿Estás seguro de eliminar "${filePath}"?`)) {
+        // Mostrar indicador de carga
+        showNotification('Eliminando archivo...', 'info');
+
+        // Enviar petición al servidor para eliminar
+        fetch('/api/delete_file', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ path: filePath })
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`Error del servidor: ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.success) {
+                showNotification('Archivo eliminado correctamente', 'success');
+                // Recargar el explorador de archivos
+                refreshFileExplorer();
+
+                // Notificar al sistema de terminales si está disponible
+                if (window.terminalInterface && window.terminalInterface.loadFiles) {
+                    window.terminalInterface.loadFiles('.');
+                }
+
+                // Emitir evento para que otros componentes lo detecten
+                document.dispatchEvent(new CustomEvent('file_deleted', {
+                    detail: { path: filePath }
+                }));
+            } else {
+                showNotification(`Error: ${data.error || 'No se pudo eliminar el archivo'}`, 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Error al eliminar archivo:', error);
+            showNotification(`Error: ${error.message}`, 'error');
+        });
+    }
+}
+
+// Función para cerrar el modal de visualización de archivos
+function closeFileViewer() {
+    const fileViewer = document.getElementById('file-viewer-modal');
+    if (fileViewer) {
+        // Aplicar animación de cierre
+        fileViewer.classList.add('fade-out');
+
+        // Esperar a que termine la animación
+        setTimeout(() => {
+            fileViewer.style.display = 'none';
+            fileViewer.classList.remove('fade-out');
+
+            // Limpiar contenido para liberar memoria
+            const contentContainer = fileViewer.querySelector('.modal-content');
+            if (contentContainer) {
+                contentContainer.innerHTML = '';
+            }
+
+            // Desbloquear scroll del body si estaba bloqueado
+            document.body.style.overflow = '';
+
+            // Emitir evento de cierre
+            document.dispatchEvent(new CustomEvent('file_viewer_closed'));
+        }, 300);
+    }
+
+    // Si hay un listener de tecla Escape, eliminarlo
+    document.removeEventListener('keydown', handleEscapeKeyForModal);
+}
+
+// Manejador para la tecla Escape
+function handleEscapeKeyForModal(e) {
+    if (e.key === 'Escape') {
+        closeFileViewer();
+    }
+}
+
+// Modificamos la función de apertura del modal para añadir el listener de Escape
+function openFileViewer(filePath, content, fileName) {
+    const fileViewer = document.getElementById('file-viewer-modal');
+    if (!fileViewer) return;
+
+    // Configurar contenido
+    const titleElement = fileViewer.querySelector('.modal-title');
+    const contentElement = fileViewer.querySelector('.modal-body');
+
+    if (titleElement) titleElement.textContent = fileName || filePath;
+    if (contentElement) contentElement.innerHTML = `<pre class="file-content">${content}</pre>`;
+
+    // Mostrar modal con animación
+    fileViewer.style.display = 'flex';
+    fileViewer.classList.add('fade-in');
+    setTimeout(() => fileViewer.classList.remove('fade-in'), 300);
+
+    // Bloquear scroll del body
+    document.body.style.overflow = 'hidden';
+
+    // Añadir listener para la tecla Escape
+    document.addEventListener('keydown', handleEscapeKeyForModal);
+}
