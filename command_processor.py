@@ -100,9 +100,7 @@ def nl_to_bash(natural_command):
             args = natural_command.split(pattern, 1)[1].strip()
             return f"{bash_prefix} {args}"
 
-    # If using OpenAI, we would call their API here
-    # For production, uncomment and configure this:
-    """
+    # Llamada a la API de OpenAI para conversión de lenguaje natural a comandos
     if os.environ.get('OPENAI_API_KEY'):
         import openai
         openai.api_key = os.environ.get('OPENAI_API_KEY')
@@ -110,19 +108,53 @@ def nl_to_bash(natural_command):
             response = openai.chat.completions.create(
                 model="gpt-4o",
                 messages=[
-                    {"role": "system", "content": "Convert the following natural language request to a bash command. Output ONLY the bash command, nothing else."},
+                    {"role": "system", "content": """
+                        Eres un experto asistente de terminal que convierte lenguaje natural en comandos bash precisos.
+
+                        INSTRUCCIONES:
+                        1. Genera ÚNICAMENTE el comando bash correspondiente, sin explicaciones adicionales
+                        2. Para crear archivos con contenido, utiliza echo con comillas y redirección adecuada
+                        3. Para operaciones complejas, usa múltiples comandos separados por punto y coma o &&
+                        4. Asegúrate de escapar correctamente los caracteres especiales
+                        5. Si la operación requiere múltiples líneas en un archivo, utiliza heredocs (<<EOF)
+
+                        EJEMPLOS:
+                        - Si el usuario dice: "crea un archivo index.html con un mensaje de bienvenida"
+                          Responderás: echo '<!DOCTYPE html><html><head><title>Bienvenida</title></head><body><h1>Mensaje de Bienvenida</h1></body></html>' > index.html
+
+                        - Si el usuario dice: "crear archivo JavaScript que muestre una alerta"
+                          Responderás: echo 'function mostrarAlerta() { alert("Hola mundo!"); }' > script.js
+
+                        - Si el usuario dice: "crear componente React para un botón"
+                          Responderás: cat > Button.jsx << 'EOF'
+                        import React from 'react';
+
+                        const Button = ({ text, onClick }) => {
+                          return (
+                            <button className="custom-button" onClick={onClick}>
+                              {text}
+                            </button>
+                          );
+                        };
+
+                        export default Button;
+                        EOF
+
+                        Prioriza la exactitud y utilidad del comando generado.
+                    """},
                     {"role": "user", "content": natural_command}
                 ],
                 temperature=0.1,
-                max_tokens=50
+                max_tokens=500  # Aumentado para permitir comandos más complejos
             )
             return response.choices[0].message.content.strip()
         except Exception as e:
             logging.error(f"Error with OpenAI API: {str(e)}")
-    """
+            return "echo 'Error al procesar el comando. Por favor intente de nuevo.'"
 
-    # If no match or API fails, return a safe default
-    return "echo 'Comando no reconocido'"
+    # Si no hay API configurada o falla
+    return "echo 'Para usar esta función, configure la API de OpenAI.'"
+
 
 def validate_command(command):
     """Validate if command is allowed based on regexes"""
@@ -309,7 +341,7 @@ def handle_delete_file(data):
     """Delete a file"""
     try:
         file_path = data.get('path', '')
-        
+
         # Validación básica
         if not file_path:
             emit('delete_result', {
@@ -317,7 +349,7 @@ def handle_delete_file(data):
                 'error': 'Ruta de archivo no especificada'
             })
             return
-            
+
         # Prevenir navegación hacia arriba
         if '..' in file_path:
             emit('delete_result', {
@@ -325,7 +357,7 @@ def handle_delete_file(data):
                 'error': 'No se permite la navegación hacia arriba (..)'
             })
             return
-            
+
         # Verificar si el archivo existe
         if not os.path.exists(file_path):
             emit('delete_result', {
@@ -333,7 +365,7 @@ def handle_delete_file(data):
                 'error': f'El archivo no existe: {file_path}'
             })
             return
-            
+
         # Eliminar archivo
         if os.path.isfile(file_path):
             os.remove(file_path)
@@ -341,7 +373,7 @@ def handle_delete_file(data):
                 'success': True,
                 'message': f'Archivo eliminado: {file_path}'
             })
-            
+
             # Notificar cambio en sistema de archivos
             emit('file_system_changed', {
                 'type': 'file_deleted',
@@ -365,7 +397,7 @@ def handle_delete_directory(data):
     """Delete a directory and its contents"""
     try:
         dir_path = data.get('path', '')
-        
+
         # Validación básica
         if not dir_path:
             emit('delete_result', {
@@ -373,7 +405,7 @@ def handle_delete_directory(data):
                 'error': 'Ruta de directorio no especificada'
             })
             return
-            
+
         # Prevenir navegación hacia arriba
         if '..' in dir_path:
             emit('delete_result', {
@@ -381,7 +413,7 @@ def handle_delete_directory(data):
                 'error': 'No se permite la navegación hacia arriba (..)'
             })
             return
-            
+
         # Verificar si el directorio existe
         if not os.path.exists(dir_path):
             emit('delete_result', {
@@ -389,7 +421,7 @@ def handle_delete_directory(data):
                 'error': f'El directorio no existe: {dir_path}'
             })
             return
-            
+
         # Verificar que es un directorio
         if not os.path.isdir(dir_path):
             emit('delete_result', {
@@ -397,16 +429,16 @@ def handle_delete_directory(data):
                 'error': f'La ruta no es un directorio: {dir_path}'
             })
             return
-            
+
         # Eliminar directorio y su contenido
         import shutil
         shutil.rmtree(dir_path)
-        
+
         emit('delete_result', {
             'success': True,
             'message': f'Directorio eliminado: {dir_path}'
         })
-        
+
         # Notificar cambio en sistema de archivos
         emit('file_system_changed', {
             'type': 'directory_deleted',
