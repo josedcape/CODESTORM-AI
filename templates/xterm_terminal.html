@@ -1894,12 +1894,22 @@
                     })
                     .then(data => {
                         if (data.command) {
+                            // Mostrar el comando generado
                             writeToTerminal(`\r\n\x1b[33mComando generado: ${data.command}\x1b[0m\r\n`);
-                            if (data.success !== false) {
-                                executeCommand(data.command);
-                            }
+
+                            // Ejecutar el comando
+                            socket.emit('execute_command', {
+                                command: data.command,
+                                user_id: userId,
+                                terminal_id: terminalId
+                            });
                         } else {
-                            writeToTerminal(`\r\n\x1b[31mError: ${data.error || 'No se pudo procesar la instrucción'}\x1b[0m\r\n`);
+                            // Si no hay comando pero hay respuesta del asistente
+                            if (data.response) {
+                                writeToTerminal(`\r\n\x1b[32mAsistente: ${data.response}\x1b[0m\r\n`);
+                            } else {
+                                writeToTerminal(`\r\n\x1b[31mError: ${data.error || 'No se pudo procesar la instrucción'}\x1b[0m\r\n`);
+                            }
                         }
                         writeToTerminal('\r\n$ ');
                     })

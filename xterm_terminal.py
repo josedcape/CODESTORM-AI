@@ -71,6 +71,51 @@ def execute_xterm_command():
             'error': str(e)
         }), 500
 
+@xterm_bp.route('/api/process_natural', methods=['POST'])
+def process_natural_instruction():
+    """Procesa instrucciones en lenguaje natural y devuelve comandos o respuestas."""
+    try:
+        data = request.json
+        text = data.get('text', '')
+        user_id = data.get('user_id', 'default')
+        model = data.get('model', 'openai')
+
+        if not text:
+            return jsonify({
+                'success': False,
+                'error': 'No se proporcionó texto para procesar'
+            }), 400
+
+        # Procesar la instrucción
+        command, response = process_natural_language(text, model)
+
+        # Preparar resultado
+        result = {
+            'success': True
+        }
+
+        if command:
+            result['command'] = command
+        
+        if response:
+            result['response'] = response
+
+        if not command and not response:
+            result = {
+                'success': False,
+                'error': 'No se pudo procesar la instrucción'
+            }
+
+        return jsonify(result)
+
+    except Exception as e:
+        logging.error(f"Error procesando instrucción natural: {str(e)}")
+        logging.error(traceback.format_exc())
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
 @xterm_bp.route('/api/delete_file', methods=['GET', 'DELETE'])
 def delete_file():
     """Delete a file from the workspace."""
@@ -254,15 +299,31 @@ def init_xterm_blueprint(app, socketio):
 
         try:
             # Procesar el texto usando el modelo seleccionado
-            command = process_natural_language(text, model)
+            command, response = process_natural_language(text, model)
 
-            # Emitir resultado con el comando sugerido pero sin ejecutarlo
-            emit('instruction_result', {
-                'success': True,
-                'command': command,
-                'explanation': f'Comando sugerido basado en: "{text}"',
-                'auto_execute': False # Siempre falso para seguridad
-            }, room=request.sid)
+            # Si tenemos un comando, devolverlo
+            if command:
+                emit('instruction_result', {
+                    'success': True,
+                    'command': command,
+                    'explanation': f'Comando sugerido basado en: "{text}"',
+                    'auto_execute': False # Siempre falso para seguridad
+                }, room=request.sid)
+            # Si tenemos una respuesta, devolverla
+            elif response:
+                emit('instruction_result', {
+                    'success': True,
+                    'response': response,
+                    'command': None,
+                    'explanation': 'Respuesta del asistente'
+                }, room=request.sid)
+            else:
+                emit('instruction_result', {
+                    'success': False,
+                    'command': '',
+                    'error': 'No se pudo procesar la instrucción',
+                    'explanation': 'No se pudo generar ni comando ni respuesta'
+                }, room=request.sid)
 
         except Exception as e:
             logging.error(f"Error al procesar lenguaje natural: {str(e)}")
@@ -354,8 +415,8 @@ def init_xterm_blueprint(app, socketio):
 
 
 def process_natural_language(text, model):
-    """Procesa instrucciones en lenguaje natural y devuelve el comando correspondiente.  """
-    #Se modifico para que solo devuelva comandos sin comentarios.
+    """Procesa instrucciones en lenguaje natural y devuelve el comando correspondiente o una respuesta."""
+    # Mapa de comandos comunes
     command_map = {
         "listar": "ls -la",
         "mostrar archivos": "ls -la",
@@ -369,15 +430,29 @@ def process_natural_language(text, model):
         "mostrar contenido": "cat ",
         "leer archivo": "cat ",
         "crea un proyecto": "mkdir proyecto && echo '# Mi Proyecto' > proyecto/README.md",
+        "hola": None,  # Saludos se manejan como respuestas, no como comandos
+        "ayuda": None, # Ayuda se maneja como respuesta
     }
 
+    # Respuestas para mensajes que no son comandos
+    response_map = {
+        "hola": "¡Hola! ¿En qué puedo ayudarte hoy? Puedo ayudarte a ejecutar comandos o a resolver dudas.",
+        "ayuda": "Puedo ejecutar comandos como:\n- listar archivos\n- crear directorio [nombre]\n- crear archivo [nombre]\n- mostrar contenido [archivo]\n- eliminar [archivo/directorio]",
+    }
+
+    # Verificar primero si es un saludo o ayuda
+    for key in response_map.keys():
+        if key in text.lower():
+            return None, response_map[key]
+
     # Buscar coincidencias exactas primero
+    command = None
     if text.lower() in command_map:
         command = command_map[text.lower()]
     else:
         # Buscar coincidencias parciales
         for key, cmd in command_map.items():
-            if key in text.lower():
+            if key in text.lower() and cmd is not None:
                 command = cmd
                 # Extraer nombres si es necesario
                 if cmd in ["mkdir ", "touch ", "rm ", "mv ", "cp ", "cat "]:
@@ -392,10 +467,14 @@ def process_natural_language(text, model):
                         # Usar la última palabra como nombre predeterminado
                         command += parts[-1]
                 break
-    if not command:
-        command = "echo 'Comando no encontrado'" # Default command if no match
 
-    return command
+    if not command:
+        # Si no se encontró un comando específico, intentar interpretar como pregunta
+        if any(q in text.lower() for q in ["qué", "cómo", "por qué", "cuál", "explica", "ayuda"]):
+            return None, "Lo siento, no puedo responder a esa pregunta específica. Intenta preguntar sobre comandos o archivos."
+        command = "echo 'Comando no encontrado: " + text + "'"
+        
+    return command, None
 
 def process_natural_language_to_command(user_message):
     """Convierte lenguaje natural a comando directamente."""
