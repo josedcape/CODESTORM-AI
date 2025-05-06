@@ -2598,6 +2598,10 @@
                     return response.json();
                 })
                 .then(data => {
+                    // Verificar si la respuesta fue exitosa
+                    if (data.error) {
+                        throw new Error(data.error);
+                    }
                     if (data.response) {
                         responseDisplay.textContent = data.response;
                     } else {
@@ -2607,6 +2611,9 @@
                 .catch(error => {
                     console.error('Error:', error);
                     responseDisplay.textContent = `Error al obtener respuesta: ${error.message}`;
+                    // Desactivar el estado de carga
+                    submitDevQuery.disabled = false;
+                    submitDevQuery.innerHTML = '<i class="bi bi-send me-1"></i> Enviar consulta';
                 });
             }
 
@@ -2632,7 +2639,8 @@
                 copyButton.addEventListener('click', function() {
                     const text = responseDisplay.textContent;
                     navigator.clipboard.writeText(text)
-                        .then(() => showNotification('Contenido copiado al portapapeles', 'success'))                        .catch(err => {
+                        .then(() => showNotification('Contenido copiado al portapapeles', 'success'))
+                        .catch(err => {
                             console.error('Error al copiar:', err);
                             showNotification('Error al copiar el contenido', 'error');
                         });

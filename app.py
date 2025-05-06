@@ -497,6 +497,190 @@ def execute_command_internal(command):
         workspace_path = get_user_workspace(user_id)
 
         # Registrar el comando para depuración
+
+@app.route('/api/delete_file', methods=['GET', 'DELETE'])
+def delete_file_endpoint():
+    """API endpoint para eliminar un archivo del workspace del usuario."""
+    try:
+        # Obtener la ruta del archivo a eliminar
+        if request.method == 'DELETE':
+            data = request.json
+            file_path = data.get('path')
+        else:  # GET method
+            file_path = request.args.get('path')
+            
+        if not file_path:
+            return jsonify({
+                'success': False,
+                'error': 'No se proporcionó ruta de archivo'
+            }), 400
+
+        user_id = session.get('user_id', 'default')
+        user_workspace = get_user_workspace(user_id)
+
+        file_path = file_path.replace('..', '').strip('/')
+        full_path = os.path.join(user_workspace, file_path)
+
+        if not os.path.exists(full_path):
+            return jsonify({
+                'success': False,
+                'error': 'Archivo no encontrado'
+            }), 404
+
+        try:
+            if os.path.isdir(full_path):
+                shutil.rmtree(full_path)
+                message = f'Directorio {file_path} eliminado exitosamente'
+            else:
+                os.remove(full_path)
+                message = f'Archivo {file_path} eliminado exitosamente'
+
+            # Notificar cambios a los clientes conectados
+            socketio.emit('file_system_changed', {
+                'user_id': user_id,
+                'command': f'delete {file_path}',
+                'timestamp': time.time()
+            }, room=user_id)
+
+            return jsonify({
+                'success': True,
+                'message': message,
+                'file_path': file_path
+            })
+        except Exception as e:
+            logging.error(f"Error al eliminar archivo: {str(e)}")
+            return jsonify({
+                'success': False,
+                'error': f'Error al eliminar: {str(e)}'
+            }), 500
+
+    except Exception as e:
+        logging.error(f"Error en endpoint de eliminación: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@app.route('/api/developer_assistant', methods=['POST'])
+def developer_assistant():
+    """API para el asistente de desarrollo que responde a consultas específicas."""
+    try:
+        data = request.json
+        if not data:
+            return jsonify({
+                'success': False,
+                'error': 'No se proporcionaron datos'
+            }), 400
+
+        query = data.get('query', '')
+        context = data.get('context', '')
+        model = data.get('model', 'openai')  # Modelo predeterminado
+        
+        if not query:
+            return jsonify({
+                'success': False,
+                'error': 'No se proporcionó una consulta'
+            }), 400
+            
+        # Procesamiento con la API seleccionada
+        if model == 'openai' and openai_api_key:
+            try:
+                client = openai.OpenAI()
+                completion = client.chat.completions.create(
+                    model="gpt-4o",
+                    messages=[
+                        {"role": "system", "content": "Eres un asistente de desarrollo experto que ayuda con tareas de programación."},
+                        {"role": "user", "content": f"Contexto: {context}\n\nConsulta: {query}"}
+                    ],
+                    temperature=0.7,
+                    max_tokens=2000
+                )
+                response = completion.choices[0].message.content
+                
+                return jsonify({
+                    'success': True,
+                    'response': response,
+                    'model_used': 'openai'
+                })
+            except Exception as e:
+                logging.error(f"Error con OpenAI API: {str(e)}")
+                return jsonify({
+                    'success': False,
+                    'error': f'Error con OpenAI API: {str(e)}'
+                }), 500
+        elif model == 'anthropic' and anthropic_api_key:
+            try:
+                client = anthropic.Anthropic(api_key=anthropic_api_key)
+                completion = client.messages.create(
+                    model="claude-3-5-sonnet-latest",
+                    max_tokens=2000,
+                    temperature=0.7,
+                    system="Eres un asistente de desarrollo experto que ayuda con tareas de programación.",
+                    messages=[{"role": "user", "content": f"Contexto: {context}\n\nConsulta: {query}"}]
+                )
+                response = completion.content[0].text
+                
+                return jsonify({
+                    'success': True,
+                    'response': response,
+                    'model_used': 'anthropic'
+                })
+            except Exception as e:
+                logging.error(f"Error con Anthropic API: {str(e)}")
+                return jsonify({
+                    'success': False,
+                    'error': f'Error con Anthropic API: {str(e)}'
+                }), 500
+        elif model == 'gemini' and gemini_api_key:
+            try:
+                # Make sure Gemini is configured properly
+                if not hasattr(genai, '_configured') or not genai._configured:
+                    genai.configure(api_key=gemini_api_key)
+                    
+                gemini_model = genai.GenerativeModel('gemini-1.5-pro')
+                gemini_response = gemini_model.generate_content(f"Contexto: {context}\n\nConsulta: {query}")
+                response = gemini_response.text
+                
+                return jsonify({
+                    'success': True,
+                    'response': response,
+                    'model_used': 'gemini'
+                })
+            except Exception as e:
+                logging.error(f"Error con Gemini API: {str(e)}")
+                return jsonify({
+                    'success': False,
+                    'error': f'Error con Gemini API: {str(e)}'
+                }), 500
+        else:
+            # Caso de respuesta predeterminada si ninguna API está disponible
+            available_models = []
+            if openai_api_key:
+                available_models.append('openai')
+            if anthropic_api_key:
+                available_models.append('anthropic')
+            if gemini_api_key:
+                available_models.append('gemini')
+                
+            if available_models:
+                message = f"El modelo '{model}' no está disponible. Modelos disponibles: {', '.join(available_models)}"
+            else:
+                message = "No hay modelos de IA disponibles. Por favor configura una API key en el panel de Secrets."
+                
+            return jsonify({
+                'success': False,
+                'message': message,
+                'available_models': available_models
+            })
+
+    except Exception as e:
+        logging.error(f"Error en el asistente de desarrollo: {str(e)}")
+        logging.error(traceback.format_exc())
+        return jsonify({
+            'success': False,
+            'error': f'Error al procesar la solicitud: {str(e)}'
+        }), 500
+
         logging.debug(f"Ejecutando comando: '{command}' en workspace {workspace_path}")
 
         # Execute the command
