@@ -322,7 +322,7 @@ def get_file_content():
             }), 403
             
         # Verificar que el archivo existe
-        if not os.path.exists(target_path) or not os.path.isdir(target_path):
+        if not os.path.exists(target_path) or os.path.isdir(target_path):
             return jsonify({
                 'success': False,
                 'error': 'El archivo no existe o es un directorio'
@@ -336,6 +336,14 @@ def get_file_content():
             'success': True,
             'content': content,
             'file_path': file_path
+        })
+            
+    except Exception as e:
+        logging.error(f"Error al obtener contenido del archivo: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
 
 @app.route('/api/file/save', methods=['POST'])
 def save_file_content():
@@ -394,15 +402,9 @@ def save_file_content():
             'error': str(e)
         }), 500
 
-        })
-            
-    except Exception as e:
-        logging.error(f"Error al obtener contenido del archivo: {str(e)}")
-        return jsonify({
-            'success': False,
-            'error': str(e)
-        }), 500
-
+def get_user_workspace(user_id='default'):
+    """Obtener o crear un directorio de trabajo para el usuario."""
+    workspace_path = Path("./user_workspaces") / user_id
     workspace_path.mkdir(parents=True, exist_ok=True)
     return workspace_path
 
