@@ -1,3 +1,27 @@
+
+# Agregamos este código al principio del archivo para no interferir con otras rutas
+from flask import jsonify
+
+# Asegurarse de que esta ruta esté disponible en la aplicación
+@app.route('/api/status', methods=['GET'])
+def api_status():
+    """Endpoint para verificar el estado de la API"""
+    return jsonify({
+        'status': 'online',
+        'service': 'command_assistant',
+        'version': '1.0'
+    })
+
+# Si ya existe un método similar, no es necesario agregar este
+@app.route('/api/ping', methods=['GET'])
+def api_ping():
+    """Endpoint alternativo para verificar conexión"""
+    return jsonify({
+        'status': 'ok',
+        'message': 'pong'
+    })
+
+
 # Añadir estas rutas a tu app principal o importarlas desde constructor_routes.py
 
 @app.route('/api/constructor/start', methods=['POST'])
