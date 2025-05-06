@@ -328,139 +328,140 @@
 
                         <form id="constructor-form">
                             <input type="hidden" id="project-tech-data" name="tech_data" value="">
-                        <div class="mb-4">
-                            <label for="project-description" class="form-label">Describe tu aplicación</label>
-                            <textarea id="project-description" class="form-control futuristic-input" rows="5" 
-                                placeholder="Describe en detalle la aplicación que deseas crear. Por ejemplo: 'Una aplicación para gestionar inventario con login, dashboard y reportes en PDF'"></textarea>
-                        </div>
-
-                        <!-- Características detectadas -->
-                        <div class="mb-3" id="features-container" style="display: none;">
-                            <label class="form-label">Características detectadas:</label>
-                            <div id="features-tags" class="mb-2"></div>
-                            <div class="form-text">Estas características se han detectado automáticamente. Puedes eliminar las que no desees.</div>
-                        </div>
-
-                        <!-- Selección de Agente -->
-                        <div class="mb-3">
-                            <label class="form-label">Selecciona el Agente Especializado:</label>
-                            <select id="agent-selector" class="form-select form-select-sm futuristic-select">
-                                <option value="developer" selected>Desarrollador de Código</option>
-                                <option value="architect">Arquitecto de Software</option>
-                                <option value="advanced">Experto Avanzado</option>
-                                <option value="general">Asistente General</option>
-                            </select>
-                            <div class="form-text">El agente determina el enfoque para la generación de tu aplicación</div>
-                        </div>
-
-                        <!-- Selección de Modelo de IA -->
-                        <div class="mb-3">
-                            <label class="form-label">Selecciona el Modelo de IA:</label>
-                            <select id="model-selector" class="form-select form-select-sm futuristic-select">
-                                <option value="openai" selected>OpenAI (GPT-4o)</option>
-                                <option value="anthropic">Anthropic (Claude)</option>
-                                <option value="gemini">Google (Gemini)</option>
-                            </select>
-                            <div id="api-status" class="mt-2 small text-info">Verificando disponibilidad de modelos...</div>
-                            <div class="form-text">Diferentes modelos pueden tener distintas capacidades</div>
-                        </div>
-
-                        <!-- Opciones Adicionales -->
-                        <div class="mb-4">
-                            <label class="form-label">Opciones Adicionales:</label>
-                            <div class="form-check">
-                                <input class="form-check-input" type="checkbox" id="include-tests" checked>
-                                <label class="form-check-label" for="include-tests">Incluir pruebas automatizadas</label>
+                            <div class="mb-4">
+                                <label for="project-description" class="form-label">Describe tu aplicación</label>
+                                <textarea id="project-description" class="form-control futuristic-input" rows="5" 
+                                    placeholder="Describe en detalle la aplicación que deseas crear. Por ejemplo: 'Una aplicación para gestionar inventario con login, dashboard y reportes en PDF'"></textarea>
                             </div>
-                            <div class="form-check">
-                                <input class="form-check-input" type="checkbox" id="include-docs" checked>
-                                <label class="form-check-label" for="include-docs">Generar documentación</label>
-                            </div>
-                            <div class="form-check">
-                                <input class="form-check-input" type="checkbox" id="include-deployment" checked>
-                                <label class="form-check-label" for="include-deployment">Configuración para despliegue</label>
-                            </div>
-                            <div class="form-check">
-                                <input class="form-check-input" type="checkbox" id="include-ci-cd">
-                                <label class="form-check-label" for="include-ci-cd">Configurar CI/CD</label>
-                            </div>
-                        </div>
 
-                        <div class="d-grid gap-2">
-                            <button type="submit" class="btn btn-primary btn-futuristic" id="generate-btn">
-                                <i class="bi bi-stars me-2"></i> Generar Aplicación
-                            </button>
-                        </div>
-                    </form>
+                            <!-- Características detectadas -->
+                            <div class="mb-3" id="features-container" style="display: none;">
+                                <label class="form-label">Características detectadas:</label>
+                                <div id="features-tags" class="mb-2"></div>
+                                <div class="form-text">Estas características se han detectado automáticamente. Puedes eliminar las que no desees.</div>
+                            </div>
 
-                    <!-- Indicador de Progreso (oculto inicialmente) -->
-                    <div id="generation-progress" class="mt-4" style="display: none;">
-                        <h5>Generando tu aplicación...</h5>
-                        <div class="progress" style="height: 25px;">
-                            <div id="progress-bar" class="progress-bar progress-bar-striped progress-bar-animated" 
-                                role="progressbar" style="width: 0%;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">0%</div>
-                        </div>
-                        <p id="progress-text">0% completado</p>
-                        <p id="current-stage">Inicializando agentes...</p>
-                        <div id="framework-info" class="mt-3 d-none">
-                            <div class="card tech-stack-card">
-                                <div class="card-header bg-dark text-white">
-                                    <h5 class="mb-0">Stack Tecnológico</h5>
+                            <!-- Selección de Agente -->
+                            <div class="mb-3">
+                                <label class="form-label">Selecciona el Agente Especializado:</label>
+                                <select id="agent-selector" class="form-select form-select-sm futuristic-select">
+                                    <option value="developer" selected>Desarrollador de Código</option>
+                                    <option value="architect">Arquitecto de Software</option>
+                                    <option value="advanced">Experto Avanzado</option>
+                                    <option value="general">Asistente General</option>
+                                </select>
+                                <div class="form-text">El agente determina el enfoque para la generación de tu aplicación</div>
+                            </div>
+
+                            <!-- Selección de Modelo de IA -->
+                            <div class="mb-3">
+                                <label class="form-label">Selecciona el Modelo de IA:</label>
+                                <select id="model-selector" class="form-select form-select-sm futuristic-select">
+                                    <option value="openai" selected>OpenAI (GPT-4o)</option>
+                                    <option value="anthropic">Anthropic (Claude)</option>
+                                    <option value="gemini">Google (Gemini)</option>
+                                </select>
+                                <div id="api-status" class="mt-2 small text-info">Verificando disponibilidad de modelos...</div>
+                                <div class="form-text">Diferentes modelos pueden tener distintas capacidades</div>
+                            </div>
+
+                            <!-- Opciones Adicionales -->
+                            <div class="mb-4">
+                                <label class="form-label">Opciones Adicionales:</label>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="include-tests" checked>
+                                    <label class="form-check-label" for="include-tests">Incluir pruebas automatizadas</label>
                                 </div>
-                                <div class="card-body">
-                                    <h6 id="framework-name" class="card-title">No seleccionado</h6>
-                                    <div class="row">
-                                        <div class="col-md-4">
-                                            <div class="tech-item">
-                                                <span class="tech-label">Backend:</span>
-                                                <span id="backend-tech" class="tech-value badge bg-primary">-</span>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="include-docs" checked>
+                                    <label class="form-check-label" for="include-docs">Generar documentación</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="include-deployment" checked>
+                                    <label class="form-check-label" for="include-deployment">Configuración para despliegue</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="include-ci-cd">
+                                    <label class="form-check-label" for="include-ci-cd">Configurar CI/CD</label>
+                                </div>
+                            </div>
+
+                            <div class="d-grid gap-2">
+                                <button type="submit" class="btn btn-primary btn-futuristic" id="generate-btn">
+                                    <i class="bi bi-stars me-2"></i> Generar Aplicación
+                                </button>
+                            </div>
+                        </form>
+
+                        <!-- Indicador de Progreso (oculto inicialmente) -->
+                        <div id="generation-progress" class="mt-4" style="display: none;">
+                            <h5>Generando tu aplicación...</h5>
+                            <div class="progress" style="height: 25px;">
+                                <div id="progress-bar" class="progress-bar progress-bar-striped progress-bar-animated" 
+                                    role="progressbar" style="width: 0%;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">0%</div>
+                            </div>
+                            <p id="progress-text">0% completado</p>
+                            <p id="current-stage">Inicializando agentes...</p>
+                            <div id="framework-info" class="mt-3 d-none">
+                                <div class="card tech-stack-card">
+                                    <div class="card-header bg-dark text-white">
+                                        <h5 class="mb-0">Stack Tecnológico</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <h6 id="framework-name" class="card-title">No seleccionado</h6>
+                                        <div class="row">
+                                            <div class="col-md-4">
+                                                <div class="tech-item">
+                                                    <span class="tech-label">Backend:</span>
+                                                    <span id="backend-tech" class="tech-value badge bg-primary">-</span>
+                                                </div>
                                             </div>
-                                        </div>
-                                        <div class="col-md-4">
-                                            <div class="tech-item">
-                                                <span class="tech-label">Frontend:</span>
-                                                <span id="frontend-tech" class="tech-value badge bg-success">-</span>
+                                            <div class="col-md-4">
+                                                <div class="tech-item">
+                                                    <span class="tech-label">Frontend:</span>
+                                                    <span id="frontend-tech" class="tech-value badge bg-success">-</span>
+                                                </div>
                                             </div>
-                                        </div>
-                                        <div class="col-md-4">
-                                            <div class="tech-item">
-                                                <span class="tech-label">Base de datos:</span>
-                                                <span id="database-tech" class="tech-value badge bg-warning text-dark">-</span>
+                                            <div class="col-md-4">
+                                                <div class="tech-item">
+                                                    <span class="tech-label">Base de datos:</span>
+                                                    <span id="database-tech" class="tech-value badge bg-warning text-dark">-</span>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
                                 </div>
                             </div>
+
+                            <!-- Controles de desarrollo -->
+                            <div class="mt-3 mb-3 text-center">
+                                <button id="pause-development-btn" class="btn btn-warning btn-sm me-2">
+                                    <i class="bi bi-pause-fill me-1"></i> Pausar Desarrollo
+                                </button>
+                                <button id="resume-development-btn" class="btn btn-success btn-sm" style="display: none;">
+                                    <i class="bi bi-play-fill me-1"></i> Reanudar Desarrollo
+                                </button>
+                            </div>
+
+                            <div class="console-output" id="generation-console"></div>
                         </div>
 
-                        <!-- Controles de desarrollo -->
-                        <div class="mt-3 mb-3 text-center">
-                            <button id="pause-development-btn" class="btn btn-warning btn-sm me-2">
-                                <i class="bi bi-pause-fill me-1"></i> Pausar Desarrollo
-                            </button>
-                            <button id="resume-development-btn" class="btn btn-success btn-sm" style="display: none;">
-                                <i class="bi bi-play-fill me-1"></i> Reanudar Desarrollo
-                            </button>
+                        <!-- Resultado (oculto inicialmente) -->
+                        <div id="generation-result" class="mt-4" style="display: none;">
+                            <div id="result-message" class="alert alert-success">
+                                <i class="bi bi-check-circle me-2"></i> ¡Tu aplicación ha sido generada exitosamente!
+                            </div>
+                            <div class="d-grid gap-2">
+                                <button id="view-app-btn" class="btn btn-outline-primary btn-futuristic">
+                                    <i class="bi bi-eye me-2"></i> Ver Aplicación
+                                </button>
+                                <button id="download-app-btn" class="btn btn-outline-secondary btn-futuristic">
+                                    <i class="bi bi-download me-2"></i> Descargar Código
+                                </button>
+                            </div>
                         </div>
-
-                        <div class="console-output" id="generation-console"></div>
+                        <div id="message-container"></div>
                     </div>
-
-                    <!-- Resultado (oculto inicialmente) -->
-                    <div id="generation-result" class="mt-4" style="display: none;">
-                        <div id="result-message" class="alert alert-success">
-                            <i class="bi bi-check-circle me-2"></i> ¡Tu aplicación ha sido generada exitosamente!
-                        </div>
-                        <div class="d-grid gap-2">
-                            <button id="view-app-btn" class="btn btn-outline-primary btn-futuristic">
-                                <i class="bi bi-eye me-2"></i> Ver Aplicación
-                            </button>
-                            <button id="download-app-btn" class="btn btn-outline-secondary btn-futuristic">
-                                <i class="bi bi-download me-2"></i> Descargar Código
-                            </button>
-                        </div>
-                    </div>
-                    <div id="message-container"></div>
                 </div>
             </div>
         </div>
@@ -541,7 +542,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     if (data.success && data.features && data.features.length > 0) {
                         displayFeatures(data.features);
                         featuresContainer.style.display = 'block';
-                        
+
                         // Si hay frameworks recomendados, actualizar selección
                         if (data.frameworks && data.frameworks.recommended && typeof window.techSelector !== 'undefined') {
                             window.techSelector.selectPresetByName(data.frameworks.recommended.name);
@@ -668,13 +669,13 @@ document.addEventListener('DOMContentLoaded', function() {
     function startStatusCheck(projectId) {
         // Verificar estado actual inmediatamente
         checkCurrentStatus(projectId);
-        
+
         // Configurar verificación periódica
         statusCheckInterval = setInterval(() => {
             checkCurrentStatus(projectId);
         }, 2000);
     }
-    
+
     // Función para verificar el estado actual
     function checkCurrentStatus(projectId) {
         if (usingController) {
@@ -745,16 +746,16 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Verificar si el controlador está funcionando
     let usingController = typeof window.constructorController !== 'undefined';
-    
+
     if (usingController) {
         console.log('Constructor Controller disponible, utilizando métodos del controlador');
-        
+
         // Registrar callbacks para eventos del controlador
         window.constructorController.on('progress', function(state) {
             // Actualizar UI con el estado
             updateUIFromState(state);
         });
-        
+
         window.constructorController.on('apiStatus', function(connected, data) {
             if (connected) {
                 console.log('APIs disponibles:', data);
@@ -770,23 +771,23 @@ document.addEventListener('DOMContentLoaded', function() {
     } else {
         console.warn('Constructor Controller no disponible, utilizando métodos alternativos');
     }
-    
+
     // Función para actualizar UI desde el estado
     function updateUIFromState(state) {
         if (!state) return;
-        
+
         // Actualizar barra de progreso
         if (progressBar && typeof state.progress === 'number') {
             progressBar.style.width = `${state.progress}%`;
             progressBar.setAttribute('aria-valuenow', state.progress);
             progressText.textContent = `${state.progress}% completado`;
         }
-        
+
         // Actualizar etapa actual
-        if (currentStage && state.currentStep) {
+        if (currentStage && state.state.currentStep) {
             currentStage.textContent = state.currentStep;
         }
-        
+
         // Actualizar mensajes de consola
         if (state.steps && state.steps.length > 0) {
             const lastStep = state.steps[state.steps.length - 1];

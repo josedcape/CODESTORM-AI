@@ -669,3 +669,142 @@ document.addEventListener('DOMContentLoaded', function() {
     // Verificar disponibilidad de APIs
     checkAPIAvailability();
 });
+/**
+ * Constructor de Aplicaciones - Archivo base generado
+ * Este archivo contiene la funcionalidad principal para la aplicación
+ */
+
+// Objeto principal de la aplicación
+const app = {
+  // Configuración
+  config: {
+    apiUrl: '/api',
+    debug: true,
+    autoInit: true
+  },
+  
+  // Estado de la aplicación
+  state: {
+    initialized: false,
+    loading: false,
+    error: null,
+    data: null
+  },
+  
+  // Inicialización
+  init: function() {
+    if (this.config.debug) {
+      console.log('Inicializando aplicación...');
+    }
+    
+    this.setupEventListeners();
+    this.checkDependencies();
+    
+    this.state.initialized = true;
+    
+    if (this.config.debug) {
+      console.log('Aplicación inicializada correctamente');
+    }
+    
+    return this;
+  },
+  
+  // Configurar escuchadores de eventos
+  setupEventListeners: function() {
+    document.addEventListener('DOMContentLoaded', this.onDocumentReady.bind(this));
+    window.addEventListener('error', this.handleError.bind(this));
+  },
+  
+  // Verificar dependencias necesarias
+  checkDependencies: function() {
+    // Aquí se pueden verificar bibliotecas externas o APIs
+    return true;
+  },
+  
+  // Evento cuando el documento está listo
+  onDocumentReady: function() {
+    if (this.config.debug) {
+      console.log('Documento listo');
+    }
+    
+    // Iniciar carga de datos si es necesario
+    if (this.config.autoInit) {
+      this.loadInitialData();
+    }
+  },
+  
+  // Cargar datos iniciales
+  loadInitialData: function() {
+    this.state.loading = true;
+    
+    // Simular carga de datos (reemplazar con llamada real a API)
+    setTimeout(() => {
+      this.state.data = {
+        name: 'Aplicación generada',
+        version: '1.0.0',
+        timestamp: new Date().toISOString()
+      };
+      
+      this.state.loading = false;
+      this.onDataLoaded();
+    }, 1000);
+  },
+  
+  // Callback cuando los datos están cargados
+  onDataLoaded: function() {
+    if (this.config.debug) {
+      console.log('Datos cargados:', this.state.data);
+    }
+    
+    // Actualizar UI o ejecutar lógica adicional
+    this.updateUI();
+  },
+  
+  // Actualizar interfaz de usuario
+  updateUI: function() {
+    // Buscar elementos para actualizar
+    const appContainer = document.getElementById('app');
+    if (appContainer && this.state.data) {
+      appContainer.innerHTML = `
+        <div class="app-info">
+          <h2>${this.state.data.name}</h2>
+          <p>Versión: ${this.state.data.version}</p>
+          <p>Generado: ${new Date(this.state.data.timestamp).toLocaleString()}</p>
+        </div>
+      `;
+    }
+  },
+  
+  // Manejar errores
+  handleError: function(error) {
+    this.state.error = error;
+    
+    if (this.config.debug) {
+      console.error('Error en la aplicación:', error);
+    }
+    
+    // Mostrar mensaje de error en UI
+    const errorContainer = document.getElementById('error-container');
+    if (errorContainer) {
+      errorContainer.innerHTML = `
+        <div class="error-message">
+          <h3>Error</h3>
+          <p>${error.message || 'Error desconocido'}</p>
+        </div>
+      `;
+      errorContainer.style.display = 'block';
+    }
+  }
+};
+
+// Iniciar la aplicación cuando se carga el script
+if (app.config.autoInit) {
+  app.init();
+}
+
+// Exportar el objeto app para uso externo
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = app;
+} else {
+  window.app = app;
+}

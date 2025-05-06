@@ -188,3 +188,54 @@ Este proyecto está licenciado bajo los términos de la Licencia MIT. Ver el arc
 José - [@josedcape](https://github.com/josedcape)
 
 Link del proyecto: [https://github.com/josedcape/CODESTORM](https://github.com/josedcape/CODESTORM)
+# Constructor de Aplicaciones
+
+Este proyecto permite la creación rápida de aplicaciones web y APIs basadas en diversos stacks tecnológicos.
+
+## Características Principales
+
+- Selección de tecnologías backend y frontend
+- Generación de código estructurado y funcional
+- Creación de archivos estáticos (HTML, CSS, JavaScript)
+- Configuración automática de dependencias
+- Documentación integrada
+
+## Archivos Generados
+
+El constructor puede generar los siguientes tipos de archivos:
+
+- **README.md**: Documentación del proyecto
+- **app.js**: Archivo principal de JavaScript
+- **index.html**: Estructura HTML del proyecto
+- **style.css**: Estilos CSS
+- **package.json**: Configuración de dependencias
+
+## Uso
+
+1. Seleccione el stack tecnológico
+2. Configure las opciones adicionales
+3. Seleccione los archivos a generar
+4. Proporcione una descripción del proyecto
+5. Haga clic en "Generar Aplicación"
+
+## Ejemplo
+
+```javascript
+// Ejemplo de app.js generado
+const app = {
+  init: function() {
+    console.log('Aplicación inicializada');
+    this.setupEventListeners();
+  },
+  
+  setupEventListeners: function() {
+    document.addEventListener('DOMContentLoaded', this.onDocumentReady.bind(this));
+  },
+  
+  onDocumentReady: function() {
+    console.log('Documento listo');
+  }
+};
+
+app.init();
+```
