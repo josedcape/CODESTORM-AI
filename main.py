@@ -963,6 +963,126 @@ def process_code_endpoint():
             'error': f'Error al procesar la solicitud: {str(e)}'
         }), 500
 
+@app.route('/api/developer_assistant', methods=['POST'])
+def developer_assistant():
+    """API for processing development-specific queries."""
+    try:
+        data = request.json
+        if not data:
+            return jsonify({
+                'success': False,
+                'error': 'No data provided'
+            }), 400
+
+        query = data.get('query', '')
+        context = data.get('context', '')
+        model = data.get('model', 'openai')  # Default model
+        
+        if not query:
+            return jsonify({
+                'success': False,
+                'error': 'No query provided'
+            }), 400
+            
+        # Process using available API
+        if model == 'openai' and openai_api_key:
+            try:
+                client = openai.OpenAI()
+                completion = client.chat.completions.create(
+                    model="gpt-4o",
+                    messages=[
+                        {"role": "system", "content": "You are a development assistant expert helping with programming tasks."},
+                        {"role": "user", "content": f"Context: {context}\n\nQuery: {query}"}
+                    ],
+                    temperature=0.7,
+                    max_tokens=2000
+                )
+                response = completion.choices[0].message.content
+                
+                return jsonify({
+                    'success': True,
+                    'response': response,
+                    'model_used': 'openai'
+                })
+            except Exception as e:
+                logging.error(f"Error with OpenAI API: {str(e)}")
+                return jsonify({
+                    'success': False,
+                    'error': f'Error with OpenAI API: {str(e)}'
+                }), 500
+        elif model == 'anthropic' and anthropic_api_key:
+            try:
+                client = anthropic.Anthropic(api_key=anthropic_api_key)
+                completion = client.messages.create(
+                    model="claude-3-5-sonnet-latest",
+                    max_tokens=2000,
+                    temperature=0.7,
+                    system="You are a development assistant expert helping with programming tasks.",
+                    messages=[{"role": "user", "content": f"Context: {context}\n\nQuery: {query}"}]
+                )
+                response = completion.content[0].text
+                
+                return jsonify({
+                    'success': True,
+                    'response': response,
+                    'model_used': 'anthropic'
+                })
+            except Exception as e:
+                logging.error(f"Error with Anthropic API: {str(e)}")
+                return jsonify({
+                    'success': False,
+                    'error': f'Error with Anthropic API: {str(e)}'
+                }), 500
+        elif model == 'gemini' and gemini_api_key:
+            try:
+                # Make sure Gemini is configured properly
+                if not hasattr(genai, '_configured') or not genai._configured:
+                    genai.configure(api_key=gemini_api_key)
+                    
+                gemini_model = genai.GenerativeModel('gemini-1.5-pro')
+                gemini_response = gemini_model.generate_content(f"Context: {context}\n\nQuery: {query}")
+                response = gemini_response.text
+                
+                return jsonify({
+                    'success': True,
+                    'response': response,
+                    'model_used': 'gemini'
+                })
+            except Exception as e:
+                logging.error(f"Error with Gemini API: {str(e)}")
+                return jsonify({
+                    'success': False,
+                    'error': f'Error with Gemini API: {str(e)}'
+                }), 500
+        else:
+            # Default response if no API is available
+            available_models = []
+            if openai_api_key:
+                available_models.append('openai')
+            if anthropic_api_key:
+                available_models.append('anthropic')
+            if gemini_api_key:
+                available_models.append('gemini')
+                
+            if available_models:
+                message = f"The model '{model}' is not available. Available models: {', '.join(available_models)}"
+            else:
+                message = "No AI models available. Please configure an API key in the Secrets panel."
+                
+            return jsonify({
+                'success': False,
+                'message': message,
+                'available_models': available_models
+            })
+
+    except Exception as e:
+        logging.error(f"Error in developer assistant: {str(e)}")
+        logging.error(traceback.format_exc())
+        return jsonify({
+            'success': False,
+            'error': f'Error processing request: {str(e)}'
+        }), 500
+
 @app.route('/api/process_natural', methods=['POST'])
 def process_natural_command():
     """Process natural language input and return corresponding command."""
