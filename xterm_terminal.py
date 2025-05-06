@@ -71,6 +71,59 @@ def execute_xterm_command():
             'error': str(e)
         }), 500
 
+@xterm_bp.route('/api/delete_file', methods=['GET', 'DELETE'])
+def delete_file():
+    """Delete a file from the workspace."""
+    try:
+        if request.method == 'DELETE':
+            data = request.json
+            file_path = data.get('file_path')
+        else:
+            file_path = request.args.get('path')
+            
+        if not file_path:
+            return jsonify({
+                'success': False,
+                'error': 'No se proporcionó ruta de archivo'
+            }), 400
+
+        # Obtener workspace
+        workspace_dir = os.path.join(os.getcwd(), 'user_workspaces/default')
+        full_path = os.path.join(workspace_dir, file_path)
+
+        # Verificar seguridad de ruta
+        if not os.path.normpath(full_path).startswith(os.path.normpath(workspace_dir)):
+            return jsonify({
+                'success': False,
+                'error': 'Ruta no válida'
+            }), 403
+
+        # Eliminar archivo o directorio
+        if os.path.exists(full_path):
+            if os.path.isdir(full_path):
+                import shutil
+                shutil.rmtree(full_path)
+            else:
+                os.remove(full_path)
+            
+            return jsonify({
+                'success': True,
+                'message': f'Se eliminó {file_path} correctamente'
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'error': 'Archivo no encontrado'
+            }), 404
+
+    except Exception as e:
+        logging.error(f"Error al eliminar archivo: {str(e)}")
+        logging.error(traceback.format_exc())
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
 
 def init_xterm_blueprint(app, socketio):
     """Registra el blueprint en la aplicación Flask."""

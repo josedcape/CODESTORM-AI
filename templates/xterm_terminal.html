@@ -1887,6 +1887,26 @@
                             user_id: userId
                         })
                     })
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error(`Error: ${response.status} - ${response.statusText}`);
+                        }
+                        return response.json();
+                    })
+                    .then(data => {
+                        if (data.command) {
+                            writeToTerminal(`\r\n\x1b[33mComando generado: ${data.command}\x1b[0m\r\n`);
+                            if (data.success !== false) {
+                                executeCommand(data.command);
+                            }
+                        } else {
+                            writeToTerminal(`\r\n\x1b[31mError: ${data.error || 'No se pudo procesar la instrucción'}\x1b[0m\r\n`);
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error al procesar instrucción:', error);
+                        writeToTerminal(`\r\n\x1b[31mError: ${error.message}\x1b[0m\r\n`);
+                    });)
                     .then(response => response.json())
                     .then(data => {
                         if (data.success && data.command) {

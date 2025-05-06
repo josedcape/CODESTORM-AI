@@ -758,50 +758,47 @@ document.addEventListener('DOMContentLoaded', function() {
 
             showNotification('Instrucción enviada al asistente', 'info');
             return true;
-        }
-
-        // Si no hay iframe, intentar enviar al backend
-        return new Promise((resolve, reject) => {
-            fetch('/api/process_instructions', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    instruction: instruction,
-                    directory: currentDirectory,
-                    model: 'openai'
+        } else {
+            return new Promise((resolve, reject) => {
+                fetch('/api/process_instructions', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        instruction: instruction,
+                        directory: currentDirectory,
+                        model: 'openai'
+                    })
                 })
-            })
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error(`Error al comunicarse con el asistente: ${response.status}`);
-                }
-                return response.json();
-            })
-            .then(data => {
-                if (data.command) {
-                    // Ejecutar comando generado por el asistente
-                    executeCommand(data.command);
-                    showNotification('Comando generado por el asistente', 'success');
-                    resolve(true);
-                } else if (data.message) {
-                    // Mostrar respuesta del asistente
-                    showNotification(`Asistente: ${data.message}`, 'info');
-                    resolve(true);
-                } else {
-                    showNotification('El asistente no pudo procesar la instrucción', 'warning');
-                    resolve(false);
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                showNotification(`Error: ${error.message}`, 'error');
-                reject(error);
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`Error al comunicarse con el asistente: ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    if (data.command) {
+                        // Ejecutar comando generado por el asistente
+                        executeCommand(data.command);
+                        showNotification('Comando generado por el asistente', 'success');
+                        resolve(true);
+                    } else if (data.message) {
+                        // Mostrar respuesta del asistente
+                        showNotification(`Asistente: ${data.message}`, 'info');
+                        resolve(true);
+                    } else {
+                        showNotification('El asistente no pudo procesar la instrucción', 'warning');
+                        resolve(false);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    showNotification(`Error: ${error.message}`, 'error');
+                    reject(error);
+                });
             });
-        });
-            showNotification(error.message, 'danger');
-        });
+        }
     }
 
     // Configurar eventos
@@ -920,7 +917,7 @@ function formatUptime(seconds) {
 
     let uptime = '';
     if (days > 0) uptime += `${days}d `;
-    if (hours > 0 || days > 0) uptime += `${hours}h `;
+    ifif (hours > 0 || days > 0) uptime += `${hours}h `;
     if (minutes > 0 || hours > 0 || days > 0) uptime += `${minutes}m `;
     uptime += `${seconds}s`;
 
