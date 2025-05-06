@@ -929,7 +929,7 @@
                     </div>
                     <div id="assistant-result" class="assistant-result">
                         <div class="text-center text-muted p-3">
-                            <i class="bi bi-terminal-plus fs-3mb-2"></i>
+                            <i class="bi bi-terminal-plus fs-3 mb-2"></i>
                             <p>El asistente convertirá tus instrucciones a comandos de terminal</p>
                         </div>
                     </div>
@@ -2641,27 +2641,56 @@
         // Configuración para el botón de visualización de archivos
         document.addEventListener('DOMContentLoaded', function() {
             // Botones para ver archivos (tanto en navbar como en menú móvil)
-            const viewFilesButton = document.getElementById('view-files-button');
-            const viewFilesMobileBtn = document.getElementById('view-files-btn');
+                const viewFilesButton = document.getElementById('view-files-button');
+                const viewFilesMobileBtn = document.getElementById('view-files-btn');
 
-            // Configurar eventos para ambos botones
-            if (viewFilesButton) {
-                viewFilesButton.addEventListener('click', viewExplorerFiles);
-            }
+                // Botón para alternar el panel de explorador
+                const toggleExplorerBtn = document.getElementById('toggle-explorer');
 
-            if (viewFilesMobileBtn) {
-                viewFilesMobileBtn.addEventListener('click', function() {
-                    viewExplorerFiles();
-                    // Cerrar menú flotante después de presionar
-                    const floatMenu = document.getElementById('mobile-float-menu');
-                    if (floatMenu) {
-                        floatMenu.classList.remove('show');
-                    }
-                });
-            }
-        });
+                // Funcionalidad para cerrar el panel de explorador
+                if (toggleExplorerBtn) {
+                    toggleExplorerBtn.addEventListener('click', function() {
+                        const explorerPanel = document.querySelector('.explorer-panel');
+                        if (explorerPanel) {
+                            explorerPanel.classList.toggle('show');
+                            const mobileOverlay = document.getElementById('mobile-overlay');
+                            if (mobileOverlay) {
+                                mobileOverlay.classList.toggle('show');
+                            }
+                        }
+                    });
+                }
 
-        // Configuración para el asistente de desarrollo
+                // Configurar eventos para ambos botones de visualización
+                if (viewFilesButton) {
+                    viewFilesButton.addEventListener('click', viewExplorerFiles);
+                }
+
+                if (viewFilesMobileBtn) {
+                    viewFilesMobileBtn.addEventListener('click', function() {
+                        viewExplorerFiles();
+                        // Cerrar menú flotante después de presionar
+                        const floatMenu = document.getElementById('mobile-float-menu');
+                        if (floatMenu) {
+                            floatMenu.classList.remove('show');
+                        }
+                    });
+                }
+
+                // Cerrar el panel cuando se hace clic en el overlay
+                const mobileOverlay = document.getElementById('mobile-overlay');
+                if (mobileOverlay) {
+                    mobileOverlay.addEventListener('click', function() {
+                        const explorerPanel = document.querySelector('.explorer-panel');
+                        if (explorerPanel) {
+                            explorerPanel.classList.remove('show');
+                            mobileOverlay.classList.remove('show');
+                        }
+                    });
+                }
+            });
+
+        // Configurar eventos para el asistente de desarrollo
         document.addEventListener('DOMContentLoaded', function() {
             const toggleButton = document.getElementById('toggle-developer-assistant');
             const responseContainer = document.getElementById('assistant-response-container');
