@@ -972,7 +972,7 @@
                             <i class="bi bi-files"></i> Ver Archivos
                         </button>
                         <button id="toggle-assistant-chat" class="btn btn-sm btn-outline-light ms-2">
-                            <i class="bi bi-chat-dots"></i> Asistente
+                            <i class="bi bichat-dots"></i> Asistente
                         </button>
                         <button id="toggle-assistant-bar" class="btn btn-sm btn-outline-light ms-2">
                             <i class="bi bi-eye"></i> Ocultar/Mostrar
@@ -1402,6 +1402,11 @@
 
                 // Función para visualizar archivos del explorador en una ventana modal
                 window.viewExplorerFiles = function() {
+                    // Asegurarse de que currentDirectory existe
+                    if (typeof currentDirectory === 'undefined') {
+                        currentDirectory = '.';
+                    }
+
                     // Obtener datos actuales del explorador
                     const currentData = sessionStorage.getItem('explorer_data_' + currentDirectory);
 
