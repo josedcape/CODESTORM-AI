@@ -832,6 +832,83 @@
             display: none;
             margin-top: 12px;
         }
+
+        /* Estilos adicionales para el editor de archivos en el chat */
+        .message.assistant-message .file-editor-container {
+            background-color: var(--bg-tertiary);
+            border-radius: var(--border-radius);
+            overflow: hidden;
+            margin-top: 8px;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .file-editor-textarea {
+            font-family: 'Consolas', 'Monaco', monospace;
+            line-height: 1.5;
+            tab-size: 4;
+        }
+
+        .file-editor-actions {
+            display: flex;
+            gap: 5px;
+        }
+
+        /* Mejoras visuales para los mensajes de sistema */
+        .system-message {
+            background-color: var(--bg-tertiary);
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            padding: 8px 12px;
+            border-radius: var(--border-radius);
+            margin: 8px 0;
+            text-align: center;
+        }
+
+        /* Estilos para los mensajes de error y éxito */
+        .system-message .text-danger {
+            color: #ff6b6b !important;
+        }
+
+        .system-message .text-success {
+            color: #51cf66 !important;
+        }
+
+        .system-message .text-warning {
+            color: #fcc419 !important;
+        }
+
+        /* Animación de carga */
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        .spin {
+            animation: spin 1.5s linear infinite;
+            display: inline-block;
+        }
+
+        /* Mejoras para el contenedor de mensajes */
+        #assistant-chat-messages {
+            padding: 12px;
+            height: 350px;
+            overflow-y: auto;
+            background-color: var(--bg-darker);
+        }
+
+        /* Mejoras para los botones de acción */
+        #assistant-chat-footer button {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 38px;
+            height: 38px;
+            padding: 0;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+
+        
     </style>
 </head>
 <body>
@@ -2847,5 +2924,377 @@
             }
         }
     </script>
+    // Configuración del editor de archivos en el chat
+    document.addEventListener('DOMContentLoaded', function() {
+        // Referencias a elementos DOM
+        const assistantPanel = document.getElementById('assistant-chat-panel');
+        const messagesContainer = document.getElementById('assistant-chat-messages');
+        const messageInput = document.getElementById('message-input');
+        const sendButton = document.getElementById('send-message-button');
+
+        // Variables para el editor de archivos
+        let currentEditFile = null;
+        let originalFileContent = '';
+        let editedFileContent = '';
+        let isEditingFile = false;
+
+        // Función para solicitar edición de archivo
+        window.requestFileEdit = function(filePath) {
+            if (!filePath) {
+                filePath = prompt('Ingrese la ruta del archivo a editar:');
+                if (!filePath) return;
+            }
+
+            // Añadir mensaje del usuario solicitando edición
+            addMessage(`Quiero editar el archivo ${filePath}`, 'user');
+
+            // Mostrar indicador de carga
+            const loadingId = 'loading-' + Date.now();
+            addSystemMessage(`<i class="bi bi-arrow-repeat spin me-1"></i> Cargando archivo ${filePath}...`, loadingId);
+
+            // Cargar contenido del archivo
+            fetch(`/api/file/content?path=${encodeURIComponent(filePath)}`)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Archivo no encontrado o no se puede leer');
+                    }
+                    return response.text();
+                })
+                .then(content => {
+                    // Eliminar mensaje de carga
+                    removeMessage(loadingId);
+
+                    // Guardar contenido original
+                    originalFileContent = content;
+                    currentEditFile = filePath;
+
+                    // Añadir mensaje del asistente con el editor
+                    addMessage(createFileEditorHtml(filePath, content), 'assistant');
+
+                    // Configurar el editor
+                    setupFileEditor(filePath, content);
+                })
+                .catch(error => {
+                    // Eliminar mensaje de carga
+                    removeMessage(loadingId);
+
+                    // Mostrar error
+                    addSystemMessage(`<i class="bi bi-exclamation-triangle-fill text-warning me-1"></i> Error: ${error.message}`);
+                });
+        };
+
+        // Función para crear HTML del editor de archivos
+        function createFileEditorHtml(filePath, content) {
+            return `
+                <div class="file-editor-container">
+                    <div class="file-editor-header d-flex justify-content-between align-items-center mb-2">
+                        <div><i class="bi bi-file-earmark-code me-1"></i> <strong>${filePath}</strong></div>
+                        <div class="file-editor-actions">
+                            <button class="btn btn-sm btn-primary save-file-btn">
+                                <i class="bi bi-save me-1"></i> Guardar
+                            </button>
+                            <button class="btn btn-sm btn-secondary cancel-edit-btn ms-1">
+                                <i class="bi bi-x me-1"></i> Cancelar
+                            </button>
+                        </div>
+                    </div>
+                    <div class="file-editor-content">
+                        <pre class="file-content-preview bg-dark p-2 rounded mb-2"><code>${escapeHtml(content)}</code></pre>
+                        <textarea class="file-editor-textarea form-control bg-dark text-light" rows="10">${escapeHtml(content)}</textarea>
+                    </div>
+                </div>
+            `;
+        }
+
+        // Configurar el editor después de añadirlo al DOM
+        function setupFileEditor(filePath, content) {
+            // Marcar que estamos en modo edición
+            isEditingFile = true;
+
+            // Obtener referencias a los elementos del editor
+            const textarea = document.querySelector('.file-editor-textarea');
+            const saveBtn = document.querySelector('.save-file-btn');
+            const cancelBtn = document.querySelector('.cancel-edit-btn');
+
+            // Configurar eventos
+            if (textarea) {
+                textarea.focus();
+                editedFileContent = content;
+
+                textarea.addEventListener('input', function() {
+                    editedFileContent = this.value;
+                });
+
+                // Permitir tabulaciones en el textarea
+                textarea.addEventListener('keydown', function(e) {
+                    if (e.key === 'Tab') {
+                        e.preventDefault();
+                        const start = this.selectionStart;
+                        const end = this.selectionEnd;
+
+                        this.value = this.value.substring(0, start) + '    ' + this.value.substring(end);
+                        this.selectionStart = this.selectionEnd = start + 4;
+                    }
+                });
+            }
+
+            // Configurar botón de guardar
+            if (saveBtn) {
+                saveBtn.addEventListener('click', function() {
+                    saveFileChanges(filePath, editedFileContent);
+                });
+            }
+
+            // Configurar botón de cancelar
+            if (cancelBtn) {
+                cancelBtn.addEventListener('click', function() {
+                    cancelFileEdit();
+                });
+            }
+        }
+
+        // Función para guardar cambios en el archivo
+        function saveFileChanges(filePath, content) {
+            // Mostrar indicador de progreso
+            const saveId = 'save-' + Date.now();
+            addSystemMessage(`<i class="bi bi-arrow-repeat spin me-1"></i> Guardando cambios en ${filePath}...`, saveId);
+
+            // Enviar cambios al servidor
+            fetch('/api/file/save', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    file_path: filePath,
+                    content: content
+                })
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`Error ${response.status}: ${response.statusText}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                // Eliminar mensaje de guardado
+                removeMessage(saveId);
+
+                if (data.success) {
+                    // Mostrar mensaje de éxito
+                    addSystemMessage(`<i class="bi bi-check-circle-fill text-success me-1"></i> Cambios guardados correctamente en ${filePath}.`);
+
+                    // Actualizar el explorador de archivos si existe
+                    if (window.loadFiles) {
+                        window.loadFiles();
+                    }
+
+                    // Salir del modo edición
+                    isEditingFile = false;
+                    currentEditFile = null;
+
+                    // Añadir mensaje de confirmación del asistente
+                    addMessage(`He guardado los cambios en el archivo <strong>${filePath}</strong>. ¿Hay algo más en lo que pueda ayudarte?`, 'assistant');
+                } else {
+                    throw new Error(data.error || 'Error desconocido al guardar');
+                }
+            })
+            .catch(error => {
+                // Eliminar mensaje de guardado
+                removeMessage(saveId);
+
+                // Mostrar error
+                addSystemMessage(`<i class="bi bi-exclamation-triangle-fill text-danger me-1"></i> Error al guardar cambios: ${error.message}`);
+            });
+        }
+
+        // Función para cancelar la edición
+        function cancelFileEdit() {
+            isEditingFile = false;
+            currentEditFile = null;
+
+            // Añadir mensaje de cancelación
+            addSystemMessage(`<i class="bi bi-info-circle me-1"></i> Edición de archivo cancelada.`);
+
+            // Añadir mensaje del asistente
+            addMessage('He cancelado la edición del archivo. ¿En qué más puedo ayudarte?', 'assistant');
+        }
+
+        // Función para añadir mensaje al chat
+        function addMessage(content, type) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${type}-message animate__animated animate__fadeIn`;
+            messageDiv.innerHTML = content;
+            messagesContainer.appendChild(messageDiv);
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+
+            return messageDiv.id;
+        }
+
+        // Función para añadir mensaje del sistema
+        function addSystemMessage(content, id = null) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'system-message animate__animated animate__fadeIn';
+            if (id) messageDiv.id = id;
+            messageDiv.innerHTML = content;
+            messagesContainer.appendChild(messageDiv);
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+
+            return messageDiv.id;
+        }
+
+        // Función para eliminar un mensaje por ID
+        function removeMessage(id) {
+            const message = document.getElementById(id);
+            if (message) {
+                message.remove();
+            }
+        }
+
+        // Función para escapar HTML
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Modificar el comportamiento del envío de mensajes para manejar comandos especiales
+        if (sendButton && messageInput) {
+            const originalClickHandler = sendButton.onclick;
+
+            sendButton.onclick = function() {
+                const message = messageInput.value.trim();
+
+                // Verificar si es un comando para editar archivo
+                if (message.startsWith('/edit ')) {
+                    const filePath = message.substring(6).trim();
+                    window.requestFileEdit(filePath);
+                    messageInput.value = '';
+                    return;
+                }
+
+                // Si estamos en modo edición y el mensaje es /save, guardar cambios
+                if (isEditingFile && message === '/save') {
+                    if (currentEditFile && editedFileContent) {
+                        saveFileChanges(currentEditFile, editedFileContent);
+                        messageInput.value = '';
+                    }
+                    return;
+                }
+
+                // Si estamos en modo edición y el mensaje es /cancel, cancelar edición
+                if (isEditingFile && message === '/cancel') {
+                    cancelFileEdit();
+                    messageInput.value = '';
+                    return;
+                }
+
+                // Para otros mensajes, usar el manejador original si existe
+                if (originalClickHandler) {
+                    originalClickHandler.call(this);
+                } else {
+                    // Implementación básica si no hay manejador original
+                    if (message) {
+                        addMessage(message, 'user');
+                        messageInput.value = '';
+
+                        // Simular respuesta del asistente
+                        setTimeout(() => {
+                            addMessage('Lo siento, no puedo procesar ese mensaje en este momento.', 'assistant');
+                        }, 1000);
+                    }
+                }
+            };
+
+            // También modificar el evento keypress para manejar Enter
+            const originalKeyHandler = messageInput.onkeypress;
+
+            messageInput.onkeypress = function(e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    sendButton.click();
+                    return false;
+                }
+
+                // Usar el manejador original para otros casos
+                if (originalKeyHandler) {
+                    return originalKeyHandler.call(this, e);
+                }
+            };
+        }
+
+        // Añadir botón de edición de archivos al panel de chat
+        function addEditFileButton() {
+            const chatFooter = document.getElementById('assistant-chat-footer');
+            if (!chatFooter) return;
+
+            const editFileBtn = document.createElement('button');
+            editFileBtn.className = 'btn btn-sm btn-outline-light';
+            editFileBtn.innerHTML = '<i class="bi bi-pencil-square"></i>';
+            editFileBtn.title = 'Editar archivo';
+            editFileBtn.addEventListener('click', function() {
+                window.requestFileEdit();
+            });
+
+            // Insertar antes del input
+            chatFooter.insertBefore(editFileBtn, messageInput);
+        }
+
+        // Llamar a la función para añadir el botón
+        addEditFileButton();
+
+        // Añadir estilos CSS específicos para el editor de archivos
+        function addFileEditorStyles() {
+            const style = document.createElement('style');
+            style.textContent = `
+                .file-editor-container {
+                    background-color: var(--bg-panel);
+                    border-radius: var(--border-radius);
+                    overflow: hidden;
+                    margin-bottom: 10px;
+                }
+
+                .file-editor-header {
+                    background-color: var(--bg-tertiary);
+                    padding: 8px 12px;
+                    border-bottom: 1px solid var(--border-color);
+                }
+
+                .file-editor-content {
+                    padding: 10px;
+                }
+
+                .file-editor-textarea {
+                    font-family: 'Consolas', 'Monaco', monospace;
+                    resize: vertical;
+                    min-height: 150px;
+                }
+
+                .file-content-preview {
+                    max-height: 200px;
+                    overflow-y: auto;
+                    font-family: 'Consolas', 'Monaco', monospace;
+                    font-size: 0.9em;
+                    margin-bottom: 10px;
+                    white-space: pre-wrap;
+                }
+
+                @keyframes spin {
+                    0% { transform: rotate(0deg); }
+                    100% { transform: rotate(360deg); }
+                }
+
+                .spin {
+                    display: inline-block;
+                    animation: spin 1s linear infinite;
+                }
+            `;
+            document.head.appendChild(style);
+        }
+
+        // Añadir estilos
+        addFileEditorStyles();
+    });
+
 </body>
 </html>
