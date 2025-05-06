@@ -1902,30 +1902,11 @@
                         } else {
                             writeToTerminal(`\r\n\x1b[31mError: ${data.error || 'No se pudo procesar la instrucción'}\x1b[0m\r\n`);
                         }
+                        writeToTerminal('\r\n$ ');
                     })
                     .catch(error => {
                         console.error('Error al procesar instrucción:', error);
                         writeToTerminal(`\r\n\x1b[31mError: ${error.message}\x1b[0m\r\n`);
-                    });)
-                    .then(response => response.json())
-                    .then(data => {
-                        if (data.success && data.command) {
-                            // Mostrar el comando generado
-                            writeToTerminal('\r\n\x1b[33mComando generado: ' + data.command + '\x1b[0m\r\n');
-
-                            // Ejecutar el comando
-                            socket.emit('execute_command', {
-                                command: data.command,
-                                user_id: userId,
-                                terminal_id: terminalId
-                            });
-                        } else {
-                            writeToTerminal('\r\n\x1b[33mNo se pudo interpretar como comando. Tratando como consulta al asistente...\x1b[0m\r\n');
-                            writeToTerminal('\r\n$ ');
-                        }
-                    })
-                    .catch(error => {
-                        writeToTerminal('\r\n\x1b[31mError: ' + error.message + '\x1b[0m\r\n');
                         writeToTerminal('\r\n$ ');
                     });
                 }
