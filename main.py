@@ -796,7 +796,7 @@ def api_chat():
                     'success': False,
                     'error': f"Error con Anthropic API: {str(e)}",
                     'agent_id': agent_id,
-                    'model{language}
+                    f'model{language}'
                 {code}
                 ```
 
