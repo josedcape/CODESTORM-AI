@@ -864,7 +864,7 @@
             text-align: center;
         }
 
-        /* Estilos para los mensajes de error y éxito */
+        /* Estilos para mensajes de error y éxito */
         .system-message .text-danger {
             color: #ff6b6b !important;
         }
@@ -942,6 +942,90 @@
         }
         .hidden {
             display: none;
+        }
+
+        /* Estilos para integración de archivos con chat */
+        .chat-header-controls {
+            display: flex;
+            gap: 5px;
+        }
+
+        .chat-file-integration {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+
+        #file-preview-panel {
+            width: 0;
+            flex-shrink: 0;
+            background-color: var(--bg-darker);
+            border-right: 1px solid var(--border-color);
+            transition: width 0.3s ease;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        #file-preview-panel.show {
+            width: 50%;
+        }
+
+        .file-preview-header {
+            padding: 8px 12px;
+            background-color: var(--bg-tertiary);
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .file-preview-header h6 {
+            margin: 0;
+            font-size: 0.9rem;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 150px;
+        }
+
+        .file-preview-content {
+            flex: 1;
+            overflow: auto;
+            padding: 8px;
+            font-family: ''Consolas', 'Monaco', monospace;
+            font-size: 0.9rem;
+            line-height: 1.5;
+            white-space: pre-wrap;
+        }
+
+        .file-diff-preview {
+            display: none;
+            padding: 8px;
+            background-color: var(--bg-input);
+            border-top: 1px solid var(--border-color);
+            max-height: 120px;
+            overflow: auto;
+            font-size: 0.85rem;
+        }
+
+        .file-diff-preview.show {
+            display: block;
+        }
+
+        .diff-added {
+            background-color: rgba(40, 167, 69, 0.2);
+            color: #28a745;
+        }
+
+        .diff-removed {
+            background-color: rgba(220, 53, 69, 0.2);
+            color: #dc3545;
+        }
+
+        #assistant-chat-messages {
+            flex: 1;
+            overflow: auto;
         }
     </style>
 </head>
