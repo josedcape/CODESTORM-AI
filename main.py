@@ -1773,7 +1773,7 @@ if __name__ == '__main__':
 
         try:
             init_xterm_blueprint(app, socketio)
-            app.register_blueprint(xterm_bp, url_prefix='/xterm')
+            # El blueprint ya se registra en la función init_xterm_blueprint
             logging.info("xterm blueprint registered successfully")
         except Exception as e:
             logging.error(f"Error registering xterm blueprint: {str(e)}")
