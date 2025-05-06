@@ -2632,7 +2632,7 @@
                 copyButton.addEventListener('click', function() {
                     const text = responseDisplay.textContent;
                     navigator.clipboard.writeText(text)
-                        .then(() => showNotification('Contenido copiado al portapapeles', ''success'))
+                        .then(() => showNotification('Contenido copiado al portapapeles', 'success'))
                         .catch(err => {
                             console.error('Error al copiar:', err);
                             showNotification('Error al copiar el contenido', 'error');
