@@ -20,6 +20,7 @@ import traceback
 import re
 import threading
 from constructor_routes import constructor_bp
+from xterm_terminal import xterm_bp, init_xterm_blueprint
 
 # Configurar logging
 logging.basicConfig(level=logging.DEBUG,
@@ -34,6 +35,14 @@ app.secret_key = os.getenv('SECRET_KEY', 'default_secret_key')
 CORS(app)
 socketio = SocketIO(app, cors_allowed_origins="*", async_mode='threading',
                     ping_timeout=60, ping_interval=25, logger=True, engineio_logger=True)
+
+# Register xterm terminal blueprint
+try:
+    app.register_blueprint(xterm_bp)
+    init_xterm_blueprint(app, socketio)
+    logging.info("XTerm terminal blueprint registered successfully")
+except Exception as e:
+    logging.error(f"Error registering XTerm terminal blueprint: {str(e)}")
 
 # Register constructor blueprint
 try:

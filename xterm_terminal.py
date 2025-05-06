@@ -11,7 +11,7 @@ from flask import Blueprint, render_template, request, jsonify
 from flask_socketio import emit, join_room, leave_room
 import traceback
 
-xterm_bp = Blueprint('xterm', __name__)
+xterm_bp = Blueprint('xterm', __name__, url_prefix='/xterm')
 
 @xterm_bp.route('/xterm_terminal')
 def xterm_terminal():
