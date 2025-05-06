@@ -337,6 +337,7 @@
 {% endblock %}
 
 {% block scripts %}
+<script src="{{ url_for('static', filename='js/natural-command-processor.js') }}"></script>
 <script src="{{ url_for('static', filename='js/tech-selector.js') }}"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {

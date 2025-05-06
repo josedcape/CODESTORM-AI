@@ -51,11 +51,11 @@ def generate_application(project_id, description, agent, model, options, feature
 
         # Initialize development_paused status
         development_paused[project_id] = False
-        
+
         # Obtener las claves API del contexto de la aplicación Flask
         from flask import current_app
         api_keys = current_app.config.get('API_KEYS', {})
-        
+
         # Verificar si el modelo solicitado tiene una API configurada
         if model in api_keys and not api_keys.get(model):
             # Registrar advertencia y buscar un modelo alternativo
@@ -63,7 +63,7 @@ def generate_application(project_id, description, agent, model, options, feature
                 'time': time.time(),
                 'message': f"Advertencia: El modelo {model} no está configurado. Buscando alternativa."
             })
-            
+
             # Buscar un modelo alternativo disponible
             for alt_model, key in api_keys.items():
                 if key:
@@ -844,7 +844,7 @@ def determine_frameworks(description):
 
     # Ordenar y seleccionar los mejores frameworks de frontend
     frontend_frameworks.sort(key=lambda x: x['score'], reverse=True)
-    frameworks['frontend'] = frontend_frameworks[:3]  # Top 3 frontends
+    frameworks['frontend'] =frontend_frameworks[:3]  # Top 3 frontends
 
     # Detectar bases de datos
     database_options = [
@@ -1321,16 +1321,16 @@ def generate_app():
 
         # Generate unique project ID
         project_id = str(uuid.uuid4())
-        
+
         # Create project workspace
         create_project_workspace(project_id)
-        
+
         # Start generation in background thread
         thread = Thread(target=generate_application, 
                          args=(project_id, description, agent, model, options, features))
         thread.daemon = True
         thread.start()
-        
+
         return jsonify({
             'success': True,
             'project_id': project_id,

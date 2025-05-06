@@ -72,7 +72,7 @@ window.floatingAssistant = window.floatingAssistant || {
             return response.json();
         });
     }
-};/
+};
 
 (function() {
     // Estado y configuración del asistente

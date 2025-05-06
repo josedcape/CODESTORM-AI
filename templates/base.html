@@ -180,6 +180,16 @@
     <script src="/static/js/terminal-integration.js"></script>
     <script src="{{ url_for('static', filename='js/chat/interaction.js') }}"></script>
     {% block scripts %}{% endblock %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  // Asegurar que se inicialice DevAssistant después de que el DOM esté completamente cargado
+  if (typeof DevAssistant === 'function') {
+    window.setTimeout(function() {
+      window.devAssistant = new DevAssistant();
+    }, 500);
+  }
+});
+</script>
     <!-- Asistente Flotante -->
     <script src="/static/js/floating-assistant.js"></script>
     <!-- Contenedor para notificaciones toast -->
