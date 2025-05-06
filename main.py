@@ -798,8 +798,191 @@ def api_chat():
                 model = genai.GenerativeModel('gemini-1.5-pro')
 
                 full_prompt = system_prompt + "\n\n"
-                for msg in formatted_context:
-                    role_prefix = "Usuario: " if msg['role'] == 'user' else "Asistente: "{language}\n{code}\n```\n\nINSTRUCCIONES:\n{instructions}\n\nResponde en formato JSON con las siguientes claves{language}\n{code}\n```\n\nINSTRUCCIONES:\n{instructions}\n\nResponde en formato JSON con las siguientes claves:\n- correctedCode: el código corregido completo\n- changes: una lista de objetos, cada uno con 'description' y 'lineNumbers'\n- explanation: una explicación detallada de los cambios"}
+                for{language}\n{code}\n```\n\nINSTRUCCIONES:\n{instructions}\n\nResponde en formato JSON con las siguientes claves:\n- correctedCode: el código corregido completo\n- changes: una lista de objetos, cada uno con 'description' y 'lineNumbers'\n- explanation: una explicación detallada de los cambios"
+
+                # Generar la respuesta con Gemini
+                gemini_response = model.generate_content(full_prompt)
+                response = gemini_response.text
+                logging.info(f"Respuesta generada con Gemini: {response[:100]}...")
+
+                respuesta = response
+
+            except Exception as e:
+                logging.error(f"Error con API de Gemini: {str(e)}")
+                return jsonify({
+                    'success': False,
+                    'error': f"Error con Gemini API: {str(e)}",
+                    'agent_id': agent_id,
+                    'model': model_choice
+                })
+
+        else:
+            available_models = []
+            if openai_api_key:
+                available_models.append('openai')
+            if anthropic_api_key:
+                available_models.append('anthropic')
+            if gemini_api_key:
+                available_models.append('gemini')
+
+            if available_models:
+                available_models_text = ", ".join(available_models)
+                message = f"El modelo '{model_choice}' no está soportado. Por favor, selecciona uno de los siguientes modelos disponibles: {available_models_text}."
+            else:
+                message = "No hay modelos disponibles en este momento. Por favor configura al menos una API key en el panel de Secrets (OpenAI, Anthropic o Gemini)."
+
+            logging.warning(f"Modelo no disponible: {model_choice}")
+            return jsonify({
+                'success': False,
+                'response': message,
+                'agent_id': agent_id,
+                'model': model_choice,
+                'available_models': available_models
+            })
+
+        # Verificar que el resultado tenga la estructura esperada
+        if not respuesta:
+            return jsonify({
+                'success': False,
+                'error': 'No se pudo obtener una respuesta válida del modelo'
+            }), 500
+
+        return jsonify({
+            'success': True,
+            'response': respuesta,
+            'agent_id': agent_id,
+            'model': model_choice
+        })
+
+    except Exception as e:
+        logging.error(f"Error al procesar la solicitud de chat: {str(e)}")
+        logging.error(traceback.format_exc())
+        return jsonify({
+            'success': False,
+            'error': f'Error al procesar la solicitud: {str(e)}'
+        }), 500
+
+def get_user_workspace(user_id='default'):
+    """Obtener o crear un directorio de trabajo para el usuario."""
+    workspace_path = Path("./user_workspaces") / user_id
+    workspace_path.mkdir(parents=True, exist_ok=True)
+    return workspace_path
+
+@app.route('/api/process_code', methods=['POST'])
+def process_code():
+    """Procesa una solicitud de corrección de código."""
+    try:
+        data = request.json
+        if not data:
+            return jsonify({
+                'success': False,
+                'error': 'No se proporcionaron datos'
+            }), 400
+
+        code = data.get('code', '')
+        instructions = data.get('instructions', '')
+        language = data.get('language', 'python')
+        model = data.get('model', 'openai')
+
+        if not code:
+            return jsonify({
+                'success': False,
+                'error': 'No se proporcionó código'
+            }), 400
+
+        if not instructions:
+            return jsonify({
+                'success': False,
+                'error': 'No se proporcionaron instrucciones'
+            }), 400
+
+        result = None
+        if model == 'openai' and openai_api_key:
+            try:
+                client = openai.OpenAI()
+
+                response = client.chat.completions.create(
+                    model="gpt-4o",
+                    messages=[
+                        {"role": "system", "content": "Eres un experto programador especializado en corregir código."},
+                        {"role": "user", "content": f"""Corrige el siguiente código en {language} según las instrucciones proporcionadas.
+
+                CÓDIGO:
+                ```{language}
+                {code}
+                ```
+
+                INSTRUCCIONES:
+                {instructions}
+
+                Responde en formato JSON con las siguientes claves:
+                - correctedCode: el código corregido completo
+                - changes: una lista de objetos, cada uno con 'description' y 'lineNumbers'
+                - explanation: una explicación detallada de los cambios
+                """}
+                    ],
+                    temperature=0.1
+                )
+
+                response_text = response.choices[0].message.content.strip()
+                try:
+                    result = json.loads(response_text)
+                except json.JSONDecodeError:
+                    # Intenta extraer JSON de la respuesta si está envuelto en bloques de código
+                    json_match = re.search(r'```(?:json)?\s*(.*?)\s*```', response_text, re.DOTALL)
+                    if json_match:
+                        try:
+                            result = json.loads(json_match.group(1).strip())
+                        except json.JSONDecodeError:
+                            logging.error(f"Error al decodificar JSON extraído de OpenAI: {json_match.group(1)[:500]}")
+                            result = {
+                                "correctedCode": code,
+                                "changes": [{"description": "No se pudieron procesar los cambios correctamente", "lineNumbers": [1]}],
+                                "explanation": "Error al procesar la respuesta de OpenAI."
+                            }
+                    else:
+                        logging.error(f"No se encontró formato JSON en la respuesta de OpenAI: {response_text[:500]}")
+                        result = {
+                            "correctedCode": code,
+                            "changes": [{"description": "No se encontró formato JSON en la respuesta", "lineNumbers": [1]}],
+                            "explanation": "OpenAI no respondió en el formato esperado. Intente de nuevo o use otro modelo."
+                        }
+
+                logging.info("Código corregido con OpenAI")
+
+            except Exception as e:
+                logging.error(f"Error con API de OpenAI: {str(e)}")
+                return jsonify({
+                    'success': False,
+                    'error': f'Error al conectar con OpenAI: {str(e)}'
+                }), 500
+
+        elif model == 'anthropic' and anthropic_api_key:
+            try:
+                import anthropic
+                from anthropic import Anthropic
+
+                client = Anthropic(api_key=anthropic_api_key)
+
+                response = client.messages.create(
+                    model="claude-3-5-sonnet-latest",
+                    messages=[
+                        {"role": "system", "content": "Eres un experto programador especializado en corregir código."},
+                        {"role": "user", "content": f"""Corrige el siguiente código en {language} según las instrucciones proporcionadas.
+
+                CÓDIGO:
+                ```{language}
+                {code}
+                ```
+
+                INSTRUCCIONES:
+                {instructions}
+
+                Responde en formato JSON con las siguientes claves:
+                - correctedCode: el código corregido completo
+                - changes: una lista de objetos, cada uno con 'description' y 'lineNumbers'
+                - explanation: una explicación detallada de los cambios
+                """}
                     ],
                     temperature=0.1
                 )
