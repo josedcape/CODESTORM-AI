@@ -701,24 +701,14 @@ class NaturalCommandProcessor {
         this.commandHistory.push({
             instruction: instruction,
             command: command,
-            timestamp: new Date
-                    /**
-                     * Agrega un comando al historial
-                     * @param {string} instruction - Instrucción original
-                     * @param {string} command - Comando ejecutado
-                     */
-                    addToHistory(instruction, command) {
-                        this.commandHistory.push({
-                            instruction: instruction,
-                            command: command,
-                            timestamp: new Date()
-                        });
+            timestamp: new Date()
+        });
 
-                        // Mantener el historial a un tamaño razonable
-                        if (this.commandHistory.length > 100) {
-                            this.commandHistory.shift(); // Eliminar el comando más antiguo
-                        }
-                    }
+        // Mantener el historial a un tamaño razonable
+        if (this.commandHistory.length > 100) {
+            this.commandHistory.shift(); // Eliminar el comando más antiguo
+        }
+    }
 
                     /**
                      * Obtiene el historial de comandos
