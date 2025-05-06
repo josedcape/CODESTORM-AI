@@ -1469,19 +1469,20 @@ def create_file():
             'error': str(e)
         }), 500
 
-@app.route('/api/files/delete', methods=['DELETE'])
+@app.route('/api/files/delete', methods=['DELETE', 'POST'])
 def delete_file():
     """API para eliminar un archivo o directorio del workspace del usuario."""
     try:
-        data = request.json
-        if not data:
-            return jsonify({
-                'success': False,
-                'error': 'No se proporcionaron datos'
-            }), 400
-
-        file_path = data.get('file_path')
-        user_id = data.get('user_id', 'default')
+        # Manejar tanto DELETE como POST
+        data = request.json if request.is_json else None
+        
+        # Si es una solicitud GET desde la URL
+        if request.method == 'GET' or not data:
+            file_path = request.args.get('path')
+            user_id = request.args.get('user_id', 'default')
+        else:
+            file_path = data.get('file_path')
+            user_id = data.get('user_id', 'default')
 
         if not file_path:
             return jsonify({
@@ -1527,6 +1528,12 @@ def delete_file():
             'success': False,
             'error': str(e)
         }), 500
+
+# Endpoint adicional para compatibilidad con la URL /api/delete_file
+@app.route('/api/delete_file', methods=['GET', 'POST', 'DELETE'])
+def delete_file_compat():
+    """Endpoint de compatibilidad para eliminar archivos."""
+    return delete_file()
 
 
 @app.route('/api/files/download', methods=['GET'])

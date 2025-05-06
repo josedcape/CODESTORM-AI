@@ -190,7 +190,7 @@
             this.showNotification('Eliminando elemento...', 'info', false);
             
             // Eliminar en el servidor
-            fetch('/api/file/delete', {
+            fetch('/api/files/delete', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
