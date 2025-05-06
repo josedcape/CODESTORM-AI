@@ -798,7 +798,16 @@ def api_chat():
                 model = genai.GenerativeModel('gemini-1.5-pro')
 
                 full_prompt = system_prompt + "\n\n"
-                for{language}\n{code}\n```\n\nINSTRUCCIONES:\n{instructions}\n\nResponde en formato JSON con las siguientes claves:\n- correctedCode: el código corregido completo\n- changes: una lista de objetos, cada uno con 'description' y 'lineNumbers'\n- explanation: una explicación detallada de los cambios"
+                for msg in formatted_context:
+                    role_prefix = "Usuario: " if msg['role'] == 'user' else "Asistente: "
+                    full_prompt += role_prefix + msg['content'] + "\n\n"
+                full_prompt += "Usuario: " + user_message + "\n\nAsistente: "
+
+                gemini_response = model.generate_content(full_prompt)
+                response = gemini_response.text
+                logging.info(f"Respuesta generada con Gemini: {response[:100]}...")
+
+                return {'response': response, 'error': None}
 
                 # Generar la respuesta con Gemini
                 gemini_response = model.generate_content(full_prompt)
