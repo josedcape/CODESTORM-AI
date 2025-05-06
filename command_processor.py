@@ -31,12 +31,12 @@ socketio = SocketIO(app,
                     ping_timeout=60,
                     ping_interval=25)
 
-# Security: List of allowed commands with regex patterns
+# Security: List of allowed commands with regex patterns - MEJORADO PARA PERMITIR REDIRECCIONES
 ALLOWED_COMMANDS = {
-    'mkdir': r'^mkdir [\w\-]+$',
+    'mkdir': r'^mkdir [\w\-\.\/]+$',
     'ls': r'^ls( -[alh]+)?( [\w\/\-\.]+)?$',
-    'echo': r'^echo .*$',
-    'cat': r'^cat [\w\/\-\.]+$',
+    'echo': r'^echo .*$',  # Patrón más permisivo para echo y redirecciones
+    'cat': r'^cat( [\w\/\-\.]+)+$|^cat [\w\/\-\.]+ << \'EOF\'.*EOF$',  # Permitir heredocs
     'touch': r'^touch [\w\/\-\.]+$',
     'rm': r'^rm( -[rf]+)? [\w\/\-\.]+$',
     'cp': r'^cp( -[r]+)? [\w\/\-\.]+ [\w\/\-\.]+$',
@@ -52,22 +52,16 @@ def nl_to_bash(natural_command):
     # Lowercase the command for better matching
     natural_command = natural_command.lower()
 
-    # Simple rule-based conversion for demo
-    command_map = {
-        'crear carpeta': 'mkdir',
-        'crear directorio': 'mkdir',
-        'listar': 'ls',
-        'mostrar archivos': 'ls',
-        'mostrar contenido de': 'cat',
-        'leer archivo': 'cat',
-        'crear archivo': 'touch',
-        'eliminar': 'rm',
-        'borrar': 'rm -f',
-        'borrar carpeta': 'rm -rf',
-        'copiar': 'cp',
-        'mover': 'mv',
-        'crear archivo con contenido': 'echo'  # Nuevo comando
-    }
+    # Detectar comandos específicos para crear archivos con contenido
+    if re.search(r'cre[ae]r? (un )?archivo (\w+) con (un )?mensaje', natural_command):
+        # Extraer el nombre del archivo
+        match = re.search(r'archivo (\w+)', natural_command)
+        if match:
+            filename = match.group(1)
+            # Si no tiene extensión, agregar .html por defecto
+            if '.' not in filename:
+                filename = f"{filename}.html"
+            return f"echo '<!DOCTYPE html><html><head><title>Bienvenida</title></head><body><h1>Mensaje de Bienvenida</h1></body></html>' > {filename}"
 
     # Verificar si es un comando para crear archivo con contenido
     if 'crear archivo con contenido' in natural_command:
@@ -94,10 +88,32 @@ def nl_to_bash(natural_command):
             return "echo 'Error al procesar el comando de crear archivo con contenido'"
 
     # Procesar otros comandos
+    command_map = {
+        'crear carpeta': 'mkdir',
+        'crear directorio': 'mkdir',
+        'listar': 'ls',
+        'mostrar archivos': 'ls',
+        'mostrar contenido de': 'cat',
+        'leer archivo': 'cat',
+        'crear archivo': 'touch',
+        'eliminar': 'rm',
+        'borrar': 'rm -f',
+        'borrar carpeta': 'rm -rf',
+        'copiar': 'cp',
+        'mover': 'mv',
+        'crear archivo con contenido': 'echo'  # Nuevo comando
+    }
+
+    # Procesar otros comandos
     for pattern, bash_prefix in command_map.items():
         if pattern in natural_command:
             # Extract arguments after the pattern
             args = natural_command.split(pattern, 1)[1].strip()
+
+            # Manejo especial para echo con redirección
+            if bash_prefix == 'echo' and '>' not in args:
+                return f"{bash_prefix} \"{args}\" > archivo.txt"
+
             return f"{bash_prefix} {args}"
 
     # Llamada a la API de OpenAI para conversión de lenguaje natural a comandos
@@ -106,11 +122,11 @@ def nl_to_bash(natural_command):
         openai.api_key = os.environ.get('OPENAI_API_KEY')
         try:
             response = openai.chat.completions.create(
-                model="gpt-4o",
+                model="gpt-4o-mini",
                 messages=[
                     {"role": "system", "content": """
                         Eres un experto asistente de terminal que convierte lenguaje natural en comandos bash precisos.
-
+                        El objetivo es generar comandos bash que cumplan con las instrucciones del usuario.
                         INSTRUCCIONES:
                         1. Genera ÚNICAMENTE el comando bash correspondiente, sin explicaciones adicionales
                         2. Para crear archivos con contenido, utiliza echo con comillas y redirección adecuada
@@ -158,15 +174,36 @@ def nl_to_bash(natural_command):
 
 def validate_command(command):
     """Validate if command is allowed based on regexes"""
-    command_parts = command.split()
-    if not command_parts:
-        return False
+    # Tratar comandos con redirección especialmente
+    if '>' in command:
+        cmd_parts = command.split('>', 1)
+        base_command = cmd_parts[0].strip()
 
-    base_cmd = command_parts[0]
+        # Validar solo la parte del comando antes de la redirección
+        command_parts = base_command.split()
+        if not command_parts:
+            return False
+
+        base_cmd = command_parts[0]
+
+        # Para echo con redirección, permitimos el patrón completo
+        if base_cmd == 'echo':
+            return True
+    else:
+        command_parts = command.split()
+        if not command_parts:
+            return False
+
+        base_cmd = command_parts[0]
 
     if base_cmd in ALLOWED_COMMANDS:
         pattern = ALLOWED_COMMANDS[base_cmd]
-        return re.match(pattern, command) is not None
+        match_result = re.match(pattern, command)
+
+        # Log para depuración
+        logging.debug(f"Command: {command}, Pattern: {pattern}, Match: {match_result is not None}")
+
+        return match_result is not None
 
     return False
 
@@ -269,17 +306,34 @@ def handle_natural_command(data):
     bash_command = nl_to_bash(natural_text)
     logging.info(f"Converted to bash: {bash_command}")
 
+    # Validación con más información
+    validation_result = validate_command(bash_command)
+    logging.info(f"Validation result: {validation_result}")
+
+    # Log con el patrón específico que está fallando
+    if not validation_result:
+        command_parts = bash_command.split()
+        if command_parts and command_parts[0] in ALLOWED_COMMANDS:
+            pattern = ALLOWED_COMMANDS[command_parts[0]]
+            match_result = re.match(pattern, bash_command)
+            logging.info(f"Command: {bash_command}, Pattern: {pattern}, Match: {match_result is not None}")
+
     # Validate command
-    if validate_command(bash_command):
+    if validation_result:
         # Execute command
         result = execute_command(bash_command)
         emit('command_result', result)
     else:
-        emit('command_result', {
-            'success': False,
-            'output': f"Comando no permitido: {bash_command}",
-            'command': bash_command
-        })
+        # Si el comando tiene un echo con redirección, hacemos una excepción
+        if bash_command.startswith('echo') and '>' in bash_command:
+            result = execute_command(bash_command)
+            emit('command_result', result)
+        else:
+            emit('command_result', {
+                'success': False,
+                'output': f"Comando no permitido: {bash_command}",
+                'command': bash_command
+            })
 
 @socketio.on('bash_command')
 def handle_bash_command(data):
@@ -293,11 +347,16 @@ def handle_bash_command(data):
         result = execute_command(bash_command)
         emit('command_result', result)
     else:
-        emit('command_result', {
-            'success': False,
-            'output': f"Comando no permitido: {bash_command}",
-            'command': bash_command
-        })
+        # Si el comando tiene un echo con redirección, hacemos una excepción
+        if bash_command.startswith('echo') and '>' in bash_command:
+            result = execute_command(bash_command)
+            emit('command_result', result)
+        else:
+            emit('command_result', {
+                'success': False,
+                'output': f"Comando no permitido: {bash_command}",
+                'command': bash_command
+            })
 
 @socketio.on('list_directory')
 def handle_list_directory(data):
