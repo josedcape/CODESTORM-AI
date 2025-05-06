@@ -403,16 +403,31 @@ class DevAssistant {
      * @param {Array} fileChanges - Lista de cambios a aplicar
      */
     applyFileChanges(fileChanges) {
+        if (!fileChanges || fileChanges.length === 0) {
+            this.addSystemMessage('❌ No hay cambios para aplicar');
+            return;
+        }
+
         this.addSystemMessage('Aplicando cambios en archivos...');
 
-        fetch(this.config.apiEndpoints.applyChanges, {
+        // Formatear cambios para API
+        const changes = fileChanges.map(change => {
+            return {
+                file_path: change.file_path || change.filename,
+                content: change.content || change.code || '',
+                change_type: change.change_type || 'write'
+            };
+        });
+
+        fetch('/api/apply_changes', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({ 
-                changes: fileChanges,
-                projectId: this.state.projectId
+                changes: changes,
+                projectId: this.state.projectId,
+                user_id: 'default'
             })
         })
         .then(response => {
@@ -423,7 +438,7 @@ class DevAssistant {
         })
         .then(data => {
             if (data.success) {
-                this.addSystemMessage(`✅ Cambios aplicados correctamente a ${fileChanges.length} ${fileChanges.length === 1 ? 'archivo' : 'archivos'}.`);
+                this.addSystemMessage(`✅ Cambios aplicados correctamente a ${changes.length} ${changes.length === 1 ? 'archivo' : 'archivos'}.`);
 
                 // Si hay archivos modificados, mostrarlos
                 if (data.modifiedFiles && data.modifiedFiles.length > 0) {
@@ -434,12 +449,17 @@ class DevAssistant {
                     filesList += '</ul>';
                     this.addSystemMessage(`Archivos modificados: ${filesList}`);
                 }
+
+                // Notificar al explorador de archivos para recargar
+                if (window.fileActions && typeof window.fileActions.refreshFileExplorer === 'function') {
+                    window.fileActions.refreshFileExplorer();
+                }
             } else {
                 this.addSystemMessage(`❌ Error al aplicar cambios: ${data.error || 'Error desconocido'}`);
             }
         })
         .catch(error => {
-            console.error('Error:', error);
+            console.error('Error al aplicar cambios:', error);
             this.addSystemMessage(`❌ Error al aplicar cambios: ${error.message}`);
         });
     }
@@ -581,22 +601,40 @@ class DevAssistant {
      * @param {Array} fileChanges - Lista de cambios propuestos
      */
     addFileChangesMessage(fileChanges) {
+        if (!fileChanges || fileChanges.length === 0) return;
+        
         const messageDiv = document.createElement('div');
         messageDiv.className = 'message action-message';
 
+        // Sanitizar y formatear los cambios para mostrarlos
         let filesList = '<ul class="file-changes-list">';
         fileChanges.forEach(change => {
-            filesList += `<li>${change.file_path || change.filename} - ${change.change_type || change.type}</li>`;
+            const filePath = change.file_path || change.filename || 'archivo sin nombre';
+            const changeType = change.change_type || change.type || 'modificación';
+            
+            filesList += `<li><strong>${this.escapeHtml(filePath)}</strong> - ${this.escapeHtml(changeType)}</li>`;
         });
         filesList += '</ul>';
 
+        // Guardar una copia segura de los cambios
+        const changesData = JSON.stringify(fileChanges.map(change => {
+            return {
+                file_path: change.file_path || change.filename,
+                content: change.content || change.code || '',
+                change_type: change.change_type || change.type || 'write'
+            };
+        }));
+
         messageDiv.innerHTML = `
-            <div class="file-changes" data-changes='${JSON.stringify(fileChanges)}'>
+            <div class="file-changes">
                 <p>Cambios propuestos (${fileChanges.length} ${fileChanges.length === 1 ? 'archivo' : 'archivos'}):</p>
                 ${filesList}
                 <button class="btn btn-sm btn-primary mt-2 apply-changes-btn">Aplicar cambios</button>
             </div>
         `;
+
+        // Adjuntar los datos de cambios como atributo 
+        messageDiv.querySelector('.file-changes').dataset.changes = changesData;
 
         this.elements.messages.appendChild(messageDiv);
         this.scrollToBottom();

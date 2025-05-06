@@ -1795,4 +1795,3 @@ if __name__ == '__main__':
     except Exception as e:
         logging.critical(f"Error fatal al iniciar el servidor: {str(e)}")
         logging.critical(traceback.format_exc())
-
