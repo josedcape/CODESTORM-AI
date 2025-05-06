@@ -308,11 +308,11 @@ def get_file_content():
                 'success': False,
                 'error': 'Se requiere ruta de archivo'
             }), 400
-            
+
         # Obtener workspace del usuario
         user_id = session.get('user_id', 'default')
         workspace_path = get_user_workspace(user_id)
-        
+
         # Crear ruta completa y verificar seguridad
         target_path = os.path.join(workspace_path, file_path)
         if not os.path.normpath(target_path).startswith(os.path.normpath(workspace_path)):
@@ -320,24 +320,24 @@ def get_file_content():
                 'success': False,
                 'error': 'Acceso denegado: No se puede acceder a archivos fuera del workspace'
             }), 403
-            
+
         # Verificar que el archivo existe
         if not os.path.exists(target_path) or os.path.isdir(target_path):
             return jsonify({
                 'success': False,
                 'error': 'El archivo no existe o es un directorio'
             }), 404
-            
+
         # Leer contenido del archivo
         with open(target_path, 'r', encoding='utf-8', errors='replace') as f:
             content = f.read()
-            
+
         return jsonify({
             'success': True,
             'content': content,
             'file_path': file_path
         })
-            
+
     except Exception as e:
         logging.error(f"Error al obtener contenido del archivo: {str(e)}")
         return jsonify({
@@ -355,14 +355,14 @@ def save_file_content():
                 'success': False,
                 'error': 'Se requiere ruta de archivo y contenido'
             }), 400
-            
+
         file_path = data['file_path']
         content = data['content']
-        
+
         # Obtener workspace del usuario
         user_id = session.get('user_id', 'default')
         workspace_path = get_user_workspace(user_id)
-        
+
         # Crear ruta completa y verificar seguridad
         target_path = os.path.join(workspace_path, file_path)
         if not os.path.normpath(target_path).startswith(os.path.normpath(workspace_path)):
@@ -370,14 +370,14 @@ def save_file_content():
                 'success': False,
                 'error': 'Acceso denegado: No se puede acceder a archivos fuera del workspace'
             }), 403
-            
+
         # Crear directorios si no existen
         os.makedirs(os.path.dirname(target_path), exist_ok=True)
-        
+
         # Escribir contenido al archivo
         with open(target_path, 'w', encoding='utf-8') as f:
             f.write(content)
-            
+
         # Notificar cambio si es posible
         try:
             socketio.emit('file_change', {
@@ -388,13 +388,13 @@ def save_file_content():
             }, room=user_id)
         except Exception as notify_error:
             logging.warning(f"Error al notificar cambio de archivo: {str(notify_error)}")
-            
+
         return jsonify({
             'success': True,
             'message': 'Archivo guardado correctamente',
             'file_path': file_path
         })
-            
+
     except Exception as e:
         logging.error(f"Error al guardar archivo: {str(e)}")
         return jsonify({
@@ -799,138 +799,7 @@ def api_chat():
 
                 full_prompt = system_prompt + "\n\n"
                 for msg in formatted_context:
-                    role_prefix = "Usuario: " if msg['role'] == 'user' else "Asistente: "
-                    full_prompt += role_prefix + msg['content'] + "\n\n"
-                full_prompt += "Usuario: " + user_message + "\n\nAsistente: "
-
-                gemini_response = model.generate_content(full_prompt)
-                respuesta = gemini_response.text
-
-            except Exception as e:
-                logging.error(f"Error con API de Gemini: {str(e)}")
-                return jsonify({
-                    'success': False,
-                    'error': f"Error con Gemini API: {str(e)}",
-                    'agent_id': agent_id,
-                    'model': model_choice
-                })
-
-        # Si no se pudo generar una respuesta, mostrar un mensaje de error
-        if not respuesta:
-            return jsonify({
-                'success': False,
-                'error': f"No se pudo generar una respuesta con el modelo {model_choice}. Verifica que la API esté configurada correctamente.",
-                'agent_id': agent_id,
-                'model': model_choice,
-                'available_models': available_apis
-            })
-
-        # Devolver respuesta real de la API
-        return jsonify({
-            'success': True,
-            'response': respuesta,
-            'agent_id': agent_id,
-            'model': model_choice,
-            'available_models': available_apis,
-            'is_demo': False
-        })
-    except Exception as e:
-        logging.error(f"Error en API de chat: {str(e)}")
-        return jsonify({'error': str(e)}), 500
-
-@app.route('/files')
-def files():
-    """Render the files explorer page."""
-    return render_template('files.html')
-
-@app.route('/code_corrector')
-def code_corrector():
-    """Ruta al corrector de código."""
-    return render_template('code_corrector.html')
-
-@app.route('/constructor')
-def constructor():
-    """Ruta al constructor de aplicaciones."""
-    return render_template('constructor.html')
-
-@app.route('/agente')
-def agente():
-    """Ruta a la página del agente."""
-    return render_template('agente.html')
-
-@app.route('/agent')
-def agent_en():
-    """Ruta alternativa para la página del agente."""
-    return redirect('/agente')
-
-@app.route('/preview')
-def preview():
-    """Render the preview page."""
-    return render_template('preview.html')
-
-@app.route('/terminal')
-def terminal():
-    """Render the Monaco terminal page."""
-    os.makedirs('user_workspaces/default', exist_ok=True)
-    readme_path = os.path.join('user_workspaces/default', 'README.md')
-    if not os.path.exists(readme_path):
-        with open(readme_path, 'w') as f:
-            f.write('# Workspace\n\nEste es tu espacio de trabajo. Usa comandos o instrucciones en lenguaje natural para crear y modificar archivos.\n\nEjemplos:\n- "crea una carpeta llamada proyectos"\n- "mkdir proyectos"\n- "touch archivo.txt"')
-
-    return render_template('monaco_terminal.html')
-
-@app.route('/xterm_terminal')
-def xterm_terminal_route():
-    """Render the XTerm terminal page directly."""
-    return render_template('xterm_terminal.html')
-
-@app.route('/xterm/xterm_terminal')
-def xterm_terminal_alt():
-    """Ruta alternativa para acceder a la terminal XTerm."""
-    return render_template('xterm_terminal.html')
-
-@app.route('/monaco_terminal')
-def monaco_terminal():
-    """Redirect to terminal."""
-    return redirect('/terminal')
-
-@app.route('/api/process_code', methods=['POST'])
-def process_code_endpoint():
-    """Process code for corrections and improvements."""
-    try:
-        data = request.json
-        if not data:
-            return jsonify({'success': False, 'error': 'No se recibieron datos JSON válidos'}), 400
-
-        code = data.get('code', '')
-        instructions = data.get('instructions', 'Corrige errores y mejora la calidad del código')
-        language = data.get('language', 'python')
-        model = data.get('model', 'openai')
-        auto_fix = data.get('auto_fix', False)
-
-        if not code:
-            return jsonify({
-                'success': False,
-                'error': 'No se proporcionó código para procesar'
-            }), 400
-
-        if auto_fix:
-            auto_instructions = "MODO CORRECCIÓN AUTOMÁTICA: "
-            if instructions == 'Corrige errores y mejora la calidad del código':
-                instructions = auto_instructions + "Corrige automáticamente errores de sintaxis, optimiza el código y mejora la calidad siguiendo las mejores prácticas. Enfócate en corregir errores sin cambiar la lógica principal."
-            else:
-                instructions = auto_instructions + instructions
-
-        result = None
-
-        if model == 'openai' and openai_api_key:
-            try:
-                client = openai.OpenAI()
-                response = client.chat.completions.create(
-                    model="gpt-4o",
-                    messages=[
-                        {"role": "system", "content": f"Eres un experto programador. Tu tarea es corregir el siguiente código en {language} según las instrucciones proporcionadas. El código resultante debe ser limpio, optimizado y SIN COMENTARIOS explicativos dentro del código. Devuelve el código corregido, una lista de cambios realizados y una explicación clara separada del código."},
-                        {"role": "user", "content": f"CÓDIGO:\n```{language}\n{code}\n```\n\nINSTRUCCIONES:\n{instructions}\n\nResponde en formato JSON con las siguientes claves{language}\n{code}\n```\n\nINSTRUCCIONES:\n{instructions}\n\nResponde en formato JSON con las siguientes claves:\n- correctedCode: el código corregido completo\n- changes: una lista de objetos, cada uno con 'description' y 'lineNumbers'\n- explanation: una explicación detallada de los cambios"}
+                    role_prefix = "Usuario: " if msg['role'] == 'user' else "Asistente: "{language}\n{code}\n```\n\nINSTRUCCIONES:\n{instructions}\n\nResponde en formato JSON con las siguientes claves{language}\n{code}\n```\n\nINSTRUCCIONES:\n{instructions}\n\nResponde en formato JSON con las siguientes claves:\n- correctedCode: el código corregido completo\n- changes: una lista de objetos, cada uno con 'description' y 'lineNumbers'\n- explanation: una explicación detallada de los cambios"}
                     ],
                     temperature=0.1
                 )
@@ -1073,25 +942,25 @@ def process_code_endpoint():
 
 @app.route('/api/developer_assistant', methods=['POST'])
 def developer_assistant():
-    """API for processing development-specific queries."""
+    """API para procesar consultas específicas de desarrollo."""
     try:
         data = request.json
         if not data:
             return jsonify({
                 'success': False,
-                'error': 'No data provided'
+                'error': 'No se proporcionaron datos'
             }), 400
 
         query = data.get('query', '')
-        context = data.get('context', '')
-        model = data.get('model', 'openai')  # Default model
-        
+        context = data.get('context', [])
+        model = data.get('model', 'openai')  # Modelo predeterminado
+
         if not query:
             return jsonify({
                 'success': False,
-                'error': 'No query provided'
+                'error': 'No se proporcionó una consulta'
             }), 400
-            
+
         # Process using available API
         if model == 'openai' and openai_api_key:
             try:
@@ -1106,7 +975,7 @@ def developer_assistant():
                     max_tokens=2000
                 )
                 response = completion.choices[0].message.content
-                
+
                 return jsonify({
                     'success': True,
                     'response': response,
@@ -1129,7 +998,7 @@ def developer_assistant():
                     messages=[{"role": "user", "content": f"Context: {context}\n\nQuery: {query}"}]
                 )
                 response = completion.content[0].text
-                
+
                 return jsonify({
                     'success': True,
                     'response': response,
@@ -1146,11 +1015,11 @@ def developer_assistant():
                 # Make sure Gemini is configured properly
                 if not hasattr(genai, '_configured') or not genai._configured:
                     genai.configure(api_key=gemini_api_key)
-                    
+
                 gemini_model = genai.GenerativeModel('gemini-1.5-pro')
                 gemini_response = gemini_model.generate_content(f"Context: {context}\n\nQuery: {query}")
                 response = gemini_response.text
-                
+
                 return jsonify({
                     'success': True,
                     'response': response,
@@ -1171,12 +1040,12 @@ def developer_assistant():
                 available_models.append('anthropic')
             if gemini_api_key:
                 available_models.append('gemini')
-                
+
             if available_models:
                 message = f"The model '{model}' is not available. Available models: {', '.join(available_models)}"
             else:
                 message = "No AI models available. Please configure an API key in the Secrets panel."
-                
+
             return jsonify({
                 'success': False,
                 'message': message,
@@ -1765,7 +1634,7 @@ def generate_project():
         }), 500
 
 @app.route('/api_status')
-def api_status():
+def api_status_old():
     """Muestra el estado de las claves API configuradas."""
     openai_key = os.environ.get('OPENAI_API_KEY', 'No configurada')
     anthropic_key = os.environ.get('ANTHROPIC_API_KEY', 'No configurada')
@@ -1786,6 +1655,24 @@ def api_status():
         'gemini': gemini_key,
         'message': 'Visita esta URL para verificar el estado de las APIs'
     })
+
+@app.route('/api/status', methods=['GET'])
+def api_status():
+    """Endpoint para verificar el estado de la API."""
+    try:
+        return jsonify({
+            'success': True,
+            'status': 'online',
+            'message': 'API funciona correctamente',
+            'timestamp': time.time()
+        })
+    except Exception as e:
+        logging.error(f"Error en verificación de estado: {str(e)}")
+        return jsonify({
+            'success': False,
+            'status': 'error',
+            'message': str(e)
+        }), 500
 
 @socketio.on('connect')
 def handle_connect():

@@ -2,7 +2,77 @@
 /**
  * Command Assistant - Asistente flotante para comandos de terminal
  * Responde únicamente con comandos para terminal sin comentarios adicionales
+ *
+ * @version 1.1.0 - Con soporte para manejo de estado de conexión
  */
+
+// Estado global del asistente
+window.floatingAssistant = window.floatingAssistant || {
+    isOpen: false,
+    isConnected: false,
+    
+    // Actualizar estado de conexión e interfaz
+    updateConnectionStatus: function(isConnected) {
+        this.isConnected = isConnected;
+        
+        // Actualizar UI si está disponible
+        const statusIndicator = document.getElementById('assistant-connection-status');
+        if (statusIndicator) {
+            statusIndicator.className = isConnected ? 'connected' : 'disconnected';
+            statusIndicator.title = isConnected ? 'Conectado al servidor' : 'Desconectado del servidor';
+        }
+        
+        // Actualizar mensaje en el resultado si no hay conexión
+        if (!isConnected) {
+            const assistantResult = document.getElementById('assistant-result');
+            if (assistantResult) {
+                assistantResult.innerHTML = `
+                    <div class="text-center py-3">
+                        <div class="text-danger mb-2"><i class="bi bi-exclamation-triangle"></i></div>
+                        <p class="text-danger mb-1">Sin conexión al servidor</p>
+                        <small class="text-muted">Intentando reconectar...</small>
+                        <button id="retry-connection" class="btn btn-sm btn-outline-primary mt-2">Reintentar</button>
+                    </div>
+                `;
+                
+                // Agregar acción al botón de reintento
+                const retryButton = document.getElementById('retry-connection');
+                if (retryButton) {
+                    retryButton.addEventListener('click', function() {
+                        if (window.commandAssistant && window.commandAssistant.checkServerConnection) {
+                            window.commandAssistant.checkServerConnection();
+                        }
+                    });
+                }
+            }
+        }
+    },
+    
+    // Procesar consulta mediante API
+    processQuery: function(query) {
+        if (!this.isConnected) {
+            console.warn('No se puede procesar la consulta: sin conexión al servidor');
+            return Promise.reject(new Error('Sin conexión al servidor'));
+        }
+        
+        return fetch('/api/process_instructions', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                instruction: query,
+                model: document.getElementById('assistant-model')?.value || 'openai'
+            })
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`Error en la respuesta: ${response.status}`);
+            }
+            return response.json();
+        });
+    }
+};/
 
 (function() {
     // Estado y configuración del asistente

@@ -6,15 +6,69 @@
 (function() {
     // Interfaz para el asistente de comandos
     const commandAssistant = {
+        isConnected: false,
+        connectionAttempts: 0,
+        maxConnectionAttempts: 3,
+        
         init: function() {
             // Verificar si el asistente flotante ya existe
             if (window.floatingAssistant) {
                 console.log('Usando asistente flotante existente para comandos');
+                this.checkServerConnection();
                 return;
             }
 
             // Si no existe el asistente flotante, cargar el script
             this.loadFloatingAssistant();
+            
+            // Verificar conexión con el servidor
+            this.checkServerConnection();
+        },
+        
+        // Verificar la conexión con el servidor
+        checkServerConnection: function() {
+            fetch('/api/status', {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Cache-Control': 'no-cache'
+                }
+            })
+            .then(response => {
+                if (response.ok) {
+                    this.isConnected = true;
+                    console.log('Asistente de comandos conectado al servidor');
+                    // Intentar notificar en la UI si existe
+                    this.updateConnectionStatus(true);
+                    return response.json();
+                } else {
+                    throw new Error('No se pudo conectar al servidor');
+                }
+            })
+            .catch(error => {
+                console.warn('Error de conexión con el servidor:', error);
+                this.isConnected = false;
+                this.updateConnectionStatus(false);
+                
+                // Intentar reconectar si no hemos excedido el número máximo de intentos
+                if (this.connectionAttempts < this.maxConnectionAttempts) {
+                    this.connectionAttempts++;
+                    console.log(`Intento de reconexión ${this.connectionAttempts} de ${this.maxConnectionAttempts}`);
+                    setTimeout(() => this.checkServerConnection(), 1500 * this.connectionAttempts);
+                }
+            });
+        },
+        
+        // Actualizar el estado de conexión en la UI si está disponible
+        updateConnectionStatus: function(isConnected) {
+            if (window.floatingAssistant && window.floatingAssistant.updateConnectionStatus) {
+                window.floatingAssistant.updateConnectionStatus(isConnected);
+            }
+            
+            // Disparar evento para que otros componentes puedan escucharlo
+            document.dispatchEvent(new CustomEvent('assistant-connection-status', {
+                detail: { connected: isConnected }
+            }));
         },
 
         // Cargar el script del asistente flotante
