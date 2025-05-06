@@ -812,6 +812,26 @@
             display: flex;
             gap: 4px;
         }
+        .file-content-message {
+            background-color: var(--bg-input);
+            padding: 16px;
+            border-radius: var(--border-radius);
+            margin-bottom: 12px;
+            overflow-x: auto;
+        }
+        .file-header {
+            margin-bottom: 10px;
+        }
+        .file-content-display {
+            min-height: 100px;
+            max-height: 200px;
+            overflow-y: auto;
+            margin-bottom: 10px;
+        }
+        #chat-file-actions {
+            display: none;
+            margin-top: 12px;
+        }
     </style>
 </head>
 <body>
@@ -909,7 +929,7 @@
                     </div>
                     <div id="assistant-result" class="assistant-result">
                         <div class="text-center text-muted p-3">
-                            <i class="bi bi-terminal-plus fs-3 mb-2"></i>
+                            <i class="bi bi-terminal-plus fs-3mb-2"></i>
                             <p>El asistente convertirá tus instrucciones a comandos de terminal</p>
                         </div>
                     </div>
@@ -2265,6 +2285,19 @@
             const sendButton = document.getElementById('send-message-button');
             const messagesContainer = document.getElementById('assistant-chat-messages');
 
+            // Referencias para edición de archivos
+            const toggleFileEditBtn = document.getElementById('toggle-file-edit');
+            const fileActionsPanel = document.getElementById('chat-file-actions');
+            const applyChangesBtn = document.getElementById('apply-file-changes');
+            const cancelChangesBtn = document.getElementById('cancel-file-changes');
+            const currentEditFileSpan = document.getElementById('current-edit-file');
+
+            // Variables para el editor de archivos
+            let currentEditMode = false;
+            let currentEditFile = null;
+            let originalFileContent = '';
+            let editedFileContent = '';
+
             // Configurar eventos para abrir/cerrar el panel del asistente
             if (chatButton) {
                 chatButton.addEventListener('click', function() {
@@ -2281,141 +2314,221 @@
                 });
             }
 
-            // Función para enviar mensaje al asistente
-            function sendAssistantMessage() {
-                const message = messageInput.value.trim();
-                if (!message) return;
+            // Evento para habilitar el modo edición de archivos
+            if (toggleFileEditBtn) {
+                toggleFileEditBtn.addEventListener('click', function() {
+                    // Si ya está en modo edición, desactivar
+                    if (currentEditMode) {
+                        exitFileEditMode();
+                        return;
+                    }
 
-                // Agregar mensaje del usuario
-                const userMsg = document.createElement('div');
-                userMsg.className = 'message user-message animate__animated animate__fadeInRight';
-                userMsg.textContent = message;
-                messagesContainer.appendChild(userMsg);
+                    // Mostrar modal para seleccionar archivo
+                    const fileName = prompt('Ingrese la ruta del archivo a editar:', '');
+                    if (!fileName) return;
+
+                    // Cargar contenido del archivo
+                    fetchFileContent(fileName);
+                });
+            }
+
+            // Función para cargar contenido de un archivo
+            function fetchFileContent(filePath) {
+                // Mostrar indicador de carga
+                messagesContainer.innerHTML += `
+                    <div class="system-message animate__animated animate__fadeIn">
+                        <i class="bi bi-arrow-repeat spin me-1"></i>
+                        Cargando archivo ${filePath}...
+                    </div>
+                `;
                 messagesContainer.scrollTop = messagesContainer.scrollHeight;
 
-                // Limpiar input
-                messageInput.value = '';
+                // Ejecutar comando cat para obtener contenido
+                if (window.terminalInterface && typeof window.terminalInterface.executeCommand === 'function') {
+                    window.terminalInterface.executeCommand(`cat "${filePath}"`, false);
 
-                // Mostrar indicador de escritura
-                const typingIndicator = document.createElement('div');
-                typingIndicator.className = 'typing-indicator';
-                typingIndicator.id = 'typing-indicator';
+                    // Simulación de respuesta (en una implementación real, deberías capturar la salida del comando)
+                    setTimeout(() => {
+                        // Verificar si existe
+                        fetch(`/api/file/content?path=${encodeURIComponent(filePath)}`)
+                            .then(response => {
+                                if (!response.ok) {
+                                    throw new Error('Archivo no encontrado o no se puede leer');
+                                }
+                                return response.text();
+                            })
+                            .then(content => {
+                                originalFileContent = content;
+                                editedFileContent = content;
+                                currentEditFile = filePath;
+                                enableFileEditMode(filePath, content);
+                            })
+                            .catch(error => {
+                                messagesContainer.innerHTML += `
+                                    <div class="system-message animate__animated animate__fadeIn">
+                                        <i class="bi bi-exclamation-triangle-fill text-warning me-1"></i>
+                                        Error: ${error.message}
+                                    </div>
+                                `;
+                                messagesContainer.scrollTop = messagesContainer.scrollHeight;
+                            });
+                    }, 500);
+                }
+            }
 
-                for (let i = 0; i < 3; i++) {
-                    const bubble = document.createElement('div');
-                    bubble.className = 'typing-bubble';
-                    typingIndicator.appendChild(bubble);
+            // Función para entrar en modo edición
+            function enableFileEditMode(filePath, content) {
+                currentEditMode = true;
+                toggleFileEditBtn.classList.add('active');
+                fileActionsPanel.style.display = 'block';
+                currentEditFileSpan.textContent = filePath;
+
+                // Mostrar contenido en el chat
+                messagesContainer.innerHTML += `
+                    <div class="file-content-message animate__animated animate__fadeIn" id="file-edit-container">
+                        <div class="file-header d-flex justify-content-between align-items-center mb-2">
+                            <div><i class="bi bi-file-earmark-code me-1"></i> <strong>${filePath}</strong></div>
+                            <div class="file-actions">
+                                <small class="text-muted">Edite el contenido en el mensaje siguiente</small>
+                            </div>
+                        </div>
+                        <pre class="file-content-display bg-dark p-3 rounded"><code>${escapeHtml(content)}</code></pre>
+                        <textarea id="file-edit-textarea" class="form-control bg-dark text-light mt-2" rows="10">${escapeHtml(content)}</textarea>
+                    </div>
+                `;
+
+                // Dar foco al textarea
+                const textarea = document.getElementById('file-edit-textarea');
+                if (textarea) {
+                    textarea.focus();
+                    // Añadir evento para actualizar contenido editado
+                    textarea.addEventListener('input', function() {
+                        editedFileContent = this.value;
+                    });
                 }
 
-                messagesContainer.appendChild(typingIndicator);
+                messagesContainer.scrollTop = messagesContainer.scrollHeight;
+            }
+
+            // Función para salir del modo edición
+            function exitFileEditMode() {
+                currentEditMode = false;
+                currentEditFile = null;
+                toggleFileEditBtn.classList.remove('active');
+                fileActionsPanel.style.display = 'none';
+
+                // Eliminar contenedor de edición
+                const editContainer = document.getElementById('file-edit-container');
+                if (editContainer) {
+                    editContainer.remove();
+                }
+
+                // Mensaje de cancelación
+                messagesContainer.innerHTML += `
+                    <div class="system-message animate__animated animate__fadeIn">
+                        <i class="bi bi-info-circle me-1"></i>
+                        Edición de archivo cancelada.
+                    </div>
+                `;
+                messagesContainer.scrollTop = messagesContainer.scrollHeight;
+            }
+
+            // Evento para aplicar cambios
+            if (applyChangesBtn) {
+                applyChangesBtn.addEventListener('click', function() {
+                    if (!currentEditFile || !editedFileContent) {
+                        showNotification('No hay cambios para aplicar', 'warning');
+                        return;
+                    }
+
+                    // Mostrar confirmación
+                    if (!confirm(`¿Está seguro de aplicar los cambios al archivo ${currentEditFile}?`)) {
+                        return;
+                    }
+
+                    // Guardar cambios
+                    saveFileChanges(currentEditFile, editedFileContent);
+                });
+            }
+
+            // Evento para cancelar cambios
+            if (cancelChangesBtn) {
+                cancelChangesBtn.addEventListener('click', exitFileEditMode);
+            }
+
+            // Función para guardar cambios en el archivo
+            function saveFileChanges(filePath, content) {
+                // Mostrar indicador de progreso
+                messagesContainer.innerHTML += `
+                    <div class="system-message animate__animated animate__fadeIn" id="save-progress">
+                        <i class="bi bi-arrow-repeat spin me-1"></i>
+                        Guardando cambios en ${filePath}...
+                    </div>
+                `;
                 messagesContainer.scrollTop = messagesContainer.scrollHeight;
 
-                // Enviar solicitud al servidor para procesar la instrucción
-                fetch('/api/process_instructions', {
+                // Enviar cambios al servidor
+                fetch('/api/file/save', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
                     },
                     body: JSON.stringify({
-                        instruction: message,
-                        model: 'openai', // Modelo predeterminado
-                        command_only: true
+                        file_path: filePath,
+                        content: content
                     })
                 })
-                .then(response => response.json())
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`Error ${response.status}: ${response.statusText}`);
+                    }
+                    return response.json();
+                })
                 .then(data => {
-                    // Eliminar indicador de escritura
-                    document.getElementById('typing-indicator')?.remove();
+                    // Remover indicador de progreso
+                    document.getElementById('save-progress')?.remove();
 
-                    // Agregar respuesta del asistente
-                    const assistantMsg = document.createElement('div');
-                    assistantMsg.className = 'message assistant-message animate__animated animate__fadeInLeft';
-
-                    if (data.command) {
-                        // Si se generó un comando, mostrarlo y ofrecer ejecutarlo
-                        assistantMsg.innerHTML = `
-                        <p>Comando generado:</p>
-                        <pre class="bg-dark p-2 rounded"><code>${data.command}</code></pre>
-                        <div class="mt-2 d-flex gap-2">
-                            <button class="btn btn-sm btn-outline-light copy-btn">
-                                <i class="bi bi-clipboard me-1"></i> Copiar
-                            </button>
-                            <button class="btn btn-sm btn-primary execute-btn">
-                                <i class="bi bi-play-fill me-1"></i> Ejecutar
-                            </button>
-                        </div>
+                    if (data.success) {
+                        messagesContainer.innerHTML += `
+                            <div class="system-message animate__animated animate__fadeIn">
+                                <i class="bi bi-check-circle-fill text-success me-1"></i>
+                                Cambios guardados correctamente en ${filePath}.
+                            </div>
                         `;
 
-                        messagesContainer.appendChild(assistantMsg);
-                        messagesContainer.scrollTop = messagesContainer.scrollHeight;
-
-                        // Configurar botones de acción
-                        const copyBtn = assistantMsg.querySelector('.copy-btn');
-                        const executeBtn = assistantMsg.querySelector('.execute-btn');
-
-                        if (copyBtn) {
-                            copyBtn.addEventListener('click', function() {
-                                navigator.clipboard.writeText(data.command)
-                                    .then(() => showNotification('Comando copiado al portapapeles', 'success'))
-                                    .catch(err => console.error('Error al copiar:', err));
-                            });
+                        // Actualizar el explorador de archivos
+                        if (window.fileActions && typeof window.fileActions.refreshFileExplorer === 'function') {
+                            window.fileActions.refreshFileExplorer();
                         }
 
-                        if (executeBtn) {
-                            executeBtn.addEventListener('click', function() {
-                                // Usar la función executeCommand del terminal
-                                if (window.terminalInterface && typeof window.terminalInterface.executeCommand === 'function') {
-                                    window.terminalInterface.executeCommand(data.command);
-                                    showNotification('Comando ejecutado en terminal', 'success');
-                                } else {
-                                    // Alternativa si no está disponible la interfaz
-                                    const terminalInput = document.getElementById('terminal-input');
-                                    const sendButton = document.getElementById('send-button');
-
-                                    if (terminalInput && sendButton) {
-                                        terminalInput.value = data.command;
-                                        sendButton.click();
-                                        showNotification('Comando enviado a la terminal', 'success');
-                                    }
-                                }
-                            });
-                        }
-                    } else if (data.error) {
-                        // Mostrar error
-                        assistantMsg.innerHTML = `<p class="text-warning"><i class="bi bi-exclamation-triangle me-1"></i> ${data.error}</p>`;
-                        messagesContainer.appendChild(assistantMsg);
-                        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+                        showNotification('Archivo guardado correctamente', 'success');
+                        exitFileEditMode();
                     } else {
-                        // Mostrar respuesta general
-                        assistantMsg.innerHTML = data.response || 'No se pudo generar una respuesta.';
-                        messagesContainer.appendChild(assistantMsg);
-                        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+                        throw new Error(data.error || 'Error desconocido al guardar');
                     }
                 })
                 .catch(error => {
-                    console.error('Error:', error);
-                    document.getElementById('typing-indicator')?.remove();
+                    // Remover indicador de progreso
+                    document.getElementById('save-progress')?.remove();
 
-                    // Mostrar error
-                    const errorMsg = document.createElement('div');
-                    errorMsg.className = 'system-message animate__animated animate__fadeIn';
-                    errorMsg.innerHTML = `<i class="bi bi-exclamation-triangle-fill text-warning me-1"></i> <strong>Error:</strong> ${error.message}`;
-                    messagesContainer.appendChild(errorMsg);
-                    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+                    console.error('Error al guardar archivo:', error);
+                    messagesContainer.innerHTML += `
+                        <div class="system-message animate__animated animate__fadeIn">
+                            <i class="bi bi-exclamation-triangle-fill text-danger me-1"></i>
+                            Error al guardar cambios: ${error.message}
+                        </div>
+                    `;
+                    showNotification('Error al guardar archivo: ' + error.message, 'danger');
                 });
+
+                messagesContainer.scrollTop = messagesContainer.scrollHeight;
             }
 
-            // Configurar eventos para enviar mensajes
-            if (sendButton && messageInput) {
-                sendButton.addEventListener('click', sendAssistantMessage);
-
-                // Enviar con Enter
-                messageInput.addEventListener('keydown', function(e) {
-                    if (e.key === 'Enter' && !e.shiftKey) {
-                        e.preventDefault();
-                        sendAssistantMessage();
-                    }
-                });
+            // Función para escapar HTML
+            function escapeHtml(text) {
+                const div = document.createElement('div');
+                div.textContent = text;
+                return div.innerHTML;
             }
         });
 
