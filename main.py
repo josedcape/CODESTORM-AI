@@ -1961,4 +1961,3 @@ def delete_file_endpoint():
 def delete_file_alias():
     """Alias de la ruta de eliminación de archivos."""
     return delete_file_endpoint()
-    return delete_file_endpoint()
