@@ -935,7 +935,7 @@
         .file-content-preview {
             max-height: 200px;
             overflow-y: auto;
-            font-family: 'Consolas', 'Monaco', monospace;
+            font-family: ''Consolas', 'Monaco', monospace;
             font-size: 0.9em;
             margin-bottom: 10px;
             white-space: pre-wrap;
@@ -2333,44 +2333,75 @@
                 function fetchFileContent(filePath) {
                     // Mostrar indicador de carga
                     messagesContainer.innerHTML += `
-                        <div class="system-message animate__animated animate__fadeIn">
-                            <i class="bi bi-arrow-repeat spin me-1"></i>
-                            Cargando archivo ${filePath}...
-                        </div>
-                    `;
+            <div class="system-message animate__animated animate__fadeIn" id="loading-indicator">
+                <i class="bi bi-arrow-repeat spin me-1"></i>
+                Cargando archivo ${filePath}...
+            </div>
+        `;
                     messagesContainer.scrollTop = messagesContainer.scrollHeight;
 
-                    // Ejecutar comando cat para obtener contenido
-                    if (window.terminalInterface && typeof window.terminalInterface.executeCommand === 'function') {
-                        window.terminalInterface.executeCommand(`cat "${filePath}"`, false);
+                    // Eliminar espacios innecesarios en la ruta
+                    filePath = filePath.trim();
 
-                        // Simulación de respuesta (en una implementación real, deberías capturar la salida del comando)
-                        setTimeout(() => {
-                            // Verificar si existe
-                            fetch(`/api/file/content?path=${encodeURIComponent(filePath)}`)
-                                .then(response => {
-                                    if (!response.ok) {
-                                        throw new Error('Archivo no encontrado o no se puede leer');
-                                    }
-                                    return response.text();
-                                })
-                                .then(content => {
-                                    originalFileContent = content;
-                                    editedFileContent = content;
-                                    currentEditFile = filePath;
-                                    enableFileEditMode(filePath, content);
-                                })
-                                .catch(error => {
-                                    messagesContainer.innerHTML += `
-                                        <div class="system-message animate__animated animate__fadeIn">
-                                            <i class="bi bi-exclamation-triangle-fill text-warning me-1"></i>
-                                            Error: ${error.message}
-                                        </div>
-                                    `;
-                                    messagesContainer.scrollTop = messagesContainer.scrollHeight;
-                                });
-                        }, 500);
-                    }
+                    // Primero verificar si el archivo existe
+                    fetch(`/api/file/content?path=${encodeURIComponent(filePath)}`)
+                    .then(response => {
+                        if (!response.ok) {
+                            if (response.status === 404) {
+                                throw new Error(`El archivo "${filePath}" no existe. Verifique la ruta y vuelva a intentarlo.`);
+                            } else {
+                                throw new Error(`Error al acceder al archivo: ${response.status} ${response.statusText}`);
+                            }
+                        }
+                        return response.text();
+                    })
+                    .then(content => {
+                        // Mostrar mensaje de éxito
+                        messagesContainer.innerHTML += `
+                            <div class="system-message animate__animated animate__fadeIn">
+                                <i class="bi bi-check-circle-fill text-success me-1"></i>
+                                Archivo "${filePath}" cargado correctamente.
+                            </div>
+                        `;
+
+                        originalFileContent = content;
+                        editedFileContent = content;
+                        currentEditFile = filePath;
+                        enableFileEditMode(filePath, content);
+                        // Remover indicador de carga
+                        document.getElementById('loading-indicator')?.remove();
+                    })
+                    .catch(error => {
+                        // Mostrar mensaje de error con opción para crear nuevo archivo
+                        messagesContainer.innerHTML += `
+                            <div class="system-message animate__animated animate__fadeIn">
+                                <i class="bi bi-exclamation-triangle-fill text-danger me-1"></i>
+                                ${error.message}
+                                ${response && response.status === 404 ? 
+                                `<div class="mt-2">
+                                    <button class="btn btn-sm btn-primary create-new-file" data-path="${escapeHtml(filePath)}">
+                                        <i class="bi bi-file-earmark-plus me-1"></i> Crear archivo nuevo
+                                    </button>
+                                </div>` : ''}
+                            </div>
+                        `;
+                        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+
+                        // Agregar listener para el botón de crear archivo
+                        const createBtn = messagesContainer.querySelector('.create-new-file');
+                        if (createBtn) {
+                            createBtn.addEventListener('click', function() {
+                                createNewFile(this.dataset.path);
+                            });
+                        }
+
+                        // También mostrar notificación
+                        if (window.showNotification) {
+                            window.showNotification(`Error: ${error.message}`, 'danger');
+                        }
+                        // Remover indicador de carga
+                        document.getElementById('loading-indicator')?.remove();
+                    });
                 }
 
                 // Función para entrar en modo edición
@@ -2461,330 +2492,330 @@
                         Guardando cambios en ${filePath}...
                     </div>
                 `;
-                messagesContainer.scrollTop = messagesContainer.scrollHeight;
-
-                // Enviar cambios al servidor
-                fetch('/api/file/save', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        file_path: filePath,
-                        content: content
-                    })
-                })
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error(`Error ${response.status}: ${response.statusText}`);
-                    }
-                    return response.json();
-                })
-                .then(data => {
-                    // Remover indicador de progreso
-                    document.getElementById('save-progress')?.remove();
-
-                    if (data.success) {
-                        messagesContainer.innerHTML += `
-                            <div class="system-message animate__animated animate__fadeIn">
-                                <i class="bi bi-check-circle-fill text-success me-1"></i>
-                                Cambios guardados correctamente en ${filePath}.
-                            </div>
-                        `;
-
-                        // Actualizar el explorador de archivos
-                        if (window.loadFiles) {
-                            window.loadFiles();
-                        }
-
-                        showNotification('Archivo guardado correctamente', 'success');
-                        currentEditMode = false;
-                        currentEditFile = null;
-                    } else {
-                        throw new Error(data.error || 'Error desconocido al guardar');
-                    }
-                })
-                .catch(error => {
-                    // Remover indicador de progreso
-                    document.getElementById('save-progress')?.remove();
-
-                    console.error('Error al guardar archivo:', error);
-                    messagesContainer.innerHTML += `
-                        <div class="system-message animate__animated animate__fadeIn">
-                            <i class="bi bi-exclamation-triangle-fill text-danger me-1"></i>
-                            Error al guardar cambios: ${error.message}
-                        </div>
-                    `;
-                    showNotification('Error al guardar archivo: ' + error.message, 'danger');
-                });
-
-                messagesContainer.scrollTop = messagesContainer.scrollHeight;
-            }
-
-            // Función para escapar HTML
-            function escapeHtml(text) {
-                const div = document.createElement('div');
-                div.textContent = text;
-                return div.innerHTML;
-            }
-
-            // Función para añadir mensaje al chat
-            function addMessage(content, type) {
-                const messageDiv = document.createElement('div');
-                messageDiv.className = `message ${type}-message animate__animated animate__fadeIn`;
-                messageDiv.innerHTML = content;
-                messagesContainer.appendChild(messageDiv);
-                messagesContainer.scrollTop = messagesContainer.scrollHeight;
-
-                return messageDiv.id;
-            }
-
-            // Función para añadir mensaje del sistema
-            function addSystemMessage(content, id = null) {
-                const messageDiv = document.createElement('div');
-                messageDiv.className = 'system-message animate__animated animate__fadeIn';
-                if (id) messageDiv.id = id;
-                messageDiv.innerHTML = content;
-                messagesContainer.appendChild(messageDiv);
-                messagesContainer.scrollTop = messagesContainer.scrollHeight;
-
-                return messageDiv.id;
-            }
-
-            // Modificar el comportamiento del envío de mensajes para manejar comandos especiales
-            if (sendButton && messageInput) {
-                sendButton.addEventListener('click', function() {
-                    const message = messageInput.value.trim();
-                    if (!message) return;
-
-                    // Verificar si es un comando para editar archivo
-                    if (message.startsWith('/edit ')) {
-                        const filePath = message.substring(6).trim();
-                        fetchFileContent(filePath);
-                        messageInput.value = '';
-                        return;
-                    }
-
-                    // Si estamos en modo edición y el mensaje es /save, guardar cambios
-                    if (currentEditMode && message === '/save') {
-                        if (currentEditFile && editedFileContent) {
-                            saveFileChanges(currentEditFile, editedFileContent);
-                            messageInput.value = '';
-                        }
-                        return;
-                    }
-
-                    // Si estamos en modo edición y el mensaje es /cancel, cancelar edición
-                    if (currentEditMode && message === '/cancel') {
-                        cancelFileEdit();
-                        messageInput.value = '';
-                        return;
-                    }
-
-                    // Para mensajes normales
-                    addMessage(message, 'user');
-                    messageInput.value = '';
-
-                    // Mostrar indicador de escritura
-                    const typingId = 'typing-' + Date.now();
-                    messagesContainer.innerHTML += `
-                        <div id="${typingId}" class="typing-indicator">
-                            <div class="typing-bubble"></div>
-                            <div class="typing-bubble"></div>
-                            <div class="typing-bubble"></div>
-                        </div>
-                    `;
                     messagesContainer.scrollTop = messagesContainer.scrollHeight;
 
-                    // Enviar mensaje al servidor (simulado)
-                    setTimeout(() => {
-                        // Eliminar indicador de escritura
-                        document.getElementById(typingId)?.remove();
+                    // Enviar cambios al servidor
+                    fetch('/api/file/save', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            file_path: filePath,
+                            content: content
+                        })
+                    })
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error(`Error ${response.status}: ${response.statusText}`);
+                        }
+                        return response.json();
+                    })
+                    .then(data => {
+                        // Remover indicador de progreso
+                        document.getElementById('save-progress')?.remove();
 
-                        // Simular respuesta del asistente
-                        addMessage('Lo siento, no puedo procesar ese mensaje en este momento. La funcionalidad completa del chat requiere conexión con el servidor.', 'assistant');
-                    }, 1500);
-                });
+                        if (data.success) {
+                            messagesContainer.innerHTML += `
+                                <div class="system-message animate__animated animate__fadeIn">
+                                    <i class="bi bi-check-circle-fill text-success me-1"></i>
+                                    Cambios guardados correctamente en ${filePath}.
+                                </div>
+                            `;
 
-                // También modificar el evento keypress para manejar Enter
-                messageInput.addEventListener('keypress', function(e) {
-                    if (e.key === 'Enter') {
-                        e.preventDefault();
-                        sendButton.click();
-                        return false;
-                    }
-                });
-            }
+                            // Actualizar el explorador de archivos
+                            if (window.loadFiles) {
+                                window.loadFiles();
+                            }
 
-            // Añadir botón de edición de archivos al panel de chat
-            function addEditFileButton() {
-                const chatFooter = document.getElementById('assistant-chat-footer');
-                if (!chatFooter) return;
+                            showNotification('Archivo guardado correctamente', 'success');
+                            currentEditMode = false;
+                            currentEditFile = null;
+                        } else {
+                            throw new Error(data.error || 'Error desconocido al guardar');
+                        }
+                    })
+                    .catch(error => {
+                        // Remover indicador de progreso
+                        document.getElementById('save-progress')?.remove();
 
-                const editFileBtn = document.createElement('button');
-                editFileBtn.className = 'btn btn-sm btn-outline-light';
-                editFileBtn.innerHTML = '<i class="bi bi-pencil-square"></i>';
-                editFileBtn.title = 'Editar archivo';
-                editFileBtn.addEventListener('click', function() {
-                    const filePath = prompt('Ingrese la ruta del archivo a editar:');
-                    if (filePath) {
-                        fetchFileContent(filePath);
-                    }
-                });
+                        console.error('Error al guardar archivo:', error);
+                        messagesContainer.innerHTML += `
+                            <div class="system-message animate__animated animate__fadeIn">
+                                <i class="bi bi-exclamation-triangle-fill text-danger me-1"></i>
+                                Error al guardar cambios: ${error.message}
+                            </div>
+                        `;
+                        showNotification('Error al guardar archivo: ' + error.message, 'danger');
+                    });
 
-                // Insertar antes del input
-                chatFooter.insertBefore(editFileBtn, messageInput);
-            }
-
-            // Llamar a la función para añadir el botón
-            addEditFileButton();
-
-            // Exponer funciones para uso global
-            window.requestFileEdit = fetchFileContent;
-        });
-
-        // Configurar eventos para el panel de instalación de dependencias
-        document.addEventListener('DOMContentLoaded', function() {
-            const packageNameInput = document.getElementById('package-name');
-            const packageManagerSelect = document.getElementById('package-manager');
-            const installButton = document.getElementById('install-package-btn');
-            const updateButton = document.getElementById('update-packages-btn');
-
-            if (installButton && packageNameInput && packageManagerSelect) {
-                installButton.addEventListener('click', function() {
-                    const packageName = packageNameInput.value.trim();
-                    if (!packageName) {
-                        showNotification('Por favor ingrese un nombre de paquete', 'error');
-                        return;
-                    }
-
-                    const packageManager = packageManagerSelect.value;
-                    let command = '';
-
-                    switch(packageManager) {
-                        case 'pip':
-                            command = `pip install ${packageName}`;
-                            break;
-                        case 'npm':
-                            command = `npm install ${packageName}`;
-                            break;
-                        case 'yarn':
-                            command = `yarn add ${packageName}`;
-                            break;
-                        case 'poetry':
-                            command = `poetry add ${packageName}`;
-                            break;
-                        case 'apt':
-                            command = `apt-get install ${packageName}`;
-                            break;
-                        default:
-                            command = `pip install ${packageName}`;
-                    }
-
-                    // Ejecutar el comando
-                    if (window.terminalInterface && typeof window.terminalInterface.executeCommand === 'function') {
-                        window.terminalInterface.executeCommand(command);
-                        showNotification(`Instalando ${packageName} con ${packageManager}...`, 'info');
-                        packageNameInput.value = '';
-                    }
-                });
-            }
-
-            if (updateButton && packageManagerSelect) {
-                updateButton.addEventListener('click', function() {
-                    const packageManager = packageManagerSelect.value;
-                    let command = '';
-
-                    switch(packageManager) {
-                        case 'pip':
-                            command = 'pip list --outdated';
-                            break;
-                        case 'npm':
-                            command = 'npm outdated';
-                            break;
-                        case 'yarn':
-                            command = 'yarn outdated';
-                            break;
-                        case 'poetry':
-                            command = 'poetry update';
-                            break;
-                        case 'apt':
-                            command = 'apt-get update && apt-get upgrade -y';
-                            break;
-                        default:
-                            command = 'pip list --outdated';
-                    }
-
-                    // Ejecutar el comando
-                    if (window.terminalInterface && typeof window.terminalInterface.executeCommand === 'function') {
-                        window.terminalInterface.executeCommand(command);
-                        showNotification(`Verificando actualizaciones con ${packageManager}...`, 'info');
-                    }
-                });
-            }
-        });
-
-        // Configuración para el botón de alternar la barra de asistentes
-        document.addEventListener('DOMContentLoaded', function() {
-            const toggleButton = document.getElementById('toggle-assistant-bar');
-            const assistantContainer = document.querySelector('.assistant-container');
-            const packageInstallPanel = document.querySelector('.package-install-panel');
-
-            // Función para alternar la visibilidad de los paneles de asistentes
-            function toggleAssistantBar() {
-                if (assistantContainer.style.display === 'none') {
-                    assistantContainer.style.display = '';
-                    packageInstallPanel.style.display = '';
-                    toggleButton.innerHTML = '<i class="bi bi-eye-slash"></i> Ocultar';
-                } else {
-                    assistantContainer.style.display = 'none';
-                    packageInstallPanel.style.display = 'none';
-                    toggleButton.innerHTML = '<i class="bi bi-eye"></i> Mostrar';
+                    messagesContainer.scrollTop = messagesContainer.scrollHeight;
                 }
-            }
 
-            // Añadir evento al botón
-            if (toggleButton) {
-                toggleButton.addEventListener('click', toggleAssistantBar);
-            }
-        });
+                // Función para escapar HTML
+                function escapeHtml(text) {
+                    const div = document.createElement('div');
+                    div.textContent = text;
+                    return div.innerHTML;
+                }
 
-        // Configuración para el botón de visualización de archivos
-        document.addEventListener('DOMContentLoaded', function() {
-            // Botones para ver archivos (tanto en navbar como en menú móvil)
-            const viewFilesButton = document.getElementById('view-files-button');
-            const viewFilesMobileBtn = document.getElementById('view-files-btn');
+                // Función para añadir mensaje al chat
+                function addMessage(content, type) {
+                    const messageDiv = document.createElement('div');
+                    messageDiv.className = `message ${type}-message animate__animated animate__fadeIn`;
+                    messageDiv.innerHTML = content;
+                    messagesContainer.appendChild(messageDiv);
+                    messagesContainer.scrollTop = messagesContainer.scrollHeight;
 
-            // Botón para alternar el panel de explorador
-            const toggleExplorerBtn = document.getElementById('toggle-explorer');
+                    return messageDiv.id;
+                }
 
-            // Funcionalidad para cerrar el panel de explorador
-            if (toggleExplorerBtn) {
-                toggleExplorerBtn.addEventListener('click', function() {
-                    const explorerPanel = document.querySelector('.explorer-panel');
-                    if (explorerPanel) {
-                        explorerPanel.classList.toggle('show');
+                // Función para añadir mensaje del sistema
+                function addSystemMessage(content, id = null) {
+                    const messageDiv = document.createElement('div');
+                    messageDiv.className = 'system-message animate__animated animate__fadeIn';
+                    if (id) messageDiv.id = id;
+                    messageDiv.innerHTML = content;
+                    messagesContainer.appendChild(messageDiv);
+                    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+
+                    return messageDiv.id;
+                }
+
+                // Modificar el comportamiento del envío de mensajes para manejar comandos especiales
+                if (sendButton && messageInput) {
+                    sendButton.addEventListener('click', function() {
+                        const message = messageInput.value.trim();
+                        if (!message) return;
+
+                        // Verificar si es un comando para editar archivo
+                        if (message.startsWith('/edit ')) {
+                            const filePath = message.substring(6).trim();
+                            fetchFileContent(filePath);
+                            messageInput.value = '';
+                            return;
+                        }
+
+                        // Si estamos en modo edición y el mensaje es /save, guardar cambios
+                        if (currentEditMode && message === '/save') {
+                            if (currentEditFile && editedFileContent) {
+                                saveFileChanges(currentEditFile, editedFileContent);
+                                messageInput.value = '';
+                            }
+                            return;
+                        }
+
+                        // Si estamos en modo edición y el mensaje es /cancel, cancelar edición
+                        if (currentEditMode && message === '/cancel') {
+                            cancelFileEdit();
+                            messageInput.value = '';
+                            return;
+                        }
+
+                        // Para mensajes normales
+                        addMessage(message, 'user');
+                        messageInput.value = '';
+
+                        // Mostrar indicador de escritura
+                        const typingId = 'typing-' + Date.now();
+                        messagesContainer.innerHTML += `
+                            <div id="${typingId}" class="typing-indicator">
+                                <div class="typing-bubble"></div>
+                                <div class="typing-bubble"></div>
+                                <div class="typing-bubble"></div>
+                            </div>
+                        `;
+                        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+
+                        // Enviar mensaje al servidor (simulado)
+                        setTimeout(() => {
+                            // Eliminar indicador de escritura
+                            document.getElementById(typingId)?.remove();
+
+                            // Simular respuesta del asistente
+                            addMessage('Lo siento, no puedo procesar ese mensaje en este momento. La funcionalidad completa del chat requiere conexión con el servidor.', 'assistant');
+                        }, 1500);
+                    });
+
+                    // También modificar el evento keypress para manejar Enter
+                    messageInput.addEventListener('keypress', function(e) {
+                        if (e.key === 'Enter') {
+                            e.preventDefault();
+                            sendButton.click();
+                            return false;
+                        }
+                    });
+                }
+
+                // Añadir botón de edición de archivos al panel de chat
+                function addEditFileButton() {
+                    const chatFooter = document.getElementById('assistant-chat-footer');
+                    if (!chatFooter) return;
+
+                    const editFileBtn = document.createElement('button');
+                    editFileBtn.className = 'btn btn-sm btn-outline-light';
+                    editFileBtn.innerHTML = '<i class="bi bi-pencil-square"></i>';
+                    editFileBtn.title = 'Editar archivo';
+                    editFileBtn.addEventListener('click', function() {
+                        const filePath = prompt('Ingrese la ruta del archivo a editar:');
+                        if (filePath) {
+                            fetchFileContent(filePath);
+                        }
+                    });
+
+                    // Insertar antes del input
+                    chatFooter.insertBefore(editFileBtn, messageInput);
+                }
+
+                // Llamar a la función para añadir el botón
+                addEditFileButton();
+
+                // Exponer funciones para uso global
+                window.requestFileEdit = fetchFileContent;
+            });
+
+            // Configurar eventos para el panel de instalación de dependencias
+            document.addEventListener('DOMContentLoaded', function() {
+                const packageNameInput = document.getElementById('package-name');
+                const packageManagerSelect = document.getElementById('package-manager');
+                const installButton = document.getElementById('install-package-btn');
+                const updateButton = document.getElementById('update-packages-btn');
+
+                if (installButton && packageNameInput && packageManagerSelect) {
+                    installButton.addEventListener('click', function() {
+                        const packageName = packageNameInput.value.trim();
+                        if (!packageName) {
+                            showNotification('Por favor ingrese un nombre de paquete','error');
+                            return;
+                        }
+
+                        const packageManager = packageManagerSelect.value;
+                        let command = '';
+
+                        switch(packageManager) {
+                            case 'pip':
+                                command = `pip install ${packageName}`;
+                                break;
+                            case 'npm':
+                                command = `npm install ${packageName}`;
+                                break;
+                            case 'yarn':
+                                command = `yarn add ${packageName}`;
+                                break;
+                            case 'poetry':
+                                command = `poetry add ${packageName}`;
+                                break;
+                            case 'apt':
+                                command = `apt-get install ${packageName}`;
+                                break;
+                            default:
+                                command = `pip install ${packageName}`;
+                        }
+
+                        // Ejecutar el comando
+                        if (window.terminalInterface && typeof window.terminalInterface.executeCommand === 'function') {
+                            window.terminalInterface.executeCommand(command);
+                            showNotification(`Instalando ${packageName} con ${packageManager}...`, 'info');
+                            packageNameInput.value = '';
+                        }
+                    });
+                }
+
+                if (updateButton && packageManagerSelect) {
+                    updateButton.addEventListener('click', function() {
+                        const packageManager = packageManagerSelect.value;
+                        let command = '';
+
+                        switch(packageManager) {
+                            case 'pip':
+                                command = 'pip list --outdated';
+                                break;
+                            case 'npm':
+                                command = 'npm outdated';
+                                break;
+                            case 'yarn':
+                                command = 'yarn outdated';
+                                break;
+                            case 'poetry':
+                                command = 'poetry update';
+                                break;
+                            case 'apt':
+                                command = 'apt-get update && apt-get upgrade -y';
+                                break;
+                            default:
+                                command = 'pip list --outdated';
+                        }
+
+                        // Ejecutar el comando
+                        if (window.terminalInterface && typeof window.terminalInterface.executeCommand === 'function') {
+                            window.terminalInterface.executeCommand(command);
+                            showNotification(`Verificando actualizaciones con ${packageManager}...`, 'info');
+                        }
+                    });
+                }
+            });
+
+            // Configuración para el botón de alternar la barra de asistentes
+            document.addEventListener('DOMContentLoaded', function() {
+                const toggleButton = document.getElementById('toggle-assistant-bar');
+                const assistantContainer = document.querySelector('.assistant-container');
+                const packageInstallPanel = document.querySelector('.package-install-panel');
+
+                // Función para alternar la visibilidad de los paneles de asistentes
+                function toggleAssistantBar() {
+                    if (assistantContainer.style.display === 'none') {
+                        assistantContainer.style.display = '';
+                        packageInstallPanel.style.display = '';
+                        toggleButton.innerHTML = '<i class="bi bi-eye-slash"></i> Ocultar';
+                    } else {
+                        assistantContainer.style.display = 'none';
+                        packageInstallPanel.style.display = 'none';
+                        toggleButton.innerHTML = '<i class="bi bi-eye"></i> Mostrar';
                     }
-                    const mobileOverlay = document.getElementById('mobile-overlay');
-                    if (mobileOverlay) {
-                        mobileOverlay.classList.toggle('show');
-                    }
-                });
-            }
+                }
 
-            // Configurar eventos para ambos botones de visualización
-            if (viewFilesButton) {
-                viewFilesButton.addEventListener('click', function() {
-                    if (typeof window.viewExplorerFiles === 'function') {
-                        window.viewExplorerFiles();
-                    }
-                });
-            }
+                // Añadir evento al botón
+                if (toggleButton) {
+                    toggleButton.addEventListener('click', toggleAssistantBar);
+                }
+            });
 
-            if (viewFilesMobileBtn) {
-                viewFilesMobileBtn.addEventListener('click', function() {
-                    if (typeof window.viewExplorerFiles === 'function') {
-                        window.viewExplorerFiles();                    }
+            // Configuración para el botón de visualización de archivos
+            document.addEventListener('DOMContentLoaded', function() {
+                // Botones para ver archivos (tanto en navbar como en menú móvil)
+                const viewFilesButton = document.getElementById('view-files-button');
+                const viewFilesMobileBtn = document.getElementById('view-files-btn');
+
+                // Botón para alternar el panel de explorador
+                const toggleExplorerBtn = document.getElementById('toggle-explorer');
+
+                // Funcionalidad para cerrar el panel de explorador
+                if (toggleExplorerBtn) {
+                    toggleExplorerBtn.addEventListener('click', function() {
+                        const explorerPanel = document.querySelector('.explorer-panel');
+                        if (explorerPanel) {
+                            explorerPanel.classList.toggle('show');
+                        }
+                        const mobileOverlay = document.getElementById('mobile-overlay');
+                        if (mobileOverlay) {
+                            mobileOverlay.classList.toggle('show');
+                        }
+                    });
+                }
+
+                // Configurar eventos para ambos botones de visualización
+                if (viewFilesButton) {
+                    viewFilesButton.addEventListener('click', function() {
+                        if (typeof window.viewExplorerFiles === 'function') {
+                            window.viewExplorerFiles();
+                        }
+                    });
+                }
+
+                if (viewFilesMobileBtn) {
+                    viewFilesMobileBtn.addEventListener('click', function() {
+                        if (typeof window.viewExplorerFiles === 'function') {
+                            window.viewExplorerFiles();                    }
                     // Cerrar menú flotante después de presionar
                     const floatMenu = document.getElementById('mobile-float-menu');
                     if (floatMenu) {
