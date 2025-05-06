@@ -96,6 +96,13 @@ def xterm_terminal():
     workspace_manager.get_workspace_path(DEFAULT_WORKSPACE)
     return render_template('xterm_terminal.html')
 
+# Agregar una ruta adicional para acceder sin el prefijo
+@xterm_bp.route('/')
+def xterm_terminal_root():
+    """Render the XTerm terminal page at the root of the blueprint."""
+    workspace_manager.get_workspace_path(DEFAULT_WORKSPACE)
+    return render_template('xterm_terminal.html')
+
 @xterm_bp.route('/api/xterm/execute', methods=['POST'])
 def execute_xterm_command():
     """Execute a command in the terminal."""
