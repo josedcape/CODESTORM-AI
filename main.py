@@ -640,254 +640,254 @@ def chat():
 
 
 
-               @app.route('/api/process_code', methods=['POST'])
-               def process_code():
-                   """API para procesar y corregir código."""
+@app.route('/api/process_code', methods=['POST'])
+   def process_code():
+       """API para procesar y corregir código."""
+       try:
+           data = request.json
+           if not data:
+               return jsonify({
+                   'success': False,
+                   'error': 'No se proporcionaron datos'
+               }), 400
+
+           code = data.get('code', '')
+           language = data.get('language', 'python')
+           instructions = data.get('instructions', 'Corrige errores y optimiza el código')
+           model = data.get('model', 'openai')
+
+           if not code:
+               return jsonify({
+                   'success': False,
+                   'error': 'No se proporcionó código para procesar'
+               }), 400
+
+           result = None
+
+           # Procesar con el modelo seleccionado
+           if model == 'openai' and app.config['API_KEYS'].get('openai'):
+               try:
+                   client = openai.OpenAI(api_key=app.config['API_KEYS'].get('openai'))
+                   response = client.chat.completions.create(
+                       model="gpt-4o",
+                       messages=[
+                           {"role": "system", "content": "Eres un experto programador especializado en corregir código."},
+                           {"role": "user", "content": f"""Corrige el siguiente código en {language} según las instrucciones proporcionadas.
+
+                   CÓDIGO:
+                   ```{language}
+                   {code}
+                   ```
+
+                   INSTRUCCIONES:
+                   {instructions}
+
+                   Responde en formato JSON con las siguientes claves:
+                   - correctedCode: el código corregido completo
+                   - changes: una lista de objetos, cada uno con 'description' y 'lineNumbers'
+                   - explanation: una explicación detallada de los cambios
+                   """}
+                       ],
+                       temperature=0.1
+                   )
+
+                   response_text = response.choices[0].message.content.strip()
                    try:
-                       data = request.json
-                       if not data:
-                           return jsonify({
-                               'success': False,
-                               'error': 'No se proporcionaron datos'
-                           }), 400
-
-                       code = data.get('code', '')
-                       language = data.get('language', 'python')
-                       instructions = data.get('instructions', 'Corrige errores y optimiza el código')
-                       model = data.get('model', 'openai')
-
-                       if not code:
-                           return jsonify({
-                               'success': False,
-                               'error': 'No se proporcionó código para procesar'
-                           }), 400
-
-                       result = None
-
-                       # Procesar con el modelo seleccionado
-                       if model == 'openai' and app.config['API_KEYS'].get('openai'):
+                       result = json.loads(response_text)
+                   except json.JSONDecodeError:
+                       # Intenta extraer JSON de la respuesta si está envuelto en bloques de código
+                       json_match = re.search(r'```(?:json)?\s*(.*?)\s*```', response_text, re.DOTALL)
+                       if json_match:
                            try:
-                               client = openai.OpenAI(api_key=app.config['API_KEYS'].get('openai'))
-                               response = client.chat.completions.create(
-                                   model="gpt-4o",
-                                   messages=[
-                                       {"role": "system", "content": "Eres un experto programador especializado en corregir código."},
-                                       {"role": "user", "content": f"""Corrige el siguiente código en {language} según las instrucciones proporcionadas.
-
-                               CÓDIGO:
-                               ```{language}
-                               {code}
-                               ```
-
-                               INSTRUCCIONES:
-                               {instructions}
-
-                               Responde en formato JSON con las siguientes claves:
-                               - correctedCode: el código corregido completo
-                               - changes: una lista de objetos, cada uno con 'description' y 'lineNumbers'
-                               - explanation: una explicación detallada de los cambios
-                               """}
-                                   ],
-                                   temperature=0.1
-                               )
-
-                               response_text = response.choices[0].message.content.strip()
-                               try:
-                                   result = json.loads(response_text)
-                               except json.JSONDecodeError:
-                                   # Intenta extraer JSON de la respuesta si está envuelto en bloques de código
-                                   json_match = re.search(r'```(?:json)?\s*(.*?)\s*```', response_text, re.DOTALL)
-                                   if json_match:
-                                       try:
-                                           result = json.loads(json_match.group(1).strip())
-                                       except json.JSONDecodeError:
-                                           logging.error(f"Error al decodificar JSON extraído de OpenAI: {json_match.group(1)[:500]}")
-                                           result = {
-                                               "correctedCode": code,
-                                               "changes": [{"description": "No se pudieron procesar los cambios correctamente", "lineNumbers": [1]}],
-                                               "explanation": "Error al procesar la respuesta de OpenAI."
-                                           }
-                                   else:
-                                       logging.error(f"No se encontró formato JSON en la respuesta de OpenAI: {response_text[:500]}")
-                                       result = {
-                                           "correctedCode": code,
-                                           "changes": [{"description": "No se encontró formato JSON en la respuesta", "lineNumbers": [1]}],
-                                           "explanation": "OpenAI no respondió en el formato esperado. Intente de nuevo o use otro modelo."
-                                       }
-
-                               logging.info("Código corregido con OpenAI")
-
-                           except Exception as e:
-                               logging.error(f"Error con API de OpenAI: {str(e)}")
-                               return jsonify({
-                                   'success': False,
-                                   'error': f'Error al conectar con OpenAI: {str(e)}'
-                               }), 500
-
-                       elif model == 'anthropic' and app.config['API_KEYS'].get('anthropic'):
-                           try:
-                               import anthropic
-                               from anthropic import Anthropic
-
-                               client = Anthropic(api_key=app.config['API_KEYS'].get('anthropic'))
-
-                               response = client.messages.create(
-                                   model="claude-3-5-sonnet-latest",
-                                   messages=[
-                                       {"role": "system", "content": "Eres un experto programador especializado en corregir código."},
-                                       {"role": "user", "content": f"""Corrige el siguiente código en {language} según las instrucciones proporcionadas.
-
-                               CÓDIGO:
-                               ```{language}
-                               {code}
-                               ```
-
-                               INSTRUCCIONES:
-                               {instructions}
-
-                               Responde en formato JSON con las siguientes claves:
-                               - correctedCode: el código corregido completo
-                               - changes: una lista de objetos, cada uno con 'description' y 'lineNumbers'
-                               - explanation: una explicación detallada de los cambios
-                               """}
-                                   ],
-                                   temperature=0.1
-                               )
-
-                               response_text = response.content[0].text.strip()
-                               try:
-                                   result = json.loads(response_text)
-                               except json.JSONDecodeError:
-                                   # Intenta extraer JSON de la respuesta si está envuelto en bloques de código
-                                   json_match = re.search(r'```(?:json)?\s*(.*?)\s*```', response_text, re.DOTALL)
-                                   if json_match:
-                                       try:
-                                           result = json.loads(json_match.group(1).strip())
-                                       except json.JSONDecodeError:
-                                           logging.error(f"Error al decodificar JSON extraído de Anthropic: {json_match.group(1)[:500]}")
-                                           result = {
-                                               "correctedCode": code,
-                                               "changes": [{"description": "No se pudieron procesar los cambios correctamente", "lineNumbers": [1]}],
-                                               "explanation": "Error al procesar la respuesta de Claude."
-                                           }
-                                   else:
-                                       logging.error(f"No se encontró formato JSON en la respuesta de Anthropic: {response_text[:500]}")
-                                       result = {
-                                           "correctedCode": code,
-                                           "changes": [{"description": "No se encontró formato JSON en la respuesta", "lineNumbers": [1]}],
-                                           "explanation": "Claude no respondió en el formato esperado. Intente de nuevo o use otro modelo."
-                                       }
-
-                               logging.info("Código corregido con Anthropic")
-
-                           except Exception as e:
-                               logging.error(f"Error con API de Anthropic: {str(e)}")
-                               return jsonify({
-                                   'success': False,
-                                   'error': f'Error al conectar con Anthropic: {str(e)}'
-                               }), 500
-
-                       elif model == 'gemini' and app.config['API_KEYS'].get('gemini'):
-                           try:
-                               # Asegúrate de que Gemini está configurado correctamente
-                               genai.configure(api_key=app.config['API_KEYS'].get('gemini'))
-
-                               gemini_model = genai.GenerativeModel(
-                                   model_name='gemini-1.5-pro',
-                                   generation_config={
-                                       'temperature': 0.2,
-                                       'top_p': 0.9,
-                                       'top_k': 40,
-                                       'max_output_tokens': 4096,
-                                   }
-                               )
-
-                               prompt = f"""Eres un experto programador. Tu tarea es corregir el siguiente código en {language} según las instrucciones proporcionadas.
-
-                               CÓDIGO:
-                               ```{language}
-                               {code}
-                               ```
-
-                               INSTRUCCIONES:
-                               {instructions}
-
-                               Responde en formato JSON con las siguientes claves:
-                               - correctedCode: el código corregido completo
-                               - changes: una lista de objetos, cada uno con 'description' y 'lineNumbers'
-                               - explanation: una explicación detallada de los cambios
-                               """
-
-                               response = gemini_model.generate_content(prompt)
-                               response_text = response.text
-
-                               # Intentar extraer JSON de la respuesta
-                               try:
-                                   # Primero intenta encontrar un bloque JSON
-                                   json_match = re.search(r'```json\s*(.*?)\s*```', response_text, re.DOTALL)
-                                   if json_match:
-                                       result = json.loads(json_match.group(1).strip())
-                                   else:
-                                       # Si no hay bloque JSON, busca cualquier objeto JSON en la respuesta
-                                       json_match = re.search(r'({.*})', response_text, re.DOTALL)
-                                       if json_match:
-                                           result = json.loads(json_match.group(0))
-                                       else:
-                                           logging.error(f"No se encontró formato JSON en la respuesta de Gemini: {response_text[:500]}")
-                                           result = {
-                                               "correctedCode": code,
-                                               "changes": [],
-                                               "explanation": "No se pudo procesar correctamente la respuesta del modelo."
-                                           }
-                               except json.JSONDecodeError as json_err:
-                                   logging.error(f"Error al decodificar JSON de Gemini: {str(json_err)}")
-                                   result = {
-                                       "correctedCode": code,
-                                       "changes": [],
-                                       "explanation": f"Error al procesar la respuesta JSON: {str(json_err)}"
-                                   }
-
-                               logging.info("Código corregido con Gemini")
-
-                           except Exception as e:
-                               logging.error(f"Error con API de Gemini: {str(e)}")
-                               return jsonify({
-                                   'success': False,
-                                   'error': f'Error al conectar con Gemini: {str(e)}'
-                               }), 500
+                               result = json.loads(json_match.group(1).strip())
+                           except json.JSONDecodeError:
+                               logging.error(f"Error al decodificar JSON extraído de OpenAI: {json_match.group(1)[:500]}")
+                               result = {
+                                   "correctedCode": code,
+                                   "changes": [{"description": "No se pudieron procesar los cambios correctamente", "lineNumbers": [1]}],
+                                   "explanation": "Error al procesar la respuesta de OpenAI."
+                               }
                        else:
-                           return jsonify({
-                               'success': False,
-                               'error': f'Modelo {model} no soportado o API no configurada'
-                           }), 400
+                           logging.error(f"No se encontró formato JSON en la respuesta de OpenAI: {response_text[:500]}")
+                           result = {
+                               "correctedCode": code,
+                               "changes": [{"description": "No se encontró formato JSON en la respuesta", "lineNumbers": [1]}],
+                               "explanation": "OpenAI no respondió en el formato esperado. Intente de nuevo o use otro modelo."
+                           }
 
-                       # Verificar que el resultado tenga la estructura esperada
-                       if not result:
-                           return jsonify({
-                               'success': False,
-                               'error': 'No se pudo obtener una respuesta válida del modelo'
-                           }), 500
+                   logging.info("Código corregido con OpenAI")
 
-                       if 'correctedCode' not in result:
-                           result['correctedCode'] = code
-                           result['changes'] = [{"description": "No se pudo procesar la corrección", "lineNumbers": [1]}]
-                           result['explanation'] = "El modelo no devolvió código corregido en el formato esperado."
-                           logging.warning(f"Respuesta sin código corregido: {str(result)[:200]}")
+               except Exception as e:
+                   logging.error(f"Error con API de OpenAI: {str(e)}")
+                   return jsonify({
+                       'success': False,
+                       'error': f'Error al conectar con OpenAI: {str(e)}'
+                   }), 500
 
-                       return jsonify({
-                           'success': True,
-                           'corrected_code': result.get('correctedCode', ''),
-                           'changes': result.get('changes', []),
-                           'explanation': result.get('explanation', 'No se proporcionó explicación.')
-                       })
+           elif model == 'anthropic' and app.config['API_KEYS'].get('anthropic'):
+               try:
+                   import anthropic
+                   from anthropic import Anthropic
 
-                   except Exception as e:
-                       logging.error(f"Error al procesar la solicitud de código: {str(e)}")
-                       logging.error(traceback.format_exc())
-                       return jsonify({
-                           'success': False,
-                           'error': f'Error al procesar la solicitud: {str(e)}'
-                       }), 500
+                   client = Anthropic(api_key=app.config['API_KEYS'].get('anthropic'))
+
+                   response = client.messages.create(
+                       model="claude-3-5-sonnet-latest",
+                       messages=[
+                           {"role": "system", "content": "Eres un experto programador especializado en corregir código."},
+                           {"role": "user", "content": f"""Corrige el siguiente código en {language} según las instrucciones proporcionadas.
+
+                   CÓDIGO:
+                   ```{language}
+                   {code}
+                   ```
+
+                   INSTRUCCIONES:
+                   {instructions}
+
+                   Responde en formato JSON con las siguientes claves:
+                   - correctedCode: el código corregido completo
+                   - changes: una lista de objetos, cada uno con 'description' y 'lineNumbers'
+                   - explanation: una explicación detallada de los cambios
+                   """}
+                       ],
+                       temperature=0.1
+                   )
+
+                   response_text = response.content[0].text.strip()
+                   try:
+                       result = json.loads(response_text)
+                   except json.JSONDecodeError:
+                       # Intenta extraer JSON de la respuesta si está envuelto en bloques de código
+                       json_match = re.search(r'```(?:json)?\s*(.*?)\s*```', response_text, re.DOTALL)
+                       if json_match:
+                           try:
+                               result = json.loads(json_match.group(1).strip())
+                           except json.JSONDecodeError:
+                               logging.error(f"Error al decodificar JSON extraído de Anthropic: {json_match.group(1)[:500]}")
+                               result = {
+                                   "correctedCode": code,
+                                   "changes": [{"description": "No se pudieron procesar los cambios correctamente", "lineNumbers": [1]}],
+                                   "explanation": "Error al procesar la respuesta de Claude."
+                               }
+                       else:
+                           logging.error(f"No se encontró formato JSON en la respuesta de Anthropic: {response_text[:500]}")
+                           result = {
+                               "correctedCode": code,
+                               "changes": [{"description": "No se encontró formato JSON en la respuesta", "lineNumbers": [1]}],
+                               "explanation": "Claude no respondió en el formato esperado. Intente de nuevo o use otro modelo."
+                           }
+
+                   logging.info("Código corregido con Anthropic")
+
+               except Exception as e:
+                   logging.error(f"Error con API de Anthropic: {str(e)}")
+                   return jsonify({
+                       'success': False,
+                       'error': f'Error al conectar con Anthropic: {str(e)}'
+                   }), 500
+
+           elif model == 'gemini' and app.config['API_KEYS'].get('gemini'):
+               try:
+                   # Asegúrate de que Gemini está configurado correctamente
+                   genai.configure(api_key=app.config['API_KEYS'].get('gemini'))
+
+                   gemini_model = genai.GenerativeModel(
+                       model_name='gemini-1.5-pro',
+                       generation_config={
+                           'temperature': 0.2,
+                           'top_p': 0.9,
+                           'top_k': 40,
+                           'max_output_tokens': 4096,
+                       }
+                   )
+
+                   prompt = f"""Eres un experto programador. Tu tarea es corregir el siguiente código en {language} según las instrucciones proporcionadas.
+
+                   CÓDIGO:
+                   ```{language}
+                   {code}
+                   ```
+
+                   INSTRUCCIONES:
+                   {instructions}
+
+                   Responde en formato JSON con las siguientes claves:
+                   - correctedCode: el código corregido completo
+                   - changes: una lista de objetos, cada uno con 'description' y 'lineNumbers'
+                   - explanation: una explicación detallada de los cambios
+                   """
+
+                   response = gemini_model.generate_content(prompt)
+                   response_text = response.text
+
+                   # Intentar extraer JSON de la respuesta
+                   try:
+                       # Primero intenta encontrar un bloque JSON
+                       json_match = re.search(r'```json\s*(.*?)\s*```', response_text, re.DOTALL)
+                       if json_match:
+                           result = json.loads(json_match.group(1).strip())
+                       else:
+                           # Si no hay bloque JSON, busca cualquier objeto JSON en la respuesta
+                           json_match = re.search(r'({.*})', response_text, re.DOTALL)
+                           if json_match:
+                               result = json.loads(json_match.group(0))
+                           else:
+                               logging.error(f"No se encontró formato JSON en la respuesta de Gemini: {response_text[:500]}")
+                               result = {
+                                   "correctedCode": code,
+                                   "changes": [],
+                                   "explanation": "No se pudo procesar correctamente la respuesta del modelo."
+                               }
+                   except json.JSONDecodeError as json_err:
+                       logging.error(f"Error al decodificar JSON de Gemini: {str(json_err)}")
+                       result = {
+                           "correctedCode": code,
+                           "changes": [],
+                           "explanation": f"Error al procesar la respuesta JSON: {str(json_err)}"
+                       }
+
+                   logging.info("Código corregido con Gemini")
+
+               except Exception as e:
+                   logging.error(f"Error con API de Gemini: {str(e)}")
+                   return jsonify({
+                       'success': False,
+                       'error': f'Error al conectar con Gemini: {str(e)}'
+                   }), 500
+           else:
+               return jsonify({
+                   'success': False,
+                   'error': f'Modelo {model} no soportado o API no configurada'
+               }), 400
+
+           # Verificar que el resultado tenga la estructura esperada
+           if not result:
+               return jsonify({
+                   'success': False,
+                   'error': 'No se pudo obtener una respuesta válida del modelo'
+               }), 500
+
+           if 'correctedCode' not in result:
+               result['correctedCode'] = code
+               result['changes'] = [{"description": "No se pudo procesar la corrección", "lineNumbers": [1]}]
+               result['explanation'] = "El modelo no devolvió código corregido en el formato esperado."
+               logging.warning(f"Respuesta sin código corregido: {str(result)[:200]}")
+
+           return jsonify({
+               'success': True,
+               'corrected_code': result.get('correctedCode', ''),
+               'changes': result.get('changes', []),
+               'explanation': result.get('explanation', 'No se proporcionó explicación.')
+           })
+
+       except Exception as e:
+           logging.error(f"Error al procesar la solicitud de código: {str(e)}")
+           logging.error(traceback.format_exc())
+           return jsonify({
+               'success': False,
+               'error': f'Error al procesar la solicitud: {str(e)}'
+           }), 500
 
                @app.route('/api/developer_assistant', methods=['POST'])
                def developer_assistant():
