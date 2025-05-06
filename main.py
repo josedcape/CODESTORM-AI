@@ -297,6 +297,112 @@ def process_natural_language_to_command(text):
 def get_user_workspace(user_id='default'):
     """Obtener o crear un directorio de trabajo para el usuario."""
     workspace_path = Path("./user_workspaces") / user_id
+
+@app.route('/api/file/content', methods=['GET'])
+def get_file_content():
+    """Obtener el contenido de un archivo."""
+    try:
+        file_path = request.args.get('path')
+        if not file_path:
+            return jsonify({
+                'success': False,
+                'error': 'Se requiere ruta de archivo'
+            }), 400
+            
+        # Obtener workspace del usuario
+        user_id = session.get('user_id', 'default')
+        workspace_path = get_user_workspace(user_id)
+        
+        # Crear ruta completa y verificar seguridad
+        target_path = os.path.join(workspace_path, file_path)
+        if not os.path.normpath(target_path).startswith(os.path.normpath(workspace_path)):
+            return jsonify({
+                'success': False,
+                'error': 'Acceso denegado: No se puede acceder a archivos fuera del workspace'
+            }), 403
+            
+        # Verificar que el archivo existe
+        if not os.path.exists(target_path) or not os.path.isdir(target_path):
+            return jsonify({
+                'success': False,
+                'error': 'El archivo no existe o es un directorio'
+            }), 404
+            
+        # Leer contenido del archivo
+        with open(target_path, 'r', encoding='utf-8', errors='replace') as f:
+            content = f.read()
+            
+        return jsonify({
+            'success': True,
+            'content': content,
+            'file_path': file_path
+
+@app.route('/api/file/save', methods=['POST'])
+def save_file_content():
+    """Guardar cambios en un archivo."""
+    try:
+        data = request.json
+        if not data or 'file_path' not in data or 'content' not in data:
+            return jsonify({
+                'success': False,
+                'error': 'Se requiere ruta de archivo y contenido'
+            }), 400
+            
+        file_path = data['file_path']
+        content = data['content']
+        
+        # Obtener workspace del usuario
+        user_id = session.get('user_id', 'default')
+        workspace_path = get_user_workspace(user_id)
+        
+        # Crear ruta completa y verificar seguridad
+        target_path = os.path.join(workspace_path, file_path)
+        if not os.path.normpath(target_path).startswith(os.path.normpath(workspace_path)):
+            return jsonify({
+                'success': False,
+                'error': 'Acceso denegado: No se puede acceder a archivos fuera del workspace'
+            }), 403
+            
+        # Crear directorios si no existen
+        os.makedirs(os.path.dirname(target_path), exist_ok=True)
+        
+        # Escribir contenido al archivo
+        with open(target_path, 'w', encoding='utf-8') as f:
+            f.write(content)
+            
+        # Notificar cambio si es posible
+        try:
+            socketio.emit('file_change', {
+                'type': 'update',
+                'file_path': file_path,
+                'user_id': user_id,
+                'timestamp': time.time()
+            }, room=user_id)
+        except Exception as notify_error:
+            logging.warning(f"Error al notificar cambio de archivo: {str(notify_error)}")
+            
+        return jsonify({
+            'success': True,
+            'message': 'Archivo guardado correctamente',
+            'file_path': file_path
+        })
+            
+    except Exception as e:
+        logging.error(f"Error al guardar archivo: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+        })
+            
+    except Exception as e:
+        logging.error(f"Error al obtener contenido del archivo: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
     workspace_path.mkdir(parents=True, exist_ok=True)
     return workspace_path
 
