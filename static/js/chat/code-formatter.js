@@ -1,3 +1,4 @@
+
 /**
  * Formateador de código para el chat interactivo
  * Ayuda a mostrar y renderizar código en el chat del agente
@@ -213,31 +214,8 @@ function showNotification(message, type = 'success') {
 // Función para mostrar notificaciones si no existe globalmente
 if (!window.showNotification) {
   window.showNotification = function(message, type) {
-    console.log(`Notificación (${type}): ${message}`);
+    showNotification(message, type);
   };
-}
-
-// Función para copiar código desde un elemento
-function copyCode(button) {
-    const codeBlock = button.parentElement.nextElementSibling;
-    const code = codeBlock.textContent;
-
-    // Usar el API de portapapeles
-    navigator.clipboard.writeText(code)
-        .then(() => {
-            // Cambiar el texto del botón temporalmente
-            const originalText = button.textContent;
-            button.textContent = '✓ Copiado!';
-
-            // Restaurar el texto original después de 2 segundos
-            setTimeout(() => {
-                button.textContent = originalText;
-            }, 2000);
-        })
-        .catch(err => {
-            console.error('Error al copiar el código:', err);
-            alert('No se pudo copiar el código. Por favor, inténtalo de nuevo.');
-        });
 }
 
 // Función para actualizar la UI cuando se cambia de agente
@@ -299,18 +277,10 @@ function updateAgentUI(agentId) {
     console.log(`Agente cambiado a: ${agent.name} (${agentId})`);
 }
 
-// Exponer funciones globalmente
-window.highlightCode = highlightCode;
-window.formatCodeResponse = formatCodeResponse;
-window.copyCode = copyCode;
-window.updateAgentUI = updateAgentUI;
-
-
 /**
  * Formateador de código para la interfaz de chat
  * Este script se encarga de formatear correctamente los bloques de código en los mensajes del chat
  */
-
 document.addEventListener('DOMContentLoaded', function() {
     // Función para formatear bloques de código en el contenido HTML
     function formatCodeBlocks(htmlContent) {
@@ -425,13 +395,11 @@ document.addEventListener('DOMContentLoaded', function() {
     // Iniciar el formateador
     initCodeFormatter();
 });
-/**
- * Utilidades para formatear código en los mensajes del chat
- */
-// Definir la clase CodeFormatter para poder usarla con "new"
-class CodeFormatter {
+
+// Clase CodeFormatter para manejar el formateo de código con métodos avanzados
+class CodeFormatterHelper {
     constructor() {
-        console.log('CodeFormatter inicializado');
+        console.log('CodeFormatterHelper inicializado');
     }
     
     /**
@@ -518,7 +486,7 @@ class CodeFormatter {
 
 // Inicializar cuando el DOM esté cargado
 document.addEventListener('DOMContentLoaded', () => {
-  window.codeFormatter = new CodeFormatter();
+  window.codeFormatter = new CodeFormatterHelper();
 });
 
 // Exponer la función de copia globalmente para que pueda ser usada por botones
@@ -528,3 +496,9 @@ window.copyCodeToClipboard = function(element) {
     window.codeFormatter.copyToClipboard(codeBlock.textContent);
   }
 };
+
+// Exponer funciones globalmente
+window.highlightCode = highlightCode;
+window.formatCodeResponse = formatCodeResponse;
+window.copyCode = copyCode;
+window.updateAgentUI = updateAgentUI;
