@@ -24,8 +24,8 @@ from xterm_terminal import xterm_bp, init_xterm_blueprint
 logging.basicConfig(level=logging.DEBUG,
                     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
-# Cargar variables de entorno
-load_dotenv()
+# Cargar variables de entorno desde .env
+load_dotenv(dotenv_path='.env', override=True)
 
 # Inicializar app Flask
 app = Flask(__name__)
@@ -35,6 +35,12 @@ CORS(app)
 from flask_socketio import SocketIO, emit
 socketio = SocketIO(app, cors_allowed_origins="*", async_mode='threading',
                     ping_timeout=60, ping_interval=25, logger=True, engineio_logger=True)
+
+# Imprimir información de inicialización
+print("\n" + "="*50)
+print("INICIANDO CODESTORM ASSISTANT")
+print("="*50)
+print(f"• Cargando variables de entorno desde: {os.path.abspath('.env')}")
 
 # Register constructor blueprint
 try:
@@ -78,25 +84,32 @@ def get_and_validate_api_key(env_var_name, service_name, validation_func=None):
     api_key = os.getenv(env_var_name)
     if not api_key:
         logging.warning(f"{service_name} API key no configurada - funcionalidades de {service_name} estarán deshabilitadas")
+        print(f"⚠️ {service_name} API key no configurada en .env")
         return None
 
     # Si no hay función de validación, simplemente retornar la clave
     if not validation_func:
-        logging.info(f"{service_name} API key configurada: {api_key[:5]}...{api_key[-5:] if len(api_key) > 10 else '***'}")
+        masked_key = f"{api_key[:5]}...{api_key[-5:]}" if len(api_key) > 10 else "***configurada***"
+        logging.info(f"{service_name} API key configurada: {masked_key}")
+        print(f"✅ {service_name} API key configurada: {masked_key}")
         return api_key
 
     try:
         # Validar la clave API usando la función proporcionada
         is_valid = validation_func(api_key)
         if is_valid:
-            logging.info(f"{service_name} API key verificada y configurada: {api_key[:5]}...{api_key[-5:] if len(api_key) > 10 else '***'}")
+            masked_key = f"{api_key[:5]}...{api_key[-5:]}" if len(api_key) > 10 else "***configurada***"
+            logging.info(f"{service_name} API key verificada y configurada: {masked_key}")
+            print(f"✅ {service_name} API key verificada y configurada: {masked_key}")
             return api_key
         else:
             logging.error(f"La clave de {service_name} no es válida.")
+            print(f"❌ La clave de {service_name} no es válida. Por favor, verifica tu clave en el archivo .env")
             return None
     except Exception as e:
         logging.error(f"Error al validar la clave de {service_name}: {str(e)}")
         logging.warning(f"La clave de {service_name} no pudo ser validada o el servicio no está disponible")
+        print(f"❌ Error al validar la clave de {service_name}: {str(e)}")
         return None
 
 # Validadores para cada API
@@ -1758,36 +1771,84 @@ def handle_user_message(data):
         emit('error', {'message': str(e)})
 
 
+def check_api_status():
+    """Comprobar y mostrar el estado de las APIs configuradas."""
+    apis_ok = []
+    apis_error = []
+    
+    # Verificar OpenAI
+    if app.config['API_KEYS'].get('openai'):
+        apis_ok.append("OpenAI")
+    else:
+        apis_error.append("OpenAI")
+        
+    # Verificar Anthropic
+    if app.config['API_KEYS'].get('anthropic'):
+        apis_ok.append("Anthropic")
+    else:
+        apis_error.append("Anthropic")
+        
+    # Verificar Gemini
+    if app.config['API_KEYS'].get('gemini'):
+        apis_ok.append("Gemini")
+    else:
+        apis_error.append("Gemini")
+        
+    # Mostrar resumen
+    print("\n" + "-"*50)
+    print("ESTADO DE LAS APIs:")
+    
+    if apis_ok:
+        print(f"✅ APIs configuradas correctamente: {', '.join(apis_ok)}")
+    
+    if apis_error:
+        print(f"❌ APIs no configuradas: {', '.join(apis_error)}")
+        
+    if not apis_ok:
+        print("\n⚠️ ¡ADVERTENCIA! Ninguna API está configurada.")
+        print("El sistema funcionará en modo degradado con plantillas predefinidas.")
+        print("Para habilitar la generación de código real, configura las claves API en el archivo .env")
+    
+    print("-"*50 + "\n")
+    return len(apis_ok) > 0
+
 if __name__ == '__main__':
     try:
         logging.info("Iniciando servidor CODESTORM Assistant...")
+        print("\n🚀 Iniciando CODESTORM Assistant...\n")
 
-        if not app.config['API_KEYS'].get('openai'):
-            logging.warning("OPENAI_API_KEY no configurada - funcionalidades de OpenAI estarán deshabilitadas")
-        if not app.config['API_KEYS'].get('anthropic'):
-            logging.warning("ANTHROPIC_API_KEY no configurada - funcionalidades de Anthropic estarán deshabilitadas")
-        if not app.config['API_KEYS'].get('gemini'):
-            logging.warning("GEMINI_API_KEY no configurada - funcionalidades de Gemini estarán deshabilitadas")
-
-        if not any([app.config['API_KEYS'].get(k) for k in ['openai', 'anthropic', 'gemini']]):
-            logging.error("¡ADVERTENCIA! Ninguna API está configurada. El sistema funcionará en modo degradado.")
+        # Verificar estado de las APIs
+        has_apis_configured = check_api_status()
+        
+        if not has_apis_configured:
+            print("ℹ️ Puedes configurar las siguientes APIs en el archivo .env:")
+            print("   - OPENAI_API_KEY")
+            print("   - ANTHROPIC_API_KEY")
+            print("   - GEMINI_API_KEY")
+            print("\nAl menos una API debe estar configurada para habilitar funcionalidades completas.\n")
 
         try:
             if 'watch_workspace_files' in globals():
                 file_watcher_thread = threading.Thread(target=watch_workspace_files, daemon=True)
                 file_watcher_thread.start()
                 logging.info("Observador de archivos iniciado correctamente")
+                print("✅ Observador de archivos iniciado correctamente")
         except Exception as watcher_error:
             logging.warning(f"No se pudo iniciar el observador de archivos: {str(watcher_error)}")
+            print(f"⚠️ No se pudo iniciar el observador de archivos: {str(watcher_error)}")
 
         logging.info("Servidor listo para recibir conexiones en puerto 5000")
+        print("\n✅ Servidor listo para recibir conexiones en puerto 5000")
+        print("\n🌐 Accede a la aplicación en: https://[tu-repl-link]\n")
 
         try:
             init_xterm_blueprint(app, socketio)
             # El blueprint ya se registra en la función init_xterm_blueprint
             logging.info("xterm blueprint registered successfully")
+            print("✅ Terminal XTerm integrada correctamente")
         except Exception as e:
             logging.error(f"Error registering xterm blueprint: {str(e)}")
+            print(f"❌ Error al registrar xterm blueprint: {str(e)}")
 
         socketio.run(
             app,
@@ -1799,3 +1860,4 @@ if __name__ == '__main__':
     except Exception as e:
         logging.critical(f"Error fatal al iniciar el servidor: {str(e)}")
         logging.critical(traceback.format_exc())
+        print(f"\n❌ Error fatal al iniciar el servidor: {str(e)}")
