@@ -10,7 +10,9 @@
  * - Seguimiento del contexto de la conversación
  */
 
-class DevAssistant {
+// Verificar si la clase ya existe para evitar redefiniciones
+if (typeof window.DevAssistant === 'undefined') {
+    window.DevAssistant = class {
     constructor(config = {}) {
         // Configuración por defecto
         this.config = Object.assign({
@@ -878,6 +880,7 @@ class DevAssistant {
 
         console.log('DevAssistant: Elementos creados dinámicamente');
     }
+  }
 }
 
 // Inicializar cuando el DOM esté listo

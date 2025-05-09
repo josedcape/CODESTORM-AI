@@ -68,26 +68,26 @@ const SPECIALIZED_AGENTS = {
   - MUY IMPORTANTE: Tu respuesta SIEMPRE debe incluir tanto texto explicativo como bloques de código. NUNCA respondas solo con texto.
   - Utiliza emojis para resaltar puntos importantes (🚀, ✨, 🔍, 💡, 🛠️, 📱, 🔒, ⚡, etc.)
   - SIEMPRE presenta código usando el formato de bloques de código con triple backtick seguido del lenguaje, por ejemplo:
-  
-```html
-<div class="ejemplo">Código HTML</div>
-```
 
-```javascript
+\`\`\`html
+<div class="ejemplo">Código HTML</div>
+\`\`\`
+
+\`\`\`javascript
 function ejemplo() {
   return "Código JavaScript";
 }
-```
+\`\`\`
 
-```css
+\`\`\`css
 .ejemplo {
   color: red;
 }
-```
+\`\`\`
 
   - IMPORTANTE: Nunca omitas los bloques de código, estos deben ser parte fundamental de tu respuesta. 
-  - Asegúrate de que cada bloque de código comience con tres backticks seguido del lenguaje (```html, ```css, ```javascript, etc.)
-  - Asegúrate de cerrar correctamente los bloques de código con tres backticks (```)
+  - Asegúrate de que cada bloque de código comience con tres backticks seguido del lenguaje (\`\`\`html, \`\`\`css, \`\`\`javascript, etc.)
+  - Asegúrate de cerrar correctamente los bloques de código con tres backticks (\`\`\`)
   - Separa claramente el texto explicativo del código, no mezcles texto y código en el mismo bloque
   - Usa formato markdown para estructurar tu respuesta (encabezados, listas, negritas)
   - Evita usar comillas simples o dobles para presentar código, SIEMPRE usa bloques de código con triple backtick
