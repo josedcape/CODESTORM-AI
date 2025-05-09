@@ -428,13 +428,18 @@ document.addEventListener('DOMContentLoaded', function() {
 /**
  * Utilidades para formatear código en los mensajes del chat
  */
-const CodeFormatter = {
+// Definir la clase CodeFormatter para poder usarla con "new"
+class CodeFormatter {
+    constructor() {
+        console.log('CodeFormatter inicializado');
+    }
+    
     /**
      * Detecta y formatea bloques de código en un mensaje
      * @param {string} message - El mensaje a formatear
      * @return {string} - Mensaje con código formateado en HTML
      */
-    formatCode: function(message) {
+    formatCode(message) {
         // Detectar bloques de código con triple backtick
         const codeBlockRegex = /```([a-zA-Z]*)\n([\s\S]*?)```/g;
 
@@ -449,14 +454,14 @@ const CodeFormatter = {
         formattedMessage = formattedMessage.replace(inlineCodeRegex, '<code>$1</code>');
 
         return formattedMessage;
-    },
+    }
 
     /**
      * Escapa caracteres HTML para mostrar código correctamente
      * @param {string} html - Texto a escapar
      * @return {string} - Texto con caracteres HTML escapados
      */
-    escapeHtml: function(html) {
+    escapeHtml(html) {
         const escapeMap = {
             '&': '&amp;',
             '<': '&lt;',
@@ -468,12 +473,12 @@ const CodeFormatter = {
         return html.replace(/[&<>"']/g, function(m) {
             return escapeMap[m];
         });
-    },
+    }
 
     /**
      * Aplica resaltado de sintaxis a los bloques de código
      */
-    highlightAll: function() {
+    highlightAll() {
         // Si se usa una biblioteca como Prism.js o highlight.js
         if (typeof Prism !== 'undefined') {
             Prism.highlightAll();
@@ -483,11 +488,33 @@ const CodeFormatter = {
             });
         }
     }
-};
-/**
- * Utilidades para formatear y manejar código en bloques de código
- * Esta funcionalidad ya está definida anteriormente en el archivo
- */
+    
+    /**
+     * Copia texto al portapapeles
+     * @param {string} text - Texto a copiar
+     */
+    copyToClipboard(text) {
+        // Crear elemento temporal
+        const el = document.createElement('textarea');
+        el.value = text;
+        el.setAttribute('readonly', '');
+        el.style.position = 'absolute';
+        el.style.left = '-9999px';
+        document.body.appendChild(el);
+        
+        // Seleccionar y copiar
+        el.select();
+        document.execCommand('copy');
+        document.body.removeChild(el);
+        
+        // Mostrar notificación
+        if (window.showNotification) {
+            window.showNotification('Código copiado al portapapeles', 'success');
+        } else {
+            console.log('Código copiado al portapapeles');
+        }
+    }
+}
 
 // Inicializar cuando el DOM esté cargado
 document.addEventListener('DOMContentLoaded', () => {
