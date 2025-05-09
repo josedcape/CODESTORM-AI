@@ -638,15 +638,15 @@ function checkAPIAvailability() {
                                 option.textContent += ' (no configurado)';
                             }
                         });
-                    });
                     
-                    // Seleccionar el primer modelo disponible
-                    const firstAvailable = Array.from(modelSelector.options)
-                        .find(option => !option.disabled);
-                    if (firstAvailable) {
-                        firstAvailable.selected = true;
+                        // Seleccionar el primer modelo disponible
+                        const firstAvailable = Array.from(modelSelector.options)
+                            .find(option => !option.disabled);
+                        if (firstAvailable) {
+                            firstAvailable.selected = true;
+                        }
                     }
-                }
+                });
             }
         })
         .catch(error => {
