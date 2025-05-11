@@ -1,4 +1,3 @@
-
 # Agregamos este código al principio del archivo para no interferir con otras rutas
 from flask import jsonify
 
@@ -532,7 +531,7 @@ def delete_file_endpoint():
             file_path = data.get('path')
         else:  # GET method
             file_path = request.args.get('path')
-            
+
         if not file_path:
             return jsonify({
                 'success': False,
@@ -599,13 +598,13 @@ def developer_assistant():
         query = data.get('query', '')
         context = data.get('context', '')
         model = data.get('model', 'openai')  # Modelo predeterminado
-        
+
         if not query:
             return jsonify({
                 'success': False,
                 'error': 'No se proporcionó una consulta'
             }), 400
-            
+
         # Procesamiento con la API seleccionada
         if model == 'openai' and openai_api_key:
             try:
@@ -620,7 +619,7 @@ def developer_assistant():
                     max_tokens=2000
                 )
                 response = completion.choices[0].message.content
-                
+
                 return jsonify({
                     'success': True,
                     'response': response,
@@ -643,7 +642,7 @@ def developer_assistant():
                     messages=[{"role": "user", "content": f"Contexto: {context}\n\nConsulta: {query}"}]
                 )
                 response = completion.content[0].text
-                
+
                 return jsonify({
                     'success': True,
                     'response': response,
@@ -660,11 +659,11 @@ def developer_assistant():
                 # Make sure Gemini is configured properly
                 if not hasattr(genai, '_configured') or not genai._configured:
                     genai.configure(api_key=gemini_api_key)
-                    
+
                 gemini_model = genai.GenerativeModel('gemini-1.5-pro')
                 gemini_response = gemini_model.generate_content(f"Contexto: {context}\n\nConsulta: {query}")
                 response = gemini_response.text
-                
+
                 return jsonify({
                     'success': True,
                     'response': response,
@@ -685,12 +684,12 @@ def developer_assistant():
                 available_models.append('anthropic')
             if gemini_api_key:
                 available_models.append('gemini')
-                
+
             if available_models:
                 message = f"El modelo '{model}' no está disponible. Modelos disponibles: {', '.join(available_models)}"
             else:
                 message = "No hay modelos de IA disponibles. Por favor configura una API key en el panel de Secrets."
-                
+
             return jsonify({
                 'success': False,
                 'message': message,
