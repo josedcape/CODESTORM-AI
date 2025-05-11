@@ -809,8 +809,10 @@ def process_code():
                             "explanation": "Claude no respondió en el formato esperado. Intente de nuevo o use otro modelo."
                         }
 
+                logging.info(f"""
                 INSTRUCCIONES:
                 {instructions}
+                """)
 
                 Responde en formato JSON con las siguientes claves:
                 - correctedCode: el código corregido completo
