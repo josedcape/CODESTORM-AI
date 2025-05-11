@@ -630,6 +630,16 @@ def index():
 def constructor():
     return render_template('constructor.html')
 
+@app.route('/code_corrector')
+def code_corrector():
+    """Ruta al corrector de código."""
+    return render_template('code_corrector.html')
+
+@app.route('/agente')
+def agente():
+    """Ruta a la página del agente."""
+    return render_template('agente.html')
+
 @app.route('/health')
 def simple_health_check():
     """Simple health check endpoint."""
