@@ -805,9 +805,9 @@ def process_code():
                         logging.error(f"No se encontró formato JSON en la respuesta de Anthropic: {response_text[:500]}")
                         result = {
                             "correctedCode": code,
-                            "changes": [{"description": "No se encontró{language}
-                {code}
-                ```
+                            "changes": [{"description": "No se encontró formato JSON en la respuesta"}],
+                            "explanation": "Claude no respondió en el formato esperado. Intente de nuevo o use otro modelo."
+                        }
 
                 INSTRUCCIONES:
                 {instructions}
